@@ -1,0 +1,31 @@
+import { configCover } from "../libs/config.uts"
+let globalOpts:any | null = null;
+export const hideToast = () => {
+	uni.hideToast()
+	globalOpts?.close();
+}
+
+export const showToast = (opts : any) => {
+	const config = configCover(opts)
+	globalOpts = config;
+	let title = config.title || config.content;
+	if(title){
+		wx.showToast({
+			title: config.title || config.content,
+			icon: config.iconCode || 'none',
+			duration: config.duration,
+			success(){
+				globalOpts?.close();
+			}
+		})
+	}else{
+		wx.showToast({
+			icon: config.iconCode || 'success',
+			duration: config.duration,
+			success(){
+				globalOpts?.close();
+			}
+		})
+	}
+	
+}

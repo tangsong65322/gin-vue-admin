@@ -1,0 +1,71 @@
+
+import { DispatchQoS, DispatchConcurrentQueue, Operation, OperationQueue, Thread,DispatchTime } from "Foundation"
+// Operation
+class newThreadClassBytmui extends Operation {
+	task : () => any | null
+	result : any | null
+	init(@escaping callback : () => any | null) {
+		this.task = callback
+		super.init()
+	}
+
+	override main() {
+		this.result = this.task()
+	}
+}
+/** ios不支持直接传递函数进行多任务直接返回结果 */
+export function runWorker(callback : () => any | null, resultCallback : (msg : any | null) => void) {
+	resultCallback(callback)
+	// DispatchQueue.global().asyncAfter(deadline = DispatchTime.now(),execute = ()=>{
+	// 	callback()
+	// }) 
+	
+	// let callcalc = ():Promise<any|null> =>{
+	// 	return new Promise((res)=>{
+	// 		setTimeout(function() {
+	// 			res(callback())
+	// 		}, 1500);
+	// 	})
+	// };
+	// Thread.detachNewThread(()=>{
+	// 	callcalc().then((result:any|null)=>{
+	// 		console.log(result,'---')
+	// 		DispatchQueue.main.async(execute = () : void => {
+	// 			console.log(result,'***')
+	// 			resultCallback(result)
+	// 		})
+	// 	})
+		
+	// })
+	
+	// let thred = new Thread(block = () => {
+	// 	let data : any | null = callback();
+	// 	console.log(data)
+	// 	// DispatchQueue.main.async(execute = () : void => {
+	// 	// 	console.log(data)
+	// 	// })
+	// })
+	// thred.isMainThread = true;
+	// thred.start()
+	// OperationQueue
+	// let workerQueue = new OperationQueue()
+	// workerQueue.maxConcurrentOperationCount = 30
+	// let worker = new newThreadClassBytmui(callback = callback)
+	// worker.completionBlock = ()=>{
+
+	// 	DispatchQueue.main.async(execute = () : void => {
+	// 	console.log(worker.result)
+	// 	})
+	// }
+	// workerQueue.addOperation(worker)
+	// 在后台线程执行
+	// DispatchQueue(label = "xtm.omg.td2", qos = DispatchQoS.background, attributes = DispatchQueue.Attributes.concurrent)
+	// 	.async(execute = () : void => {
+	// 		let data : any | null = callback();
+	// 		resultCallback(data)
+	// 		// DispatchQueue.main.async(execute = () : void => {
+
+	// 		// })
+	// 	})
+
+}

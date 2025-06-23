@@ -1,0 +1,105 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1;">
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">数据库 xSqlite</x-text>
+			<x-text color="#999999">
+				它是sqlite3的操作映射,目前不支持密码配置
+			</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-text class="mb-16"  color="#999999">
+				操作时,请先按顺序往下点下去,验证每一步的操作.
+			</x-text>
+			<x-button @click="create" class="mb-8" :block="true">创建数据库</x-button>
+			<x-button @click="createTable"  class="mb-8" :block="true">创建表</x-button>
+			<x-button @click="pushDbData"  class="mb-8" :block="true">插入数据</x-button>
+			<x-button @click="saveDb"  class="mb-8" :block="true">保存数据库</x-button>
+			<x-button @click="querySql"  class="mb-8" :block="true">查询所有</x-button>
+			<x-text class="my-16" color="#999999">
+				从上到下执行操作后,可以杀死app或者刷新页面,再点击测试加载刚才保存的数据库,以观察是否加载成功
+			</x-text>
+			<x-button @click="localDb"  class="mb-8" :block="true">加载数据库</x-button>
+		</x-sheet>
+		
+		<x-sheet>
+			<x-text class="mb-16"  color="#999999">
+				这里会显示操作记录:
+			</x-text>
+			{{dbRows}}
+		</x-sheet>
+		
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script setup lang="ts">
+	import {xSqlite } from "@/uni_modules/x-sqlite-s"
+	// #ifndef H5
+	const db = new xSqlite({
+		defaultDirectory:uni.env.USER_DATA_PATH+'db/sq'
+	})
+	// #endif
+	// #ifdef H5
+	const db = new xSqlite()
+	// #endif
+	const dbRows = ref<any|null>(null)
+	const querySql = ()=>{
+		const result = db.query("SELECT * FROM users WHERE age > ?", [20]);
+		dbRows.value = result
+	}
+	
+	const create = async ()=>{
+		let isCreat = true
+		// #ifdef APP
+		isCreat = db.createDb("tmui4xDb")
+		// #endif
+		// #ifdef WEB
+		isCreat = await db.createDb("tmui4xDb")
+		// #endif
+		uni.showToast({title:isCreat?"创建成功,再去创建个表吧":"创建失败",icon:'none'})
+	}
+	const createTable = ()=>{
+		db.createTable("users", {
+		    "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+		    "name": "TEXT",
+		    "age": "INTEGER"
+		});
+		querySql()
+	}
+	const pushDbData = ()=>{
+		// 插入数据
+		db.insert("users", {
+		    name: "张三",
+		    age: 25
+		});
+		querySql()
+	}
+	const saveDb = ()=>{
+		db.saveLocal("tmui4xDb")
+		// 获取文件路径时，同时也是备份db
+		console.log(db.getDatabasePath())
+		uni.showToast({title:"保存成功",icon:'none'})
+	}
+	const localDb = async ()=>{
+		
+		// #ifdef APP
+		dbRows.value = db.loadLocal("tmui4xDb")
+		// #endif
+		// #ifdef WEB
+		dbRows.value = await db.loadLocal("tmui4xDb")
+		// #endif
+		const r = db.query(`SELECT COUNT(*) FROM users WHERE age = ?`, [25])
+		console.log(r)
+		//更新数据
+		// const r = db.update('users',{age:50},"id = ?", [1])
+		querySql()
+	}
+	
+</script>
+
+<style>
+		
+</style>

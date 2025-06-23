@@ -1,0 +1,366 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+		<!-- #ifdef MP-WEIXIN -->
+		<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+			<navigation-bar :background-color="xThemeConfigNavBgColor"
+				:front-color="xThemeConfigNavFontColor"></navigation-bar>
+		</page-meta>
+		<!-- #endif -->
+
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">旋转开关示例</x-text>
+			<x-text color="#999999" class="mb-8">下面是一个绘制的旋转示例,请在指针圆圈内左右滑动来设置房间温度.</x-text>
+			
+		</x-sheet>
+		<x-sheet color="#f0f0f0" dark-color="#f0f0f0" :padding="['0']">
+			<canvas :id="canvasId" @click="bindEvents" @touchstart="bindEvents" @touchmove="bindEvents"
+				@touchend="bindEvents" @touchcancel="bindEvents" @mousedown="bindEvents" @mousemove="bindEvents"
+				@mouseup="bindEvents" <!-- #ifdef WEB -->
+				@mouseleave="bindEvents"
+				<!-- #endif -->
+				style="width: 100%;height: 450px;" ref="canvasDom"
+				>
+			</canvas>
+		</x-sheet>
+
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script setup>
+	import { ICanvas } from '@/uni_modules/tmx-ui/core/canvas/ICanvas.uts';
+	import { CanvasEventType, ICanvasEvent } from '@/uni_modules/tmx-ui/core/canvas/interface.uts';
+	import { Shape } from '@/uni_modules/tmx-ui/core/canvas/lib/shape.uts';
+
+	import { IRect } from '@/uni_modules/tmx-ui/core/canvas/lib/rect.uts';
+	import { IText } from '@/uni_modules/tmx-ui/core/canvas/lib/text.uts';
+	import { Tween } from '@/uni_modules/tmx-ui/core/canvas/lib/animation/tween.uts';
+	import { ImageShape } from '@/uni_modules/tmx-ui/core/canvas/lib/image.uts';
+	import { Path2DShape } from '@/uni_modules/tmx-ui/core/canvas/lib/path2d.uts';
+	import { IRing } from '@/uni_modules/tmx-ui/core/canvas/lib/ring.uts';
+	import { IArc } from '@/uni_modules/tmx-ui/core/canvas/lib/arc.uts';
+	import { ISector } from '@/uni_modules/tmx-ui/core/canvas/lib/sector.uts';
+	import { IRegularPolygon } from '@/uni_modules/tmx-ui/core/canvas/lib/regularPolygon.uts';
+	import { ILinePolygon } from '@/uni_modules/tmx-ui/core/canvas/lib/linePolygon.uts';
+	import { ICircle } from '@/uni_modules/tmx-ui/core/canvas/lib/circle.uts';
+	import { IEllipse } from '@/uni_modules/tmx-ui/core/canvas/lib/ellipse.uts';
+	import { IStar } from '@/uni_modules/tmx-ui/core/canvas/lib/star.uts';
+	import { ILine } from '@/uni_modules/tmx-ui/core/canvas/lib/line.uts';
+	
+	
+	
+	const canvasDom = ref<UniCanvasElement | null>(null)
+	const canvasId = "xCanvas-" + Math.random().toString(16).substring(4)
+	const proxy = getCurrentInstance()?.proxy ?? null;
+	const xcanvas = ref<ICanvas>(new ICanvas({ canvasId: canvasId, component: proxy as any | null }));
+	let tw1 = null as Tween | null
+	let tw2 = null as Tween | null
+	let tw3 = null as Tween | null
+	const bindEvents = (evt : UniTouchEvent | UniPointerEvent | UniMouseEvent) => {
+		xcanvas.value.bindEvent(evt)
+	}
+	
+	let bgcolorRect = null as null|IRect;
+	let progereeBgColor = null as null|IArc;
+	const drawerBgColor = () =>{
+		const render = xcanvas.value! as ICanvas
+		let rect = new IRect({
+			x: 0,
+			y: 0,
+			width:render.boxWidth,
+			height:render.boxHeight,
+			fill:`rgb(32,32,38,1)`,
+			fillGradient:['45deg','#B5FFFF 0%','#fed7f1 100%'],
+		}, render)
+		
+		render.addShape(rect)
+		
+		bgcolorRect = rect
+	}
+	const drawerProgressCirle = ()=>{
+		const render = xcanvas.value! as ICanvas
+		let centerX = render.boxWidth / 2
+		let centerY = render.boxHeight / 2
+		let radius = 150
+		
+		let rouleCire = new IArc({
+			startAngle: 0,
+			endAngle: 0,
+			strokeWidth: 16,
+			stroke: "#FCA5F1",
+			strokeGradient:['180deg','#B5FFFF 0%','#fed7f1 50%','#fe4faa 100%'],
+			x: centerX,
+			y: centerY,
+			radius: radius,
+			rotateCenter:"center",
+			lineCap:'round',
+			rotation:135
+		}, render)
+		progereeBgColor = rouleCire
+		render.addShape(rouleCire)
+	}
+	// 绘制刻度
+	const drawerRule = () => {
+		if (xcanvas.value == null) return;
+		const render = xcanvas.value! as ICanvas
+		let centerX = render.boxWidth / 2
+		let centerY = render.boxHeight / 2
+		let radius = 150
+		// 首先定义刻度的参数
+		const divisions = 45; // 等分数量
+		const tickLength = 15; // 刻度长度
+		const innerRadius = radius - tickLength; // 内径半径（从这里开始向外画刻度）
+		// 计算起始角度和结束角度（转换为数学角度）
+		const startAngle = 135;
+		const endAngle = 45;
+		// 处理角度范围（确保endAngle大于startAngle）
+		const totalAngle = endAngle <= startAngle ? endAngle + 360 - startAngle : endAngle - startAngle;
+		// 计算每个刻度之间的角度
+		const angleStep = totalAngle / divisions;
+		// 绘制刻度
+		for (let i = 0; i <= divisions; i++) {
+			// 当前刻度的角度
+			const currentAngle = (startAngle + i * angleStep) * (Math.PI / 180);
+
+			// 计算刻度起点（内径上的点）
+			const innerX = centerX + innerRadius * Math.cos(currentAngle);
+			const innerY = centerY + innerRadius * Math.sin(currentAngle);
+
+			// 计算刻度终点（外径上的点）
+			const outerX = centerX + radius * Math.cos(currentAngle);
+			const outerY = centerY + radius * Math.sin(currentAngle);
+
+			// 创建刻度线
+			const tick = new ILine({
+				pointStart: { x: innerX, y: innerY },
+				pointEnd: { x: outerX, y: outerY },
+				stroke: `#FCA5F1`,
+				strokeWidth: 1,
+				lineCap:'round'
+			}, render);
+
+			// 添加到画布
+			render.addShape(tick);
+		}
+	}
+	
+	// 绘制外圆弧
+	const outLineArc = ()=>{
+		const render = xcanvas.value! as ICanvas
+		let centerX = render.boxWidth / 2
+		let centerY = render.boxHeight / 2
+		let radius = 150
+		
+		let rouleCire = new IArc({
+			startAngle: 135,
+			endAngle: 45,
+			strokeWidth: 2,
+			stroke: "#FCA5F1",
+			x: centerX,
+			y: centerY,
+			radius: radius,
+			lineCap:'round',
+			lineDash: []
+		}, render)
+		
+		render.addShape(rouleCire)
+	}
+	
+	// 绘制内圆
+	const innerArc = ()=>{
+		const render = xcanvas.value! as ICanvas
+		let centerX = render.boxWidth / 2
+		let centerY = render.boxHeight / 2
+		let radius = 120
+		let rouleCire = new ICircle({
+			x: centerX,
+			y: centerY,
+			radius: radius,
+			fill:"#3884ff",
+			fillGradient:['45deg','#B5FFFF 0%','#FCA5F1 100%'],
+		}, render)
+		
+		render.addShape(rouleCire)
+	}
+	// 绘制内拨线
+	const rotaeLine = ():ILine=>{
+		const render = xcanvas.value! as ICanvas
+		let centerX = render.boxWidth / 2
+		let centerY = render.boxHeight / 2
+		let radius = 60
+		let line = new ILine({
+				stroke:'#B5FFFF',
+				lineCap:'round',
+				strokeWidth:6,
+				bubbleEvent:true,
+				pointStart:{x:centerX,y:centerY},
+				pointEnd:{x:centerX+radius,y:centerY},
+			},render)
+		
+		render.addShape(line)
+		
+		return line
+	}
+	
+	const drawerLabel = ():IText =>{
+		const render = xcanvas.value! as ICanvas
+		let centerX = render.boxWidth / 2
+		let centerY = render.boxHeight / 2
+		let radius = 50
+		let labeltext = new IText({
+			x: 0,
+			y: centerY+130,
+			width:render.boxWidth,
+			textAlign:"center",
+			text:"房间温度",
+			fontSize:20,
+			fill:'#FCA5F1'
+		}, render)
+		
+		render.addShape(labeltext)
+		
+		return labeltext
+	}
+	
+	const angleToProgress = (angle:number):number=>{
+	
+		let base = 1/8
+		let progeress = 0
+		if(angle>=135&&angle<=180){
+			progeress = base - (180-angle)/45 * base
+		}else if(angle>=-180&&angle<=0){
+			angle = Math.abs(angle)
+			progeress =(180-angle)/180 * base*6 + base
+			
+		}else if(angle>0&&angle<=45){
+			progeress = base*7+(angle)/45*base
+		}else{
+			progeress=1
+		}
+		
+		return progeress;
+	}
+	
+	// 绘制内圆
+	const innerArc2 = ()=>{
+		const render = xcanvas.value! as ICanvas
+		let centerX = render.boxWidth / 2
+		let centerY = render.boxHeight / 2
+		let radius = 80
+		let rouleCire = new ICircle({
+			x: centerX,
+			draggable:true,
+			y: centerY,
+			radius: radius,
+			fill:"#fff",
+			stroke:"#B5FFFF",
+			strokeWidth:2,
+			fillGradient:['45deg','#FCA5F1 0%','#B5FFFF 100%'],
+			rotateCenter:'center'
+		}, render)
+		
+		render.addShape(rouleCire)
+		let smallCirle = new ICircle({
+			x: centerX,
+			y: centerY,
+			radius: 10,
+			fill:"#B5FFFF",
+			stroke:"#FCA5F1",
+			strokeWidth:2,
+			bubbleEvent:true,
+			rotateCenter:'center'
+		}, render)
+		
+		render.addShape(smallCirle)
+		
+		
+		const line = rotaeLine()
+		line.rotateByPoint(true,135)
+		let newAngle = line.getAngle()
+		rouleCire.addEventListener('down',(e)=>{
+			new Tween(rouleCire,render)
+			.addTo({scaleX:1.1,scaleY:1.1},200)
+			.start()
+			newAngle = line.getAngle()
+		})
+		render.addEventListener('up',(e)=>{
+			new Tween(rouleCire,render)
+			.addTo({scaleX:1,scaleY:1},200)
+			.start()
+		})
+		
+		const text:IText = drawerLabel() as IText
+		
+		(rouleCire as Shape).drag = (eventName,parentEvent)=>{
+
+			let detail = parentEvent.detail[0];
+			const endy = detail.moveY - line.pointStart.y
+			let ro = line.getAngleByAnchor(
+				centerX,
+				centerY,
+				detail.startX,
+				detail.startY,
+				detail.moveX,
+				detail.moveY
+			)
+			let rueslt = newAngle+ro
+			
+			if(rueslt>=0&&rueslt<=45){
+				rueslt = Math.min(45,Math.max(0,rueslt))
+			}else if(rueslt >=135&&rueslt <=180){
+				rueslt = Math.min(180,Math.max(135,rueslt))
+			}else if(rueslt < 0 && rueslt >=-180){
+				rueslt = Math.max(-180,Math.min(0,rueslt))
+			}else if(rueslt >45 && rueslt <135){
+				rueslt = line.getAngle()
+			}
+			
+			line.rotateByPoint(true, rueslt);
+			let progress =	angleToProgress(line.getAngle())
+			text.setText("房间温度:"+(progress*36).toFixed(0))
+			bgcolorRect?.setOpacity(1-progress)
+			progereeBgColor?.setEndAngle(Math.min(270,Math.max(270 * progress,0)))
+			render.update();
+			
+		}
+		
+		
+	}
+	
+	
+
+	
+	
+	const drawer = () => {
+		if (xcanvas.value == null) return;
+		const render = xcanvas.value! as ICanvas
+		render.checkPointInHitEvents = ['down','move','up','cancel']
+		drawerBgColor()
+		drawerRule()
+		outLineArc()
+		drawerProgressCirle()
+		innerArc()
+		innerArc2()
+
+		render.render()
+
+	}
+
+	const oninit = () => {
+		xcanvas.value.init()
+			.then(() => {
+				drawer()
+			})
+	}
+
+	onReady(() => {
+		oninit()
+	})
+</script>
+
+<style>
+
+</style>

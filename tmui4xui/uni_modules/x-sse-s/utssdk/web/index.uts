@@ -1,0 +1,81 @@
+import {xSSEOptions} from "../interface.uts"
+export class SSEClientApp {
+	private eventSource : EventSource | null = null;
+	private url : string;
+	private onOpenEvt = () => { }
+	private onErrorEvt = () => { }
+	private onClosedEvt = () => { }
+	private onMessageEvt = (data : string) => { }
+	private headers:Map<string,string>
+	constructor(options:xSSEOptions) {
+		this.url = options.url;
+		let _headers = new Map<string, string>()
+		const headersOpts = options?.header??({} as UTSJSONObject)
+		for(const key in headersOpts){
+			_headers.set(key,headersOpts.getString(key)!)
+		}
+		this.headers = _headers
+	}
+
+	// 打开连接
+	public connect() : void {
+		
+		if (this.eventSource||this.isConnected()) {
+			console.error('已有打开的，不允许重复');
+			return;
+		}
+		let _this = this;
+		let params = ""
+		this.headers.forEach((value,key)=>{
+			params += `${key}=${value}&`
+		})
+		
+		if(this.headers.size>0){
+			params = params.substring(0,params.length-1)
+		}
+	
+		let urlParams = this.url;
+		if(params.length>0){
+			urlParams = this.url+"?"+params
+			
+		}
+		this.eventSource = new EventSource(urlParams);
+		this.eventSource.onopen = (event) => {
+			_this.onOpenEvt()
+		};
+
+		this.eventSource.onerror = (event) => {
+			_this.onErrorEvt()
+			console.error("SSE", "发生错误", event);
+		};
+		this.eventSource.onmessage = (event) => {
+			_this.onMessageEvt(event.data)
+		};
+	}
+	onOpen(callback:()=>void){
+		this.onOpenEvt = callback
+	}
+	onError(callback:()=>void){
+		this.onErrorEvt = callback
+	}
+	onClosed(callback:()=>void){
+		this.onClosedEvt = callback
+	}
+	onMessage(callback:(data:string)=>void){
+		this.onMessageEvt = callback
+	}
+	// 关闭连接
+	public disconnect() : void {
+		if (!this.eventSource) {
+			return;
+		}
+		this.eventSource.close();
+		this.onClosedEvt()
+		this.eventSource = null;
+	}
+
+	isConnected():boolean {
+		let status = this.eventSource?.readyState??2
+		return status == 1
+	}
+}

@@ -1,0 +1,744 @@
+<script lang="ts">
+	import { PropType, toRaw } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit, getUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { CASCADER_ITEM_INFO,CASCADER_TREE_ITEM } from "../../interface.uts"
+	import { isParent, getTreeNodesPath, getTreeSelectedNum } from "./util.uts"
+
+
+
+	/**
+	 * @name 极联器 xCascader
+	 * @page /pages/index/cascader
+	 * @category 表单组件
+	 * @description 极联选择器，单选模式。
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				//当前的层级
+				activeId: "",
+				selectedsIds: [] as string[],
+				//当前的层级索引
+				selectedsIdsItem: [] as CASCADER_TREE_ITEM[],
+				menuBarList: [] as CASCADER_TREE_ITEM[],
+				activeIndex: [] as number[],
+				changshowpenl: "0",
+				showCchangshowpenl: true,
+				swiperIndex: 0,
+				_nowListSwiper:[] as CASCADER_TREE_ITEM[][],
+				isAndriod:(uni.getSystemInfoSync().platform == 'android') as boolean,
+				// 添加切换状态管理，防止闪烁
+				isTransitioning: false,
+				nextSwiperIndex: 0,
+				tid:20
+			}
+		},
+		emits: [
+
+			/**
+			 * 选中触发时变化，只要路径变化了就会触发
+			 * @param {String[]} ids - 当前id路径值
+			 */
+			'change',
+			/**
+			 * 点击项目时触发
+			 * @param {CASCADER_TREE_ITEM} item - 项目数据
+			 * @param {number} parentIndex - 父index
+			 * @param {number} childrenIndex - 当前子index
+			 */
+			'cellClick',
+			/**
+			 * 最后一项时触发,或者选择本级时触发
+			 * @param {String}  id - 最后一级选中的值
+			 * @param {String[]}  ids - 完整的路径id值
+			 */
+			'confirm',
+			/**
+			 * 等同v-model,或者选择本级时触发
+			 * @param {String}  id - 当前id
+			 */
+			'update:modelValue'
+		],
+		props: {
+			/**
+			 * 宽,不可为auto。
+			 */
+			width: {
+				type: String,
+				default: "100%"
+			},
+			/**
+			 * 高是必填，不可为auto。
+			 */
+			height: {
+				type: String,
+				default: "150"
+			},
+
+			/**
+			 * 选项项目未选中的文字颜色
+			 */
+			itemTextColor: {
+				type: String,
+				default: "#333333"
+			},
+			/**
+			 * 选项项目未选中的暗黑文字颜色，空值是取白色
+			 */
+			darkItemTextColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 选项项目选中的文字颜色，空值取全局主题
+			 */
+			itemActiveColor: {
+				type: String,
+				default: ""
+			},
+
+			/**
+			 * 内容区域背景颜色
+			 */
+			sliderContentBgColor: {
+				type: String,
+				default: "transparent"
+			},
+			/**
+			 * 提供的数据结构
+			 */
+			list: {
+				type: Array as PropType<CASCADER_ITEM_INFO[]>,
+				default: () : CASCADER_ITEM_INFO[] => [] as CASCADER_ITEM_INFO[]
+			},
+			/**
+			 * 当前选中项的id
+			 */
+			modelValue: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 每级是否允许多选
+			 * 暂不开放，如需多选请参考组件slider-tree。
+			 */
+			multiple: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 项目文字大小
+			 */
+			fontSize: {
+				type: String,
+				default: "18"
+			},
+			/**
+			 * 是否在有下级的项目上显示选择本级按钮.
+			 * 当用户选中了本级时就同选择最后一项一样会触发confirm及同步vmodel值
+			 */
+			showCurrentBtn: {
+				type: Boolean,
+				default: false
+			},
+		},
+		computed: {
+			_showCurrentBtn() : boolean {
+				return this.showCurrentBtn
+			},
+
+			_width() : string {
+				return checkIsCssUnit(this.width, xConfig.unit);
+			},
+			_height() : string {
+				return checkIsCssUnit(this.height, xConfig.unit);
+			},
+			_fontSize() : string {
+				let fontSize = checkIsCssUnit(this.fontSize, xConfig.unit);
+				if (xConfig.fontScale == 1) return fontSize;
+				let sizeNumber = parseInt(fontSize)
+				if (isNaN(sizeNumber)) {
+					sizeNumber = 16
+				}
+				return (sizeNumber * xConfig.fontScale).toString() + getUnit(fontSize)
+			},
+
+			_itemTextColor() : string {
+				let color = this.itemTextColor;
+				if (xConfig.dark == 'dark') {
+					color = this.darkItemTextColor != "" ? this.darkItemTextColor : "#ffffff"
+				}
+				return getDefaultColor(color);
+			},
+			_itemActiveColor() : string {
+				return this.itemActiveColor != "" ? getDefaultColor(this.itemActiveColor) : getDefaultColor(xConfig.color);
+			},
+
+			_sliderContentBgColor() : string {
+				return getDefaultColor(this.sliderContentBgColor);
+			},
+			_multiple() : boolean {
+				return this.multiple
+			},
+			_list() : CASCADER_TREE_ITEM[] {
+				let list = this.list as CASCADER_ITEM_INFO[];
+				function addOptionalFieldsToTree(tree : CASCADER_ITEM_INFO[]) : void {
+					for (let i = 0; i < tree.length; i++) {
+						const node = tree[i];
+						node.disabled = node.disabled == null ? false : node.disabled! as boolean;
+						node.selected = node.selected == null ? [] : node.selected! as string[];
+						node.children = node.children == null ? ([] as CASCADER_ITEM_INFO[]) : node.children! as CASCADER_ITEM_INFO[];
+						if ((node.children!).length > 0) {
+							addOptionalFieldsToTree(node.children! as CASCADER_ITEM_INFO[]);
+						}
+					}
+				}
+				function addOptionalFieldsToTreeClolone(tree : CASCADER_ITEM_INFO[]) : CASCADER_TREE_ITEM[] {
+					let nowlist = [] as CASCADER_TREE_ITEM[]
+					for (let i = 0; i < tree.length; i++) {
+						const node = tree[i];
+						node.disabled = node.disabled == null ? false : node.disabled! as boolean;
+						node.selected = node.selected == null ? [] : node.selected! as string[];
+						node.children = node.children == null ? ([] as CASCADER_ITEM_INFO[]) : node.children! as CASCADER_ITEM_INFO[];
+						let item = {
+							id: node.id,
+							title: node.title,
+							disabled: node.disabled!,
+							selected: node.selected!,
+							children: [] as CASCADER_TREE_ITEM[],
+							checked: false
+						} as CASCADER_TREE_ITEM
+						if ((node.children!).length > 0) {
+							item.children = addOptionalFieldsToTreeClolone(node.children! as CASCADER_ITEM_INFO[]);
+						}
+						nowlist.push(item)
+					}
+
+					return nowlist
+				}
+
+				addOptionalFieldsToTree(list as CASCADER_ITEM_INFO[]);
+
+				return addOptionalFieldsToTreeClolone(list)
+			},
+			_borderColor() : string {
+				if (xConfig.dark == 'dark') return xConfig.borderDarkColor
+				return '#f5f5f5'
+			},
+			_nextChildren() : CASCADER_TREE_ITEM[] {
+				if (this.menuBarList.length == 0) return this._list
+				let lastChildren = this.menuBarList[this.menuBarList.length -1]
+				if(lastChildren.children.length==0) return [] as CASCADER_TREE_ITEM[];
+				return lastChildren.children
+			},
+			
+		},
+		mounted() {
+			this.oninit();
+		},
+		beforeUnmount() {
+			clearTimeout(this.tid)
+		},
+		watch: {
+			modelValue(newval : string) {
+				let nowid = ""
+				if (this.selectedsIds.length > 0) {
+					nowid = this.selectedsIds[this.selectedsIds.length - 1]
+				}
+				if (nowid == newval) return;
+				this.oninit();
+			}
+		},
+		methods: {
+			getFontSize(k:string):string{
+				return checkIsCssUnit(k,xConfig.unit)
+			},
+			getNowListSwiper(){
+				if (this.menuBarList.length == 0){
+					// 当菜单为空时，显示根级数据
+					this._nowListSwiper = [this._list]
+					return
+				}
+				let lastId = this.menuBarList[this.menuBarList.length -1].id;
+				let temlist = []  as CASCADER_TREE_ITEM[][]
+				try {
+					temlist = this.findIdToMenuAry(lastId,this._list)
+				} catch (error) {
+					//TODO handle the exception
+					console.error(error)
+					// 出错时回退到根级数据
+					temlist = [this._list]
+				}
+				this._nowListSwiper = temlist
+			},
+			// 根据id返回第一级到当前id级的数据列表
+			findIdToMenuAry(id: string | number, trees: CASCADER_TREE_ITEM[]): CASCADER_TREE_ITEM[][] {
+			    // 存储最终结果：每个层级的所有节点（带checked状态）
+			    const result: CASCADER_TREE_ITEM[][] = [];
+			    // 存储从根到目标节点的路径
+			    const selectedPath: CASCADER_TREE_ITEM[] = [];
+			    // 标记是否找到目标节点
+			    let found = false;
+			
+			    // 递归查找目标节点并构建路径
+			    function findPath(node: CASCADER_TREE_ITEM, path: CASCADER_TREE_ITEM[] = []): boolean {
+			        // 当前节点加入临时路径
+			        const currentPath = [...path, node] as CASCADER_TREE_ITEM[];
+			
+			        // 找到目标节点
+			        if (node.id == id) {
+			            // 复制路径到selectedPath
+			            selectedPath.push(...currentPath);
+			            found = true;
+			            return true;
+			        }
+			
+			        // 递归搜索子节点
+			        if (node.children.length>0) {
+						for (let i = 0; i < node.children.length; i++) {
+							const child = node.children[i]
+							if (findPath(child, currentPath)) {
+							    return true;
+							}
+						}
+			        }
+			
+			        return false;
+			    }
+				for (let i = 0; i < trees.length; i++) {
+					const tree = trees[i]
+					// 直接检查第一级节点
+					if (tree.id == id) {
+					    selectedPath.push(tree);
+					    found = true;
+					    break;
+					}
+					// 如果第一级不匹配，继续递归查找
+					else if (findPath(tree)) {
+					    break;
+					}
+				}
+			
+			
+			    // 如果找到目标节点，构建结果数组
+			    if (found) {
+			        // 构建每一层级的节点列表
+			        let currentLevel = trees;
+			        let currentParent = null as null|CASCADER_TREE_ITEM;
+			
+			        // 遍历路径中的每个节点
+			        for (let i = 0; i < selectedPath.length; i++) {
+			            const pathNode = selectedPath[i];
+			
+			            // 为当前层级的所有节点添加checked状态
+			            const levelWithChecked = currentLevel
+			
+			            // 添加到结果数组
+			            result.push(levelWithChecked);
+			
+			            // 更新下一层级的父节点和子节点列表
+			            if (i < selectedPath.length - 1) {
+			                currentParent = currentLevel.find((node:CASCADER_TREE_ITEM):boolean => node.id == pathNode.id);
+							
+			                currentLevel = currentParent?.children??[] 
+			            }
+			        }
+			
+			        return result;
+			    }
+		
+			    return [trees];
+			},
+			//初始默认选中一个id值。如果为空的话。
+			oninit() {
+				const trees = toRaw(this._list) as CASCADER_TREE_ITEM[]
+				let rulst = getTreeNodesPath(trees, this.modelValue)
+				if (rulst != null) {
+					let indexpath = rulst.indexPath!
+					this.menuBarList = rulst.pathData
+					this.selectedsIds = rulst.ids
+					this.activeIndex = indexpath
+					this.changshowpenl = getUid() as string;
+					this.swiperIndex = this.menuBarList.length - 1
+				}
+				this.getNowListSwiper()
+			},
+			change(isCurrent:boolean) {
+				let idis = this.selectedsIds.slice(0);
+				let empty = ""
+				// 单项模式下，父节点不更新对外更新值，只取最后一个确定的值。
+				if (idis.length > 0) {
+					empty = idis[idis.length - 1]
+				}
+				if (empty != "" && (this._nextChildren.length==0||isCurrent)) {
+					/**
+					 * 更新当前的值，等同v-model
+					 */
+					this.$emit('update:modelValue', empty)
+					/**
+					 * 最后一项时触发.
+					 */
+					this.$emit('confirm',empty,idis)
+					
+				}
+				this.$emit('change', idis)
+			},
+
+			swiperChange(detail:UniSwiperChangeEvent){
+				this.swiperIndex = detail.detail.current;
+			},
+			/**
+			 * isCurrent:是否选中本级,不进行下级跳转
+			 */
+			nextOnClick(item : CASCADER_TREE_ITEM, parentIndex : number,childrenIndex:number, isNext : boolean,isCurrent:boolean) {
+				if (item.disabled || this.isTransitioning) return;
+				
+				// 设置过渡状态，防止快速点击造成的闪烁
+				this.isTransitioning = true;
+				
+				if(isNext){
+					this.menuBarList.push(item)
+					this.selectedsIds = this.menuBarList.map((el:CASCADER_TREE_ITEM):string => el.id)
+					
+					// 先更新数据，再切换swiper
+					this.getNowListSwiper()
+					
+					if(item.children.length>0 && !isCurrent){
+						// 使用nextTick确保数据更新完成后再切换
+						this.$nextTick(() => {
+							this.swiperIndex += 1
+							// 延迟重置过渡状态
+							const _this =this;
+							this.tid = setTimeout(() => {
+								_this.isTransitioning = false
+							}, 200)
+						})
+					}else{
+						if(!isCurrent){
+							// #ifdef APP-IOS
+							this.swiperIndex = parentIndex
+							// #endif
+						}
+						this.isTransitioning = false
+					}
+					this.$emit("cellClick",item,parentIndex-1,childrenIndex)
+					this.change(isCurrent)
+					
+					return;
+				}
+				
+				this.menuBarList = this.menuBarList.slice(0,this.swiperIndex+1)
+				
+				if(item.children.length>0){
+					if(this.swiperIndex == this.menuBarList.length-1){
+						this.menuBarList.splice(this.menuBarList.length-1,1,item)
+					}else{
+						this.menuBarList.push(item)
+					}
+					
+					// 先更新数据
+					this.getNowListSwiper()
+					
+					if(!isCurrent){
+						// 使用nextTick确保数据更新完成
+						this.$nextTick(() => {
+							this.swiperIndex += 1
+							const _this =this;
+							this.tid = setTimeout(() => {
+								_this.isTransitioning = false
+							}, 200)
+						})
+					} else {
+						this.isTransitioning = false
+					}
+				}else{
+					if(parentIndex>this.menuBarList.length-1){
+						this.menuBarList.push(item)
+					}else{
+						this.menuBarList.splice(this.menuBarList.length-1,1,item)
+					}
+					this.isTransitioning = false
+				}
+				
+				this.selectedsIds = this.menuBarList.map((el:CASCADER_TREE_ITEM):string => el.id)
+				this.$emit("cellClick",item,parentIndex,childrenIndex)
+				this.change(isCurrent)
+			},
+			menuBarClick(index : number) {
+				if(index==-1 || this.isTransitioning) return;
+				
+				// 设置过渡状态
+				this.isTransitioning = true;
+				
+				if(index==0){
+					this.menuBarList = [] as CASCADER_TREE_ITEM[]
+				}else{
+					this.menuBarList = this.menuBarList.slice(0,index)
+				}
+				
+				// 先更新数据，再切换swiper
+				this.getNowListSwiper()
+				
+				// 使用nextTick确保数据更新完成
+				this.$nextTick(() => {
+					this.swiperIndex = index
+					this.selectedsIds = this.menuBarList.map((el:CASCADER_TREE_ITEM):string => el.id)
+					this.change(false)
+					
+					// 延迟重置过渡状态
+					const _this =this;
+					this.tid = setTimeout(() => {
+						_this.isTransitioning = false
+					}, 200)
+				})
+			},
+			elitext(text : string) : string {
+				let len = text.length;
+				return len <= 7 ? text : (text.substring(0, 7) + '..')
+			},
+			/**
+			 * 当前是否选中
+			 */
+			isSelected(item : CASCADER_TREE_ITEM) : boolean {
+				return (this.selectedsIds.includes(item.id)) && item.children.length == 0
+			},
+			/**
+			 * 本下级选了几个
+			 */
+			isSelectedNum(item : CASCADER_TREE_ITEM) : number {
+				let ps = new Set(this.selectedsIds)
+				return getTreeSelectedNum(item.children, ps);
+			},
+
+		},
+	}
+</script>
+<template>
+	<view class="xCascaderTree" :style="{width:_width,minHeight:`calc(${_height} + 50px)`}">
+		<scroll-view direction="horizontal" class="xCascaderTreeBar">
+			
+			<!--
+			@slot 顶部头菜单导航插槽,你可以完全写自己的导航样式
+			@prop {CASCADER_TREE_ITEM[]} menus - 菜单导航,注意,可能为空
+			 -->
+			<slot name="header" :menus="menuBarList" >
+				
+				<view @click="menuBarClick(index)" v-if="menuBarList.length>0" class="xCascaderBarTreeItem"
+					v-for="(item,index) in menuBarList" :key="index">
+					<text class="xCascaderTreeItemBarText"
+						:style="{
+							color:_itemActiveColor,
+							fontSize:_fontSize,
+							whiteSpace:'nowrap',
+							border:`1px solid ${_itemActiveColor}`
+							}
+						">
+						{{elitext(item.title)}}
+					</text>
+					<x-icon 
+					v-if="index<menuBarList.length-1||(index==0&&_nextChildren.length>0)||_nextChildren.length>0" 
+					class="xCascaderBarTreeItemRight" :font-size="_fontSize"
+						name="arrow-right-s-line" :color="_itemActiveColor"></x-icon>
+				</view>
+				
+				<view v-if="_nextChildren.length>0||(menuBarList.length==0&&_list.length>0)" @click="menuBarClick(-1)" class="xCascaderBarTreeItem">
+					<text :style="{color:_itemTextColor,fontSize:_fontSize,whiteSpace:'nowrap'}">请选择</text>
+					<x-icon class="xCascaderBarTreeItemRight" font-size="14" name="arrow-right-s-line"
+						:color="_itemActiveColor"></x-icon>
+				</view>
+				
+				
+			</slot>
+		</scroll-view>
+		<view :style="{height:'1px',borderBottom:`1px solid ${_borderColor}`}"></view>
+		<swiper :disable-touch="true" :duration="200"  @change="swiperChange" :style="{height:_height}" :current="swiperIndex">
+			<swiper-item v-for="(children,childrenIndex) in _nowListSwiper" :key="childrenIndex" class="xCascaderTreeSwiperItem"
+				:style="{height:_height}">
+				<list-view style="width: 100%;height: 100%;" direction="vertical">
+					<list-item v-for="(item,index) in children" :key="index" :style="{height:getFontSize('50')}">
+						<view :hover-start-time="10" :hover-stay-time="100"
+							:hover-class="item.disabled?'':'xCascaderTreeItemHover'"
+							@click="nextOnClick(item,childrenIndex,index,false,false)" class="xCascaderTreeItemRight"
+							:style="{backgroundColor:_sliderContentBgColor,opacity:item.disabled?'0.5':1}">
+							<view style="flex: 1;">
+								<text class="xCascaderTreeItemRightText"
+									:style="{fontSize:_fontSize,color:isSelected(item)?_itemActiveColor : _itemTextColor}">
+									{{item.title}}
+								</text>
+							</view>
+							<view
+								style="display: flex;flex-direction: row;justify-content: flex-end;align-items: center;">
+								<text class="xCascaderTreeItemRightTextBtns" :style="{color:_itemActiveColor,border:`1px solid ${_itemActiveColor}`}" 
+								v-if="item.children.length>0&&_showCurrentBtn" @click.stop="nextOnClick(item,swiperIndex+1,index,false,true)">选择本级</text>
+								<text  :style="{fontSize:_fontSize,color:_itemActiveColor,marginRight:'8px'}"
+									v-if="item.children.length>0&&isSelectedNum(item)>0">已选({{isSelectedNum(item)}})</text>
+								<x-icon v-if="isSelected(item)" :color="_itemActiveColor"
+									name="check-line"></x-icon>
+								<x-icon v-if="item.children.length>0" :color="_itemTextColor"
+									name="arrow-right-s-line"></x-icon>
+							</view>
+						</view>
+					</list-item>
+				
+				</list-view>
+			</swiper-item>
+			
+			<swiper-item v-if="_nextChildren.length>0||isAndriod" class="xCascaderTreeSwiperItem" :style="{height:_height}">
+				
+				
+				<list-view style="width: 100%;height: 100%;" direction="vertical">
+					<list-item v-for="(item,index) in _nextChildren" :key="index" :style="{height:getFontSize('50')}">
+						<view :hover-start-time="10" :hover-stay-time="100"
+							:hover-class="item.disabled?'':'xCascaderTreeItemHover'"
+							@click="nextOnClick(item,swiperIndex+1,index,true,false)" class="xCascaderTreeItemRight"
+							:style="{backgroundColor:_sliderContentBgColor,opacity:item.disabled?'0.5':1}">
+							<view style="flex: 1;">
+								<text class="xCascaderTreeItemRightText"
+									:style="{fontSize:_fontSize,color:isSelected(item)?_itemActiveColor : _itemTextColor}">
+									{{item.title}}
+								</text>
+							</view>
+							<view
+								style="display: flex;flex-direction: row;justify-content: flex-end;align-items: center;">
+								
+								<text class="xCascaderTreeItemRightTextBtns" :style="{color:_itemActiveColor,border:`1px solid ${_itemActiveColor}`}" 
+								v-if="item.children.length>0&&_showCurrentBtn" @click.stop="nextOnClick(item,swiperIndex+1,index,true,true)">选择本级</text>
+								
+								<text :style="{fontSize:_fontSize,color:_itemActiveColor,marginRight:'8px'}"
+									v-if="item.children.length>0&&isSelectedNum(item)>0">已选({{isSelectedNum(item)}})</text>
+								<x-icon v-if="isSelected(item)" :color="_itemActiveColor"
+									name="check-line"></x-icon>
+								<x-icon v-if="item.children.length>0" :color="_itemTextColor"
+									name="arrow-right-s-line"></x-icon>
+							</view>
+						</view>
+					</list-item>
+				</list-view>
+			</swiper-item>
+
+		</swiper>
+
+	</view>
+</template>
+<style scoped>
+	.xCascaderTreeItemRightTextBtns{
+		font-size: 12px;
+		border-radius: 3px;
+		/* #ifdef APP-ANDROID */
+		padding: 0px 8px;
+		line-height:1.5;
+		/* #endif */
+		/* #ifndef APP-ANDROID */
+		padding: 4px 8px;
+		line-height:1;
+		/* #endif */
+	}
+	.xCascaderTreeItemBarText {
+		text-overflow: ellipsis;
+		lines: 1;
+		border-radius: 3px;
+		/* #ifdef APP */
+		padding: 0px 8px;
+		line-height:1.5;
+		/* #endif */
+		/* #ifndef APP */
+		padding: 4px 8px;
+		line-height:1;
+		/* #endif */
+		
+		/* #ifndef APP */
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 1;
+		/* 限定为3行 */
+		overflow: hidden;
+		text-overflow: ellipsis;
+		/* #endif */
+	}
+
+	.xCascaderTreeBar {
+		display: flex;
+		flex-direction: row;
+
+		height: 50px;
+
+	}
+
+	.xCascaderBarTreeItem {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		height: 100%;
+	}
+
+	.xCascaderBarTreeItemRight {
+		margin: 0px 0px;
+	}
+
+
+
+	.xCascaderTreeSwiperItem {
+		/* #ifdef WEB */
+		cursor: default;
+		/* #endif */
+	}
+
+
+
+
+	.xCascaderTreeItemHover {
+		background-color: rgba(155, 155, 155, 0.1);
+	}
+
+	.xCascaderTreeItemMoreHeader {
+		padding: 12px;
+		flex-direction: row;
+		align-items: center;
+	}
+
+	.xCascaderTreeItemMore {
+		position: absolute;
+		left: 0px;
+		top: 0px;
+		width: 100%;
+		height: 100%;
+		display: flex;
+		flex-direction: column;
+		z-index: 10;
+
+	}
+
+	.xCascaderTreeItem {
+		width: 100%;
+		height: 100%;
+	}
+
+	.xCascaderTreeItemRight {
+		/* padding:0 24rpx; */
+		height: 50px;
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.xCascaderTreeItemRightText {
+		text-align: left;
+		lines: 1;
+		text-overflow: ellipsis;
+		/* #ifndef APP */
+		white-space: nowrap;
+		/* 禁止换行 */
+		overflow: hidden;
+		width: 100%;
+		/* #endif */
+	}
+</style>

@@ -1,0 +1,566 @@
+<script lang="ts">
+	import { type PropType } from "vue"
+	import { getUid,setPagePullRefresh,getPagePullRefresh } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { xDate, xDateTypeTime, createDate } from "../../core/util/xDate.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { PICKER_ITEM_INFO } from "../../interface.uts"
+	type coverValue = {
+		value : string[][],
+		str : string
+	}
+
+	/**
+	 * @name 时间选择器 xPickerTime
+	 * @description 这是单独显示和控制选择时分秒选择器。如果你需要年月日到秒的全部选择请参考x-picker-date。
+	 * @page /pages/index/picker-time
+	 * @category 表单组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | x | ☑️ | 4.14+ | 1.0.0 |
+	 */
+	export default {
+		data() {
+			let startValue = new xDate('2000-1-1 0:0:0');
+			let endValue = new xDate('2000-1-1 23:59:59')
+			return {
+				default_year: 2000,
+				default_month: 1,
+				default_date: 1,
+				default_time_date: "2000-1-1 ",
+				show: false,
+				nowValue: [] as string[][],
+				nowValueStr: '',
+				startDate: startValue,
+				endDate: endValue,
+				dateList: [] as PICKER_ITEM_INFO[][],
+				nowPull:false
+			}
+		},
+		emits: [
+			/**
+			 * 取消时触发
+			 */
+			'cancel',
+			/**
+			 * 确认触发
+			 * @param {string} date 当前选中时间
+			 */
+			'confirm',
+			/**
+			 * 滑动变换时触发
+			 * @param {string} date - 当前选中时间
+			 */
+			'change',
+			/**
+			 * 变量控制打开状态
+			 * 等同v-model:model-show
+			 */
+			'update:modelShow',
+			/**
+			 * 经格式化后的值。等同v-model:model-str
+			 */
+			'update:modelStr',
+			'update:modelValue'
+		],
+		props: {
+
+			/**
+			 * 当前时间,与modelStr不同，此提供的值必须是正常的时间格式xx:xx:xx
+			 * 否则报错，无法运行。
+			 */
+			modelValue: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 当前时间经过format格式化后输出的值。
+			 * 此值不会处理输入，只输出显示。
+			 */
+			modelStr: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 当前打开的状态。
+			 * 等同v-model:model-show
+			 */
+			modelShow: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 顶部标题
+			 */
+			title: {
+				type: String,
+				default: "请选择时间"
+			},
+			/**
+			 * 取消按钮的文本
+			 */
+			cancelText: {
+				type: String,
+				default: "取消"
+			},
+			/**
+			 * 确认按钮的文本
+			 */
+			confirmText: {
+				type: String,
+				default: "确认"
+			},
+			/**
+			 * 开始时间：请提供正确的时间格式xx:xx:xx
+			 */
+			start: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 结束时间：请提供正确的时间格式xx:xx:xx
+			 */
+			end: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 精确到的级别
+			 * hour:小时
+			 * minute:小时分钟
+			 * second:小时分钟秒
+			 */
+			type: {
+				type: String as PropType<"hour" | "minute" | "second" | "day" | "year" | "month">,
+				default: "second"
+			},
+			/**
+			 * 输出时间格式，只对v-model:modelStr有效
+			 * 有效格式：
+			 * hh小时
+			 * mm分钟
+			 * ss秒
+			 */
+			format: {
+				type: String,
+				default: "hh:mm:ss"
+			},
+			/**
+			 * 上方的单位名称
+			 */
+			cellUnits: {
+				type: Array as PropType<string[]>,
+				default: () : string[] => ['年', '月', '日', '小时', '分钟', '秒数'] as string[]
+			},
+			/**
+			 * 层级
+			 */
+			zIndex:{
+				type: Number,
+				default: 1100
+			},
+			showClose:{
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 是否禁用弹出
+			 */
+			disabled:{
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 宽屏时是否让内容剧中显示
+			 * 并限制其宽为屏幕宽，只展示中间内容以适应宽屏。
+			 */
+			widthCoverCenter: {
+				type: Boolean,
+				default: false
+			}
+		},
+		computed: {
+			
+			_start_date() : xDate {
+				if (this.start == "") return this.startDate
+				return new xDate(this.default_time_date + this.start)
+			},
+			_end_date() : xDate {
+				if (this.end == "") return this.endDate
+				return new xDate(this.default_time_date + this.end)
+			},
+			_getDateType() : xDateTypeTime {
+				let isType = 's' as xDateTypeTime
+				if (this.type == 'year') isType = 'y'
+				if (this.type == 'month') isType = 'm'
+				if (this.type == 'day') isType = 'd'
+				if (this.type == 'hour') isType = 'h'
+				if (this.type == 'minute') isType = 'M'
+				return isType;
+			},
+			_disabled():boolean{
+				return this.disabled
+			}
+		},
+		watch: {
+			modelValue(newvalue : string) {
+				if (newvalue == '') return;
+				let isType = this._getDateType
+				let nowValue = new xDate(this.default_time_date + newvalue)
+				if (nowValue.isBetweenOf(new xDate(this.nowValueStr), '=', isType)) return;
+				this.defaultModelvalue(nowValue.format('hh:mm:ss'), true)
+				
+			},	
+			modelShow(newValue : boolean) {
+				if (newValue == this.show) return;
+				this.show = newValue
+			}
+		},
+		mounted() {
+			this.nowPull = getPagePullRefresh()
+			let nowValue = new xDate(this.default_time_date + this.modelValue)
+			this.defaultModelvalue(nowValue.format('hh:mm:ss'), this.modelValue != '')
+
+		},
+		methods: {
+
+			defaultModelvalue(newvalue : string, showStr : boolean) {
+				let isType = this._getDateType
+				let nowValue = new xDate(this.default_time_date + newvalue)
+				if (nowValue.isBetweenOf(this._start_date, '<=', isType)) {
+					nowValue = this._start_date;
+				}
+				if (nowValue.isBetweenOf(this._end_date, '>=', isType)) {
+					nowValue = this._end_date;
+				}
+			
+				let stp = this.getRangByDateTime(nowValue)
+			
+				this.nowValue = stp.value;
+				
+				this.nowValueStr = stp.str;
+				this.dateList = this.getTimeTreeByStartAndEnd(this._start_date, this._end_date)
+				if (showStr) {
+					/**
+					 * 经格式化后的值。等同v-model:model-str
+					 */
+					this.$emit('update:modelStr', this.formatTimeDate());
+				}
+			},
+			getRangByDateTime(d : xDate) : coverValue {
+				let nowRange = [
+					[d.getYear().toString()],
+					[(d.getMonth()).toString()],
+					[d.getDate().toString()],
+					[d.getHours().toString()],
+					[d.getMinutes().toString()],
+					[d.getSeconds().toString()],
+				] as string[][]
+				let nowRangeStr = d.getYear().toString() + "-" + (d.getMonth() + 1).toString()
+					+ "-" + d.getDate().toString()
+					+ " " + d.getHours().toString() + ":"
+					+ d.getMinutes().toString() + ":"
+					+ d.getSeconds().toString()
+
+
+				return {
+					value: nowRange as string[][],
+					str: nowRangeStr
+				} as coverValue
+			},
+
+			getNowTypeLenIndex() : number {
+				let index = 6
+				if (this.type == 'hour') {
+					index = 4;
+				} else if (this.type == 'minute') {
+					index = 5;
+				}
+				return index;
+			},
+			indexToHex(i:number):string{
+				let n = i.toString()
+				if(n.length==1) return '0'+n;
+				return n;
+			},
+			getTimeTreeByStartAndEnd(start : xDate, end : xDate) : PICKER_ITEM_INFO[][] {
+
+
+				let startCopy = start.getClone();
+				let nowDate = new xDate(this.nowValueStr)
+				let endCopy = end.getClone();
+				let years = [] as PICKER_ITEM_INFO[];
+				let months = [] as PICKER_ITEM_INFO[];
+				let days = [] as PICKER_ITEM_INFO[];
+				let hours = [] as PICKER_ITEM_INFO[];
+				let minutes = [] as PICKER_ITEM_INFO[];
+				let seconds = [] as PICKER_ITEM_INFO[];
+				
+				for (let i = startCopy.getYear(); i <= endCopy.getYear(); i++) {
+					years.push({
+						id: i.toString(),
+						title: this.indexToHex(i)
+					} as PICKER_ITEM_INFO)
+				}
+				let _this = this;
+				function getD(type : string, s : number, n : number) {
+					if (type == 'm') {
+						for (let i = s; i <= n; i++) {
+							months.push({
+								id: i.toString(),
+								title: _this.indexToHex(i+1)
+							} as PICKER_ITEM_INFO)
+						}
+					} else if (type == 'd') {
+						for (let i = s; i <= n; i++) {
+							days.push({
+								id: i.toString(),
+								title: _this.indexToHex(i)
+							} as PICKER_ITEM_INFO)
+						}
+					} else if (type == 'h') {
+						for (let i = s; i <= n; i++) {
+							hours.push({
+								id: i.toString(),
+								title: _this.indexToHex(i)
+							} as PICKER_ITEM_INFO)
+						}
+					} else if (type == 'M') {
+						for (let i = s; i <= n; i++) {
+							minutes.push({
+								id: i.toString(),
+								title: _this.indexToHex(i)
+							} as PICKER_ITEM_INFO)
+						}
+					} else if (type == 's') {
+						for (let i = s; i <= n; i++) {
+							seconds.push({
+								id: i.toString(),
+								title: _this.indexToHex(i)
+							} as PICKER_ITEM_INFO)
+						}
+					}
+				}
+				function getDnumber(type:xDateTypeTime,target:xDateTypeTime):number[]{
+					let st = 0;
+					let et = 0
+					
+					// 不包含起始, 开始和结束内。
+					if (nowDate.isBetween(startCopy,endCopy,type, '()')) {
+						if(target=='m'){
+							st = 0
+							et = 11
+						}else if(target=='d'){
+							st = 1
+							et = nowDate.getMonthCountDay()
+						}else if(target=='h'){
+							st = 0
+							et = 23
+						}else if(target=='M'||target=='s'){
+							st = 0
+							et = 59
+						}
+						
+					// 
+					} else{
+						// 开始和结束相等
+						if(startCopy.isBetweenOf(endCopy, '=', type)){
+							
+							if(target=='m'){
+								st = startCopy.getMonth()
+								et = endCopy.getMonth()
+							}else if(target=='d'){
+								st = startCopy.getDate()
+								et = endCopy.getDate()
+							}else if(target=='h'){
+								st = startCopy.getHours()
+								et = endCopy.getHours()
+							}else if(target=='M'){
+								st = startCopy.getMinutes()
+								et = endCopy.getMinutes()
+							}else if(target=='s'){
+								st = startCopy.getSeconds()
+								et = endCopy.getSeconds()
+							}
+							
+						}else if(nowDate.isBetweenOf(startCopy, '<=', type)){
+						
+							if(target=='m'){
+								st = startCopy.getMonth()
+								et = 11
+							}else if(target=='d'){
+								st = startCopy.getDate()
+								et = startCopy.getMonthCountDay()
+							}else if(target=='h'){
+								st = startCopy.getHours()
+								et = 23
+							}else if(target=='M'){
+								st = startCopy.getMinutes()
+								et = 59
+							}else if(target=='s'){
+								st = startCopy.getSeconds()
+								et = 59
+							}
+						}else if(nowDate.isBetweenOf(endCopy, '>=', type)){
+							
+							if(target=='m'){
+								st = 0
+								et = endCopy.getMonth()
+							}else if(target=='d'){
+								st = 1
+								et = endCopy.getMonthCountDay()
+							}else if(target=='h'){
+								st = 0
+								et = endCopy.getHours()
+							}else if(target=='M'){
+								st = 0
+								et = endCopy.getMinutes()
+							}else if(target=='s'){
+								st = 0
+								et = endCopy.getSeconds()
+							}
+						}
+					}
+					return [st,et] as number[]
+				}
+				let maxlen = this.getNowTypeLenIndex();
+				
+				if (maxlen >1) {
+					let sdate = getDnumber('y','m')
+					getD('m', sdate[0]!, sdate[1]!)
+				}
+				if (maxlen >2) {
+					let sdate = getDnumber('m','d')
+					getD('d', sdate[0]!, sdate[1]!)
+				}
+				if (maxlen >3) {
+					let sdate = getDnumber('d','h')
+					getD('h', sdate[0]!, sdate[1]!)
+				}
+				if (maxlen >4) {
+					let sdate = getDnumber('h','M')
+					getD('M', sdate[0]!, sdate[1]!)
+				}
+				if (maxlen >5) {
+					let sdate = getDnumber('M','s')
+					getD('s', sdate[0]!, sdate[1]!)
+				}
+				
+				
+				return [years, months, days, hours, minutes, seconds].slice(0, this.getNowTypeLenIndex()) as PICKER_ITEM_INFO[][];
+			},
+			getRangNumber(start : number, end : number) : string[] {
+				let iar = [] as string[];
+				for (let i = start; i <= end; i++) {
+					iar.push(i.toString());
+				}
+				return iar;
+			},
+			stringArValuCoverToString() : string {
+				if (this.nowValue.length != 6) return "";
+				return this.fillNumber(this.nowValue[0][0]) + "-" + this.fillNumber((parseInt(this.nowValue[1][0]) + 1).toString())
+					+ "-" + this.fillNumber(this.nowValue[2][0])
+					+ " " + this.fillNumber(this.nowValue[3][0]) + ":"
+					+ this.fillNumber(this.nowValue[4][0]) + ":"
+					+ this.fillNumber(this.nowValue[5][0])
+
+			},
+			fillNumber(n : string) : string {
+				if (n.length > 1) return n;
+				return "0" + n
+			},
+			formatTimeDate() : string {
+				if (this.nowValue.length != 6) return "";
+				let sp = this.format;
+				sp = sp.replace(/YYYY/g, this.fillNumber(this.nowValue[0][0]))
+				sp = sp.replace(/MM/g, this.fillNumber((parseInt(this.nowValue[1][0]) + 1).toString()))
+				sp = sp.replace(/DD/g, this.fillNumber(this.nowValue[2][0]))
+				sp = sp.replace(/hh/g, this.fillNumber(this.nowValue[3][0]))
+				sp = sp.replace(/mm/g, this.fillNumber(this.nowValue[4][0]))
+				sp = sp.replace(/ss/g, this.fillNumber(this.nowValue[5][0]))
+				return sp;
+			},
+			openShow() {
+				if(this._disabled) return;
+				this.show = true;
+				/**
+				 * 变量控制打开状态
+				 * 等同v-model:model-show
+				 */
+				this.$emit('update:modelShow', true)
+				setPagePullRefresh(false)
+			},
+			onClose() {
+				/**
+				 * 变量控制打开状态
+				 * 等同v-model:model-show
+				 */
+				this.$emit('update:modelShow', false)
+				this.cancelResetDataCol()
+				setPagePullRefresh(this.nowPull)
+			},
+			mchange(ids : string[], index : number) {
+				this.nowValue.splice(index, 1, ids)
+				this.nowValueStr = this.stringArValuCoverToString()
+				/**
+				 * 滑动变换时触发
+				 * @param {string} date 当前选中时间
+				 */
+				this.$emit('change', this.nowValueStr.split(" ")[1])
+
+				this.dateList = this.getTimeTreeByStartAndEnd(this._start_date, this._end_date)
+			},
+
+			onCancel() {
+				this.$emit('cancel')
+				this.cancelResetDataCol()
+			},
+			cancelResetDataCol() {
+				let stp = this.getRangByDateTime(new xDate(this.default_time_date + this.modelValue))
+				this.nowValue = stp.value;
+				this.nowValueStr = stp.str;
+				this.dateList = this.getTimeTreeByStartAndEnd(this._start_date, this._end_date)
+			},
+
+			onConfirm() {
+				this.nowValueStr = this.stringArValuCoverToString()
+				/**
+				 * 点击确认时同步。等同v-model
+				 */
+				this.$emit('update:modelValue', this.nowValueStr.split(" ")[1]);
+
+				/**
+				 * 经格式化后的值。等同v-model:model-str
+				 */
+				this.$emit('update:modelStr', this.formatTimeDate());
+				this.$emit('confirm', this.nowValueStr.split(" ")[1]);
+			}
+		},
+	}
+</script>
+<template>
+	<view @click="openShow">
+		<!--
+		 @slot 插槽,默认触发打开选择器。你的默认布局可以放置在这里。
+		 -->
+		<slot></slot>
+	</view>
+	<x-drawer :cancel-text="cancelText" :confirm-text="confirmText"  :zIndex="zIndex" :widthCoverCenter="widthCoverCenter"  :disabledScroll="true" :title="title" @close="onClose" @confirm="onConfirm" @cancel="onCancel"
+		:showFooter="true" v-model:show="show" :show-close="showClose" size="410px">
+		<view class="xPickerDateWrap">
+			<x-picker-view v-if="show" 
+			:cellUnits="[cellUnits[index+3]]" 
+			v-for="(item,index) in dateList.slice(3)" 
+			:key="index+3"
+				@change="mchange($event as string[],index+3)" :model-value="nowValue[index+3]" style="flex: 1;"
+			:list="item"></x-picker-view>
+		</view>
+	</x-drawer>
+</template>
+<style scoped>
+	.xPickerDateWrap {
+		display: flex;
+		flex-direction: row;
+	}
+</style>

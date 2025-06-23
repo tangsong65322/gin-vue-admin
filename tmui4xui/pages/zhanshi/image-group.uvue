@@ -1,0 +1,63 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">图集 xImageGroup</x-text>
+			<x-text color="#999999" class="mb-12">主要是为了一些需要快速图片排版集的展示，比如评论图集，详情列表图集等，快速开发时使用。方便快捷</x-text>
+			<x-image-group round="6" :list="list"></x-image-group>
+		</x-sheet>
+
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">宽允许百分比，方便响应式</x-text>
+			<x-image-group round="6"  width="50%" :list="list3"></x-image-group>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">允许显示label在图片上</x-text>
+			<x-image-group round="6"  :list="list2"></x-image-group>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">label在图片下上</x-text>
+			<x-image-group height="140" labelModel="outter" label-font-color="#333" dark-label-font-color="#afafaf" :list="list2"></x-image-group>
+		</x-sheet>
+
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+				list: [
+					{ url: 'https://store.tmui.design/api_v2/public/random_picture?random=18a32' } as UTSJSONObject,
+					{ url: 'https://store.tmui.design/api_v2/public/random_picture?random=18f33' } as UTSJSONObject,
+					{ url: 'https://store.tmui.design/api_v2/public/random_picture?random=18c43' } as UTSJSONObject,
+					{ url: 'https://store.tmui.design/api_v2/public/random_picture?random=1843' } as UTSJSONObject,
+				] as UTSJSONObject[],
+				list3: [
+					{ url: 'https://store.tmui.design/api_v2/public/random_picture?random=1a8a32' } as UTSJSONObject,
+					{ url: 'https://store.tmui.design/api_v2/public/random_picture?random=18ff33' } as UTSJSONObject,
+					{ url: 'https://store.tmui.design/api_v2/public/random_picture?random=18ff33' } as UTSJSONObject,
+					{ url: 'https://store.tmui.design/api_v2/public/random_picture?random=18ac43' } as UTSJSONObject,
+				] as UTSJSONObject[],
+				list2: [
+					{ url: 'https://store.tmui.design/api_v2/public/random_picture?random=18d32', label: "原生开发通常指的是为特定平台（如iOS或Android）使用该平台" } as UTSJSONObject,
+					{ url: 'https://store.tmui.design/api_v2/public/random_picture?random=183s3', label: "使用该平台" } as UTSJSONObject,
+					{ url: 'https://store.tmui.design/api_v2/public/random_picture?random=184f3', label: "通常指的是为特定平" } as UTSJSONObject,
+					{ url: 'https://store.tmui.design/api_v2/public/random_picture?random=184x3', label: "该平" } as UTSJSONObject,
+				] as UTSJSONObject[]
+			};
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

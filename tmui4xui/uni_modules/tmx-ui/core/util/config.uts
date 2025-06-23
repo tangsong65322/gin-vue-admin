@@ -1,0 +1,20 @@
+import {xRequestHistoryType,X_REQUEST_PRIVATE_CALL_FUN_TYPE} from "../../interface.uts"
+
+
+/**
+ * 内部组件私有
+ */
+export const xRequestCall = reactive({
+	history:[] as xRequestHistoryType[],
+	authPass:true,
+	hostUrl:"",
+	dev:false,
+	header:null,
+	/** 请求前是否显示loading遮罩 */
+	showLoadToast:true,
+	/** 请求成功后是否提示，否则不提示 */
+	showSuccessToast:true,
+	/** 出错时，是否显示提示,否则不提示 */
+	showErrorToast:true
+} as X_REQUEST_PRIVATE_CALL_FUN_TYPE)
+

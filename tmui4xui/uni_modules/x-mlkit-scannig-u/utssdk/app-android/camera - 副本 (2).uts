@@ -1,0 +1,821 @@
+import ListView from 'android.widget.ListView';
+import FrameLayout from 'android.widget.FrameLayout';
+import CameraManager from 'android.hardware.camera2.CameraManager'
+import CameraDevice from 'android.hardware.camera2.CameraDevice'
+import StateCallback from 'android.hardware.camera2.CameraDevice.StateCallback'
+import CameraCaptureSession from 'android.hardware.camera2.CameraCaptureSession'
+
+import CaptureRequest from 'android.hardware.camera2.CaptureRequest'
+import TotalCaptureResult from 'android.hardware.camera2.TotalCaptureResult'
+import StreamConfigurationMap from 'android.hardware.camera2.params.StreamConfigurationMap'
+import MeteringRectangle from 'android.hardware.camera2.params.MeteringRectangle'
+import OutputConfiguration from 'android.hardware.camera2.params.OutputConfiguration'
+import SessionConfiguration from 'android.hardware.camera2.params.SessionConfiguration'
+import CameraCharacteristics from 'android.hardware.camera2.CameraCharacteristics'
+import CameraMetadata from 'android.hardware.camera2.CameraMetadata'
+import Range from 'android.util.Range';
+
+import Executor from 'java.util.concurrent.Executor'
+import Looper from 'android.os.Looper'
+import ImageFormat from 'android.graphics.ImageFormat'
+import Size from 'android.util.Size'
+import SurfaceTexture from 'android.graphics.SurfaceTexture'
+import Handler from 'android.os.Handler'
+import Surface from 'android.view.Surface'
+import Image from 'android.media.Image'
+import LinearLayout from 'android.widget.LinearLayout';
+import Intent from 'android.content.Intent';
+import Integer from 'java.lang.Integer';
+import ByteOrder from 'java.nio.ByteOrder';
+
+import SurfaceHolder from 'android.view.SurfaceHolder'
+import SurfaceView from 'android.view.SurfaceView'
+import TextureView from 'android.view.TextureView'
+import View from 'android.view.View'
+import Context from 'android.content.Context'
+import Manifest from "android.Manifest";
+import Uri from 'android.net.Uri';
+import File from 'java.io.File'
+import System from 'java.lang.System'
+import Activity from 'android.app.Activity';
+import Bundle from 'android.os.Bundle';
+import Intent from 'android.content.Intent';
+import IntentFilter from 'android.content.IntentFilter';
+
+import Rect from 'android.graphics.Rect';
+import Matrix from 'android.graphics.Matrix'
+import ImageReader from 'android.media.ImageReader'
+import OnImageAvailableListener from 'android.media.ImageReader.OnImageAvailableListener'
+
+
+import ByteBuffer from 'java.nio.ByteBuffer'
+import MediaStore from 'android.provider.MediaStore'
+import Plane from 'android.media.Image.Plane'
+import Bitmap from "android.graphics.Bitmap"
+import BitmapFactory from "android.graphics.BitmapFactory"
+import Vibrator from "android.os.Vibrator"
+import Animation from "android.view.animation.Animation"
+import ScaleAnimation from "android.view.animation.ScaleAnimation"
+import AnimationUtils from "android.view.animation.AnimationUtils"
+
+
+import Color from "android.graphics.Color"
+import Window from "android.view.Window"
+import WindowManager from "android.view.WindowManager"
+import TextView from "android.widget.TextView"
+import RelativeLayout from "android.widget.RelativeLayout"
+import ImageView from "android.widget.ImageView"
+import HandlerThread from 'android.os.HandlerThread'
+import YuvImage from 'android.graphics.YuvImage'
+import ByteArrayOutputStream from 'java.io.ByteArrayOutputStream'
+import GradientDrawable from 'android.graphics.drawable.GradientDrawable'
+import MotionEvent from 'android.view.MotionEvent';
+import ViewGroup from 'android.view.ViewGroup';
+
+
+import IOException from 'java.io.IOException'
+import InputStream from 'java.io.InputStream'
+import BarcodeScanner from "com.google.mlkit.vision.barcode.BarcodeScanner"
+import BarcodeScannerOptions from "com.google.mlkit.vision.barcode.BarcodeScannerOptions"
+import BarcodeScanning from "com.google.mlkit.vision.barcode.BarcodeScanning"
+import ZoomSuggestionOptions from "com.google.mlkit.vision.barcode.ZoomSuggestionOptions"
+import ZoomCallback from "com.google.mlkit.vision.barcode.ZoomSuggestionOptions.ZoomCallback"
+import Barcode from "com.google.mlkit.vision.barcode.common.Barcode"
+import InputImage from "com.google.mlkit.vision.common.InputImage"
+import xView from "./libview/view.uts"
+import Task from "com.google.android.gms.tasks.Task"
+import List from "java.util.List"
+type buffoptsPlanesType = {
+	data : ByteBuffer,
+	getRowStride : number,
+	getPixelStride : number,
+}
+type buffoptsType = {
+	width : number,
+	height : number,
+	format : number,
+	rect : Rect,
+	planes : buffoptsPlanesType[],
+}
+
+import { SCANNING_OPTIONS, CAMERA_PHOTO_SIZE, CallFunType, SCANNING_PHOTO_RESULT, SCANNING_PHOTO_RESULT_BOUND } from "../interface.uts"
+import { decoderUriPathToQr, decoderBuffToQr } from "./index.uts"
+
+type cameraListNameType = { id : string, device : CameraCharacteristics }
+
+function px2dp(n : number) : number {
+	const mets = UTSAndroid.getAppContext()!.resources!.getDisplayMetrics()
+	return mets.density * n
+}
+
+export class xCamera {
+	parentView : FrameLayout;
+	// 相机区域视图
+	cameraView : SurfaceView | null = null;
+	// 识别点的区域
+	resultView : RelativeLayout | null = null;
+
+
+	viewBox_width = 0
+	viewBox_height = 0
+
+	imgPointsBycanmarea = [] as RelativeLayout[]
+
+	options = {
+		width: 800,
+		height: 800,
+		cameraDevice: 'BACK',
+		scanSpeedduration: 450,
+		scanningQrCode: true,
+		isSavePhoto: false,
+		qrCodeType: null,
+		vibatar: true,
+		zoom: 3,
+		continuousScan: false
+	} as SCANNING_OPTIONS
+
+	/** 手动震动服务 */
+	vibrator = null as null | Vibrator
+	context : Context;
+	// 相机旋转的角度。
+	cameraRate = new Map<Number, Number>([
+		[Surface.ROTATION_0, 0],
+		[Surface.ROTATION_90, 0],
+		[Surface.ROTATION_180, 0],
+		[Surface.ROTATION_270, 0]
+	])
+	// 相机服务
+	cameraService : CameraManager
+	// 相机列表,name,id
+	cameraListName = new Map<string, cameraListNameType>();
+	// 
+	cameraPreviewSize = { width: 800, height: 800 } as CAMERA_PHOTO_SIZE
+	// 当前预览的什么是设备
+	cameraDevice : CameraDevice | null = null
+	cameraDeviceCaptureSession : CameraCaptureSession | null = null
+	sufaceHolderView : Surface | null = null
+	// 当前是否在解析码制中。
+	isDecoderQring = false
+	// 当前相机是否正在预览中。
+	isOpeningCameraing = false;
+
+	callFunEvent : CallFunType = (str : string[], type : 'auto' | 'click') => { }
+
+	// 临时存放的识别成功的结果，防止重复扫码。
+	tempresultList = [] as string[];
+
+	isAppPause = false
+
+	constructor(GroupView : FrameLayout, options : SCANNING_OPTIONS | null = null) {
+		this.context = UTSAndroid.getAppContext()! as Context;
+		this.parentView = GroupView;
+		if (options != null) {
+			this.options = {
+				width: options.width,
+				height: options.height,
+				cameraDevice: options.cameraDevice,
+				scanSpeedduration: options.scanSpeedduration == null ? this.options.scanSpeedduration : options.scanSpeedduration,
+				scanningQrCode: options.scanningQrCode == null ? this.options.scanningQrCode : options.scanningQrCode,
+				isSavePhoto: options.isSavePhoto == null ? this.options.isSavePhoto : options.isSavePhoto,
+				qrCodeType: options.qrCodeType == null ? this.options.qrCodeType : options.qrCodeType,
+				vibatar: options.vibatar == null ? this.options.vibatar : options.vibatar,
+				zoom: options.zoom == null ? this.options.zoom : options.zoom,
+				continuousScan: options.continuousScan == null ? this.options.continuousScan : options.continuousScan
+			} as SCANNING_OPTIONS;
+		}
+		this.cameraService = this.context!.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+		this.vibrator = this.context!.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator;
+		this._createCameraView()
+		this._creatCameraResultView()
+	}
+	//震动手机
+	setVibatar() {
+		if (this.vibrator == null) return
+		// 检查设备是否支持震动
+		if (this.vibrator!.hasVibrator()) {
+			// 触发短暂的震动，持续时间为200毫秒
+			this.vibrator!.vibrate(80);
+		}
+	}
+	/** 创建相机预览区域 */
+	private _createCameraView() {
+		let sv = new SurfaceView(this.context)
+		// 让相机的高和宽与组件对齐。
+		let layaout = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+		sv.setLayoutParams(layaout)
+		this.cameraView = sv;
+
+		this.parentView.addView(this.cameraView!)
+	}
+	// 创建一个动画层容器
+	private _creatCameraResultView() {
+		let t = this;
+		let resultView = new RelativeLayout(this.context)
+		let layaout = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+		resultView.setLayoutParams(layaout)
+		// resultView.setBackgroundColor(Color.argb(30,255,0,0))
+		this.resultView = resultView;
+		this.parentView.addView(this.resultView!)
+
+		//监听尺寸变化。
+		class previewChangeRectadd extends View.OnLayoutChangeListener {
+			override onLayoutChange(v : View, left : Int, top : Int, right : Int, bottom : Int,
+				oldLeft : Int, oldTop : Int, oldRight : Int, oldBottom : Int
+			) {
+				t.viewBox_width = right - left;
+				t.viewBox_height = bottom - top;
+				
+
+				// t.parentView!.removeOnLayoutChangeListener(this);
+			}
+		}
+		this.parentView!.addOnLayoutChangeListener(new previewChangeRectadd())
+
+
+	}
+	openCamera() : Promise<boolean> {
+		let _this = this;
+		if (this.isOpeningCameraing) {
+			this.closeCamera()
+		}
+		return new Promise((res, rej) => {
+			_this.checkPermissions()
+				.then((res : boolean) => {
+					if (!res) {
+						uni.showToast({ title: "未授权相机使用权", icon: "none" })
+						return;
+					}
+					try {
+						_this.getCamreaListName()
+						_this.getCamreaDeviceSizeList()
+						_this.setCamreaSize()
+						_this._openCamera();
+						_this.setCamreaFocalLength(1)
+						_this.addListenApp()
+					} catch (e) {
+						//TODO handle the exception
+					}
+					res(true)
+				})
+				.catch(() => {
+					uni.showToast({ title: "未授权相机使用权", icon: "none" })
+					rej(false)
+				})
+		})
+
+	}
+
+	addListenApp() {
+		let t = this;
+		let listener : (() => void) | null = null;
+		listener = () => {
+			t.isAppPause = true;
+			// console.log(UTSAndroid.getDispatcher())
+			if (t.isOpeningCameraing) {
+				t.pauseCamera()
+			}
+			if (listener != null) {
+				UTSAndroid.offAppActivityPause(listener!);
+			}
+		}
+		UTSAndroid.onAppActivityPause(listener);
+
+		let listener2 : (() => void) | null = null;
+		listener2 = () => {
+			t.isAppPause = false
+			if (t.isOpeningCameraing) {
+				t.openCamera()
+			}
+			if (listener2 != null) {
+				UTSAndroid.offAppActivityResume(listener2!);
+			}
+
+		}
+		UTSAndroid.onAppActivityResume(listener2);
+
+	}
+	pauseCamera() {
+		this.sufaceHolderView?.release()
+		this.cameraDeviceCaptureSession?.close()
+		this.cameraDevice?.close()
+		this.cameraDevice = null;
+		this.cameraDeviceCaptureSession = null;
+		this.sufaceHolderView = null;
+	}
+	closeCamera() {
+		this.sufaceHolderView?.release()
+		this.cameraDeviceCaptureSession?.close()
+		this.cameraDevice?.close()
+		this.cameraDevice = null;
+		this.cameraDeviceCaptureSession = null;
+		this.isOpeningCameraing = false;
+		this.sufaceHolderView = null;
+		for (let i = 0; i < this.imgPointsBycanmarea.length; i++) {
+			this.resultView?.removeView(this.imgPointsBycanmarea[i])
+		}
+
+
+	}
+	private _openCamera() {
+		let _this = this;
+		if (this.cameraListName.size == 0) return;
+		let camreaNow = this.cameraListName.get(this.options.cameraDevice);
+		if (camreaNow == null) return;
+		class CamerCallTstasBack implements StateCallback {
+			constructor() {
+
+			}
+			override  onOpened(camera : CameraDevice) : void {
+				console.log('打开成功')
+				_this.cameraDevice = camera
+				_this.createCameraPreviewSession()
+
+			}
+			override  onDisconnected(camera : CameraDevice) : void {
+				console.log('连接失败')
+				_this.cameraDevice?.close()
+				_this.cameraDevice = null
+			}
+			override  onError(camera : CameraDevice, error : Int) : void {
+				console.log('出错')
+				_this.cameraDevice?.close()
+				_this.cameraDevice = null
+			}
+			override  onClosed(camera : CameraDevice) : void {
+				console.log('关闭')
+				_this.cameraDevice?.close()
+				_this.cameraDevice = null
+			}
+
+		}
+		this.cameraService.openCamera(camreaNow.id! as string, new CamerCallTstasBack(), null);
+	}
+
+	/**
+	 * 检查相机权限
+	 */
+	checkPermissions() : Promise<boolean> {
+		let permissionCheck = ["android.permission.CAMERA"]
+		let _this = this;
+		// 请求拍照权限
+		return new Promise(res => {
+			if (UTSAndroid.checkSystemPermissionGranted(UTSAndroid.getUniActivity()!, permissionCheck)) {
+				// _this.cameraPermissioPass = true
+				res(true)
+			} else {
+				console.log("当前不具备指定权限")
+				// 请求拍照权限
+				UTSAndroid.requestSystemPermission(UTSAndroid.getUniActivity()!, permissionCheck, function (allRight : boolean, _ : string[]) {
+					// _this.cameraPermissioPass = allRight
+					res(true)
+				}, function (_ : boolean, _ : string[]) {
+					//用户拒绝了部分权限
+					// _this.cameraPermissioPass = false
+					res(false)
+				})
+			}
+		})
+	}
+
+	/**
+	 * 获取相机设备列表
+	 */
+	getCamreaListName(deviceName : 'FRONT' | 'BACK' | null = null) {
+		// 前置还是后置。
+		let deviceLens = CameraCharacteristics.LENS_FACING_BACK;
+		let dname = this.options.cameraDevice
+		if (deviceName != null) {
+			dname = deviceName!
+		}
+		if (dname == 'FRONT') {
+			deviceLens = CameraCharacteristics.LENS_FACING_FRONT;
+		}
+		if (dname == 'BACK') {
+			deviceLens = CameraCharacteristics.LENS_FACING_BACK;
+		}
+		this.cameraListName.clear()
+
+
+		for (caIds in this.cameraService.getCameraIdList()) {
+			let ps = this.cameraService.getCameraCharacteristics(caIds as string);
+			let facing = ps.get(CameraCharacteristics.LENS_FACING);
+			if (facing == CameraCharacteristics.LENS_FACING_FRONT) {
+				this.cameraListName.set('FRONT', { id: caIds as string, device: ps } as cameraListNameType)
+			}
+			if (facing == CameraCharacteristics.LENS_FACING_BACK) {
+				this.cameraListName.set('BACK', { id: caIds as string, device: ps } as cameraListNameType)
+			}
+		}
+
+		this.setCamreaSize();
+	}
+	/**
+	 * 获取相机设备尺寸列表
+	 * 调用此函数的前提是要先获取设备列表，要先调用getCamreaListName函数
+	 */
+	getCamreaDeviceSizeList() : CAMERA_PHOTO_SIZE[] {
+		let sizelist = [] as CAMERA_PHOTO_SIZE[]
+		if (this.cameraListName.size == 0) {
+			console.error("请先调用getCamreaListName获取设备列表")
+			return sizelist;
+		}
+		let camrea = this.cameraListName.get(this.options.cameraDevice) as cameraListNameType;
+		if (camrea != null) {
+			let maps = camrea!.device!.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP) as StreamConfigurationMap
+			if (maps != null) {
+
+				let testSize = maps!.getOutputSizes(ImageFormat.JPEG)
+				for (sz in testSize) {
+					let w = sz.getWidth()
+					let h = sz.getHeight()
+					sizelist.push({ width: w, height: h } as CAMERA_PHOTO_SIZE)
+				}
+
+			}
+		}
+		return sizelist;
+	}
+	/**
+	 * 设置相机焦距
+	 * 0-1之间。
+	 * 暂未实现。
+	 */
+	setCamreaFocalLength(focal : number) {
+
+		if (this.cameraListName.size == 0) {
+			console.error("请先调用getCamreaListName获取设备列表")
+			return
+		}
+		let camrea = this.cameraListName.get(this.options.cameraDevice) as cameraListNameType;
+
+		if (camrea != null) {
+			let zoomMax = camrea!.device!.get(CameraCharacteristics.CONTROL_ZOOM_RATIO_RANGE)
+			let nowZoom = camrea!.device!.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE)
+
+		}
+	}
+	/**
+	 * 设置相机前置还是后置,设置后需要重新打开相机。
+	 * BACK 后置
+	 * FRONT 前置
+	 */
+	setCamreaDevice(name : 'FRONT' | 'BACK') {
+		this.options.cameraDevice = name;
+	}
+	/**
+	 * 设置相机摄像尺寸，通过options中的width,height来匹配设置
+	 * 返回的不一定是真实的options中的宽高，只是与其相近的值。
+	 * 以设置后要重新打开。相机生效。
+	 * 返回相机生效的尺寸
+	 */
+	setCamreaSize(width : number | null = null, height : number | null = null) : CAMERA_PHOTO_SIZE {
+		// 宽高列表
+		const dimensions = this.getCamreaDeviceSizeList()
+		// 目标宽高
+		const targetWidth = width != null ? width! : this.options.width;
+		const targetHeight = height != null ? height! : this.options.height;
+		const targetRatio = targetWidth / targetHeight;
+		// 找到最接近目标比例的宽高值
+		const closestDimension = dimensions.reduce((prev : CAMERA_PHOTO_SIZE, curr : CAMERA_PHOTO_SIZE) : CAMERA_PHOTO_SIZE => {
+			const currRatio = curr.width / curr.height;
+			const prevRatio = prev.width / prev.height;
+			const currDiffRatio = Math.abs(currRatio - targetRatio);
+			const prevDiffRatio = Math.abs(prevRatio - targetRatio);
+
+			// 计算宽高值与目标值的差的平方和
+			const currDiffValue = Math.pow(curr.width - targetWidth, 2) + Math.pow(curr.height - targetHeight, 2);
+			const prevDiffValue = Math.pow(prev.width - targetWidth, 2) + Math.pow(prev.height - targetHeight, 2);
+
+			// 给比例差和值差赋予不同的权重，这里假设两者权重相同
+			const currTotalDiff = currDiffRatio + currDiffValue;
+			const prevTotalDiff = prevDiffRatio + prevDiffValue;
+
+			return currTotalDiff < prevTotalDiff ? curr : prev;
+		}, dimensions[0]);
+		this.cameraPreviewSize = closestDimension
+
+		return closestDimension;
+	}
+
+	// 获取当前相机的旋转角度。
+	getCamraRotation() : Number {
+		let sensorOrientation = 0
+		let tempra = 0
+		if (this.cameraListName.size == 0) return sensorOrientation;
+		let camreaNow = this.cameraListName.get(this.options.cameraDevice);
+		if (camreaNow == null) return sensorOrientation;
+
+		let windowManager = UTSAndroid.getUniActivity()!.getWindowManager() as WindowManager
+
+		let deviceRotation = windowManager!.getDefaultDisplay().getRotation()
+		let rotationCompensation = this.cameraRate.get(deviceRotation) as number
+
+		tempra = camreaNow.device.get(CameraCharacteristics.SENSOR_ORIENTATION)!! as number
+
+		if (this.options.cameraDevice == 'FRONT') {
+			tempra = ((tempra + rotationCompensation) % 360)
+		} else {
+			tempra = ((tempra - rotationCompensation + 360) % 360)
+		}
+		return tempra
+	}
+
+	// 设置识别成功的回调函数
+	setCallEvent(call : CallFunType) {
+		this.callFunEvent = call;
+	}
+
+	// 创建视频预览流。
+	private createCameraPreviewSession() {
+		if (this.cameraView == null) return;
+
+		// 设置预览区域
+		let previewAspectRatio = this.cameraPreviewSize.width / this.cameraPreviewSize.height;
+		let layoutWidth = this.viewBox_width
+		let layoutHeight = this.viewBox_height
+		let layoutAspectRatio = layoutWidth / layoutHeight;
+		
+		
+		let holder = this.cameraView!.getHolder()
+		let suface = holder!.getSurface();
+		this.sufaceHolderView = suface
+
+		if (this.cameraDevice == null) return;
+		let t = this;
+		let previewRequestBuilder = this.cameraDevice!.createCaptureRequest(CameraDevice.PREVIEW)
+		previewRequestBuilder?.addTarget(suface)
+		
+		let totalWidth = this.cameraPreviewSize.width
+		let totalHeight = this.cameraPreviewSize.height
+		
+
+		// 再添加一个image来预览
+		let minh = Math.min(this.options.width, this.options.height)
+		let reader = ImageReader.newInstance(minh.toInt(), minh.toInt(), ImageFormat.YUV_420_888, 1)
+		previewRequestBuilder?.addTarget(reader.getSurface())
+		let outsufaces = [suface, reader.getSurface()] as Surface[]
+
+
+		class sessionCallback extends CameraCaptureSession.StateCallback {
+			constructor() { }
+			override  onConfigured(session : CameraCaptureSession) {
+				t.cameraDeviceCaptureSession = session
+				t.isOpeningCameraing = true;
+				try {
+					t.cameraDeviceCaptureSession?.setRepeatingRequest(previewRequestBuilder.build(), null, null)
+				} catch (e) {
+					console.log("Failed to start camera preview session.", e)
+				}
+			}
+			override  onConfigureFailed(session : CameraCaptureSession) {
+
+			}
+			override  onClosed(session : CameraCaptureSession) {
+				t.closeCamera()
+			}
+			override  onSurfacePrepared(session : CameraCaptureSession, testSuface : Surface) {
+
+			}
+
+		}
+
+		reader.setOnImageAvailableListener(this.createCameraImageRenderLisen() as OnImageAvailableListener, null)
+		this.cameraDevice!.createCaptureSession(outsufaces, new sessionCallback(), null)
+
+
+	}
+
+	private createCameraImageRenderLisen() : any {
+		let t = this;
+		class imageReaderCallback extends ImageReader.OnImageAvailableListener {
+			private currentImage = null as Image | null;
+			override onImageAvailable(irader : ImageReader) {
+				if (this.currentImage != null) {
+					this.currentImage!.close(); // 先关闭上一帧的Image
+				}
+				let curimage = irader.acquireNextImage();
+
+				@Suppress("DEPRECATION")
+				class IntentRunable extends Runnable {
+					override run() {
+						if (t.isDecoderQring || !t.isOpeningCameraing || t.isAppPause) return;
+						try {
+							t.qrDecoder(curimage!)
+						} catch (e) {
+							t.closeCamera()
+							console.error('应用异常：', e)
+						}
+					}
+				}
+				this.currentImage = curimage
+				if (this.currentImage != null) {
+					new Thread(new IntentRunable()).start()
+				}
+
+			}
+		}
+
+		return new imageReaderCallback()
+	}
+
+	// 设置图片上的小圆的识别位置。
+	setImageViewRusletBox(width : number, height : number, realWidth : number, realHeight : number, jieguo : SCANNING_PHOTO_RESULT) {
+		let t = this;
+		let wRatio = t.viewBox_width / realWidth;
+		let hRatio = t.viewBox_height / realHeight;
+		let btnwidth = 120;
+		let zoom = 10 - this.options.zoom!
+
+		for (let i = 0; i < jieguo.bounds.length; i++) {
+			let item = jieguo.bounds[i];
+			let layoutParams = new LinearLayout.LayoutParams(
+				LinearLayout.LayoutParams.WRAP_CONTENT,
+				LinearLayout.LayoutParams.WRAP_CONTENT
+			)
+
+
+			let x = wRatio * item.centerX
+			let y = hRatio * item.centerY
+
+			layoutParams.topMargin = (y - 60).toInt() // 设置顶部边距
+			layoutParams.leftMargin = (x - 60).toInt() // 设置左边距
+			let relativeLayout = new RelativeLayout(t.context)
+			relativeLayout.layoutParams = layoutParams
+
+			const rtxt = jieguo.text[i]
+			let v = new xView(t.context)
+			v.setSize(120, 120)
+				.setRadius(100)
+				.setBackgroundColor('#21d429')
+				.setBorder(12, "#ffffff", false)
+				.setClick((event : MotionEvent) => {
+					try {
+						t.callFunEvent([rtxt], 'click')
+					} catch (e) {
+						//TODO handle the exception
+					}
+				})
+			let ov = v.getView();
+
+
+			// 创建缩放动画
+			let scaleAnimation = new ScaleAnimation(1.0.toFloat(), 0.7.toFloat(), 1.0.toFloat(), 0.7.toFloat(), Animation.RELATIVE_TO_SELF, 0.7.toFloat(), Animation.RELATIVE_TO_SELF, 0.7.toFloat());
+			scaleAnimation.setDuration(600); // 设置动画持续时间
+			scaleAnimation.setRepeatMode(Animation.REVERSE); // 设置重复模式为反向
+			scaleAnimation.setRepeatCount(Animation.INFINITE); // 设置重复次数为无限
+			// 启动动画
+			ov.startAnimation(scaleAnimation);
+
+			relativeLayout.addView(ov)
+
+			this.imgPointsBycanmarea.push(relativeLayout)
+			this.resultView!.addView(relativeLayout)
+		}
+
+
+	}
+	private YUV_420_888toNV21(opts : buffoptsType) : ByteArray {
+
+		let crop = opts.rect;
+		let format = opts.format;
+		let width = crop.width();
+		let height = crop.height();
+		let planes = opts.planes!;
+		let data = new ByteArray((width * height * ImageFormat.getBitsPerPixel(format.toInt()) / 8).toInt());
+		let rowData = new ByteArray((planes[0].getRowStride).toInt());
+		let channelOffset = 0;
+		let outputStride = 1;
+		for (let i = 0; i < planes.length; i++) {
+			switch (i) {
+				case 0:
+					channelOffset = 0;
+					outputStride = 1;
+					break;
+				case 1:
+					channelOffset = width * height;
+					outputStride = 1;
+					break;
+				case 2:
+					channelOffset = width * height * 1.25;
+					outputStride = 1;
+					break;
+			}
+			let buffer = planes[i.toInt()].data!;
+			let rowStride = planes[i.toInt()].getRowStride;
+			let pixelStride = planes[i.toInt()].getPixelStride;
+
+			let shift = (i == 0) ? 0 : 1;
+			let w = width >> shift;
+			let h = height >> shift;
+			buffer.position((rowStride * (crop.top >> shift) + pixelStride * (crop.left >> shift)).toInt());
+			for (let row = 0; row < h; row++) {
+				let length = 0;
+				if (pixelStride == 1 && outputStride == 1) {
+					length = w;
+					buffer.get(data, channelOffset.toInt(), length.toInt());
+					channelOffset += length;
+				} else {
+					length = (w - 1) * pixelStride + 1;
+					buffer.get(rowData, 0, length.toInt());
+					for (let col = 0; col < w; col++) {
+						data[channelOffset.toInt()] = rowData[(col * pixelStride).toInt()];
+						channelOffset += outputStride;
+					}
+				}
+				if (row < h - 1) {
+					buffer.position((buffer.position() + rowStride - length).toInt());
+				}
+			}
+		}
+		return data;
+	}
+
+	private qrDecoder(image : Image) {
+		let t = this;
+		if (!this.isDecoderQring && !this.isAppPause) {
+			this.isDecoderQring = true;
+
+			let width = image.getWidth();
+			let height = image.getHeight();
+			let frameSize = width * height;
+			let qFrameSize = frameSize / 4;
+			// 获取各平面的数据与信息
+			let planes = image.getPlanes();
+
+			let yBufferCopy = [] as ByteArray[]
+			let yrurvrNumber = [] as number[]
+
+			let yr = planes[0]
+			let ur = planes[1]
+			let vr = planes[2]
+			let oraingMax = yr.getBuffer().limit()
+
+			for (let i = 0; i < 3; i++) {
+				let buffer = planes[i.toInt()].getBuffer();
+				yBufferCopy.push(new ByteArray(buffer.remaining().toInt()))
+				buffer.get(yBufferCopy[i.toInt()]);
+			}
+			let y = ByteBuffer.wrap(yBufferCopy[0]!)
+			let u = ByteBuffer.wrap(yBufferCopy[1]!)
+			let v = ByteBuffer.wrap(yBufferCopy[2]!)
+
+			let opts = {
+				width,
+				height,
+				format: image.getFormat(),
+				rect: image.getCropRect(),
+				planes: [
+					{
+						data: y,
+						getRowStride: yr.getRowStride(),
+						getPixelStride: yr.getPixelStride(),
+					},
+					{
+						data: u,
+						getRowStride: ur.getRowStride(),
+						getPixelStride: ur.getPixelStride(),
+					},
+					{
+						data: v,
+						getRowStride: vr.getRowStride(),
+						getPixelStride: vr.getPixelStride(),
+					}
+				] as buffoptsPlanesType[]
+			} as buffoptsType
+
+			decoderBuffToQr(this.YUV_420_888toNV21(opts), width, height, this.getCamraRotation())
+				.then((res) => {
+
+					if (res != null && t.isOpeningCameraing && !t.isAppPause) {
+						let texts = res.text as string[]
+						if (texts.length > 0) {
+							// texts.some((el:string):boolean=>t.tempresultList.includes(el))
+
+							if (t.options.vibatar == true) {
+								t.setVibatar()
+							}
+							if (t.options.continuousScan == false) {
+								t.closeCamera()
+							}
+							t.callFunEvent(texts, 'auto')
+							t.setImageViewRusletBox(t.options.width, t.options.height, width, height, res as SCANNING_PHOTO_RESULT)
+						}
+						t.isDecoderQring = false
+					} else {
+						t.isDecoderQring = false
+					}
+					// image.close();
+				})
+				.catch(() => {
+					// this.imageUrl = null
+				})
+			// setTimeout(function () {
+			// 	t.isDecoderQring = false
+			// }, t.options!.scanSpeedduration!);
+			// image.close();
+		}
+		image.close();
+	}
+
+
+}

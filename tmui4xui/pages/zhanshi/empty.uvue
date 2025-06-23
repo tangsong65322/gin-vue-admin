@@ -1,0 +1,45 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">空状态 xEmpty</x-text>
+			<x-text color="#999999" >主要用于列表加载页面或者空状态页面时使用,这是根据实际页面加载场景时最常用的状态设计。包括：错误，加载，空，没有更多。综合展现</x-text>
+			<x-text color="#999999" >使用时本组件应该放在列表数据的后面。</x-text>
+	
+			<view class="mt-32 flex flex-row">
+				<x-button class="flex-1" @click="loading=true;empty=false;error=false;more=false" >加载中</x-button>
+				<x-button class="ml-12 flex-1 " @click="loading=false;empty=true;error=false;more=false" >空时</x-button>
+				<x-button class="ml-12 flex-1" @click="loading=false;empty=false;error=true;more=false" >出错时</x-button>
+				<x-button class="ml-12 flex-1" @click="loading=false;empty=false;error=false;more=true" >没有了</x-button>
+			</view>
+		</x-sheet>
+
+		<x-empty :loading="loading" :empty="empty" :error="error" :more="more"></x-empty>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+				loading: true,
+				empty: false,
+				error: false,
+				more: false
+			};
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

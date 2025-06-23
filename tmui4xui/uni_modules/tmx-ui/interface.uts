@@ -1,0 +1,954 @@
+export type NAVIGATE_TYPE = "navigate" | "redirect" | "switchTab" | "reLaunch" | "navigateBack";
+/** 
+ * 下拉菜单类型子项目信息
+ */
+export type XDROPDOWN_LISTITEM_INFO_TYPE = {
+	/** 下拉列表项的唯一标识符 */
+	id : string,
+	/** 下拉列表项的标题 */
+	title : string,
+	/** 下拉列表项的键名 */
+	keyName : string,
+	/** 下拉列表项的图标 */
+	icon : string,
+	/** 下拉列表项激活状态下的图标 */
+	activeIcon : string,
+	/** 下拉列表项的字体颜色 */
+	fontColor : string,
+	/** 下拉列表项激活状态下的字体颜色 */
+	activeFontColor : string,
+	/** 下拉列表项的字体大小 */
+	fontSize : string,
+	/** 是否是按钮类型的下拉列表项 */
+	isBtn : boolean
+}
+
+/** 
+ * 节点的信息
+ */
+export type NODE_INFO = {
+	/** 节点左边界的位置 */
+	left : number,
+	/** 节点的宽度 */
+	width : number,
+	/** 节点的高度 */
+	height : number,
+	/** 节点底部的位置 */
+	bottom : number,
+	/** 节点右边界的位置 */
+	right : number,
+	/** 节点顶部的位置 */
+	top : number
+}
+/**
+ * 消息条的数据类型
+ */
+export type SNACKBAR_INFO = {
+	/**
+	 *  可选的背景颜色
+	 */
+	background ?: string,
+	/**
+	 * 可选的文字颜色属性
+	 */
+	color ?: string,
+	/**
+	 * 可选的字体大小属性
+	 */
+	fontSize ?: string,
+	/**
+	 * 必需的内容属性
+	 */
+	content : string,
+	/**
+	 * 必需的id属性
+	 */
+	id : number,
+	/**
+	 * 图标
+	 */
+	icon ?: string
+}
+/**
+ * 消息条的数据类型
+ */
+export type SNACKBAR_ITEM = {
+	background : string,
+	color : string,
+	fontSize : string,
+	content : string,
+	id : number,
+	icon : string
+}
+
+/**
+ * 多选，选项组的子节点属性。
+ */
+export type CHECKBOX_ITEM_INFO = {
+	id : string,
+	/** 当前选中的值 */
+	nowvalue : string,
+	/** 选中的值 */
+	value : string,
+	/** 未选中的值 */
+	unvalue : string
+}
+/**
+ * 单选，选项组的子节点属性。
+ */
+export type RADIO_ITEM_INFO = {
+	id : string,
+	/** 当前选中的值 */
+	nowvalue : string,
+	/** 选中的值 */
+	value : string,
+	/** 未选中的值 */
+	unvalue : string
+}
+/**
+ * 单选按钮组件类型
+ */
+export type RADIO_BUTTON = {
+	id : string,
+	icon ?: string,
+	title : string,
+	/** 是否禁用 */
+	disabled ?: boolean
+}
+/**
+ * 宫格项目类型
+ */
+export type XGRID_ITEM_INFO = {
+	iconSize : string,
+	fontSize : string,
+	iconColor : string,
+	fontColor : string,
+	fontDarkColor:string,
+	darkIconColor : string
+}
+/**
+ * 动作菜单项目类型
+ */
+export type XACTION_MENU_ITEM_INFO = {
+	iconSize ?: string,
+	fontSize ?: string,
+	iconColor ?: string,
+	fontColor ?: string,
+	icon ?: string,
+	disabled ?: boolean,
+	id : string,
+	text : string,
+}
+
+/**
+ * 词云项目类型
+ */
+export type TEXTCLOUD_ITEM_INFO = {
+	/** 文本 **/
+	text : string,
+	/** 权重 **/
+	weight : number,
+	/** 颜色值 **/
+	color ?: string
+}
+/**
+ * tabs组件项目类型
+ */
+export type TABS_ITEM_INFO = {
+	/** 标题 **/
+	title : string,
+	/** 是否禁用 **/
+	disabled ?: boolean,
+	/** 唯一标识,如果不提供，会当作idnex索引取代 **/
+	id ?: string,
+	/** 角标类型，dot,label,"",空时不显示 */
+	dotType ?: "" | "dot" | "label",
+	/** 角标背景颜色 */
+	dotColor ?: string,
+	/** 角标文本，只有dotType="number"时有效 */
+	dotText ?: string,
+}
+
+export type TABS_ITEM = {
+	/** 标题 **/
+	title : string,
+	/** 是否禁用 **/
+	disabled : boolean,
+	/** 唯一标识,如果不提供，会当作idnex索引取代 **/
+	id : string,
+	/** 角标类型，dot,number,"",空时不显示 */
+	dotType : string,
+	/** 角标背景颜色 */
+	dotColor : string,
+	/** 角标文本，只有dotType="number"时有效 */
+	dotText : string,
+}
+
+/**
+ * 侧边分类数据
+ */
+export type SLIDER_TREE_ITEM_INFO = {
+	id : string,
+	title : string,
+	children ?: SLIDER_TREE_ITEM_INFO[],
+	disabled ?: boolean,
+	//菜单左侧小图标
+	icon ?: string,
+	/** 选中的子级值 */
+	selected ?: string[],
+}
+/**
+ * 底部导航项目信息tabbar
+ */
+export type TABBAR_ITEM_INFO = {
+	/**
+	 * 标题
+	 * @type {string}
+	 */
+	title ?: string;
+	/**
+	 * 图标
+	 * @type {string}
+	 */
+	icon ?: string;
+	/**
+	 * 被选中时的图标
+	 * @type {string}
+	 */
+	selectedIcon ?: string;
+	/**
+	 * 是否禁用
+	 * @type {boolean}
+	 */
+	disabled ?: boolean;
+
+	/**
+	 * 默认颜色
+	 * @type {string}
+	 */
+	color ?: string;
+	/**
+	 * 选中时的颜色
+	 * @type {string}
+	 */
+	selectedColor ?: string;
+
+	/**
+	 * 打开方式
+	 * @type {NAVIGATE_TYPE}
+	 */
+	openType ?: NAVIGATE_TYPE;
+	/**
+	 * 链接地址
+	 * @type {string}
+	 */
+	url ?: string;
+	/**
+	 * 是否显示角标。如果为dot，dotLabel不为空优先展示文本角标
+	 * dot,
+	 * label
+	 */
+	dotType ?: string,
+	/**
+	 * 文本角标。空不展示。
+	 */
+	dotLabel ?: string
+}
+
+export type TABBAR_ITEM = {
+	title : string,
+	icon : string,
+	selectedIcon : string,
+	disabled : boolean,
+	color : string,
+	selectedColor : string,
+	openType : string,
+	url : string,
+	/**
+	 * 是否显示角标。如果为dot，dotLabel不为空优先展示文本角标
+	 * dot,
+	 * label
+	 */
+	dotType ?: string,
+	/**
+	 * 文本角标。空不展示。
+	 */
+	dotLabel ?: string
+}
+
+/**
+ * xUploadMedia组件参数配置表类型
+ */
+export type XUPLOADFILE_INFO = {
+	/** 最大上传数量 */
+	count ?: number,
+	sourceType ?: Array<string>,
+	sizeType ?: Array<string>,
+	/** 上传地址 */
+	hostUrl ?: string,
+	/** 上传的文件字段名 */
+	name ?: string,
+	header ?: UTSJSONObject,
+	formData ?: UTSJSONObject,
+	/**
+	 * 开启多文件同时上传。
+	 * 开启后注意：多个文件中的字段名name都是file
+	 */
+	multipart ?: boolean,
+	autoUpload ?: boolean,
+	/** 开发者服务器返回code，默认是200,非200表示上传失败。 */
+	statusCode ?: number,
+	compress ?: boolean,
+	quality ?: number | null,
+	compressedHeight ?: number | null,
+	compressedWidth ?: number | null
+
+}
+/**
+ * 0未上传，1上传中，2上传成功，3上传失败（网络错误），4已取消（终止，上到一半取消了）,5超过大小
+ */
+export type XUPLOADFILE_FILE_STATUS = 0 | 1 | 2 | 3 | 4 | 5
+
+/**
+ * 上传的文件类型
+ */
+export type XUPLOADFILE_FILE_INFO = {
+	id : string,
+	/** 文件类型 */
+	type : string,
+	/** 文件大小 */
+	size : number,
+	/** 文件路径 */
+	path : string,
+	/** 文件名 */
+	name : string,
+	/** 文件扩展名 */
+	extension : string,
+	progress : number,
+	statusText : string,
+	status : XUPLOADFILE_FILE_STATUS,
+	response : string,
+	/** 文件类型,photo,video */
+	model ?: string
+}
+/**
+ * 选择前|选择结束|上传前|成功|失败|完成前|完成|任何变动触发
+ * chooseBefore|chooseAfter|beforeUpload|success|fail|beforeComplete|complete|change
+ */
+export type XUPLOADFILE_EVENT_NAME = "chooseBefore" | "chooseAfter" | "beforeUpload" | "success" | "fail" | "beforeComplete" | "complete" | "change"
+
+/**
+ * 文件上传双向绑定的对象类型
+ */
+export type XUPLOADFILE_FILE_VALUE = {
+	id ?: string,
+	response ?: string,
+	url : string,
+	/** 可选字段状态值,如果你自己添加的文件路径错误,再上传时安卓是直接引发io错误,uni.upload是捕捉不到的,请小心使用状态值,默认为2即用户添加的代表上传成功,其它值:0等待，1失败，2成功,3上传中,4超过大小。 */
+	status ?: number
+}
+
+
+/**
+ * picker数据结构
+ */
+export type PICKER_ITEM_INFO = {
+	title : string,
+	id ?: string,
+	children ?: PICKER_ITEM_INFO[],
+	disabled ?: boolean
+}
+
+/**
+ * picker数据结构项目结构
+ */
+export type X_PICKER_X_ITEM = {
+	id : string,
+	title : string,
+	children : X_PICKER_X_ITEM[],
+	disabled : boolean,
+}
+
+
+/**
+ * 极联器数据
+ */
+export type CASCADER_ITEM_INFO = {
+	id : string,
+	title : string,
+	children ?: CASCADER_ITEM_INFO[],
+	disabled ?: boolean,
+	/** 选中的子级值 */
+	selected ?: string[],
+}
+
+export type CALLFUN_T_BOOLEAN = (val : any) => boolean;
+export type FORM_RULE_TYPE = '' | 'string' | 'number' | 'array' | 'UTSJSON' | 'phone' | 'email' | 'boolean' | 'date'
+/**
+* 表单校验对象
+*/
+export type FORM_RULE = {
+	/**
+	 * 字段类型,空值为自动判断 ,不填写默认为空,自动判断.
+	 */
+	type ?: FORM_RULE_TYPE,
+	/**
+	 * 校验函数。默认根据泛型判断字段值,如果不填写默认为自带的校验函数校验.
+	 */
+	valid ?: (val : any | null) => boolean,
+	/**
+	 * 错误信息,默认为自动根据类型编写提示
+	 */
+	errorMessage ?: string,
+	/** 
+	 * 最大值,如果为空值或者为-1表示不限制大小,(数组和字符串是长度,数字是值,utsjson是key字段数量)
+	 * 如果type=date时.max是以毫秒值的时间值可以通过Date.getTime()或者通过我的xDate来取值
+	 */
+	max ?: number,
+	/** 
+	 * 最小值,如果为空默认为1,(数组,字符,utsjson为1,长不能小于1)
+	 * * 如果type=date时,默认1不作判断请提供大于的值,此时只会校验val是不是合法的date值
+	 */
+	min ?: number,
+	/**
+	 * 触发时机,只针对input有效,其它默认全是change
+	 * change变化时触发,blur失焦时触发(如果你配置在非input组件上,会导致无法校验,因为只有input才有blur事件.)
+	 */
+	trigger ?: "change" | "blur"
+};
+export type FORM_SUBMIT_OBJECT = {
+	errorMessage : string,
+	valid : boolean,
+	key : string,
+	value : any | null
+}
+/**
+ * 提交表单时的验证结果
+ */
+export type FORM_SUBMIT_RESULT = {
+	/**
+	 * 是否验证通过
+	 */
+	valid : boolean,
+	/**
+	 * 首次（验证失败的第一个字段,并非你字段中的顺序，是按渲染顺序来）验证失败的字段 错误信息
+	 */
+	errorMessage : string,
+	/**
+	 * 首次（验证失败的第一个字段,并非你字段中的顺序，是按渲染顺序来）验证失败的字段 key
+	 */
+	key : string,
+
+	formData : FORM_SUBMIT_OBJECT[]
+}
+
+export type CASCADER_TREE_ITEM = {
+	id : string,
+	title : string,
+	children : CASCADER_TREE_ITEM[],
+	disabled : boolean,
+	/** 当前选中的id数组 */
+	selected : string[],
+	checked:boolean
+}
+
+export type CASCADER_PATH_MENU_TYPE = {
+	indexPath:number[],
+	ids:string[],
+	pathData:CASCADER_TREE_ITEM[]
+}
+
+/**
+ * xAnimate类型
+ */
+export type XANIMATE_OPIONS = {
+	/** 元素id */
+	ele ?: string,
+	/** 时间 */
+	duration ?: number,
+	/** 动画类型 */
+	timingFunction ?: string,
+	/** -1表示无限循环播放，0表示不会播放，大于0表示播放该次数后停止播放 */
+	loop ?: number,
+	/** 表示循环播放时，是否左右来回播放，而不是始终从开始到结束这样的状态播放 */
+	tyty ?: boolean,
+	/** 是否让动画顺序挨过按attr添加的属性顺序执行动画，而不是统一一起执行。 */
+	isDescPlay ?: boolean,
+	/** 四位数数组的动画映射值,优先级高于timingFunction */
+	bezier ?: number[],
+	/** 动画结束后的回调函数 */
+	complete ?: () => void,
+	/** 动画开始 */
+	start ?: () => void,
+	/** 动画运行中执行 */
+	frame ?: (propress : number) => void
+}
+
+/**
+ * 日期的对象属性
+ */
+export type xDateDayInfoType = {
+	/** 年 */
+	year : number,
+	/** 月0-11 */
+	month : number,
+	/** 天 */
+	day : number,
+	/** 小时0-23 */
+	hours : number,
+	/** 分钟0-59 */
+	minutes : number,
+	/** 秒0-59 */
+	seconds : number,
+	/** 本年的第几周 */
+	weeks : number,
+	/** 本周星期几 */
+	week : number,
+	/** 本周星期几,中文名称 */
+	weekCn : string,
+	/** 格式化的日期字符串 */
+	date : string,
+	/** 是否渲染显示 */
+	isRender ?: boolean
+}
+
+/**
+ * 日历单个日期的样式对象
+ */
+export type xCalendarDateStyle_type = {
+	/** 是否显示右角标 */
+	dot ?: boolean,
+	/** 右角标背景颜色 */
+	dotColor ?: string,
+	/** 右角标文字颜色 */
+	dotLabelColor ?: string,
+	/** 注意如果dot为true，此内容为空就会显示小圆点。如果有内容优先显示本文本 */
+	dotLabel ?: string,
+	/** 底部文本 */
+	label ?: string,
+	/** 背景颜色 */
+	color ?: string,
+	/** 日期文字颜色 */
+	fontColor ?: string,
+	/** 设置的日期 */
+	date : string
+}
+
+export type xRequestMethond = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD" | "OPTIONS"
+
+/**
+ * xReuest请求配置表
+ */
+export type xRequestOptions = {
+	/**
+	 * 是否新增访问前缀域名。如果提供了，在请求时会覆盖函数设置的setHostUrl如果不提供就使用全局设置的域名。
+	 */
+	hostUrl?:string,
+	/** 定义服务器成功的状态码，如果不为此值会让请求进入失败状态。 */
+	successStatusCode ?: number,
+	/** string|null */
+	url ?: string,
+	/** 如果请求时提供了缓存时间将对接口进行缓存，一定时间内请求直接返回上次结果，不会真正请求 */
+	cacheTime?:number,
+	/** 是否启用缓存 */
+	useCache?:boolean,
+	/** UTSJSONObject|string|null */
+	data ?: any,
+	/** UTSJSONObject|string|null */
+	header ?: UTSJSONObject,
+	method ?: xRequestMethond,
+	timeout ?: number,
+	firstIpv4 ?: boolean,
+	/** 请求前是否显示loading遮罩 */
+	showLoadToast ?: boolean,
+	/** 请求成功后是否提示，否则不提示 */
+	showSuccessToast ?: boolean,
+	/** 出错时，是否显示提示,否则不提示 */
+	showErrorToast ?: boolean,
+	dataType ?: string | null,
+	responseType ?: string | null,
+	/** 显示loading是的提示文本。 */
+	loadToastText ?:string,
+	/**
+	 * 成功后的提示文件，注意你不提供它会先偿试读取你返回结果中msg字段，如果没有返回系统的错误字段，如果还没有就是最终的默认错误信息了
+	 * 如果你提供了，不会展示其它可能的错误信息，以提供的为准。
+	 */
+	successToastText ?:string,
+	/**
+	 * 失败后的提示文件，注意你不提供它会先偿试读取你返回结果中msg字段，如果没有默认的则提示：操作成功字样
+	 * 如果你提供了，不会展示其它信息，以提供的为准。
+	 */
+	errorToastText ?:string,
+}
+/**
+ * 在监事事件中返回的参数类型
+ */
+export type xRequestOptionsCallBack = {
+	/**
+	 * 是否新增访问前缀域名。如果提供了，在请求时会覆盖函数设置的setHostUrl如果不提供就使用全局设置的域名。
+	 */
+	hostUrl:string,
+	/** 定义服务器成功的状态码，如果不为此值会让请求进入失败状态。 */
+	successStatusCode : number,
+	/** 是否启用缓存 */
+	useCache:boolean,
+	/** 如果请求时提供了缓存时间将对接口进行缓存，一定时间内请求直接返回上次结果，不会真正请求 */
+	cacheTime:number,
+	/** string|null */
+	url : string,
+	/** UTSJSONObject|string|null */
+	data : any,
+	/** UTSJSONObject|string|null */
+	header : UTSJSONObject,
+	method : xRequestMethond,
+	timeout : number,
+	firstIpv4 : boolean,
+	/** 请求前是否显示loading遮罩 */
+	showLoadToast : boolean,
+	/** 请求成功后是否提示，否则不提示 */
+	showSuccessToast : boolean,
+	/** 出错时，是否显示提示,否则不提示 */
+	showErrorToast : boolean,
+	dataType ?: string | null,
+	responseType ?: string | null,
+	/** 显示loading是的提示文本。 */
+	loadToastText ?:string,
+	/**
+	 * 成功后的提示文件，注意你不提供它会先偿试读取你返回结果中msg字段，如果没有返回系统的错误字段，如果还没有就是最终的默认错误信息了
+	 * 如果你提供了，不会展示其它可能的错误信息，以提供的为准。
+	 */
+	successToastText ?:string,
+	/**
+	 * 失败后的提示文件，注意你不提供它会先偿试读取你返回结果中msg字段，如果没有默认的则提示：操作成功字样
+	 * 如果你提供了，不会展示其它信息，以提供的为准。
+	 */
+	errorToastText ?:string,
+}
+/**
+ * 请求成功后听结果
+ */
+export type xRequestResult = {
+	data : any | null,
+	statusCode : number,
+	header : any,
+	cookies : string[],
+}
+/**
+ * 请求的历史记录类型列表
+ */
+export type xRequestHistoryType = {
+	id : string,
+	loading : boolean,
+	loaded : boolean,
+	/** 状态标志 */
+	status : string,
+	/** 请求总时间ms为单位 */
+	time : number,
+	/** 请求的接口api名称 */
+	api : string,
+	/** 请求成功后的数据集 */
+	result : any
+};
+
+export type xTableColumns = {
+	title : string,
+	/** 需要对应源数据中值的key字段名称 */
+	key : string,
+	style ?: UTSJSONObject,
+	/** 升序，降序，只针对数字或者数字字符串 */
+	desc ?: boolean,
+	/** 单列宽,0px或者auto为自动宽其实就是flex-1值。
+	允许auto，%，prx,px等,多列时，不要全部写一个宽，
+	你要让剩下的一个自动。不然会出现大于或者小于容器宽的。
+	excel表格宽就懂了，总要有一个是最大的自动宽。
+	 */
+	width ?: string
+}
+export type XTABBARCONFIG = {
+	/**
+	 * 底部导航栏选中项索引值。
+	 */
+	tabbarActiveIndex : number,
+	/**
+	 * 底部导航的高
+	 */
+	tabaarHeight : number,
+	/**
+	 * 导航栏数据。
+	 */
+	list : TABBAR_ITEM_INFO[]
+}
+
+export type X_REQUEST_PRIVATE_CALL_FUN_TYPE = {
+	history : xRequestHistoryType[],
+	/**
+	 *  设置为false时表示需要登录授权的请求不会被发起
+	 *	比如第一次请求发现没有登录或者登录失败，设置此值为false后
+	 * 后面所有再它后面请求的请求会部会被阻止请求。
+	 */
+	authPass : boolean,
+	hostUrl : string,
+	header : UTSJSONObject | null,
+	/**
+	 * 开了调试模式后，你能查看所有的请求日志并统计当前的
+	 * 请求总数，及每次请求的时间
+	 * 及请求的状态值。
+	 */
+	dev : boolean,
+	showLoadToast : boolean,
+	/** 请求成功后是否提示，否则不提示 */
+	showSuccessToast : boolean,
+	/** 出错时，是否显示提示,否则不提示 */
+	showErrorToast : boolean
+}
+
+export type xPageStyle = {
+	path : string,
+	backgroundColorContent : string,
+	navigationBarBackgroundColor : string,
+	navigationBarTextStyle : string
+}
+export type XPRIVATECONFIG = {
+	scrollTop : number,
+	windowInnerWidth : number,
+	windowInnerHeight : number,
+	windowWidth : number,
+	windowHeight : number,
+	pageStyle : Map<string, xPageStyle>,
+	pageReady : boolean
+}
+
+export type XCONFIG = {
+	/** 默认颜色主题名称的配置 */
+	theme : Map<string, string>,
+	/** 全局的主题色 **/
+	color : string,
+	/** 主题配置,auto,dark,light */
+	dark : 'dark' | 'light' | 'auto',
+	/** 设计基准默认是375，如果修改会影响组件的尺寸，比如你设置为414，那么假设12号最终计算过程是414/375*12=13.248px,如果你小于375则不计算。 */
+	designSize: number,
+	/** 当屏幕宽大于或者等于667时再直接采用以375为基座，按照designSize比例来的原始尺寸，即尺寸不会变大也不会变小了 */
+	maximumCalculatedSize:number,
+	/** 设计单位px,rpx */
+	unit : 'px' | 'rpx',
+	/** 语言 */
+	language : string,
+	/** 所有组件的文字统一缩放的倍数,如果你使用unit为rpx时，fontScale不要去设置,如果unit为px时，可以设置此值来缩放大小。 */
+	fontScale: number,
+	/** x-text默认的字号，如果你使用unit为rpx时，fontScale不要去设置 */
+	fontSize: string,
+	/** 在web时的系统导航文本色 **/
+	navigationBarTextStyleDark : string,
+	/** 注意局部的page.json节点配置会覆盖这里 */
+	navigationBarTextStyleLight : string,
+	/** 在web时的系统导航背景色 **/
+	navigationBarBackgroundColorDark : string,
+	/** 注意局部的page.json节点配置会覆盖这里 */
+	navigationBarBackgroundColorLight : string,
+	/** 在web时的页面暗黑本色 **/
+	backgroundColorContentDark : string,
+	/** 注意局部的page.json节点配置会覆盖这里 */
+	backgroundColorContentLight : string,
+	/** 在web时的底部导航暗黑背景色 **/
+	tabarBackgroundColorDark : string,
+	/** 在web时的底部导航亮系背景色 **/
+	tabarBackgroundColorLight : string,
+
+	/** 一般容器sheet的暗黑背景 */
+	sheetDarkColor : string,
+	/** 一般容器边线颜色如果你布局自己写了默认的边线色，但忘记填写组件上的暗黑线时，会取这里的值 */
+	sheetDarkBorderColor : string[],
+
+	/** 输入框,表单，常规灰背景待统一的二级暗黑背景 */
+	inputDarkColor : string,
+	/** 输入框默认的亮系背景色方便统一设计稿 */
+	inputBgColor: string,
+	/** 输入框默认的统一提示placeholderStyle方便统一设计稿 */
+	placeholderStyle: string,
+	/** 一般的表单，列表底的暗黑统一边线颜色 */
+	borderDarkColor : string,
+
+
+	/** 统一的输入框圆角 */
+	inputRadius : string,
+	/** 
+	 * 输入框统一的聚集样式
+	 * 第3表示默认的边颜色(如果为空表示默认边颜色不生效.),第4表示聚焦时的颜色(空表示取全局color,transparent为不生效就是没有聚集样式)
+	 * ['2px','solid','','']
+	 */
+	inputFocusBorder : string[],
+	/** 统一的按钮圆角 */
+	buttonRadius : string,
+	/** 统一的标签圆角 */
+	tagRadius : string,
+	/**
+	 * 统一列表的圆角
+	 */
+	cellRadius : string,
+	/** 
+	 * 列表为cellCard组件时的边距
+	 * [x]全部,[x,x]左右，上下,[x,x,x]左上右,[x,x,x,x]左上右下
+	 */
+	cellMargin : string[],
+	/** 容器的全局圆角 */
+	sheetRadius : string[],
+	/** 容器的全局间隙 */
+	sheetMargin : string[],
+	/** 容器的全局内间隙 */
+	sheetPadding : string[],
+	/**
+	 * 影响：
+	 * 抽屉打开方向为上和下时的圆角
+	 * 浮动面板
+	 * 动作菜单
+	 * */
+	drawerRadius : string,
+	/** 对话框modal的圆角 */
+	modalRadius : string,
+	/** 开关的圆角 */
+	switchRadius : string,
+	/**进度条的圆角 */
+	progressRadius : string,
+	/** 未选中时的颜色 */
+	unRadioAndCheckBoxColor : string,
+	/** 单选按钮组的圆角 */
+	radioButtonRadius : string,
+	/** 弹窗，弹层，对话框等等所有的动画类型。 */
+	animationFun : string,
+	/** 卡片的圆角 */
+	cardRound : string,
+	/**各种弹层右上角的关闭按钮图标名称,可以根据自己设计稿更换**/
+	closeIcon : string
+
+}
+
+export type xWaterfallDataItemType = {
+	top : number,
+	left : number,
+	width : number,
+	height : number,
+	id : string,
+	col : number,
+	isRender : boolean,
+	order : number
+}
+
+/**
+ * 1:从未执行过动画
+ * 2:已完成/结束
+ * 3:暂停中
+ * 6:循环中被暂停。
+ * 4:执行动画中
+ * 5:重置并继续
+ */
+export type xTweenStatus = 1 | 2 | 3 | 4 | 5 | 6
+export type xTweenEventListenerName = 'enter' | 'complete' | 'start' | 'stop' | 'pause'
+export type xTweenCallbackFunType = (x : number) => number
+export type xTweenEventCallFunType = {
+	id : string,
+	ease : xTweenCallbackFunType | null,
+	status : xTweenStatus,
+	duration : number,
+	progress : number,
+	oldProgeress : number,
+	startTime : number,
+	autoRemove : boolean,
+	complete : xTweenEventCall,
+	enter : xTweenEventCall,
+	start : xTweenEventCall,
+	pause : xTweenEventCall,
+	loop : number,
+	tyty : boolean,
+	step : number,
+	//已执行的次数。
+	_finishLoop : number,
+	//是否允许在下次播放时反向（loop>1或者loop -1才生效)
+	reverse : boolean,
+
+}
+export type xTweenEventCall = (item : xTweenEventCallFunType) => void;
+export type xTweenAnimate = {
+	//结束完成时都被执行
+	complete ?: xTweenEventCall,
+	//运行中执行,会不停的执行回调函数
+	enter ?: xTweenEventCall,
+	//开始时执行
+	start ?: xTweenEventCall
+	//暂停时执行.
+	pause ?: xTweenEventCall,
+	/**
+	 * string|number[]|null
+	 * 动画名称或者动画差值number[]长度为4
+	 * args为string时,应该是ease名称,只能是内置的名称.
+	 */
+	ease ?: any,
+	/**
+	 * 动画持续的时间.
+	 */
+	duration : number,
+	/**
+	 * 执行完动画后,是否自动删除本动画
+	 * 删除后,如果再点play不再有动画.如果需要执行就需要再次
+	 * addAnimate来添加执行的动画.
+	 */
+	autoRemove ?: boolean,
+	// 动画循环的次数,默认为1即执行一次,-1表示永久循环执行
+	loop ?: number,
+	//动画被执行后,如果loop=-1或者loop>1将在下一次动画执行时,将从反向开始播放.进度也会反向值.1-0
+	tyty ?: boolean,
+	// [未实现]按步骤帖执行动画,比如在指定duration时间内以这个步骤数完成
+	step ?: number,
+}
+
+/** 思维导图数据类型 */
+export type XTREEFLAT_NODES = {
+	/** 标题,必填写,其它字段全部为非必填 */
+	title : string,
+	/** 唯一标识,如果不填写内部自动填写 */
+	id ?: string | number,
+	/** 文本颜色 */
+	fontColor ?: string,
+	/** 文本背景颜色 */
+	bgColor ?: string,
+	/** 绘制文本时的内边跑 */
+	padding ?: number,
+	/** 绘制项目是连接线上下项目或者左右项目的间距 */
+	gutter ?: number,
+	/** 父级与子级之间的连续长度 */
+	parentLineGutter ?: number,
+	/** 是否展开了子级 */
+	opened ?: boolean,
+	/** 是否禁用展开子级 */
+	disabled ?: boolean,
+	/** 当前项目是否选中 */
+	selected ?: boolean,
+	/** 绘制文本的字号大小 */
+	fontSize ?: number,
+	/** 子级数据,可以为空数组代表无子级不绘制下级 */
+	children ?: Array<XTREEFLAT_NODES>
+}
+
+/** 思维导图组件配置项 */
+export type XTreeFlatOpts = {
+	/** 不填写默认为透明,即不绘制背景 */
+	bgColor ?: string,
+	nodeBgColor ?: string,
+	/** 不填写默认为#333 */
+	fontColor ?: string,
+	/** 不填写默认为14,如果子节点设置了以子节点为准 */
+	fontSize ?: number,
+	/** 统一连线颜色,不配置取节点的背景,如果节点背景也没设置取#333 */
+	lineColor ?: string,
+	/** 连线宽 */
+	lineWidth ?: number,
+	/** 绘制文本时的内边跑 */
+	padding ?: number,
+	/** 绘制项目是连接线上下项目或者左右项目的间距 */
+	gutter ?: number,
+	/** 父级与子级之间的连续长度 */
+	parentLineGutter ?: number,
+	/** 点击有子节点的父级时，是否允许关闭和展开，默认关闭 */
+	enbleOpenChildren ?: boolean
+	/** 节点圆角，默认为8 */
+	nodeRadius ?: number
+}

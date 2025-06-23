@@ -1,0 +1,107 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1;">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		
+		
+		<x-sheet>
+			<x-text  font-size="18"  class=" text-weight-b">按钮 Button</x-text>
+			<x-text  class=" text-grey  line-8" >样式比原生丰富,主题颜色可以随意的为css合法值以及自己定义的品牌颜色名称，比较随意。</x-text>
+		</x-sheet>
+		
+		<x-loading v-if="loading"></x-loading>
+		
+		<view v-if="!loading">
+			<x-sheet>
+				<x-button  :block="true" class="mb-12">主色</x-button>
+				<x-button :block="true" class="mb-12" color="error">错误</x-button>
+				<x-button :block="true" class="mb-12" color="warn">警告</x-button>
+				<x-button :block="true" class="mb-12" color="danger">危险</x-button>
+				<x-button :block="true" class="mb-12" color="success">成功</x-button>
+				<x-button darkColor="#222222" :block="true" :shadow="[0,0]" class="mb-12" color="info">次要</x-button>
+				
+			</x-sheet>
+			
+			<x-sheet >
+				<x-text  font-size="18"  class=" text-weight-b">尺寸</x-text>
+			</x-sheet>
+			<x-sheet class=" white round-10 pa-24 mx-24  mb-12 " >
+				<x-button size="mini" class="mb-12" >超小</x-button>
+				<x-button size="small" class="mb-12" color="warn" >小</x-button>
+				<x-button size="normal" class="mb-12" color="success">正常</x-button>
+				<x-button size="large" class="mb-12" color="danger">大</x-button>
+			</x-sheet>
+			
+			
+			<x-sheet >
+				<x-text  font-size="18"  class=" text-weight-b">样式</x-text>
+			</x-sheet>
+			<x-sheet class=" white round-10 pa-24 mx-24  mb-12 ">
+				<x-button  :block="true" class="mb-12"  skin="primary">主色</x-button>
+				<x-button :block="true" class="mb-12"  skin="thin">浅色按钮</x-button>
+				<x-button :block="true" class="mb-12"  :skin="skin" @click="skin = 'primary'">镂空按钮</x-button>
+				<x-button :block="true" class="mb-12"  skin="dashed">虚线按钮</x-button>
+				<x-button :block="true" class="mb-12"  skin="text">文本按钮</x-button>
+			</x-sheet>
+			<x-sheet >
+				<x-text  font-size="18"  class=" text-weight-b">其它样式,图标,尺寸等</x-text>
+			</x-sheet>
+			<x-sheet class=" white round-10 pa-24 mx-24  mb-12 ">
+				<x-button :block="true" icon="thumb-up-fill" class="mb-12" status="primary">图标按钮</x-button>
+				<x-button :block="true" icon="verified-badge-line" :disabled="disable" class="mb-12" status="primary">禁用</x-button>
+				<x-button :block="true" icon="customer-service-fill" :loading="disable" class="mb-12" status="primary">加载中</x-button>
+				 
+				<view class="flex flex-row flex-row-center-between">
+					<x-button font-size="20" :iconBtn="true" icon="lock-unlock-fill" round="88" width="88" status="primary">
+					</x-button>
+					<x-button font-size="20" :iconBtn="true" icon="thumb-up-fill" round="88" width="88" color="naplesyellow">
+					</x-button>
+					<x-button font-size="20" :iconBtn="true" icon="headphone-fill" round="88" width="88" color="majorelleblue">
+					</x-button>
+					<x-button font-size="20" :iconBtn="true" icon="alarm-fill" round="88" width="88" color="venetianred">
+					</x-button>
+					
+				</view>
+			</x-sheet>
+			<x-sheet >
+				<x-text  font-size="18"  class=" text-weight-b">渐变</x-text>
+				<x-text class=" text-grey ">渐变参考：https://www.designgradients.com/</x-text>
+			</x-sheet>
+			<x-sheet class=" white round-10 pa-24 mx-24  mb-12 ">
+				<x-button :block="true" :border="0" round="88" color="#ff667f" :linearGradient="['left','#ff667f','#fdb247']" class="mb-12" status="primary">渐变</x-button>
+				<x-button :block="true" :border="0" round="88" color="#A531DC" :linearGradient="['left','#A531DC','#4300B1']" class="mb-12" status="primary">渐变</x-button>
+				<x-button :block="true" :border="0" round="88" color="#D02020" :linearGradient="['left','#FF896D','#D02020']" class="mb-12" status="primary">渐变</x-button>
+			</x-sheet>
+			
+		</view>
+		<view class="py-32"></view>
+		
+		
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+				loading:true,
+				disable:true,
+				skin:"outline"
+			};
+		},
+		onReady() {
+			this.loading = false;
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

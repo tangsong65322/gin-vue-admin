@@ -1,0 +1,78 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+		
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class="text-weight-b mb-8">图标 Icon</x-text>
+			<x-text color="#999999" class="line-8">使用开源图标remixicon：https://remixicon.com/</x-text>
+			<x-text color="error" class="line-8">name:只要名称就行，不要ri-前缀，比如router-line</x-text>
+		</x-sheet>
+
+		<x-sheet class="flex flex-row flex-row-center-between">
+			<x-icon name="chat-3-line"></x-icon>
+			<x-icon name="chat-3-fill"></x-icon>
+			<x-icon name="contrast-drop-2-fill"></x-icon>
+			<x-icon name="circle-line"></x-icon>
+			<x-icon name="smartphone-line"></x-icon>
+			<x-icon name="git-repository-private-fill"></x-icon>
+			<x-icon name="mouse-fill"></x-icon>
+		</x-sheet>
+
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b">旋转 Rotation</x-text>
+		</x-sheet>
+		<x-sheet class="flex flex-row flex-row-center-start">
+			<x-icon color="primary" font-size="32" name="arrow-up-line"></x-icon>
+			<x-icon color="primary" :rotation="90" font-size="32" name="arrow-up-line"></x-icon>
+			<x-icon color="primary" :rotation="180" font-size="32" name="arrow-up-line"></x-icon>
+			<x-icon color="primary" :rotation="270" font-size="32" name="arrow-up-line"></x-icon>
+
+		</x-sheet>
+
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b">颜色 color</x-text>
+			<x-text color="#999999" class="  ">更多属性见文档</x-text>
+		</x-sheet>
+		<x-sheet class="flex flex-row flex-row-center-between">
+			<x-icon color="red" font-size="32" name="information-line"></x-icon>
+			<x-icon color="primary" font-size="32" name="gps-line"></x-icon>
+			<x-icon color="orange" font-size="32" name="headphone-line"></x-icon>
+			<x-icon color="tea" font-size="32" name="rocket-fill"></x-icon>
+			<x-icon color="green" font-size="32" name="mic-2-line"></x-icon>
+			<x-icon color="blue" font-size="32" name="image-circle-line"></x-icon>
+			<x-icon color="moccasin" font-size="32" name="plane-line"></x-icon>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b">动画 Spin</x-text>
+		</x-sheet>
+		<x-sheet >
+			<x-icon :spin="true" font-size="64" color="red" name="loader-line" ></x-icon>
+		</x-sheet>
+
+		<view class="py-32"></view>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+
+<script lang="uts">
+	export default {
+		data() {
+			return {
+			}
+		},
+		onLoad() {
+
+		},
+		methods: {
+
+		}
+	}
+</script>

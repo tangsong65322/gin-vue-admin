@@ -1,0 +1,184 @@
+import { FORM_RULE_SELF, FORM_VAILD_FUN } from "./interface.uts";
+import { FORM_RULE, FORM_RULE_TYPE } from "../../interface.uts";
+
+function getDefaultRule(rule : FORM_RULE) : FORM_RULE_SELF {
+	let type : FORM_RULE_TYPE = rule?.type ?? ''
+	let errorMessage : string = rule?.errorMessage ?? '请正确填写/选择'
+	let max : number = rule?.max ?? -1
+	let min : number = rule?.min ?? 1
+	let selfvaild:FORM_VAILD_FUN|null = rule.valid
+	let validfaun : FORM_VAILD_FUN | null = selfvaild
+	let trigger:string = rule?.trigger??'change'
+	return {
+		type, errorMessage, max, min, valid: validfaun,trigger
+	} as FORM_RULE_SELF
+}
+function vaild(val : any | null, rule : FORM_RULE_SELF) : boolean {
+	if (rule.type != '') return vaildBytType(val, rule)
+	if (val == null) return false;
+	// #ifdef WEB|| MP-WEIXIN
+	if (val == undefined) return false;
+	// #endif
+	if (typeof val === 'string') {
+		let vallen = (val as string).trim().split('').length
+		if (rule.max == -1) return vallen >= rule.min
+		return vallen >= rule.min && vallen <= rule.max;
+	}
+	if (Array.isArray(val)) {
+		let vallen = (val as any[]).length
+		if (rule.max == -1) return vallen >= rule.min
+		return vallen >= rule.min && vallen <= rule.max;
+	}
+	if (typeof val === 'boolean') {
+		return val as boolean;
+	}
+	if (typeof val === 'number') {
+		if (isNaN(val as number)) {
+			return false;
+		}
+		let vallen = val as number
+		if (rule.max == -1) return vallen >= rule.min
+		return vallen >= rule.min && vallen <= rule.max;
+	}
+	// #ifdef APP
+	if (typeof val == 'Int') {
+		let vallen = val as Int
+		if (rule.max == -1) return vallen >= rule.min.toInt()
+		return vallen >= rule.min.toInt() && vallen <= rule.max.toInt();
+	}
+	if (typeof val == 'Float') {
+		let vallen = val as Float
+		if (rule.max == -1) return vallen >= rule.min.toFloat()
+		return vallen >= rule.min.toFloat() && vallen <= rule.max.toFloat();
+	}
+	if (typeof val == 'Double') {
+		let vallen = val as Double
+		if (rule.max == -1) return vallen >= rule.min.toDouble()
+		return vallen >= rule.min.toDouble() && vallen <= rule.max.toDouble();
+	}
+	if (typeof val == 'Long') {
+		let vallen = val as Long
+		if (rule.max == -1) return vallen >= rule.min.toLong()
+		return vallen >= rule.min.toLong() && vallen <= rule.max.toLong();
+	}
+
+	// #endif
+
+	// #ifdef WEB|| MP-WEIXIN
+	if (val == undefined) {
+		return false;
+	}
+	// #endif
+
+
+	return false;
+}
+
+export function formVaild(val : any | null, rule : FORM_RULE) : boolean {
+	let rulereal = getDefaultRule(rule)
+	let selfVaildFun = rulereal?.valid??null;
+	let isPass = true;
+	// #ifdef APP-IOS || WEB || MP-WEIXIN
+	isPass = (selfVaildFun == null||selfVaildFun == undefined) ? vaild(val, rulereal) : selfVaildFun(val)
+	// #endif
+	// #ifdef APP-ANDROID
+	
+	isPass = selfVaildFun == null ? vaild(val, rulereal) : selfVaildFun(val)
+	// #endif
+	
+	return isPass
+}
+/** 指定了type的情况下. */
+export function vaildBytType(val : any | null, rule : FORM_RULE_SELF) : boolean {
+	
+	if (val == null) return false;
+	// #ifdef WEB || MP-WEIXIN
+	if (val == undefined) return false;
+	// #endif
+	if (rule.type == 'string') {
+		let vallen = (val as string).trim().split('').length
+		if (rule.max == -1) return vallen >= rule.min
+		return vallen >= rule.min && vallen <= rule.max;
+	}
+	if (rule.type == 'array') {
+		let vallen = (val as any[]).length
+		if (rule.max == -1) return vallen >= rule.min
+		return vallen >= rule.min && vallen <= rule.max;
+	}
+	if (rule.type == 'boolean') {
+		return val as boolean;
+	}
+	if (rule.type == 'number') {
+		let v = 0;
+		if(typeof val != 'number'&&typeof val != 'string') return false;
+		
+		// #ifdef APP
+		if (typeof val == 'Int') {
+			let vallen = val as Int
+			v = vallen + 0
+		}
+		if (typeof val == 'Float') {
+			let vallen = val as Float
+			v = vallen + 0
+		}
+		if (typeof val == 'Double') {
+			let vallen = val as Double
+			v = vallen + 0
+		}
+		if (typeof val == 'Long') {
+			let vallen = val as Long
+			v = vallen + 0
+		}
+		
+		// #endif
+		
+		if(typeof val == 'number'){
+			v = val as number;
+		}else if(typeof val == 'string'){
+			let pv = val as string;
+			let vazhi = parseFloat(pv)
+			if (isNaN(vazhi)) {
+				return false;
+			}
+			v = vazhi;
+		}
+		
+		let vallen =v
+		if (rule.max == -1) return vallen >= rule.min
+		return vallen >= rule.min && vallen <= rule.max;
+	}
+	
+	if(rule.type == 'phone'){
+		let vallen = ''
+		if(typeof val == 'string'){
+			vallen = val as string;
+		}else if(typeof val == 'number'){
+			vallen = (val as number).toString()
+		}
+		let reg = /^(13[0-9]|14[01456879]|15[0-35-9]|16[2567]|17[0-8]|18[0-9]|19[0-35-9])\d{8}$/
+		return reg.test(vallen)
+	}
+	if(rule.type == 'email'){
+		let vallen = val as string;
+		let reg = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+		return reg.test(vallen)
+	}
+	if(rule.type == 'UTSJSON'){
+		let vallen = val as UTSJSONObject;
+		let mapkeys = vallen.toMap()
+		let len = mapkeys.size
+		if (rule.max == -1) return len >= rule.min
+		return len >= rule.min && len <= rule.max;
+	}
+	if(rule.type == 'date'&& (typeof val == 'string')){
+		let vallen = val as string;
+		let date = new Date(vallen)
+		let times = date.getTime()
+		if(isNaN(times)) return false;
+		let len = times
+		if (rule.max == -1) return len >= rule.min
+		return len >= rule.min && len <= rule.max;
+	}
+
+	return false;
+}

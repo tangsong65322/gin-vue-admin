@@ -1,0 +1,224 @@
+import { Shape } from './shape.uts';
+import { ShapeSetAttrType, ITextBaselineType, ITextAlignType, CanvasRotateCenter, IShapeBoundRect, IShapeOptional } from '../interface.uts';
+	import { ICanvas } from '@/uni_modules/tmx-ui/core/canvas/ICanvas.uts';
+
+
+
+export class IText extends Shape {
+
+	constructor(config : IShapeOptional,canvas:ICanvas) {
+		super(config,canvas);
+		this.type = 'IText'
+	}
+
+	private wrapText(ctx : CanvasRenderingContext2D, text : string, maxWidth : number) : string[] {
+		// 首先处理所有类型的换行符，统一转换为\n
+		text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+		// 按换行符分割文本
+		const paragraphs = text.split('\n');
+		const lines : string[] = [];
+
+		// 处理每个段落
+		for (let i = 0; i < paragraphs.length; i++) {
+			let paragraph = paragraphs[i]
+			if (paragraph == '') {
+				// 保留空行
+				lines.push('');
+				continue;
+			}
+
+			const words = paragraph.split('');
+			let currentLine = '';
+
+			for (let i = 0; i < words.length; i++) {
+				const testLine = currentLine + words[i];
+				const metrics = ctx.measureText(testLine);
+				const testWidth = metrics.width;
+
+				if (testWidth > maxWidth && i > 0) {
+					lines.push(currentLine);
+					currentLine = words[i];
+				} else {
+					currentLine = testLine;
+				}
+			}
+			lines.push(currentLine);
+		}
+		return lines;
+	}
+
+	override draw(ctx : CanvasRenderingContext2D) {
+		if (this.visible == false) return;
+		ctx.save()
+		ctx.font = `${this.fontSize}px ${this.fontFamily}`;
+		ctx.textAlign = this.textAlign;
+		ctx.textBaseline = this.textBaseline;
+		const maxWidth = this.width > 0 ? this.width - this.padding * 2 : ctx.canvas.offsetWidth - this.x - this.padding * 2;
+		const lines = this.wrapText(ctx, this.text, maxWidth);
+		const lineHeightPixels = this.fontSize * this.lineHeight;
+
+		this.width = maxWidth + this.padding * 2;
+		this.height = lineHeightPixels * lines.length + this.padding * 2;
+		if(this.textBgColor!=''){
+			ctx.fillStyle = this.textBgColor
+			// ctx.fillRect(this.x,this.y,this.width,this.height)
+			ctx.beginPath();
+			if (this.radius > 0) {
+				let radiuss = Math.min(this.radius, this.width / 2, this.height / 2);
+				const radius = Math.max(radiuss, 0)
+				ctx.moveTo(this.x + radius, this.y);
+				ctx.lineTo(this.x + this.width - radius, this.y);
+				ctx.arcTo(this.x + this.width, this.y, this.x + this.width, this.y + radius, radius);
+				ctx.lineTo(this.x + this.width, this.y + this.height - radius);
+				ctx.arcTo(this.x + this.width, this.y + this.height, this.x + this.width - radius, this.y + this.height, radius);
+				ctx.lineTo(this.x + radius, this.y + this.height);
+				ctx.arcTo(this.x, this.y + this.height, this.x, this.y + this.height - radius, radius);
+				ctx.lineTo(this.x, this.y + radius);
+				ctx.arcTo(this.x, this.y, this.x + radius, this.y, radius);
+			} else {
+				ctx.beginPath();
+				ctx.rect(this.x, this.y, this.width, this.height);
+			}
+			ctx.closePath();
+			ctx.fill()
+			ctx.fillStyle = this.fill
+		}
+		
+		for (let i = 0; i < lines.length; i++) {
+			const y = this.y + this.padding + i * lineHeightPixels;
+			let adjustedY = y;
+			
+			// 根据textBaseline调整y坐标
+			if (this.textBaseline === 'middle') {
+				adjustedY = y + this.fontSize / 2;
+			} else if (this.textBaseline === 'bottom') {
+				adjustedY = y + this.fontSize;
+			}
+			
+			let x = this.x + this.padding;
+			if (this.textAlign === 'center') {
+				x = this.x + this.width / 2;
+			} else if (this.textAlign === 'right') {
+				x = this.x + this.width - this.padding;
+			}
+			if (this.fill != "") {
+				ctx.fillStyle = this.fill;
+				ctx.fillText(lines[i], x, adjustedY);
+			}
+			if (this.stroke != "") {
+				ctx.strokeStyle = this.stroke;
+				ctx.lineWidth = this.strokeWidth;
+				ctx.strokeText(lines[i], x, adjustedY);
+			}
+		}
+
+		ctx.restore()
+	}
+
+	setText(value : string) : IText {
+		this.text = value;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	setFontSize(value : number) : IText {
+		this.fontSize = value;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	setFontFamily(value : string) : IText {
+		this.fontFamily = value;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	setTextAlign(value : 'left' | 'center' | 'right') : IText {
+		this.textAlign = value;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	setTextBaseline(value : 'top' | 'middle' | 'bottom') : IText {
+		this.textBaseline = value;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	setPadding(value : number) : IText {
+		this.padding = value;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	setLineHeight(value : number) : IText {
+		this.lineHeight = value;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	override getBoundRect() : IShapeBoundRect {
+		const ctx = this.canvas.ctx!
+		ctx.font = `${this.fontSize}px ${this.fontFamily}`;
+		const maxWidth = this.width > 0 ? this.width - this.padding * 2 : ctx.canvas.offsetWidth - this.x - this.padding * 2;
+		const lines = this.wrapText(ctx, this.text, maxWidth);
+		const lineHeightPixels = this.fontSize * this.lineHeight;
+		const width = maxWidth + this.padding * 2;
+		const height = lineHeightPixels * lines.length + this.padding * 2;
+		return {
+			x: this.x,
+			y: this.y,
+			width: width,
+			height: height
+		} as IShapeBoundRect;
+	}
+
+	override isPointInPath(x : number, y : number, shapeId : string) : boolean {
+		if (!this.visible || (shapeId != "" && shapeId != this.id)) return false;
+		const textBounds = this.getBoundRect();
+		const realX = x - textBounds.x - this.offsetX;
+		const realY = y - textBounds.y - this.offsetY;
+
+		if (this.rotation != 0) {
+			const angle = -this.rotation * Math.PI / 180;
+			const cos = Math.cos(angle);
+			const sin = Math.sin(angle);
+			let centerX = 0;
+			let centerY = 0;
+			
+			// 根据不同的旋转中心点设置centerX和centerY
+			switch(this.rotateCenter) {
+				case 'topLeft':
+					centerX = 0;
+					centerY = 0;
+					break;
+				case 'topRight':
+					centerX = textBounds.width;
+					centerY = 0;
+					break;
+				case 'bottomLeft':
+					centerX = 0;
+					centerY = textBounds.height;
+					break;
+				case 'bottomRight':
+					centerX = textBounds.width;
+					centerY = textBounds.height;
+					break;
+				case 'center':
+				default:
+					centerX = textBounds.width/2;
+					centerY = textBounds.height/2;
+					break;
+			}
+			
+			const dx = realX - centerX;
+			const dy = realY - centerY;
+			const rotatedX = centerX + dx * cos - dy * sin;
+			const rotatedY = centerY + dx * sin + dy * cos;
+			return rotatedX >= 0 && rotatedX <= textBounds.width * this.scaleX && rotatedY >= 0 && rotatedY <= textBounds.height * this.scaleY;
+		}
+
+		return realX >= 0 && realX <= textBounds.width * this.scaleX && realY >= 0 && realY <= textBounds.height * this.scaleY;
+	}
+
+}

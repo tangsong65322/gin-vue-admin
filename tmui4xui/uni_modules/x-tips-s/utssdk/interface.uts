@@ -1,0 +1,54 @@
+export type XTIPS_TYPE = {
+	iconColor?:string,
+	contentBgColor?:string,
+	maskBgColor?:string,
+	iconSize?:number,
+	/**
+	 * 正常应该填写图标的16进制符号如：EEC4
+	 * 本组件允许几个状态名称使用默认图标，为空是info图标。
+	 * warn,error,success,info
+	 */
+	iconCode?:string,
+	/**
+	 * 标题为空不显示。
+	 */
+	title:string,
+	titleSize?:number,
+	titleColor?:string,
+	/**
+	 * 几秒后消失，0 表示永不消失
+	 * @default 2000
+	 */
+	duration?:number,
+	close?:()=>void,
+	/** 宽 */
+	size?:number,
+	/**
+	 * 禁用遮罩穿透点击事件
+	 * @default false
+	 */
+	maskDisableClik?:boolean,
+	position?:'top'|'bottom',
+	/**
+	 * 偏移量
+	 * @default 50
+	 */
+	offset?:number
+}
+export type XTIPS_TYPE_PRIVATE = {
+	iconColor:string,
+	contentBgColor:string,
+	maskBgColor:string,
+	iconSize:number,
+	iconCode:string,
+	title:string,
+	titleSize:number,
+	titleColor:string,
+	duration:number,
+	close:()=>void,
+	size:number,
+	maskDisableClik:boolean,
+	position:'top'|'bottom',
+	//偏移量
+	offset:number
+}

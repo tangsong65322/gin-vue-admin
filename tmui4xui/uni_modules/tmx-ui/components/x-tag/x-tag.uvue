@@ -1,0 +1,446 @@
+<script lang="ts">
+	import { colors, getDefaultColor, getDefaultColorObj, getTextColorObj, getThinColorObj, getOutlineColorObj } from "../../core/util/xCoreColorUtil.uts"
+	import { toFillMarginAr, checkIsCssUnit, getUnit } from "../../core/util/xCoreUtil.uts"
+	import { type PropType } from 'vue'
+	import { xConfig } from "../../config/xConfig.uts"
+
+	/**
+	 * @name 标签 xTag
+	 * @description 标签组件，可用于属性的提醒，显示，强调用。
+	 * @page /pages/index/tag
+	 * @category 常用组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				_set_border_color: `1px solid #000000`,
+				_set_background_color: `#000000`,
+				_set_background_img: ``,
+				_set_font_color: `#000000`,
+				_set_opacity: `1`,
+			}
+		},
+		emits: [
+			/**
+			 * 点击组件时触发
+			 */
+			'click'],
+		props: {
+			_class: {
+				type: String,
+				default: ''
+			},
+			_style: {
+				type: String,
+				default: ''
+			},
+			/**
+			 * 主题名，名称或者合法的颜色值
+			 * 默认为空时取全局的主题。
+			 */
+			"color": {
+				type: String,
+				default: ''
+			},
+			/**
+			 * 自定义背景色，优先级高于color和全局
+			 */
+			"bgColor": {
+				type: String,
+				default: ''
+			},
+			/**
+			 * 暗黑时的自定义背景色
+			 */
+			"darkBgColor": {
+				type: String,
+				default: ''
+			},
+			/**
+			 * 渐变背景
+			 * 数组格式如下
+			 * [
+				 方向:top,bottom,left,right,
+				 颜色1:
+				 颜色2
+			 ]
+			 * 例:['left','black','white']
+			 */
+			"linearGradient": {
+				type: Array as PropType<string[]>,
+				default: () : string[] => []
+			},
+			/**
+			 * 自定义字体颜色优先级高于color自动生成
+			 */
+			"fontColor": {
+				type: String,
+				default: ''
+			},
+			/**
+			 * 字号大小
+			 */
+			"fontSize": {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 圆角数字
+			 */
+			"round": {
+				type: Number,
+				default: -1
+			},
+			/**
+			 * 数字
+			 */
+			"border": {
+				type: Number,
+				default: 1
+			},
+			/**
+			 * 自定义边框颜色 ，优先于color自动生成
+			 */
+			"borderColor": {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 如果不填写，默认取xConfig里面的默认边线颜色值
+			 */
+			darkBorderColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * default 默认空值不作处理,
+			 * secondary 次要按钮，
+			 * text文本 按钮,
+			 * outline 线性，
+			 * dashed 虚线边框
+			 * thint 浅色浅色按钮（自动把color按理论值设置为浅色模式）
+			 */
+			"skin": {
+				type: String,
+				default: "default"
+			},
+			"icon": {
+				type: String,
+				default: ""
+			},
+
+			/**
+			 * 尺寸
+			 * normal 标准
+			 * mini 超小
+			 * mdeium 中等
+			 * large 大
+			 */
+			"size": {
+				type: String,
+				default: "normal"
+			},
+			"url": {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 禁用后无法点击
+			 */
+			"disabled": {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 是否加载中
+			 */
+			"loading": {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 自定义高度，可以是数字，单位或者百分比
+			 */
+			"height": {
+				type: String,
+				default: ""
+			},
+		},
+		computed: {
+			_color() : string {
+				let color = getDefaultColor(this.color)
+				if (color == '') {
+					color = xConfig.color
+				}
+
+				return color;
+			},
+			_bgColor() : string {
+				let color = this.bgColor
+				if (xConfig.dark == 'dark' && this.darkBgColor != '') {
+					color = this.darkBgColor
+				}
+				return color;
+			},
+			_class_name() : string {
+				return this._class;
+			},
+			_borderColor() : string {
+
+				let bordercolor = this.borderColor as string;
+				if (xConfig.dark == 'dark' && this.darkBorderColor != '') {
+					bordercolor = this.darkBorderColor
+				}
+
+				return bordercolor
+			},
+			_fontSize() : string {
+				let fontSize = this.fontSize;
+				if (fontSize == "") {
+					if (this.size == "mini") {
+						return checkIsCssUnit('10', xConfig.unit)
+					}
+					if (this.size == "small") {
+						return checkIsCssUnit('11', xConfig.unit)
+					}
+					if (this.size == "mdeium") {
+						return checkIsCssUnit('12', xConfig.unit)
+					}
+					if (this.size == "normal") {
+						return checkIsCssUnit('12', xConfig.unit)
+					}
+					if (this.size == "large") {
+						return checkIsCssUnit('16', xConfig.unit)
+					}
+				}
+				fontSize = checkIsCssUnit(fontSize, xConfig.unit)
+
+				if (xConfig.fontScale == 1) return fontSize;
+				let sizeNumber = parseInt(fontSize)
+				if (isNaN(sizeNumber)) {
+					sizeNumber = 16
+				}
+				return (sizeNumber * xConfig.fontScale).toString() + getUnit(this.fontSize)
+			},
+			_disabled() : boolean {
+				if (this.disabled) {
+					this._set_opacity = '0.7';
+				}
+				return this.disabled
+			},
+			_icon() : string {
+				return this.icon
+			},
+			_radius() : string {
+				if (this.round == -1) {
+					return checkIsCssUnit(xConfig.tagRadius, xConfig.unit)
+				}
+				return checkIsCssUnit(this.round.toString(), xConfig.unit)
+			},
+			_border() : string {
+				return checkIsCssUnit(this.border.toString(), xConfig.unit)
+			},
+			_loading() : boolean {
+				if (this.loading) {
+					this._set_opacity = '0.7';
+				}
+				return this.loading
+			},
+			_padding() : string {
+				if (this.size == "mini") {
+					return "0px 0px"
+				}
+				if (this.size == "small") {
+					return "0px " + checkIsCssUnit('3', xConfig.unit)
+				}
+				if (this.size == "mdeium") {
+					return "0px " + checkIsCssUnit('5', xConfig.unit)
+				}
+				if (this.size == "normal") {
+					return "0px " + checkIsCssUnit('8', xConfig.unit)
+				}
+				if (this.size == "large") {
+					return "0px " + checkIsCssUnit('12', xConfig.unit)
+				}
+
+				return "0rpx  " + checkIsCssUnit('8', xConfig.unit)
+			},
+			_height() : string {
+				if (this.height != "") return checkIsCssUnit(this.height, xConfig.unit)
+				if (this.size == "mini") {
+					return checkIsCssUnit("14", xConfig.unit)
+				}
+				if (this.size == "small") {
+					return checkIsCssUnit("18", xConfig.unit)
+				}
+				if (this.size == "mdeium") {
+					return checkIsCssUnit("20", xConfig.unit)
+				}
+				if (this.size == "normal") {
+					return checkIsCssUnit("24", xConfig.unit)
+				}
+				if (this.size == "large") {
+					return checkIsCssUnit("32", xConfig.unit)
+				}
+
+				return checkIsCssUnit(this.height, xConfig.unit)
+			},
+			_styleMap() : Map<string, string> {
+				let styleMap = new Map<string, string>()
+				styleMap.set('padding', this._padding)
+				styleMap.set('height', this._height)
+				styleMap.set('border', this._set_border_color)
+				styleMap.set('borderRadius', this._radius)
+				styleMap.set('backgroundColor', this._set_background_color)
+				styleMap.set('backgroundImage', this._set_background_img)
+				styleMap.set('opacity', this._set_opacity)
+				return styleMap;
+			}
+		},
+		created() {
+			this.customStyles();
+		},
+		watch: {
+			_color() {
+				this.customStyles();
+			},
+			color() {
+				this.customStyles();
+			},
+			bgColor() {
+				this.customStyles();
+			},
+			borderColor() {
+				this.customStyles();
+			},
+			skin() {
+				this.customStyles();
+			},
+			fontColor() {
+				this.customStyles();
+			},
+		},
+		methods: {
+
+			clickListen(e : any) {
+				if (this._disabled == false) {
+					/**
+					 * 点击时触发
+					 * 
+					 * @property Event {Event} 触摸事件
+					 */
+					this.$emit('click', e)
+				}
+				if (this._disabled == false && this.url != "") {
+					uni.navigateTo({
+						url: this.url
+					})
+				}
+			},
+			customStyles() {
+				let color = getDefaultColor(this._color);
+				let hoverColor = color
+
+
+				this._set_opacity = '1';
+				if (this._disabled || this._loading) {
+					this._set_opacity = '0.7';
+				}
+
+				let colorInit : UTSJSONObject = getDefaultColorObj(color, hoverColor);
+				let borderStyle = "solid"
+
+				if (this.skin == 'text') {
+					colorInit = getTextColorObj(color, hoverColor, xConfig.dark == 'dark')
+				}
+				if (this.skin == 'thin') {
+					colorInit = getThinColorObj(color, hoverColor, xConfig.dark == 'dark')
+				}
+				if (this.skin == 'outline' || this.skin == 'dashed') {
+					colorInit = getOutlineColorObj(color, hoverColor)
+				}
+				if (this.skin == 'dashed') {
+					borderStyle = 'dashed'
+				}
+
+				let defaultObj : UTSJSONObject = colorInit.getJSON("default")!
+				// let defaultHover:UTSJSONObject = colorInit.getJSON("hover")!
+				// let defaultActive:UTSJSONObject = colorInit.getJSON("active")!
+
+				let borderWidth = checkIsCssUnit(this.border.toString(), 'rpx')
+				let dbordercolor = getDefaultColor(this._borderColor)
+				let background = getDefaultColor(this._bgColor)
+				let fontcolor = getDefaultColor(this.fontColor)
+
+
+				this._set_border_color = `${borderWidth} ${borderStyle} ${dbordercolor == "" ? defaultObj.getString("borderColor")! : dbordercolor}`
+				this._set_background_color = background == "" ? defaultObj.getString("background")! : background
+				this._set_font_color = fontcolor == "" ? defaultObj.getString("fontColor")! : fontcolor
+
+				if (this.linearGradient.length > 0) {
+					let dirs = this.linearGradient[0]
+					if (this.linearGradient[0] == 'top') {
+						dirs = 'to top'
+					} else if (this.linearGradient[0] == 'bottom') {
+						dirs = 'to bottom'
+					} else if (this.linearGradient[0] == 'left') {
+						dirs = 'to left'
+					} else if (this.linearGradient[0] == 'right') {
+						dirs = 'to right'
+					}
+					this._set_background_color = ``
+					this._set_background_img = `linear-gradient(${dirs},${this.linearGradient[1]},${this.linearGradient[2]})`
+				}
+			}
+		}
+	}
+</script>
+<template>
+	<view :disabled="_disabled" @click="clickListen" :class="[_class_name,'button']" :style='_styleMap'>
+		<x-icon v-if="_icon!=''&&!_loading" style="margin-right: 3px;" :font-size="_fontSize" :color="_set_font_color"
+			:name="_icon"></x-icon>
+		
+		<!-- #ifdef MP -->	
+		<view :style="{'color':_set_font_color,'font-size':_fontSize}">
+			<!-- 
+			 @slot 默认插槽
+			 -->
+			<slot></slot>
+		</view>
+		<!-- #endif -->
+		<!-- #ifndef MP -->
+		<text :style="{'color':_set_font_color,'font-size':_fontSize}">
+			<!-- 
+			 @slot 默认插槽
+			 -->
+			<slot></slot>
+		</text>
+		<!-- #endif -->
+		
+		
+	</view>
+</template>
+<style scoped>
+	.button {
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		display: flex;
+		align-content: center;
+	}
+
+	.loadingMask {
+		position: absolute;
+		width: 100%;
+		height: 100%;
+		background-color: rgba(200, 200, 200, 0.6);
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+	}
+</style>

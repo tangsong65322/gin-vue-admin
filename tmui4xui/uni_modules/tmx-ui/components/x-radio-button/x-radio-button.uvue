@@ -1,0 +1,399 @@
+<script lang="ts">
+	import { RADIO_BUTTON } from "../../interface.uts"
+	import { PropType } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit, getUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+
+	/**
+	 * @name 单选按钮组 xRadioButton
+	 * @description 类似单选导航按钮式或者叫分割选择按钮。
+	 * @page /pages/index/radio-button
+	 * @category 导航组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				nowId: "",
+				id: ("xRadiobutton-button-id-" + getUid()) as string,
+				pos_x: 0,
+				pos_w: 0,
+				first: true,
+				resizeObserver: null as UniResizeObserver | null,
+			}
+		},
+		emits: [
+			/**
+			 * 用户点击变换时触发。
+			 * @param {string} value - 当前选中的id
+			 * @param {number} index - 当前选中的索引值
+			 */
+			'change',
+			/**
+			 * 用户点击按钮时触发,不管禁没禁用。
+			 * @param {string} value - 当前id
+			 * @param {number} index - 当前索引值
+			 */
+			'click', 
+			'update:modelValue'],
+		props: {
+			/**
+			 * 数据
+			 */
+			list: {
+				type: Array as PropType<RADIO_BUTTON[]>,
+				default: () : RADIO_BUTTON[] => {
+					return [] as RADIO_BUTTON[]
+				}
+			},
+			/**
+			 * 当前选中的id值
+			 */
+			modelValue: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 背景
+			 */
+			bgColor: {
+				type: String,
+				default: "#f3f5f8"
+			},
+			/**
+			 * 暗黑时的背景，如果不提供读取页面暗黑背景
+			 */
+			darkBgColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 激活的按钮块背景
+			 */
+			activeColor: {
+				type: String,
+				default: "white"
+			},
+			/**
+			 * 激活的按钮块暗黑背景，如果不提供inputDarkColor
+			 */
+			darkActiveColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 激活时的文字颜色,默认取全局主题色。
+			 */
+			activeFontColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 文字颜色，暗黑时取白色
+			 */
+			fontColor: {
+				type: String,
+				default: "#333333"
+			},
+			/**
+			 * 文字大小
+			 */
+			fontSize: {
+				type: String,
+				default: "16"
+			},
+			/**
+			 * 按钮组高度
+			 */
+			height: {
+				type: String,
+				default: "40"
+			},
+			/**
+			 * 四周内间隙
+			 */
+			space: {
+				type: String,
+				default: "2"
+			},
+			/**
+			 * 圆角,空值时读取全局配置。
+			 */
+			round: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 文本样式，可修改文字的样式。
+			 */
+			textStyle:{
+				type:String,
+				default:""
+			}
+		},
+		computed: {
+			_list() : RADIO_BUTTON[] {
+				return this.list
+			},
+			_textStyle() : string {
+				return this.textStyle
+			},
+			_bgColor() : string {
+				if (xConfig.dark == 'dark') {
+					if (this.darkBgColor != "") return getDefaultColor(this.darkBgColor)
+					return getDefaultColor(xConfig.backgroundColorContentDark)
+				}
+				return getDefaultColor(this.bgColor)
+			},
+			_activeColor() : string {
+				if (xConfig.dark == 'dark') {
+					if (this.darkActiveColor != "") return getDefaultColor(this.darkActiveColor)
+					return getDefaultColor(xConfig.inputDarkColor)
+				}
+				return getDefaultColor(this.activeColor)
+			},
+			_activeFontColor() : string {
+				if (this.activeFontColor == "") {
+					return getDefaultColor(xConfig.color)
+				}
+				return getDefaultColor(this.activeFontColor)
+			},
+			_fontColor() : string {
+				if (xConfig.dark == 'dark') return "#ffffff"
+				return getDefaultColor(this.fontColor)
+			},
+			_fontSize() : string {
+				let fontSize = checkIsCssUnit(this.fontSize, xConfig.unit);
+				if (xConfig.fontScale == 1) return fontSize;
+				let sizeNumber = parseInt(fontSize)
+				if (isNaN(sizeNumber)) {
+					sizeNumber = 14
+				}
+				return (sizeNumber * xConfig.fontScale).toString() + getUnit(fontSize)
+			},
+			_height() : string {
+				return checkIsCssUnit(this.height, xConfig.unit)
+			},
+			_space() : string {
+				return checkIsCssUnit(this.space, xConfig.unit)
+			},
+			_round() : string {
+				if (this.round == "") {
+					return checkIsCssUnit(xConfig.radioButtonRadius, xConfig.unit)
+				}
+				return checkIsCssUnit(this.round, xConfig.unit)
+			},
+			_styleRadioButtonBgMap() : Map<string, string> {
+				let styleMap = new Map<string, string>()
+				styleMap.set("transitionDuration", this.first ? '0ms' : '350ms')
+				styleMap.set("backgroundColor", this._activeColor)
+				styleMap.set("width", this.pos_w.toString() + 'px')
+				styleMap.set("borderRadius", this._round)
+				styleMap.set("transform", 'translateX(' + this.pos_x.toString() + 'px)')
+
+				return styleMap;
+			}
+
+		},
+		watch: {
+			modelValue(newValue : string) {
+				if (this.nowId == newValue) return;
+				this.nowId = newValue;
+				this.setPos();
+			}
+		},
+
+		mounted() {
+			this.nowId = this.modelValue;
+			this.setPos();
+			
+			let t = this;
+			// #ifdef APP || WEB
+			let ele = this.$refs['xRadioButton'] as UniElement|null
+			if(ele==null) return;
+			if (this.resizeObserver == null) {
+				this.resizeObserver = new UniResizeObserver((entries : Array<UniResizeObserverEntry>) => {
+				  entries.forEach(entry => {
+					if (entry.target == ele) {
+						t.setPos();
+					}
+				  })
+				})
+			}
+			
+			this.resizeObserver!.observe(ele!)
+			// #endif
+			
+			// #ifdef MP
+			setTimeout(function() {
+				t.setPos();
+			}, 150);
+			// #endif
+			
+		},
+		beforeUnmount() {
+			
+			this.resizeObserver?.disconnect()
+		},
+		methods: {
+			itemClick(item : RADIO_BUTTON, index : number) {
+				/**
+				 * 点击按钮时触发.
+				 */
+				this.$emit('click',item.id,index)
+				if (this.nowId == item.id) return;
+				let disabled = (item?.disabled??false) as boolean
+				if(disabled == true) return;
+				
+				this.nowId = item.id;
+				this.setPos();
+				/**
+				 * 等同v-model
+				 */
+				this.$emit("update:modelValue", this.nowId);
+				/**
+				 * 变换时触发。
+				 * @param value {string} 当前选中的id
+				 */
+				this.$emit("change", this.nowId, index)
+			},
+			setPos() {
+				uni.createSelectorQuery().in(this)
+					.selectAll(`.xRadioButtonBtnItem`)
+					.boundingClientRect().exec((ret) => {
+						let nodeinfo = ret[0] as NodeInfo[];
+						let nowindex = nodeinfo.findIndex((el : NodeInfo) : boolean => {
+							let ids = el.id!;
+							let oldid = this.id + '-' + this.nowId;
+							return ids == oldid;
+						})
+						if (nowindex > -1) {
+							let diffleft = 0;
+							let difar = nodeinfo.slice(0, nowindex)
+							difar.forEach((el : NodeInfo) => {
+								diffleft += el.width!;
+							})
+							let nowitem = nodeinfo[nowindex]
+							this.pos_x = diffleft
+							this.pos_w = nowitem.width!;
+
+						}
+						this.$nextTick(() => {
+							this.first = false;
+						})
+					})
+			},
+			getIcon(item : RADIO_BUTTON) : string {
+				if (item.icon == null) return ""
+				return item.icon as string
+			}
+		},
+	}
+</script>
+<template>
+	<view class="xRadioButton" ref="xRadioButton" :style="{
+		height: _height,
+		padding: _space,
+		backgroundColor: _bgColor,
+		borderRadius:_round
+	}">
+		<view class="xRadioButtonWrap">
+			
+			<view class="xRadioButtonBtns">
+				<view @click="itemClick(item,index)" 
+			
+				v-for="(item,index) in _list" :key="index" :id="id+'-'+item.id"
+					:class="[`xRadioButtonBtnItem-ids-`+item.id,item.disabled==true?'xRadioButtonDisabled':'']" class="xRadioButtonBtnItem">
+					<x-icon :style="{marginRight:item.title==''?'0px':'5px'}" v-if="getIcon(item) !=''" :name="item.icon"
+						:font-size="_fontSize" :color="item.id==nowId?_activeFontColor:_fontColor"></x-icon>
+					<text class="xRadioButtonDisabledText" :style="[
+						{
+							fontSize:_fontSize,
+							color:item.id==nowId?_activeFontColor:_fontColor,
+						},_textStyle
+					]">{{item.title}}</text>
+				</view>
+			</view>
+			<view class="xRadioButtonbgBtn" :style="_styleRadioButtonBgMap">
+			</view>
+		</view>
+	</view>
+</template>
+<style scoped>
+	.xRadioButtonDisabledText{
+		
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		/* #ifdef APP */
+		lines: 1;
+		/* #endif */
+		/* #ifdef MP||WEB */
+		line-height:1;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		display: -webkit-box;
+		-webkit-line-clamp: 1;
+		-webkit-box-orient: vertical;
+		/* #endif */
+	}
+	.xRadioButton {
+		display: flex;
+		flex-direction: row;
+
+	}
+
+	.xRadioButtonWrap {
+		height:100%;
+		flex: 1;
+		position: relative;
+	}
+
+	.xRadioButtonBtnItem {
+		display: flex;
+		height: 100%;
+		padding: 0 12px;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		flex: 1;
+		flex-shrink: 0;
+
+	}
+	/* #ifdef WEB */
+	.xRadioButtonBtnItem{
+		cursor: pointer;
+	}
+	.xRadioButtonDisabled{
+		cursor: not-allowed;
+	}
+	/* #endif */
+	.xRadioButtonDisabled{
+		opacity: 0.5;
+	}
+	.xRadioButtonBtns {
+		position: absolute;
+		z-index: 5;
+		height: 100%;
+		left: 0;
+		top: 0;
+		width: 100%;
+		display: flex;
+		flex-direction: row;
+		justify-content: flex-start;
+	}
+
+	.xRadioButtonbgBtn {
+		height: 100%;
+		background-color: white;
+		width: 0px;
+		transition-timing-function: cubic-bezier(.18, .89, .32, 1);
+		transition-property: transform;
+		transition-duration: 0ms;
+	}
+</style>

@@ -1,0 +1,9 @@
+{
+	"deploymentTarget": "12",
+	"dependencies-pods": [
+		{
+			"name": "GoogleMLKit/Translate",
+			"version": "3.2.0"
+		}
+	]
+}

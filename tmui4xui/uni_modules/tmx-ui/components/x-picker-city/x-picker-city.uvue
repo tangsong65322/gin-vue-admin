@@ -1,0 +1,355 @@
+<script lang="ts">
+	import { type PropType } from "vue"
+	import { getUid,setPagePullRefresh,getPagePullRefresh } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { PICKER_ITEM_INFO, X_PICKER_X_ITEM } from "../../interface.uts"
+	// #ifdef APP||WEB
+	import cityCode from "./level.min.uts"
+	// #endif
+	
+	/**
+	 * @name 城市选择器 xPickerCity
+	 * @description 是x-picker-view封装的弹出式，城市数据已经封装好。如果想更换更多级或者1级啥的可见数据站点：https://github.com/uiwjs/province-city-china
+	 * @page /pages/index/picker-city
+	 * @category 表单组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+
+		data() {
+			
+			return {
+				show: false,
+				nowValue: [] as string[],
+				modelStrValue: "",
+				cityList: [] as X_PICKER_X_ITEM[],
+				duration:60,
+				nowPull:false,
+				yanchiDuration:false
+			}
+		},
+		emits: [
+			/**
+			 * 确认触发
+			 * @param {string[]} ids 当前选中项的id值
+			 */
+			'confirm',
+			/**
+			 * 滑动变换时触发
+			 * @param {string[]} ids 当前选中项的id值
+			 */
+			'change',
+			/**
+			 * 变量控制打开状态
+			 * 等同v-model:model-show
+			 */
+			'update:modelShow',
+			/**
+			 * 等同v-model:model-str
+			 * 只对外输出当前回选区的选中项的文本，不要外部改变此值。
+			 */
+			'update:modelStr',
+			'update:modelValue'
+		],
+		props: {
+			/**
+			 * 数据项同x-picker-view的X_PICKER_X_ITEM
+			 */
+			list: {
+				type: Array as PropType<X_PICKER_X_ITEM[]>,
+				default: () : X_PICKER_X_ITEM[] => [] as X_PICKER_X_ITEM[]
+			},
+			/**
+			 * 当前选中项的id值
+			 */
+			modelValue: {
+				type: Array as PropType<string[]>,
+				default: () : string[] => [] as string[]
+			},
+			/**
+			 * 当前选中项的回显文本等同v-model:model-str
+			 * 请不要更改此值，此值只对外输出显示。
+			 */
+			modelStr: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 当前打开的状态。
+			 * 等同v-model:model-show
+			 */
+			modelShow: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 顶部标题
+			 */
+			title: {
+				type: String,
+				default: "请选择"
+			},
+			/**
+			 * 取消按钮的文本
+			 */
+			cancelText: {
+				type: String,
+				default: "取消"
+			},
+			/**
+			 * 确认按钮的文本
+			 */
+			confirmText: {
+				type: String,
+				default: "确认"
+			},
+			/**
+			 * 自动同步modelstr拼接时的符号.
+			 */
+			modelStrJoin:{
+				type:String,
+				default:","
+			},
+			/**
+			 * 层级
+			 */
+			zIndex:{
+				type: Number,
+				default: 1100
+			},
+			showClose:{
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 是否懒加载内部内容。
+			 * 当前你的列表内容非常多，且影响打开的动画性能时，请务必
+			 * 设置此项为true，以获得流畅视觉效果。如果选择数据较少没有必要打开
+			 * 注意:由于要兼容微信,此属性从1.1.9开始必须打开,除非不用微信小程序可以关闭.
+			 */
+			lazyContent:{
+				type: Boolean,
+				default: true
+			},
+			/**
+			 * 是否禁用弹出
+			 */
+			disabled:{
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 宽屏时是否让内容剧中显示
+			 * 并限制其宽为屏幕宽，只展示中间内容以适应宽屏。
+			 */
+			widthCoverCenter: {
+				type: Boolean,
+				default: false
+			}
+		},
+		computed: {
+			_list() : X_PICKER_X_ITEM[] {
+				// #ifdef MP
+				let cityCode = "[]"
+				// #endif
+				if (this.list.length == 0) {
+					return JSON.parseArray<X_PICKER_X_ITEM>(cityCode)!
+				}
+				return this.list.slice(0);
+			},
+			_lazyContent():boolean{
+				return this.lazyContent
+			},
+			_disabled():boolean{
+				return this.disabled
+			}
+		},
+		watch: {
+			modelValue(newvalue : string[]) {
+				if (newvalue.join('') == this.nowValue.join('')) return;
+				this.nowValue = newvalue.slice(0);
+				this.setChangeStrvmodel()
+			},
+			modelShow(newValue : boolean) {
+				if (newValue == this.show) return;
+				this.show = newValue
+
+			}
+		},
+		
+		mounted() {
+			// #ifdef APP-IOS
+			this.duration = 120
+			// #endif
+			this.nowPull = getPagePullRefresh()
+			this.nowValue = this.modelValue.slice(0);
+			this.yanchiDuration = this._lazyContent?false:true
+		},
+
+		methods: {
+			changeCoverToItem() : PICKER_ITEM_INFO[] {
+				let listdata = JSON.parseArray<UTSJSONObject>(cityCode)
+				function covert(nodes : UTSJSONObject[]) : PICKER_ITEM_INFO[] {
+					let list = [] as PICKER_ITEM_INFO[]
+					for (let i = 0; i < nodes.length; i++) {
+						let item = nodes[i];
+						let temitem = {
+							id: item.getString("c")!,
+							title: item.getString("n")!,
+							children: [] as PICKER_ITEM_INFO[]
+						} as PICKER_ITEM_INFO;
+						let temchildren = item.getArray<UTSJSONObject>("d")
+						if (temchildren != null) {
+							temitem!.children = covert(temchildren!)
+						}
+						list.push(temitem)
+					}
+					return list;
+				}
+				if (listdata == null) return [] as PICKER_ITEM_INFO[]
+				return covert(listdata!)
+			},
+			openShow() {
+				if(this._disabled) return;
+				this.show = true;
+				/**
+				 * 变量控制打开状态
+				 * 等同v-model:model-show
+				 */
+				this.$emit('update:modelShow', true)
+				setPagePullRefresh(false)
+				this.nowValue = this.modelValue.slice(0);
+			},
+			onClose() {
+				/**
+				 * 变量控制打开状态
+				 * 等同v-model:model-show
+				 */
+				this.$emit('update:modelShow', false)
+				setPagePullRefresh(this.nowPull)
+				if(this._lazyContent){
+					this.yanchiDuration=false
+				}
+			},
+			mchange(ids : string[]) {
+				/**
+				 * 滑动变换时触发
+				 * @param {string[]} ids 当前选中项的id值
+				 */
+				this.$emit('change', ids.slice(0))
+			},
+			onCancel() {
+				this.nowValue = this.modelValue.slice(0);
+			},
+			getDefaultSeledids() : string[] {
+				let list = this._list;
+				let ids = [] as string[];
+				function getid(listitem : X_PICKER_X_ITEM[]) {
+					if (listitem.length == 0) return;
+					let id = listitem[0].id
+					ids.push(id == null ? '0' : id!)
+
+					let children = listitem[0].children == null ? ([] as X_PICKER_X_ITEM[]) : listitem[0].children!
+					if (children.length > 0) {
+						getid(children)
+					}
+				}
+				getid(list);
+				return ids
+			},
+			onOpenDrawer() {
+				this.yanchiDuration=true
+			},
+			onConfirm() {
+				let ids = this.nowValue.slice(0);
+				ids = ids.length == 0 ? this.getDefaultSeledids() : ids
+				/**
+				 * 点击确认时同步。等同v-model
+				 */
+				this.$emit('update:modelValue', ids.length == 0 ? this.getDefaultSeledids() : ids);
+				this.$emit('update:modelStr', this.modelStrValue);
+				this.$emit('confirm', ids)
+			},
+			strChange(str : string) {
+				this.modelStrValue = str;
+			},
+			setChangeStrvmodel(){
+				let listitem = this.getModelStr()
+				let idvalue = [] as string[]
+				let strs = [] as string[]
+				listitem.forEach((el) => {
+					idvalue.push(el.id)
+					strs.push(el.title)
+				})
+				this.modelStrValue = strs.join(this.modelStrJoin)
+				this.$emit('update:modelStr', strs.join(this.modelStrJoin))
+				
+			},
+			getIdeByindex() : number[] {
+				let index = 0;
+				let val = this.nowValue.slice(0)
+				let indexs = [] as number[]
+				function getIndex(nodes : X_PICKER_X_ITEM[]) {
+					if (val.length <= index || val.length == 0) return;
+					let id = val[index]
+					let sindex = 0
+					for (let i = 0; i < nodes.length; i++) {
+						let item = nodes[i]
+						if (item.id == id) {
+							sindex = i;
+							indexs.push(sindex)
+							if (item.children.length > 0) {
+								index += 1
+								getIndex(item.children)
+							}
+						}
+					}
+				}
+				getIndex(this._list)
+				return indexs;
+			},
+			getModelStr() : X_PICKER_X_ITEM[] {
+				let ids = this.getIdeByindex()
+				let index = 0;
+				let _this = this;
+				let selectedList = [] as X_PICKER_X_ITEM[]
+			
+				function getStr(nodes : X_PICKER_X_ITEM[]) {
+					if (ids.length <= index || ids.length == 0) return;
+					let idx = ids[index]
+					idx = Math.max(0, Math.min(nodes.length - 1, idx));
+					let item = nodes[idx];
+					selectedList.push(item)
+					if (item.children.length > 0) {
+						index += 1
+						getStr(item.children)
+					}
+				}
+				getStr(this._list)
+				return selectedList
+			},
+		
+		},
+	}
+</script>
+<template>
+	<view @click="openShow">
+		<!-- 
+		 @slot 插槽,默认触发打开选择器。你的默认布局可以放置在这里。
+		 @prop {boolean} show - 控制打开关闭状态
+		 -->
+		<slot></slot>
+	</view>
+	<x-drawer :lazy="_lazyContent" :cancel-text="cancelText" :confirm-text="confirmText" :zIndex="zIndex" :widthCoverCenter="widthCoverCenter" :watiDuration='duration' @open="onOpenDrawer" :disabledScroll="true" size="410px" :title="title" @close="onClose"
+		@confirm="onConfirm" @cancel="onCancel" :showFooter="true" v-model:show="show" :show-close="showClose">
+			<x-picker-view v-if="yanchiDuration" :modelStrJoin="modelStrJoin" @update:modelStr="strChange" @change="mchange" v-model="nowValue"
+				:listPro="_list"></x-picker-view>
+	
+	</x-drawer>
+</template>
+<style scoped>
+</style>

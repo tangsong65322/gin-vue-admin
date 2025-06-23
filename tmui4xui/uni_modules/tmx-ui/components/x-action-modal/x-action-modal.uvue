@@ -1,0 +1,530 @@
+<script lang="ts">
+	import { checkIsCssUnit,getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor, colorAddDeepen } from "../../core/util/xCoreColorUtil.uts"
+	import { xConfig,xProvitae } from "../../config/xConfig.uts"
+
+	/**
+	 * @name 底部对话框 xActionModal
+	 * @page /pages/index/action-modal
+	 * @category 反馈组件
+	 * @description 样式与darawer不一样，风格更为圆润精致，适于提醒框，阅读对话框等场景。
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				_width: 0,
+				_height: 0,
+				showOverflay: false,
+				element: null as Element | null,
+				elementWrap: null as Element | null,
+				//是否动画中
+				actioning: false,
+				status: "",
+				id: "xActionModal" + getUid(),
+				wrapId: "xActionModalWrap" + getUid(),
+				tid: 0,
+				windtop: 0,
+				pageOninit:false,
+				isOpenedDefault:false,
+			}
+		},
+		emits: [
+			/**
+			 * 底部按钮被点击时触发
+			 */
+			'confirm',
+			/**
+			 * 点击遮罩事件
+			 */
+			'click',
+			/**
+			 * 关闭是触发
+			 */
+			'close',
+			/**
+			 * 打开时触发
+			 */
+			'open',
+			/**
+			 * 打开前执行
+			 */
+			'beforeOpen',
+			/**
+			 * 关闭前执行
+			 */
+			'beforeClose',
+			/**
+			 * 等同v-model:show
+			 */
+			'update:show'
+		],
+		props: {
+			/**
+			 * 自定义遮罩样式
+			 */
+			customStyle: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 标题
+			 */
+			title: {
+				type: String,
+				default: "标题"
+			},
+
+			/**
+			 * 是否显示底部关闭按钮
+			 */
+			showTitle: {
+				type: Boolean,
+				default: true
+			},
+			/**
+			 * 是否显示关闭
+			 */
+			showClose: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 遮罩是否允许点击被关闭
+			 */
+			overlayClick: {
+				type: Boolean,
+				default: true
+			},
+			/**
+			 * 显示可v-model:show双向绑定
+			 */
+			show: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 显示取消按钮
+			 */
+			showConfirm: {
+				type: Boolean,
+				default: true
+			},
+
+			/**
+			 * 动画时间
+			 */
+			duration: {
+				type: Number,
+				default: 350
+			},
+
+			/**
+			 * 打开方向为上和下时的圆角
+			 * 空值时，取全局配置的圆角。注意是取drawer的圆角，统一弹层的圆角
+			 */
+			round: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 弹层最大的高度值，默认为屏幕的可视高
+			 * 提供值时不能为百分比，可以是px,rpx单位数字。如果你不带单位，默认转换为rpx单位。
+			 */
+			maxHeight: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 弹层的背景
+			 */
+			bgColor: {
+				type: String,
+				default: "white"
+			},
+			/**
+			 * 弹层的暗黑背景，如果为空取sheetDarkColor
+			 */
+			darkBgColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 空值取全局主题值。
+			 */
+			btnColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 确认按钮的文本
+			 */
+			btnText: {
+				type: String,
+				default: "确认"
+			},
+			/**
+			 * 空值最自动计算文本色。
+			 */
+			btnFontColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 打开dom的延迟量，如果你打开 弹窗在ios正常。
+			 * 请不要修改此值。如果遇到打不开，或者 打开 后没动画，关闭不了等可能是sdk bug导致 
+			 * 此时需要加大值来避免。具体加多少以你弹窗内的节点复杂度有关，需要你自行压力测试。
+			 * 此值仅在ios下生效。
+			 */
+			watiDuration:{
+				type: Number,
+				default: 120
+			},
+		},
+		watch: {
+			show(_newval : boolean) {
+				if (_newval) {
+					this.showAlert()
+				} else {
+					this.closeAlert()
+				}
+			},
+
+		},
+		computed: {
+			_btnFontColor() : string {
+				return getDefaultColor(this.btnFontColor)
+			},
+			_btnColor() : string {
+				if (this.btnColor == "") return getDefaultColor(xConfig.color)
+				return getDefaultColor(this.btnColor)
+			},
+			_btnText() : string {
+				return this.btnText
+			},
+			_customStyle() : string {
+				return this.customStyle
+			},
+			_show() : boolean {
+				return this.show
+			},
+			_showClose() : boolean {
+				return this.showClose
+			},
+			_duration() : number {
+				return this.duration
+			},
+
+			_title() : string {
+				return this.title
+			},
+			_showTitle() : boolean {
+				return this.showTitle
+			},
+			_round() : string {
+				let round = this.round;
+				if (round == "") {
+					round = xConfig.drawerRadius
+				}
+				let radius = checkIsCssUnit(round, xConfig.unit);
+
+				return `${radius}`
+			},
+			_bgColor() : string {
+				if(xConfig.dark=='dark'){
+					if(this.darkBgColor!='') return getDefaultColor(this.darkBgColor)
+					return getDefaultColor(xConfig.sheetDarkColor)
+				}
+				return getDefaultColor(this.bgColor)
+			},
+
+			_maxHeight() : string {
+				if (this.maxHeight == "") return "80%"
+				return checkIsCssUnit(this.maxHeight, xConfig.unit);
+			},
+			_showConfirm() : boolean {
+				return this.showConfirm
+			},
+
+
+			_animationFun() : string {
+				return xConfig.animationFun
+			},
+			__height():string{
+				let h = '100%';
+				// #ifdef WEB
+				h = `calc(100% - ${this.windtop}px)`
+				// #endif
+				
+				return h;
+			},
+		},
+
+		mounted() {
+			let t = this;
+			function oninitready(){
+				let sys = uni.getWindowInfo()
+				t._width = sys.windowWidth
+				t._height = sys.windowHeight;
+				t.windtop = sys.windowTop;
+				if (t._show) {
+					t.showAlert();
+				}
+			}
+			oninitready()
+		},
+		beforeUnmount() {
+			clearTimeout(this.tid)
+		},
+		methods: {
+
+			overflayMoveTouch(evt : TouchEvent) {
+				evt.preventDefault();
+			},
+			onClickOverflowy(evt : Event) {
+				evt.stopPropagation()
+				/**
+				 * 点击遮罩事件
+				 */
+				this.$emit("click")
+				if (!this.overlayClick) return;
+				this.closeAlert();
+			},
+			closeAlert() {
+				if (this.actioning || this.status == 'close') return;
+				this.actioning = true;
+				this.status = 'close'
+
+				/**
+				 * 关闭前执行
+				 */
+				this.$emit('beforeClose')
+
+				this.setStyleAni();
+			},
+			showAlert() {
+				if (this.actioning) return;
+				if (this.status == 'open') return;
+				this.showOverflay = true;
+				this.actioning = true;
+				this.status = 'open'
+				/**
+				 * 打开前执行
+				 */
+				this.$emit('beforeOpen')
+				this.setStyleAni();
+			},
+			setStyleAni() {
+				let t = this;
+				try {
+					let watiDuration = 60;
+					// #ifdef APP-IOS
+					watiDuration = t.watiDuration
+					// #endif
+					if (this.status == 'open') {
+						this.showOverflay = true;
+						clearTimeout(this.tid)
+						this.tid = setTimeout(function () {
+							t.element = uni.getElementById(t.id as string) as Element
+							t.elementWrap = uni.getElementById(t.wrapId as string) as Element;
+							if (t.element == null || t.elementWrap == null) return;
+							t.element!.style.setProperty("transition-duration", t._duration.toString() + 'ms')
+							t.elementWrap!.style.setProperty("transition-duration", t._duration.toString() + 'ms')
+							t.element!.style.setProperty('opacity', 1)
+							t.elementWrap!.style.setProperty('transform', `translate(0%,-24rpx)`)
+
+						}, watiDuration);
+					} else if (t.status == 'close') {
+						t.element!.style.setProperty("transition-duration", t._duration.toString() + 'ms')
+						t.elementWrap!.style.setProperty("transition-duration", t._duration.toString() + 'ms')
+
+						t.element!.style.setProperty('opacity', 0)
+						t.elementWrap!.style.setProperty('transform', `translate(0%,100%)`)
+					}
+				} catch (e) {
+					//TODO handle the exception
+				}
+			},
+			openDrawer() {
+				this.showAlert();
+			},
+			onEnd() {
+				this.actioning = false;
+
+				if (this.status == 'close') {
+					this.showOverflay = false;
+					/**
+					 * 关闭时执行
+					 */
+					this.$emit('close')
+					/**
+					 * 等同v-model:show
+					 */
+					this.$emit('update:show', false)
+				} else {
+					/**
+					 * 打开执行的事件
+					 */
+					this.$emit('open')
+				}
+			},
+			overTouch(evt:UniTouchEvent){
+				// #ifdef WEB
+				evt.preventDefault()
+				// #endif
+				// #ifdef APP
+				evt.stopPropagation()
+				// #endif
+			},
+			onConfirm(){
+				this.closeAlert()
+				this.$emit('confirm')
+			}
+		},
+	}
+</script>
+<template>
+	<view>
+		<view @click="openDrawer">
+			<!--
+			@slot 标签触发显示遮罩，免于使用变量控制
+			@prop {Boolean} show - 当前是否已显示
+			-->
+			<slot name="trigger" :show="show"></slot>
+		</view>
+
+		<view @click="onClickOverflowy" @touchmove="overTouch" v-if="showOverflay" @transitionend="onEnd" :id="id"
+			class="xActionModalWrap xActionModalWrap_bottom"
+			:style="[{width:'100%',height:__height,top:windtop+'px','transition-timing-function':_animationFun},_customStyle]">
+			<!-- @touchmove="overflayMoveTouch" -->
+			<view @click.stop="" class="xActionModalWrapContent xActionModalWrapContent_bottom"
+			  
+			 :id="wrapId" :style="{
+				borderRadius:_round,
+				maxHeight:_maxHeight!=''?_maxHeight:'100%',
+				backgroundColor:_bgColor,
+				'transition-timing-function':_animationFun
+				}">
+				<x-icon v-if="_showClose" class="xActionModalXclose" @click="closeAlert" color="#dcdcdc" font-size="24"
+					name="close-circle-fill"></x-icon>
+				<view>
+					<view v-if="_showTitle" class="xActionModalTitleBox">
+						<!-- 
+						 @slot 标题插槽
+						 @prop {Boolean} show - 当前是否已显示
+						 -->
+						<slot name="title" :show="show">
+							<text class="xActionModaltitleBox">{{_title}}</text>
+						</slot>
+					</view>
+				</view>
+
+				<scroll-view style="flex:1;" :scroll-y="true" :rebound="false">
+					<!--
+					@slot 默认插槽
+					@prop {Boolean} show - 当前是否已显示
+					-->
+					<slot name="default">
+
+					</slot>
+				</scroll-view>
+				<view v-if="_showConfirm" class="xActionModalFooter">
+					<!-- 
+					 @slot 页脚按钮插槽
+					 -->
+					<slot name="footer">
+						<x-button @click="onConfirm"  :block="true" :color="_btnColor" :round="_round"
+							:font-color="_btnFontColor">{{_btnText}}</x-button>
+					</slot>
+				</view>
+
+			</view>
+
+		</view>
+	</view>
+</template>
+<style>
+	.xActionModalItem {
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+		height: 44px;
+		margin-bottom: 1px;
+
+	}
+
+	.xActionModalFooter {
+		margin: 16px;
+	}
+
+	.xActionModalFooterText {
+		font-size: 15px;
+		color: #333333;
+		text-align: center;
+	}
+
+	.xActionModalXclose {
+		position: absolute;
+		right: 12px;
+		top: 11px;
+		z-index: 100;
+	}
+
+	.xActionModalTitleBox {
+		height: 44px;
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		margin-bottom: 4px;
+	}
+
+	.xActionModaltitleBox {
+		max-width: 350rpx;
+		overflow: hidden;
+		lines: 1;
+		text-overflow: ellipsis;
+		font-size: 16px;
+		color: #888888;
+	}
+
+	.xActionModalWrap_bottom {
+		display: flex;
+		flex-direction: column;
+		justify-content: flex-end;
+		/* #ifndef MP-WEIXIN */
+		align-items: center;
+		/* #endif */
+	}
+
+
+	.xActionModalWrapContent {
+		transition-duration: 350ms;
+		transition-property: transform;
+		display: flex;
+		flex-direction: column;
+		margin: 0 16px;
+		max-width: 500px;
+		/* width:100%; */
+	}
+
+	.xActionModalWrapContent_bottom {
+		transform: translate(0%, 100%);
+	}
+
+
+	.xActionModalWrap {
+		background-color: rgba(0, 0, 0, 0.35);
+		opacity: 0;
+		position: fixed;
+		z-index: 1100;
+		left: 0;
+		top: 0px;
+		transition-duration: 350ms;
+		transition-property: opacity;
+	}
+</style>

@@ -1,0 +1,91 @@
+var _x = 0
+var _realx = 0
+var _y = 0
+var isMoving = false
+var leftPos = 0
+var opts = {
+	disabled: false,
+	max: 0,
+	min: 0,
+	step: 1,
+	_step: 0,
+	btnSize: 0,
+	boxwidth: 0
+}
+
+function isLeftOrRight(a, b, c, diffX) {
+	if (diffX > 0) {
+		return c;
+	} else if (diffX < 0) {
+		return a;
+	}
+	return b;
+}
+
+function mStart(evt, ins) {
+	if (opts.disabled) return false;
+	
+	_realx = evt.changedTouches[0].clientX;
+	
+	var ele = ins.selectComponent('.xSliderBtn')
+	opts = ele.getDataset().opts;
+	leftPos = parseFloat(ele.getComputedStyle(['left']).left)
+	_x = evt.changedTouches[0].clientX - leftPos;
+	_y = evt.changedTouches[0].clientY;
+	isMoving = false
+	ins.callMethod('setOpts', {
+		isMoving: isMoving
+	})
+	return false
+}
+
+function mMove(evt, ins) {
+	var ele = ins.selectComponent('.xSliderBtn')
+	if (opts.disabled) return false;
+	isMoving = true
+	ins.callMethod('setOpts', {
+		isMoving: isMoving
+	})
+	var x = evt.changedTouches[0].clientX - _x
+	var diffX = evt.changedTouches[0].clientX - _realx
+	var maxX = opts.boxwidth - opts.btnSize;
+
+	if (opts.step > 0) {
+		var step = opts._step;
+		var distanceToMove = Math.abs(diffX);
+
+		var qz = Math.floor(x / step) * step;
+
+		if (distanceToMove > 1) {
+			x = isLeftOrRight(qz - step, x, qz + step, diffX);
+		}
+
+	}
+	
+	x = Math.max(Math.min(maxX,x),0)
+	
+	ele.setStyle({
+		'left': x + 'px'
+	})
+	ins.callMethod('setMoveChanges', {
+		x: x
+	})
+	
+	var bgNode = ins.selectComponent('.xSliderBg')
+	bgNode.setStyle({
+		'width': (x+4) + 'px',
+	})
+	return false
+}
+
+function mEnd(evt, ins) {
+	if (opts.disabled) return false;
+	ins.callMethod('setEnd')
+	return false
+}
+
+module.exports = {
+	mStart: mStart,
+	mMove: mMove,
+	mEnd: mEnd
+}

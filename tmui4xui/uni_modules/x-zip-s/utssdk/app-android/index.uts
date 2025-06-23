@@ -1,0 +1,102 @@
+
+import ArchiveEntry from "org.apache.commons.compress.archivers.ArchiveEntry";
+import ArchiveStreamFactory from "org.apache.commons.compress.archivers.ArchiveStreamFactory";
+import ZipArchiveInputStream from "org.apache.commons.compress.archivers.zip.ZipArchiveInputStream";
+import ZipArchiveEntry from "org.apache.commons.compress.archivers.zip.ZipArchiveEntry";
+import ZipArchiveOutputStream from "org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream";
+import IOUtils from "org.apache.commons.compress.utils.IOUtils";
+import File from "java.io.File";
+import FileOutputStream from "java.io.FileOutputStream";
+import IOException from "java.io.IOException";
+import InputStream from "java.io.InputStream";
+import ArchiveStreamProvider from 'org.apache.commons.compress.archivers.ArchiveStreamProvider'
+import URL from 'java.net.URL';
+import FileInputStream from 'java.io.FileInputStream';
+import BufferedInputStream from 'java.io.BufferedInputStream';
+import BufferedOutputStream from 'java.io.BufferedOutputStream';
+// import { FileManager } from "ZIPFoundation"
+import ArchiveInputStream from 'org.apache.commons.compress.archivers.ArchiveInputStream';
+import Deflater from 'java.util.zip.Deflater';
+
+function compressDirectoryToZipFile(rootDir : File,sourceDir : File,zipOut : ZipArchiveOutputStream) {
+	// 获取目录下的所有文件和子目录
+	let listfiles = sourceDir.listFiles();
+	if(listfiles==null) return;
+	listfiles.forEach(file => {
+		let relativePath = file.absolutePath.substring(rootDir.absolutePath.length + 1)
+		if (file.isDirectory) {
+			// 如果是目录，创建一个目录条目（以 "/" 结尾）
+			let dirEntry = new ZipArchiveEntry(relativePath + "/")
+			zipOut.putArchiveEntry(dirEntry)
+			zipOut.closeArchiveEntry()
+			// 递归压缩子目录
+			compressDirectoryToZipFile(rootDir, file, zipOut)
+		} else {
+			// 如果是文件，创建文件条目并写入内容
+			let fileEntry = new ZipArchiveEntry(relativePath)
+			zipOut.putArchiveEntry(fileEntry)
+			let bis = BufferedInputStream(FileInputStream(file));
+			let buffer = ByteArray(1024)
+			var len : Int = bis.read(buffer)
+			while (len != -1) {
+				zipOut.write(buffer, 0, len)
+				len = bis.read(buffer)
+			}
+			zipOut.closeArchiveEntry()
+		}
+	})
+
+
+}
+
+export const addZip = (path : string, target : string,callback:(path:string)=>void) => {
+	let sourceDirectory = new File(UTSAndroid.convert2AbsFullPath(path))
+	// 检查源目录是否存在
+	if (!sourceDirectory.exists() || !sourceDirectory.isDirectory) {
+		throw IllegalArgumentException("Source directory does not exist or is not a directory")
+	}
+	let fos = new FileOutputStream(UTSAndroid.convert2AbsFullPath(target))
+	let zipOut = ZipArchiveOutputStream(fos)
+	// 设置压缩方法
+	zipOut.setMethod(ZipArchiveOutputStream.DEFLATED)
+	zipOut.setLevel(Deflater.BEST_SPEED)
+	// 压缩目录
+	compressDirectoryToZipFile(sourceDirectory, sourceDirectory, zipOut)
+	callback(UTSAndroid.convert2AbsFullPath(target))
+}
+export const addZipAndSaveDisk = (path : string, filename : string, callback : (path : string) => void) => {
+
+}
+
+
+export const unZip = (path : string, target : string) => {
+	let failepath = UTSAndroid.convert2AbsFullPath(path)
+	let targetpath = UTSAndroid.convert2AbsFullPath(target)
+	let outputDir = new File(targetpath);
+	if (!outputDir.exists()) {
+		outputDir.mkdirs();
+	}
+	
+	let fis = new FileInputStream(failepath);
+	let zipIn = new ArchiveStreamFactory().createArchiveInputStream(ArchiveStreamFactory.ZIP, fis) as ZipArchiveInputStream
+	let entry = zipIn.getNextEntry();
+
+	while (entry != null) {
+		console.log(entry.getName())
+		let outputFile = new File(outputDir, entry.getName())
+		if (entry.isDirectory()) {
+			outputFile.mkdirs()
+		} else {
+			outputFile.parentFile?.mkdirs()
+			let bos = new BufferedOutputStream(FileOutputStream(outputFile))
+			let buffer = new ByteArray(1024)
+			var len : Int = zipIn.read(buffer)
+			while (len != -1) {
+				bos.write(buffer, 0, len);
+				len = zipIn.read(buffer)
+			}
+		}
+		entry = zipIn.getNextEntry();
+	}
+
+}

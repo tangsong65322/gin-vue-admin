@@ -1,0 +1,468 @@
+import Context from 'android.content.Context'
+import LinearLayout from 'android.widget.LinearLayout';
+import ViewGroup from 'android.view.ViewGroup';
+import View from 'android.view.View';
+import TextView from 'android.widget.TextView';
+import ImageView from 'android.widget.ImageView';
+import Gravity from 'android.view.Gravity';
+import Color from 'android.graphics.Color';
+import Activity from 'android.app.Activity';
+// import CardView from 'androidx.cardview.widget.CardView';
+import { ref, } from "vue"
+import TextUtils from 'android.text.TextUtils';
+import GradientDrawable from 'android.graphics.drawable.GradientDrawable'
+import MotionEvent from 'android.view.MotionEvent';
+import ColorStateList from 'android.content.res.ColorStateList';
+import attr from 'android.R.attr'
+import {hexToRgb,getDefaultColor} from "./xCoreColorUtil.uts"
+
+
+/**
+ * 随机一个uid
+ * @param rdix 随机因子
+ * @param length 取的长度
+ * @param isAddStr 是否限制随机结果中的长度,不允许输出长度
+ * @returns String
+ */
+function getUid(rdix = 1, length = 12) : string {
+	let ix = "";
+	// #ifndef APP
+	ix = Math.floor(Math.random() * rdix * Math.floor(Math.random() * Date.now())).toString().substring(0, length);
+	// #endif
+
+	// #ifdef APP
+	ix = Math.floor(Math.random() * rdix * Math.floor(Math.random() * Date.now())).toString().substring(0, length as Int);
+	// #endif
+	return ix;
+}
+
+class MyClickListener implements View.OnClickListener {
+	callbackFun:()=>void;
+	constructor(cal?:()=>void){
+		this.callbackFun = cal as ()=>void;
+	}
+	override  onClick(v?:View):void {
+		if(typeof this.callbackFun !='underfinde'){
+			this.callbackFun();
+		}
+	}
+}
+class MyTouchListener implements View.OnTouchListener {
+	//down,up,move,cancel,longClick
+	callbackFun:(types:string,event : MotionEvent,detail:UTSJSONObject)=>void;
+	dubleTime = 0;
+	tid = 56;
+	_x = 0;
+	_y = 0;
+	// 判断方向的差值
+	swipe_mindiff = 40
+	// 滑动时，一定时间内只能触发一次事件。不能连续触发。
+	tid_siper = 100;
+	swipeDirection = ""
+	constructor(call:(types:string,event : MotionEvent,detail?:UTSJSONObject)=>void) {
+		this.callbackFun = call;
+	}		
+	override onTouch(view : View, event : MotionEvent) : Boolean {
+		
+		if(event.action == MotionEvent.ACTION_DOWN ){
+			this._x = event.getX();
+			this._y = event.getY();
+			this.swipeDirection = ""
+			this.callbackFun('down',event,{});
+			let difftime = new Date().getTime() - this.dubleTime;
+			if(difftime >0 && difftime<=300){
+				this.callbackFun('doubleClick',event ,{});
+			}
+			this.dubleTime = new Date().getTime();
+			clearTimeout(this.tid)
+			tid = setTimeout(function() {
+				this.callbackFun('longPress',event,{});
+			}, 800);
+		}
+		if(event.action == MotionEvent.ACTION_UP ){
+			clearTimeout(this.tid)
+			this.callbackFun('up',event,{});
+			if(new Date().getTime() - this.dubleTime > 50){
+				this.callbackFun('click',event,{});
+			}
+		}
+		if(event.action == MotionEvent.ACTION_CANCEL || event.action== MotionEvent.ACTION_OUTSIDE ){
+			this.callbackFun('cancel',event,{});
+			clearTimeout(this.tid)
+			
+		}
+		
+		if(event.action == MotionEvent.ACTION_MOVE ){
+			let x = event.getX();
+			let y = event.getY();
+			let deltaX = Math.abs(x - this._x);
+			let deltaY = Math.abs(y - this._y);
+			if(deltaX > deltaY && deltaX > this.swipe_mindiff){
+				this.swipeDirection = (this._x > x) ? "left" : "right";
+			}else if(deltaY > deltaX && deltaY > this.swipe_mindiff){
+				this.swipeDirection = (this._y < y) ? "down" : "up";
+			}
+			if(this.swipeDirection !=""){
+				this.callbackFun('swiper',event,{x,y,diffX:deltaX,diffY:deltaY,direction:this.swipeDirection});
+			}
+			// this._x = x;
+			// this._y = y;
+			this.callbackFun('move',event,{});
+			clearTimeout(this.tid)
+		}
+		
+
+		return true;
+	}
+}
+	
+class xView {
+	public view : any;
+	public tagId:string = 'x_view_id_'+getUid();
+	public bgView:GradientDrawable
+	private _onclickFun= (_event : MotionEvent):void=>{};
+	private _onTouchStart= (_event : MotionEvent):void=>{};
+	private _onTouchEnd= (_event : MotionEvent):void=>{};
+	private _onTouchCancel= (_event : MotionEvent):void=>{};
+	private _onTouchMove= (_event : MotionEvent):void=>{};
+	private _onTouchLongPress= (_event : MotionEvent):void=>{};
+	private _onTouchDubleClick= (_event : MotionEvent):void=>{};
+	private _onTouchSwiper= (_event : MotionEvent,detail?:UTSJSONObject):void=>{};
+	// 设置禁用，不会触发上面的事件。
+	private _disabled = false;
+	constructor(context : Context) {
+		let view = new View(context);
+		
+		view.setTag(this.tagId)
+		let layoutParams_crd = new LinearLayout.LayoutParams(
+			ViewGroup.LayoutParams.MATCH_PARENT,
+			ViewGroup.LayoutParams.MATCH_PARENT
+		)
+		view.setLayoutParams(layoutParams_crd);
+		this.bgView = new GradientDrawable();
+		
+		// let statuesInts= [[attr.state_enabled].toKotlinList().toIntArray(),[attr.state_pressed].toKotlinList().toIntArray(),[-attr.state_enabled].toKotlinList().toIntArray()]
+		// let statuesColors= [Color.WHITE,Color.RED,Color.RED]
+		// let states = new ColorStateList(statuesInts.toKotlinList().toTypedArray(),statuesColors.toKotlinList().toIntArray())
+		
+		this.bgView.setShape(GradientDrawable.RECTANGLE)
+		this.bgView.setColor(Color.WHITE)
+		this.bgView.mutate()
+		view.setBackground(this.bgView)
+		
+		this.view = view;
+		
+		// view.setOnClickListener(new MyClickListener(():void=>{
+		// 	 this._onclickFun()
+		// }));
+		view.setOnTouchListener(new MyTouchListener((types:string,event : MotionEvent,detail?:UTSJSONObject):void=>{
+			
+			if(this._disabled == false){
+				if(types=='down'){
+					this._onTouchStart(event)
+				}
+				if(types=='up'){
+					this._onTouchEnd(event);
+				}
+				if(types=='click'){
+					this._onclickFun(event);
+				}
+				if(types=='move'){
+					this._onTouchMove(event)
+				}
+				if(types=='cancel'){
+					this._onTouchCancel(event)
+				}
+				if(types=='longPress'){
+					this._onTouchLongPress(event)
+				}
+				if(types=='doubleClick'){
+					this._onTouchDubleClick(event)
+				}
+				if(types=='swiper'){
+					this._onTouchSwiper(event,detail)
+				}
+			}
+		}));
+		
+		
+	}
+	getView():View{
+		return this.view as View;
+	}
+	setDisabled(dis:boolean) : xView{
+		this._disabled = dis;
+		return this;
+	}
+	
+	/** 
+	 * 触发距离是大于50时触发并判断方向
+	 * x,y当前坐标,diffX滑动时距离开始时按下的横向x距离，diffY表示竖向。Direction为方向：left,right,up,dowon
+	 *detail:
+	 *{x,y,diffX,diffY,direction} 
+	 */
+	setSwiper(fun?:(event: MotionEvent,detail?:UTSJSONObject)=>void) : xView{
+		if(typeof fun !== 'undefined'){
+			this._onTouchSwiper = fun;
+		}
+		return this;
+	}
+	setDoubleClick(fun?:(event: MotionEvent)=>void) : xView{
+		if(typeof fun !== 'undefined'){
+			this._onTouchDubleClick = fun;
+		}
+		return this;
+	}
+	setClick(fun?:(event: MotionEvent)=>void) : xView{
+		if(typeof fun !== 'undefined'){
+			this._onclickFun = fun;
+		}
+		return this;
+	}
+	setTouchStart(fun?:(event: MotionEvent)=>void) : xView{
+		if(typeof fun !== 'undefined'){
+			this._onTouchStart = fun;
+		}
+		return this;
+	}
+	setTouchMove(fun?:(event: MotionEvent)=>void) : xView{
+		if(typeof fun !== 'undefined'){
+			this._onTouchMove = fun;
+		}
+		return this;
+	}
+	setTouchEnd(fun?:(event: MotionEvent)=>void) : xView{
+		
+		if(typeof fun !== 'undefined'){
+			this._onTouchEnd = fun;
+		}
+		return this;
+	}
+	setTouchCancel(fun?:(event: MotionEvent)=>void) : xView{
+		if(typeof fun !== 'undefined'){
+			this._onTouchCancel = fun;
+		}
+		return this;
+	}
+	setTouchLongPress(fun?:(event: MotionEvent)=>void) : xView{
+		if(typeof fun !== 'undefined'){
+			this._onTouchLongPress = fun;
+		}
+		return this;
+	}
+	
+	
+	setBackgroundColor(colorStr : string) : xView {
+		this.bgView.mutate()
+		if(colorStr == 'transparent'){
+			this.bgView.setColor(Color.TRANSPARENT)
+		}else{
+			this.bgView.setColor(Color.parseColor(getDefaultColor(colorStr)))
+		}
+		
+		return this;
+	}
+	
+	setBorder(w?:number,colorStr?:string,dashed?:boolean) : xView {
+		this.bgView.mutate()
+		
+		let tw:number = 1;
+		let tcolor = 'transparent';
+		let tdashed = false;
+		if(typeof tw !== 'undefined'){
+			tw = w as number;
+		}
+		if(typeof tw !== 'undefined'){
+			tcolor = colorStr as string;
+		}
+		
+		if(typeof dashed !== 'undefined'){
+			tdashed = dashed as boolean;
+		}
+		
+		let colorNum = Color.TRANSPARENT;
+		if(tcolor != 'transparent'){
+			colorNum = Color.parseColor(getDefaultColor(tcolor));
+		}
+		if(dashed == true){
+			let dashedWidth = 8
+			let dashedGap = 5
+			this.bgView.setStroke(tw.toInt(),colorNum,dashedWidth.toFloat(),dashedGap.toFloat())
+		}else{
+			this.bgView.setStroke(tw.toInt(),colorNum)
+		}
+		
+		
+		return this;
+	}
+	setMargin(n:any):xView{
+		let view = this.view as View;
+		let selfPrams = view.getLayoutParams()
+		let params = new LinearLayout.LayoutParams(
+		    selfPrams.width,
+		    selfPrams.height
+		)
+		
+		if(Array.isArray(n)){
+			let rd = n as number[];
+			if(rd.length==0){
+				let rds = 0;
+				let rdf = (rds).toInt();
+				params.setMargins(rdf,rdf,rdf,rdf)
+			}else if(rd.length==1){
+				let rdf = (rd[0]).toInt();
+				params.setMargins(rdf,rdf,rdf,rdf)
+			}else if(rd.length==2){
+				let rds = 0;
+				params.setMargins((rd[0]).toInt(),(rd[1]).toInt(),(rd[0]).toInt(),(rd[1]).toInt())
+			}else if(rd.length==3){
+				let rds = 0;
+				let rdf = rds.toInt();
+				params.setMargins((rd[0]).toInt(),(rd[1]).toInt(),(rd[2]).toInt(),rdf)
+			}else if(rd.length==4){
+				params.setMargins((rd[0]).toInt(),(rd[1]).toInt(),(rd[2]).toInt(),(rd[3]).toInt())
+			}
+		}else{
+			
+			let rd = n as number;
+			let rdf = (rd).toInt();
+			params.setMargins(rdf,rdf,rdf,rdf)
+		}
+		
+		view.setLayoutParams(params);
+		return this;
+	}
+	
+	setPadding(n:any):xView{
+		let view = this.view as View;
+		if(Array.isArray(n)){
+			let rd = n as number[];
+			if(rd.length==0){
+				let rds = 0;
+				let rdf = (rds).toInt();
+				view.setPadding(rdf,rdf,rdf,rdf)
+			}else if(rd.length==1){
+				let rdf = (rd[0]).toInt();
+				view.setPadding(rdf,rdf,rdf,rdf)
+			}else if(rd.length==2){
+				view.setPadding((rd[0]).toInt(),(rd[1]).toInt(),(rd[0]).toInt(),(rd[1]).toInt())
+			}else if(rd.length==3){
+				let rds = 0;
+				let rdf = rds.toInt();
+				view.setPadding((rd[0]).toInt(),(rd[1]).toInt(),(rd[2]).toInt(),rdf)
+			}else if(rd.length==4){
+				view.setPadding((rd[0]).toInt(),(rd[1]).toInt(),(rd[2]).toInt(),(rd[3]).toInt())
+			}
+		}else{
+			
+			let rd = n as number;
+			let rdf = (rd).toInt();
+			view.setPadding(rdf,rdf,rdf,rdf)
+		}
+		
+		return this;
+	}
+	setRadius(radius:any) : xView{
+		let x =0
+		let y =0
+		this.bgView.mutate()
+		if(Array.isArray(radius)){
+			let rd = radius as number[];
+			if(rd.length==0){
+				let rdfs = 0;
+				this.bgView.setCornerRadius((rdfs).toFloat());
+				// view.setBackground(this.bgView)
+			}else if(rd.length==1){
+				let rdfs = rd[0];
+				this.bgView.setCornerRadius((rdfs).toFloat());
+				// view.setBackground(this.bgView)
+			}else if(rd.length==2){
+				let tl = [
+					(rd[0]).toFloat(),(rd[0]).toFloat(),
+					(rd[1]).toFloat(),(rd[1]).toFloat(),
+					x.toFloat(),x.toFloat(),
+					x.toFloat(),x.toFloat()
+				]
+				let tlint = tl.toKotlinList().toFloatArray()
+				this.bgView.setCornerRadii(tlint);
+			}else if(rd.length==3){
+				let tl = [
+					(rd[0]).toFloat(),(rd[0]).toFloat(),
+					(rd[1]).toFloat(),(rd[1]).toFloat(),
+					(rd[2]).toFloat(),(rd[2]).toFloat(),
+					x.toFloat(),x.toFloat()
+				]
+				let tlint = tl.toKotlinList().toFloatArray()
+				this.bgView.setCornerRadii(tlint);
+			}else if(rd.length==4){
+				let tl = [
+					(rd[0]).toFloat(),(rd[0]).toFloat(),
+					(rd[1]).toFloat(),(rd[1]).toFloat(),
+					(rd[2]).toFloat(),(rd[2]).toFloat(),
+					(rd[3]).toFloat(),(rd[3]).toFloat(),
+				]
+				let tlint = tl.toKotlinList().toFloatArray()
+				this.bgView.setCornerRadii(tlint);
+			}
+		}else{
+			
+			let rd = radius as number;
+			
+			this.bgView.setCornerRadius((rd).toFloat());
+		}
+		
+		
+		return this;
+	}
+	/** 设置当前宽和高为父级的相对宽和高
+	*w,h有效值为：auto|100%
+	*/
+	setSizeBy(w:string="100%",h:string = "auto"){
+		let view = this.view as View;
+		let ww = ViewGroup.LayoutParams.MATCH_PARENT;
+		let hh = ViewGroup.LayoutParams.MATCH_PARENT;
+		if(w=="auto"){
+			ww = ViewGroup.LayoutParams.WRAP_CONTENT
+		}
+		if(h=="auto"){
+			hh = ViewGroup.LayoutParams.WRAP_CONTENT
+		}
+		
+		let layoutParams_crd = new LinearLayout.LayoutParams(ww,hh)
+		view.setLayoutParams(layoutParams_crd);
+	}
+	setSize(width : number, height : number) : xView {
+		let view = this.view as View;
+		let layoutParams_crd = new LinearLayout.LayoutParams(
+			(width).toInt(),
+			(height).toInt()
+		)
+		view.setLayoutParams(layoutParams_crd);
+		return this;
+	}
+	setWidth(width : number) : xView {
+		let view = this.view as View;
+		let lpar = view.getLayoutParams();
+		let layoutParams_crd = new LinearLayout.LayoutParams(
+			(width).toInt(),
+			(lpar.height).toInt(),
+		)
+		view.setLayoutParams(layoutParams_crd);
+		return this;
+	}
+	setHeight(height : number) : xView {
+		let view = this.view as View;
+		let lpar = view.getLayoutParams();
+		let layoutParams_crd = new LinearLayout.LayoutParams(
+			(lpar.width).toInt(),
+			(height).toInt(),
+		)
+		view.setLayoutParams(layoutParams_crd);
+		return this;
+	}
+	
+	
+	
+}
+
+export default xView;

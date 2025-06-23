@@ -1,0 +1,303 @@
+<script lang="ts">
+	import { type PropType } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+
+	type TIME_OBJ = {
+		ms : string,
+		ss : string,
+		mm : string,
+		hh : string,
+		dd : string,
+		format : string
+	}
+
+	/**
+	 * 
+	 * @name 倒计时 xCountdown
+	 * @description 倒计时，可以精确到秒，毫秒,记住
+	 * @page /pages/index/countdown
+	 * @category 展示组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				interval: 0,
+				// initial,running,paused,finished
+				status: "initial" as "initial" | "running" | "paused" | "finished",
+				totalTime: 0,
+				timeidLasttime:"tmCountdownId"
+			}
+		},
+		emits: [
+			/**
+			 * 时间变化时触发
+			 * @param {number} time - 当前剩余的时间
+			 */
+			"change",
+			/**
+			 * 暂停时触发
+			 */
+			'pause', 
+			/**
+			 * 开始时触发
+			 */
+			'start', 
+			/**
+			 * 结束时触发
+			 */
+			'complete'],
+		props: {
+			/**
+			 * 
+			 */
+			time: {
+				type: Number,
+				default: 0
+			},
+			/**
+			 * 指令，通过变动此值来达到暂停，开始，结束的功能。
+			 * 以代替ref方法的使用，会更多方便。
+			 * 请使用v-model:actions="xx"来控制方法
+			 */
+			actions: {
+				type: String as PropType<"pause" | "play" | "reset">,
+				default: ""
+			},
+			/**
+			 * 显示格式
+			 * DD天，HH时，MM分，SS秒，MS毫秒
+			 */
+			format: {
+				type: String,
+				default: "DD天HH时MM分SS秒"
+			},
+			autoStart: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 以秒还是毫秒为单位到计时。
+			 * ss|ms
+			 */
+			unit: {
+				type: String as PropType<"ss" | "ms">,
+				default: "ss"
+			},
+			/**
+			 * 文本大小
+			 */
+			fontSize: {
+				type: String,
+				default: "16"
+			},
+			/**
+			 * 文本颜色
+			 */
+			color: {
+				type: String,
+				default: "#333333"
+			},
+			/**
+			 * 是否使用验证码模式
+			 * 启用后,整个应用不管你用了多少个此组件,倒计时都是共用的
+			 * 直到结束某一个结束,其它的才可以启用,这样可以保证,任何时候切换页面验证发送
+			 * 都能保证在60秒内的间隔,防止刷验证码.
+			 */
+			captcha: {
+				type: Boolean,
+				default: false
+			}
+		},
+		watch: {
+			time() {
+				this.reset();
+			},
+			actions() {
+				if (this.actions == 'reset') {
+					this.reset();
+				} else if (this.actions == 'play') {
+					this.start();
+				} else if (this.actions == 'pause') {
+					this.pause();
+				}
+			}
+		},
+		mounted() {
+			this.totalTime = this._time;
+			if(this.captcha){
+				const oldTime = uni.getStorageSync("timeidLasttime")
+				if(oldTime != null && typeof oldTime == 'number'){
+					if(oldTime>0){
+						this.totalTime = oldTime;
+						this.start();
+						return;
+					}
+				}
+				
+			}
+			if (this.autoStart) {
+				this.start();
+			}
+		},
+		beforeUnmount() {
+			clearInterval(this.interval);
+			if(this.status=='running'||this.status=='paused'){
+				this.setCactcha()
+			}
+		},
+		computed: {
+			_label() : TIME_OBJ {
+				return this.displayTime();
+			},
+			_time() : number {
+				return this.time;
+			},
+			_color() : string {
+				return getDefaultColor(this.color)
+			},
+			_fontSize() : string {
+				return checkIsCssUnit(this.fontSize, xConfig.unit)
+			},
+		},
+		methods: {
+			setCactcha(){
+				if(!this.captcha) return;
+				uni.setStorageSync("timeidLasttime",this.totalTime )
+			},
+			/**
+			 * 开始
+			 * @public
+			 */
+			start() {
+				let intms = this.unit == "ss" ? 1000 : 16
+				if (this.status === "initial" || this.status === "paused") {
+					this.status = "running";
+					/**
+					 * 开始时触发
+					 */
+					this.$emit("start")
+					let t = this;
+					this.setCactcha()
+					this.interval = setInterval(() => {
+						t.totalTime -= intms;
+						if(t.captcha){
+							uni.setStorageSync("timeidLasttime",t.totalTime )
+						}
+						/**
+						 * 时间变化时触发
+						 * @param time {number} 当前剩余的时间
+						 */
+						t.$emit("change", t.totalTime)
+						if (t.totalTime < 0) {
+							t.totalTime = 0
+							if(t.captcha){
+								uni.setStorageSync("timeidLasttime",t.totalTime )
+							}
+							clearInterval(t.interval);
+							t.status = "finished"; // 倒计时结束
+							/**
+							 * 结束时触发
+							 */
+							t.$emit("complete")
+
+							return;
+						}
+					}, intms);
+				}
+			},
+			/**
+			 * 暂停
+			 * @public
+			 */
+			pause() {
+				if (this.status === "running") {
+					clearInterval(this.interval);
+					this.status = "paused"; // 暂停倒计时
+					this.setCactcha()
+					/**
+					 * 暂停时触发
+					 */
+					this.$emit("pause")
+				}
+			},
+			/**
+			 * 重置
+			 * @public
+			 */
+			reset() {
+				clearInterval(this.interval);
+				this.status = "initial"; // 重置倒计时为未开始状态
+				this.totalTime = this._time
+				if(this.captcha){
+					uni.setStorageSync("timeidLasttime",0 )
+				}
+			},
+			/**
+			 * 获取当前运行状态
+			 * @public
+			 */
+			getStatus():string{
+				return this.status
+			},
+			displayTime() : TIME_OBJ {
+				let milliseconds = this.totalTime;
+				let seconds = Math.floor(milliseconds / 1000);
+				let minutes = Math.floor(seconds / 60);
+				let hours = Math.floor(minutes / 60);
+				let days = Math.floor(hours / 24);
+
+				milliseconds %= 1000;
+				seconds %= 60;
+				minutes %= 60;
+				hours %= 24;
+				let day_str = days < 10 ? "0" + days.toString() : days.toString()
+				let hours_str = hours < 10 ? "0" + hours.toString() : hours.toString()
+				let minutes_str = minutes < 10 ? "0" + minutes.toString() : minutes.toString()
+				let seconds_str = seconds < 10 ? "0" + seconds.toString() : seconds.toString()
+				let milliseconds_str = milliseconds < 10 ? "0" + milliseconds.toString() : milliseconds.toString()
+				let formattedTime = this.format.replace("DD", day_str)
+				formattedTime = formattedTime.replace("HH", hours_str)
+				formattedTime = formattedTime.replace("MM", minutes_str)
+				formattedTime = formattedTime.replace("SS", seconds_str)
+				formattedTime = formattedTime.replace("MS", milliseconds_str)
+
+				return {
+					ms: milliseconds_str,
+					ss: seconds_str,
+					mm: minutes_str,
+					hh: hours_str,
+					dd: day_str,
+					format: formattedTime
+				} as TIME_OBJ;
+			}
+		}
+	}
+</script>
+<template>
+	<view>
+		<!-- 
+		 @slot 插槽
+		 @prop {string} status - 状态值可能为："initial" | "running" | "paused" | "finished"
+		 @prop {number} time - 当前剩余的时间：单位为毫秒
+		 @prop {number} label - 当前被属性format格式化后的文本
+		 @prop {number} ms - 剩余的毫秒数
+		 @prop {number} ss - 剩余的秒数
+		 @prop {number} mm - 剩余的分钟
+		 @prop {number} hh - 剩余的小时
+		 @prop {number} dd - 剩余的天数
+		 -->
+		<slot :status="status" :time="totalTime" :label="_label.format" :ms="_label.ms" :ss="_label.ss" :mm="_label.mm"
+			:hh="_label.hh" :dd="_label.dd">
+			<text :style="{color:_color,fontSize:_fontSize}">{{_label.format}}</text>
+		</slot>
+	</view>
+</template>
+<style scoped>
+</style>

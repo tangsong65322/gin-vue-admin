@@ -1,0 +1,51 @@
+import MediaPlayer from "android.media.MediaPlayer"
+import File from 'java.io.File';
+import FileOutputStream from 'java.io.FileOutputStream';
+export class xAudio {
+	audio:MediaPlayer;
+	constructor(){
+		this.audio = new MediaPlayer();
+	}
+	play(src:string){
+		
+		
+		this.audio.stop();
+		this.audio.release()
+		this.audio = new MediaPlayer();
+		let assetManager = UTSAndroid.getAppContext()!.getAssets();
+		// 加载free.mp3 资源
+		const listAssets = assetManager.list("");
+		let filename = src+".mp3";
+		let isExites = listAssets?.contains(filename)??false
+		
+		if(!isExites) return;
+		let afd = assetManager.openFd(filename);
+		try {
+			// 使用android 自带的媒体组件进行播放
+			let mediaPlayer = this.audio;
+			mediaPlayer.setDataSource(afd.getFileDescriptor(),afd.getStartOffset(), afd.getLength());
+			mediaPlayer.prepare();
+			mediaPlayer.start();
+			class audioCompleted implements MediaPlayer.OnCompletionListener{
+				override onCompletion(m:MediaPlayer|null){
+					// if(m!=null){
+					// 	m.release()
+					// }
+				} 
+			}
+			mediaPlayer.setOnCompletionListener(new audioCompleted())
+		} catch (e: Exception) {
+			console.log("AudioPlayer", "Error setting data source: ",e)
+		
+		} finally {
+			// 确保关闭文件描述符
+			afd.close()
+		}
+	}
+	stop(){
+		// this.audio.stop();
+	}
+	destory(){
+		// this.audio.release()
+	}
+}

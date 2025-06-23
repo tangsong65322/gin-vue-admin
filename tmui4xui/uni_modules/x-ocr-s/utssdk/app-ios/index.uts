@@ -1,0 +1,222 @@
+import {ChineseTextRecognizerOptions,JapaneseTextRecognizerOptions,TextRecognizer,VisionImage,TextBlock,Text} from "MLKit"
+import * as UIKit from "UIKit"
+import { UIAlertController , UIAlertAction , UITextField,UIImage } from "UIKit"
+import { UTSiOS } from "DCloudUTSFoundation"
+import {String} from "Swift"
+import { PHPhotoLibrary } from "Photos"
+import { CGPoint , CGRect } from 'CoreFoundation';
+
+
+/**
+* 从相册/相机中选取图片进行识别
+* @param callback {(string[],string[])=>{}} 回调参数:第一个是识别的文本数组,第二个是源数据{boundingBox:[x,y,width,height],text:elementText}[]字符串,需要JSON.pare,携带了坐标等详细资料
+* @param language {string} 需要识别的语言 zh中文,ja日文
+*/
+export function chooseImageBuilder(callback:(str:string[],source:string[])=>void,langs:string|null){
+	// 置信度
+	let zxd = 0.50
+	let local = 'zh'
+	if(langs=='ja'){
+		local = 'ja'
+	}
+	uni.chooseImage({
+		count: 1,
+		success:(evt : ChooseImageSuccess)=> {
+			uni.showLoading({title:'...',mask:true})
+			let chineseOptions = new ChineseTextRecognizerOptions()
+			
+			let chineseTextRecognizer = TextRecognizer.textRecognizer(options=chineseOptions)
+			if(local == 'ja'){
+				chineseTextRecognizer = TextRecognizer.textRecognizer(options=new JapaneseTextRecognizerOptions())
+			}
+			if (evt.tempFilePaths.length > 0) {
+				let imgs = evt.tempFilePaths[0] as string;
+				try {
+					let realImgPath = UTSiOS.convert2AbsFullPath(imgs)
+					
+					let img = new UIImage(contentsOfFile = realImgPath);
+					if(img!=null){
+						let image = new VisionImage(image = img!); 
+						chineseTextRecognizer.process(image as VisionImage,completion=(TextList,error)=>{
+							if(error!=null||TextList==null){
+								uni.hideLoading()
+								uni.showToast({title:"失败",icon:'none'})
+								return;
+							}
+							let str = [] as string[]
+							let sour = [] as string[]
+							for(block in TextList!.blocks){
+								let lines = block.lines
+								if(lines!=null){
+									for(line in lines) {
+										let elements = line.elements
+										
+										if(elements!=null){
+											let texts = ''
+											for(element in elements) {
+											    let elementText = element.text;
+												let rect = element.frame as CGRect
+												let elementFrame = [rect.origin.x,rect.origin.y,rect.size.width,rect.size.height] as number[]
+												sour.push(JSON.stringify({boundingBox:elementFrame,text:elementText})!)
+												texts+=elementText
+											}
+											if(texts!=''){
+												str.push(texts)
+											}
+										}
+									    
+									}
+								}
+								
+							}
+							uni.hideLoading()
+							callback(str as string[],sour)
+						})
+						
+					}
+					
+				} catch (e) {
+					console.warn("图片选择失败")
+					uni.hideLoading()
+					callback([] as string[],[] as string[])
+					
+				}
+			}
+		},
+		fail() {
+			console.warn("图片选择失败")
+			uni.showToast({title:"图片选择失败",icon:'none'})
+			callback([] as string[],[] as string[])
+		}
+	})
+	
+}
+/**
+* 从相册/相机中选取图片进行识别
+* @param url {string} 图片地址.
+* @param callback {(string[],string[])=>{}} 回调参数:第一个是识别的文本数组,第二个是源数据{boundingBox:[x,y,width,height],text:elementText}[]字符串,需要JSON.pare,携带了坐标等详细资料
+* @param language {string} 需要识别的语言 zh中文,ja日文
+*/
+export function  downloadUrlImageBuilder(url : string,callback:(str:string[],source:string[])=>void,langs:string|null){
+	uni.showLoading({title:'...',mask:true})
+	let local = langs == null?'zh':(langs! as string)
+	uni.downloadFile({
+		url,
+		success:(evt)=> {
+			let chineseOptions = new ChineseTextRecognizerOptions()
+			let chineseTextRecognizer = TextRecognizer.textRecognizer(options=chineseOptions)
+			
+			if(local == 'ja'){
+				chineseTextRecognizer = TextRecognizer.textRecognizer(options=new JapaneseTextRecognizerOptions())
+			}
+			let imgs = evt.tempFilePath as string;
+			
+			try {
+				let realImgPath = UTSiOS.convert2AbsFullPath(imgs)
+				let img = new UIImage(contentsOfFile = realImgPath);
+			
+				if(img!=null){
+					let image = new VisionImage(image = img!); 
+					chineseTextRecognizer.process(image as VisionImage,completion=(TextList,error)=>{
+						if(error!=null||TextList==null){
+							uni.hideLoading()
+							uni.showToast({title:"失败",icon:'none'})
+							return;
+						}
+						let str = [] as string[]
+						let sour = [] as string[]
+						for(block in TextList!.blocks){
+							let lines = block.lines
+							if(lines!=null){
+								for(line in lines) {
+									let elements = line.elements
+									if(elements!=null){
+										let texts = ''
+										for(element in elements) {
+										    let elementText = element.text;
+										    let rect = element.frame as CGRect
+											let elementFrame = [rect.origin.x,rect.origin.y,rect.size.width,rect.size.height] as number[]
+											sour.push(JSON.stringify({boundingBox:elementFrame,text:elementText})!)
+											
+											texts+=elementText
+										}
+										if(texts!=''){
+											str.push(texts)
+										}
+									}
+								    
+								}
+							}
+							
+						}
+						uni.hideLoading()
+						callback(str as string[],sour)
+					})
+					
+				}
+				
+			} catch (e) {
+				console.warn("下载失败")
+				uni.hideLoading()
+				uni.showToast({title:"下载失败",icon:'none'})
+				callback([] as string[],[] as string[])
+			}
+	
+		},
+		fail() {
+			uni.hideLoading()
+			uni.showToast({title:"下载失败",icon:'none'})
+			callback([] as string[],[] as string[])
+		}
+	})
+}
+export function localFilePathImageBuilder(pathfile : string,callback:(str:string[],source:string[])=>void,langs:string|null){
+	let local = langs == null?'zh':(langs! as string)
+	let chineseOptions = new ChineseTextRecognizerOptions()
+	let chineseTextRecognizer = TextRecognizer.textRecognizer(options=chineseOptions)
+	
+	if(local == 'ja'){
+		chineseTextRecognizer = TextRecognizer.textRecognizer(options=new JapaneseTextRecognizerOptions())
+	}
+	let realImgPath = UTSiOS.convert2AbsFullPath(pathfile)
+	let img = new UIImage(contentsOfFile = realImgPath);
+		
+	if(img!=null){
+		let image = new VisionImage(image = img!); 
+		chineseTextRecognizer.process(image as VisionImage,completion=(TextList,error)=>{
+			if(error!=null||TextList==null){
+				callback([] as string[],[] as string[])
+				return;
+			}
+			let str = [] as string[]
+			let sour = [] as string[]
+			for(block in TextList!.blocks){
+				let lines = block.lines
+				if(lines!=null){
+					for(line in lines) {
+						let elements = line.elements
+						if(elements!=null){
+							let texts = ''
+							for(element in elements) {
+							    let elementText = element.text;
+							    let rect = element.frame as CGRect
+								let elementFrame = [rect.origin.x,rect.origin.y,rect.size.width,rect.size.height] as number[]
+								sour.push(JSON.stringify({boundingBox:elementFrame,text:elementText})!)
+								
+								texts+=elementText
+							}
+							if(texts!=''){
+								str.push(texts)
+							}
+						}
+					    
+					}
+				}
+				
+			}
+			callback(str as string[],sour)
+		})
+		
+	}
+	
+}

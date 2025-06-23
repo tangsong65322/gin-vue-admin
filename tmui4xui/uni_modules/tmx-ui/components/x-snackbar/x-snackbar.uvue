@@ -1,0 +1,209 @@
+<script lang="ts">
+	import { checkIsCssUnit, getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor, colorAddDeepen } from "../../core/util/xCoreColorUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { SNACKBAR_INFO, SNACKBAR_ITEM } from '../../interface.uts';
+	import { PropType } from "vue";
+
+	/**
+	 * @name 消息条 xSnackbar
+	 * @description 消息条是可以在上方或者正文累加显示，新的消息在旧的前面。而不会只显示一条，会自动消失。支持6个方向的弹出
+	 * @page /pages/index/snackbar
+	 * @category 反馈组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+
+		data() {
+			return {
+				_width: 0,
+				_height: '100%',
+				windowTop: 0,
+				/** 缓存历史记录消息条。 */
+				list: [] as SNACKBAR_ITEM[]
+			}
+		},
+		props: {
+			/**
+			 * 距离顶/底的偏移量。
+			 */
+			offset: {
+				type: String,
+				default: '12px'
+			},
+			/**
+			 * 是否让消息条横屏占满，默认是根据内容自动宽。
+			 */
+			block: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 消息数据
+			 * 注意，id一定要提供且是数字，可以随意，只要相对上一次变更下，就会触发
+			 * 显示新的消息条。这种显示的方式就是避免你们引用ref方式来调用方法，相对更简单。
+			 */
+			content: {
+				type: Object as PropType<SNACKBAR_INFO>,
+				default: () : SNACKBAR_INFO => {
+					return {
+						background: "",
+						color: "",
+						fontSize: "",
+						content: "",
+						id: -1,
+						icon: ""
+					} as SNACKBAR_INFO
+				}
+			},
+			/**
+			 * 多少毫秒后销毁
+			 */
+			duration: {
+				type: Number,
+				default: 2500,
+			},
+			/**
+			 * 出现的位置
+			 * top:正上方
+			 * top-left:左上方
+			 * top-right:右上角
+			 * bottom-right:右下角
+			 * bottom-left:左下角
+			 * bottom:正下方
+			 */
+			position:{
+				type:String,
+				default:'bottom'
+			}
+		},
+
+		watch: {
+			content: {
+				deep: true,
+				handler(newValue : SNACKBAR_INFO, oldValue : SNACKBAR_INFO) {
+					if (newValue.id != -1 && oldValue.id != newValue.id && newValue.content != '') {
+						this.setListContent(newValue)
+					}
+				}
+			}
+		},
+		mounted() {
+			let sys = uni.getWindowInfo()
+			// #ifdef WEB
+			this._width = sys.windowWidth
+			this.windowTop = sys.windowTop;
+			this._height = `calc(100% - ${sys.windowTop}px)`;
+			
+			// #endif
+			// #ifdef APP
+			this._width = sys.windowWidth
+			this._height = '100%';
+			// #endif
+		},
+		beforeUnmount() {
+			this.list = [] as SNACKBAR_ITEM[]
+		},
+		computed: {
+			_offset() : string {
+				let lt = checkIsCssUnit(this.offset, 'rpx');
+				if (this.position.indexOf('top')>-1) return 'top:' + lt
+				return 'bottom:' + lt
+			},
+			_block() : string {
+				return 'flex:' + (this.block ? '1' : 'none')
+			},
+			_position():string{
+				let pos = new Map<string,string>([
+					['top','xSnackbarTop'],
+					['top-left','xSnackbarTopLeft'],
+					['top-right','xSnackbarTopRight'],
+					['bottom','xSnackbarBottom'],
+					['bottom-left','xSnackbarBottomLeft'],
+					['bottom-right','xSnackbarBottomRight']
+				])
+				let realposClass = pos.get(this.position);
+				return realposClass==null?'xSnackbarBottom':(realposClass!)
+			}
+		},
+		methods: {
+			setListContent(item : SNACKBAR_INFO) {
+				this.list.unshift({
+					id: item.id,
+					content: item.content,
+					fontSize: item.fontSize != null ? (item.fontSize as string) : "14px",
+					background: item.background != null ? (item.background as string) : "black",
+					color: item.color != null ? (item.color as string) : "white",
+					icon: item.icon != null ? (item.icon as string) : "information-line",
+				} as SNACKBAR_ITEM)
+
+			},
+			itemClose(index : number) {
+				this.list.splice(index, 1)
+			}
+		}
+	}
+</script>
+<template>
+
+	<view v-if="list.length>0" class="x-snackbar" :class="[_position]"
+		:style="{top:windowTop+'px',width:'100%',height:_height}">
+		<view class="xSnackbarBox" :style="[_offset,_block]">
+			<x-snackbar-item :duration="duration" class="xSnackbarBoxITEMS_OTYPE" :key-index="index" @close="itemClose(index)"
+				v-for="(item,index) in list" :key="item.id" :content="item"></x-snackbar-item>
+		</view>
+	</view>
+</template>
+<style scoped>
+	.x-snackbar {
+		pointer-events: none;
+		position: fixed;
+		left: 0;
+		top: 0;
+		background-color: transparent;
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		z-index: 5;
+	}
+
+	.xSnackbarBoxITEMS_OTYPE {
+		pointer-events: auto;
+	}
+
+	.xSnackbarBox {
+		margin-right: 16px;
+		margin-left: 16px;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+
+	}
+
+	.xSnackbarTop {
+		align-items: flex-start;
+	}
+	.xSnackbarTopLeft {
+		align-items: flex-start;
+		justify-content: flex-start;
+	}
+	.xSnackbarTopRight {
+		align-items: flex-start;
+		justify-content: flex-end;
+	}
+
+	.xSnackbarBottom {
+		align-items: flex-end;
+	}
+	.xSnackbarBottomLeft {
+		align-items: flex-end;
+		justify-content: flex-start;
+	}
+	.xSnackbarBottomRight {
+		align-items: flex-end;
+		justify-content: flex-end;
+	}
+</style>

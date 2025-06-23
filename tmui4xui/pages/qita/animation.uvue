@@ -1,0 +1,85 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">动画 Animation</x-text>
+			<x-text color="#999999">
+				autoPlay允许自动播放，revert允许让动画类似toogle，即动画反转切换播放。如果设置为false将不会轮流播放，而是一次性的从头开始。
+				由于uniapp
+				x通过ref执行组件方法比较麻烦需要as类型还要取refs,非常不方便。因此我创意的通过设置control来执行动画，默认为default，播放期间始终会被设置为play，结束会自动设置会default，然后你通过v-model:control来读取设置play来控制播放。比使用ref方法更为方便。
+			</x-text>
+		</x-sheet>
+
+		<x-sheet >
+			<x-picker :list="list" v-model="aniIndex" v-model:model-str="animationName">
+				<x-cell title="选择效果" :label="animationName" :card="false"></x-cell>
+			</x-picker>
+			<view style="overflow: hidden;">
+				<x-animation :autoPlay="true" :name="animationName" v-model:control="control" >
+					<view
+						style="width:100%;height: 100px;background-color: #81be26;padding:32rpx;margin-bottom: 20px;">
+						<text style="color: white;font-size:18px">{{animationName}}</text>
+					</view>
+				</x-animation>
+			</view>
+			<x-button :block="true" @click="control='play'" size="normal">播放动画</x-button>
+		</x-sheet>
+		
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b">应用到 实际 场景中</x-text>
+		</x-sheet>
+		<view class="mx-16 round-10">
+			<x-animation :auto-play="true" name="leftIn" :duration="700" ease="easeInOutBack">
+				<x-cell :bottomBorderInsert="true" :card="false" url="/pages/index/button" icon="apps-line"
+					desc="UTS版本tmui组件库,高质量库" title="常见组件库"></x-cell>
+				<x-cell :bottomBorderInsert="true" :card="false" url="/pages/index/icon" icon="price-tag-3-line"
+					label="+￥32" label-color="red" icon-color="red"></x-cell>
+				<x-cell :bottomBorderInsert="true" :card="false" icon="chat-smile-2-line" url="/pages/index/tag"
+					label="tmx测试" icon-color="orange"></x-cell>
+				<x-cell :bottomBorderInsert="true" :card="false" :show-bottom-border="false" icon="chat-smile-2-line"
+					url="/pages/index/tag" label="tmx测试" icon-color="orange"></x-cell>
+			</x-animation>
+		</view>
+		<view style="height:50px"></view>
+
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script lang="uts">
+	import {PICKER_ITEM_INFO} from "@/uni_modules/tmx-ui/interface.uts"
+	export default {
+		data() {
+			return {
+				animationName:'fadeIn',
+				control: 'default',
+				aniIndex:['0'] as string[],
+				list:[
+					{title:"fadeIn"} as PICKER_ITEM_INFO,
+					{title:"fadeOut"} as PICKER_ITEM_INFO,
+					{title:"zoomIn"} as PICKER_ITEM_INFO,
+					{title:"zoomOut"} as PICKER_ITEM_INFO,
+					{title:"leftIn"} as PICKER_ITEM_INFO,
+					{title:"leftOut"} as PICKER_ITEM_INFO,
+					{title:"rightIn"} as PICKER_ITEM_INFO,
+					{title:"rightOut"} as PICKER_ITEM_INFO,
+					{title:"topIn"} as PICKER_ITEM_INFO,
+					{title:"topOut"} as PICKER_ITEM_INFO,
+					{title:"bottomIn"} as PICKER_ITEM_INFO,
+					{title:"bottomOut"} as PICKER_ITEM_INFO,
+				] as PICKER_ITEM_INFO[]
+			};
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

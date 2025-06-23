@@ -1,0 +1,87 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+		<!-- #ifdef MP-WEIXIN -->
+		<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+			<navigation-bar :background-color="xThemeConfigNavBgColor"
+				:front-color="xThemeConfigNavFontColor"></navigation-bar>
+		</page-meta>
+		<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">原生动画 xAnimationS</x-text>
+			<x-text color="#999999">
+				这是原生高质量动画插件,不是css style动画,有3d动画,有生命周期回调,对于想实现极致性能要求动画时,非常有效!.
+				注意:ios 3d翻转,角度只能是0-180之间,如果想翻转360需要自行分段先执行0-180,再执行180-0
+			</x-text>
+		</x-sheet>
+		<x-sheet id="xta">
+			<view>
+				<x-cell url="xcrypto" title="加密"></x-cell>
+				<x-cell url="other" title="杂项插件"></x-cell>
+				<x-cell url="xtips" title="消息提示"></x-cell>
+				<x-cell url="screenshot" title="屏幕截图"></x-cell>
+				<x-cell url="clipboard" title="剪切板"></x-cell>
+			</view>
+		</x-sheet>
+
+		<x-sheet>
+			<view class="flex flex-row flex-row-center-between mb-20">
+				<x-button class="flex-1" @click="scalex">缩放</x-button>
+				<x-button class="ml-16 flex-1" @click="flipx">3d翻转</x-button>
+			</view>
+			<view class="flex flex-row flex-row-center-between mb-20">
+				<x-button class="flex-1" @click="translatel">左移100</x-button>
+				<x-button class="ml-16 flex-1" @click="translater">右移100</x-button>
+			</view>
+			<view class="flex flex-row flex-row-center-between">
+				<x-button class="flex-1" @click="rotate">旋转360</x-button>
+				<x-button class="ml-16 flex-1" @click="rotate2">旋转180</x-button>
+			</view>
+
+		</x-sheet>
+
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script setup>
+	// const xdAnimationDom = ref<XdAnimationComponentPublicInstance|null>(null)
+	import { xAnimationS, XDANIMATION_FLIP3D_OPTIONS, XDANIMATION_TRANSLATE_OPTIONS, XDANIMATION_ROTATE_OPTIONS, XDANIMATION_SCALE_OPTIONS } from '@/uni_modules/x-animation-s';
+
+	const flipx = () => {
+		// xAnimationS.scale({ ele: uni.getElementById("xta"),duration:150} as XDANIMATION_SCALE_OPTIONS)
+		// #ifdef APP-IOS
+		xAnimationS.flip3D({
+
+			ele: uni.getElementById("xta"), deg: 180, from: 0, duration: 500, end: () => {
+				xAnimationS.flip3D({ ele: uni.getElementById("xta"), deg: 0, from: 180, duration: 500 } as XDANIMATION_FLIP3D_OPTIONS)
+			}
+
+		} as XDANIMATION_FLIP3D_OPTIONS)
+		// #endif
+		// #ifndef APP-IOS
+		xAnimationS.flip3D({ ele: uni.getElementById("xta"), deg: 360, from: 0, duration: 1000 } as XDANIMATION_FLIP3D_OPTIONS)
+		// #endif
+	}
+	const scalex = () => {
+		xAnimationS.scale({ ele: uni.getElementById("xta"), duration: 320, direction: 2, from: 0.6, scale: 1 } as XDANIMATION_SCALE_OPTIONS)
+	}
+	const translatel = () => {
+		xAnimationS.translate({ ele: uni.getElementById("xta"), duration: 320, translation: 0, from: 0, len: -100 } as XDANIMATION_TRANSLATE_OPTIONS)
+	}
+	const translater = () => {
+		xAnimationS.translate({ ele: uni.getElementById("xta"), duration: 320, translation: 0, from: -100, len: 0 } as XDANIMATION_TRANSLATE_OPTIONS)
+	}
+	const rotate = () => {
+		xAnimationS.rotate({ ele: uni.getElementById("xta") } as XDANIMATION_ROTATE_OPTIONS)
+	}
+	const rotate2 = () => {
+		xAnimationS.rotate({ ele: uni.getElementById("xta"), from: 180, deg: -180 } as XDANIMATION_ROTATE_OPTIONS)
+	}
+</script>
+
+<style>
+
+</style>

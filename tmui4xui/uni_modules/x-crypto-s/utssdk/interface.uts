@@ -1,0 +1,21 @@
+export type  SQLiteConfig = {
+	password?: string;
+	encryption?: boolean;
+	locateFile?: (filename: string) => string;
+}
+
+export type SQLiteResult = {
+	rows?: any[][];
+	columns?: string[];
+	changes?: number;
+	lastInsertRowid?: number;
+	error?: string;
+}
+export type SQLiteExecuteBatchParams = {
+	sql:string,
+	params?:any[]
+}
+export type RSARANDOMKEY = {
+	publicKey: string,
+	privateKey: string
+}

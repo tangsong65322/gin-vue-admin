@@ -1,0 +1,8 @@
+export function setWindowGrey(ele:UniElement) {
+	ele.style.setProperty('filter', 'grayscale(1)')
+}
+export function removeWindowGrey(ele:UniElement) {
+	// ele.style.removeProperty('filter')
+	ele.style.setProperty('filter', 'none')
+	
+}

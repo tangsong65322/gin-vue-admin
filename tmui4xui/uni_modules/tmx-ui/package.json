@@ -1,0 +1,103 @@
+{
+  "id": "tmx-ui",
+  "displayName": "TM-UI-4.0原生应用开发解决方案套装【官方赛事一等奖排名第一】",
+  "version": "1.1.14",
+  "description": "高质量uniappx UI组件库,原生Uts插件，原生组件基类,让开发原生级应用流畅性高度保持一致",
+  "keywords": [
+    "ios,uts,uvue,tmui4.0"
+],
+  "repository": "",
+  "engines": {
+    "HBuilderX": "^4.55",
+    "uni-app": "",
+    "uni-app-x": "^4.71"
+  },
+  "dcloudext": {
+    "type": "component-uts",
+    "sale": {
+      "regular": {
+        "price": "549.00"
+      },
+      "sourcecode": {
+        "price": "549.01"
+      }
+    },
+    "contact": {
+      "qq": "369986563"
+    },
+    "declaration": {
+      "ads": "无",
+      "data": "无",
+      "permissions": "无"
+    },
+    "npmurl": "",
+    "darkmode": "√",
+    "i18n": "x",
+    "widescreen": "√"
+  },
+  "uni_modules": {
+    "dependencies": [],
+    "encrypt": [],
+    "platforms": {
+      "cloud": {
+        "tcb": "√",
+        "aliyun": "√",
+        "alipay": "√"
+      },
+      "client": {
+        "uni-app": {
+          "vue": {
+            "vue2": "-",
+            "vue3": "-"
+          },
+          "web": {
+            "safari": "-",
+            "chrome": "-"
+          },
+          "app": {
+            "vue": "-",
+            "nvue": "-",
+            "android": "-",
+            "ios": "-",
+            "harmony": "-"
+          },
+          "mp": {
+            "weixin": "-",
+            "alipay": "-",
+            "toutiao": "-",
+            "baidu": "-",
+            "kuaishou": "-",
+            "jd": "-",
+            "harmony": "-",
+            "qq": "-",
+            "lark": "-"
+          },
+          "quickapp": {
+            "huawei": "-",
+            "union": "-"
+          }
+        },
+        "uni-app-x": {
+          "web": {
+            "safari": "√",
+            "chrome": "√"
+          },
+          "app": {
+            "android": {
+                "extVersion": "",
+                "minVersion": "21"
+            },
+            "ios": "√",
+            "harmony": "x"
+          },
+          "mp": {
+            "weixin": {
+                "extVersion": "",
+                "minVersion": "3.0.0"
+            }
+          }
+        }
+      }
+    }
+  }
+}

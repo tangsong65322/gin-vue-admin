@@ -1,0 +1,275 @@
+<template>
+	<view>
+		<view class="colorViewBoxAlphaBox">
+			<x-text _style="opacity:0.5" font-size="13">不透明度</x-text>
+			<view class="boxRight">
+				<view :class="[isDark?'dark':'light']" class="barBox " :style="{borderRadius:(barsize+4)+'px'}">
+					<view class="barBoxRealWrap" @touchstart.stop="mStart" @touchmove.stop="mMove" @touchend="mEnd"
+						@touchcancel="mEnd" <!-- #ifdef WEB -->
+						@mousedown="mmStart(($event as UniMouseEvent),index)"
+						<!-- #endif -->
+						>
+						<view ref="bar" class="bar"
+							:style="{width:barsize+'px',height:barsize+'px',borderRadius:barsize+'px'}"></view>
+						<view ref="barWrap" class="barWrap" :style="{height:barsize+'px'}"></view>
+						<view class="barPlace" :style="{width:barsize+'px',height:barsize+'px'}"></view>
+					</view>
+				</view>
+				<x-input font-size="14" input-padding="0px" type="number" @input="inputChange" :model-value="rgbvalue"
+					width="70" height="30" align="center" placeholder="">
+					<template v-slot:inputRight>
+						<x-text _style="margin-right:5px">%</x-text>
+					</template>
+				</x-input>
+			</view>
+
+		</view>
+	</view>
+</template>
+
+<script lang="ts" setup>
+	import { ref, computed, getCurrentInstance, nextTick } from "vue"
+	import { hexToRgb, hslToRgb, rgbToHexNoAlpha, hslaToRgbCss, rgbToHex, rgbToHsl } from "../../core/util/xCoreColorUtil.uts";
+	import { xConfig } from "../../config/xConfig.uts";
+
+	const props = defineProps({
+		hexValue: {
+			type: Number,
+			default: 1
+		}
+	})
+	const emits = defineEmits<{
+		/**
+		 * 值变化时触发。
+		 * @param {number} alpha - 当前的颜色值
+		 */
+		(e : 'change', alpha : number) : void,
+	}>()
+	const proxy = getCurrentInstance()?.proxy
+	const rgbvalue = ref<string>((Math.max(0, Math.min(props.hexValue * 100, 100))).toString())
+	const valuestr = computed(() : number => {
+		let val = (parseInt(rgbvalue.value) / 100) + ''
+		val = val.substring(0, 4)
+		return Math.max(0, Math.min(1, parseFloat(val)))
+	})
+
+	let tid = 0;
+	let _x = 0
+	let _startLeft = 0
+	const barsize = ref(28)
+	const isMoving = ref(false)
+	const barWrapNodes = ref<NodeInfo|null>(null);
+	let xColorviewEventId = ''
+
+	const toChangeEvents = () => {
+		emits('change', valuestr.value)
+
+	}
+	const isDark = computed(() : boolean => xConfig.dark == 'dark')
+
+	const inputChange = (val : string) => {
+		if (val == '') return;
+		let realvalue = parseInt(val)
+		realvalue = isNaN(realvalue) ? 0 : realvalue;
+		let realvalueNew = Math.max(0, Math.min(realvalue, 100));
+		uni.createSelectorQuery()
+			.in(proxy)
+			.select(".barWrap")
+			.boundingClientRect()
+			.exec(result => {
+				let nodes = result[0] as NodeInfo
+				let realwidth = nodes.width!
+
+				let left = Math.floor(realvalueNew / 100 * realwidth)
+				let nowdom = proxy!.$refs['bar'] as UniElement
+				nowdom.style.setProperty('left', left.toString() + 'px')
+
+				rgbvalue.value = realvalue.toString()
+				nextTick(() => {
+					rgbvalue.value = realvalueNew.toString()
+					toChangeEvents()
+				})
+			})
+	}
+
+	const setPostionTranslaterStart = (x : number, y : number) => {
+		let dom = proxy!.$refs['bar'] as UniElement
+		let barWrapdom = proxy!.$refs['barWrap'] as UniElement
+		let domleft = dom.style.getPropertyValue('left') as null | string
+		if (isNaN(parseInt(domleft == null ? '0' : domleft!))) {
+			dom.style.setProperty('left', '0px')
+		}
+
+		let barwRound = barWrapNodes.value!
+		
+		_x = x
+		_startLeft = (_x - barwRound.left!) - barsize.value / 2
+		_startLeft = Math.ceil(Math.max(0, Math.min(_startLeft, barwRound.width!)))
+		dom.style.setProperty('left', _startLeft + 'px')
+		let val = Math.floor(_startLeft / barwRound.width! * 100).toString()
+		rgbvalue.value = val
+		toChangeEvents()
+	}
+	const setPostionTranslaterMove = (mx : number, my : number) => {
+		let dom = proxy!.$refs['bar'] as UniElement
+		let barWrapdom = proxy!.$refs['barWrap'] as UniElement
+		let barwRound = barWrapNodes.value!
+
+		let x = mx - _x + _startLeft - barsize.value / 2
+		// #ifdef MP||WEB
+		x =  mx - _x + _startLeft
+		// #endif
+		x = Math.ceil(Math.max(0, Math.min(x, barwRound.width!)))
+		dom.style.setProperty('left', x + 'px')
+		let val = Math.floor(x / barwRound.width! * 100).toString()
+		if (val == rgbvalue.value) return;
+		rgbvalue.value = val
+		
+		toChangeEvents()
+	}
+
+	const mStart = (evt : UniTouchEvent) => {
+		evt.preventDefault()
+		isMoving.value = true;
+		uni.createSelectorQuery()
+		.in(proxy)
+		.select(".barWrap")
+		.boundingClientRect()
+		.exec(result => {
+			let nodes = result[0] as NodeInfo
+			barWrapNodes.value = nodes
+			setPostionTranslaterStart(evt.changedTouches[0].clientX, evt.changedTouches[0].clientY)
+		})
+	}
+	const mMove = (evt : UniTouchEvent) => {
+		if (!isMoving.value) return
+		setPostionTranslaterMove(evt.changedTouches[0].clientX, evt.changedTouches[0].clientY)
+	}
+	const mEnd = (evt : UniTouchEvent) => {
+		if (!isMoving.value) return
+		isMoving.value = false;
+	}
+
+	// #ifdef WEB
+	const mmStart = (evt : UniMouseEvent, index) => {
+		isMoving.value = true;
+		xColorviewEventId = Math.random().toString(16).substring(2, 16)
+		setPostionTranslaterMove(evt.clientX - barsize.value, evt.clientY)
+	}
+	const mmMove = (evt : UniMouseEvent) => {
+		if (!isMoving.value) return
+		setPostionTranslaterMove(evt.clientX - barsize.value, evt.clientY)
+	}
+	const mmEnd = (evt : UniMouseEvent) => {
+		if (!isMoving.value) return
+		isMoving.value = false;
+		xColorviewEventId = ''
+
+	}
+	document.body.addEventListener('mousemove', mmMove)
+	document.body.addEventListener('mouseup', mmEnd)
+	document.body.addEventListener('mouseleave', mmEnd)
+	// #endif
+
+	const setViewPosition = () => {
+
+		uni.createSelectorQuery()
+			.in(proxy)
+			.select(".barWrap")
+			.boundingClientRect()
+			.exec(result => {
+				let nodes = result[0] as NodeInfo
+				barWrapNodes.value = nodes
+				let realwidth = nodes.width!
+				let doms = proxy!.$refs['bar'] as UniElement
+				let left = Math.floor(valuestr.value * realwidth)
+				doms.style.setProperty('left', left.toString() + 'px')
+			})
+	}
+
+	watch(() : number => props.hexValue, (newval : number) => {
+		if (valuestr.value == newval) return;
+		rgbvalue.value = (Math.max(0, Math.min(newval * 100, 100))).toString()
+		setViewPosition()
+	})
+
+	onBeforeUnmount(() => {
+		// #ifdef WEB
+		document.body.removeEventListener('mousemove', mmMove)
+		document.body.removeEventListener('mouseup', mmEnd)
+		document.body.removeEventListener('mouseleave', mmEnd)
+		// #endif
+	})
+	onMounted(() => {
+
+		clearTimeout(tid)
+		tid = setTimeout(function () {
+			setViewPosition()
+		}, 100);
+	})
+</script>
+
+<style scoped>
+	.colorViewBoxAlphaBox {
+		margin-top: 12px;
+	}
+
+	.bar {
+		border: 3px solid white;
+		background-color: transparent;
+		position: absolute;
+		top: 0px;
+		pointer-events: none;
+		/* #ifdef  MP-WEIXIN||WEB  */
+		box-sizing: border-box;
+		/* #endif */
+	}
+
+	.barPlace {
+		pointer-events: none;
+	}
+
+	.box0,
+	.box1 {
+		margin-bottom: 15px;
+	}
+
+	.boxRight {
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.barBox {
+
+		flex: 1;
+		margin-right: 12px;
+
+	}
+
+	.barBox.light {
+		background-image: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 1));
+	}
+
+	.barBox.dark {
+		background-image: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(255, 255, 255, 1));
+	}
+
+	.barBoxRealWrap {
+		margin: 2px 2px;
+		display: flex;
+		flex-direction: row;
+		justify-content: flex-start;
+		align-items: center;
+		position: relative;
+		/* #ifdef WEB */
+		cursor: cell;
+		/* #endif */
+	}
+
+	.barWrap {
+		flex: 1;
+		pointer-events: none;
+	}
+</style>

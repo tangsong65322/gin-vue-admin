@@ -1,0 +1,743 @@
+import { AVCaptureSession, AVCaptureDevice, AVMediaType, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureDeviceInput, AVCaptureInput, AVCaptureVideoDataOutput, AVCaptureConnection, AVCaptureVideoPreviewLayer, AVLayerVideoGravity, AVCaptureVideoOrientation } from 'AVFoundation';
+import { PHPhotoLibrary, PHAuthorizationStatus } from 'Photos';
+import { CMSampleBuffer, CMSampleBufferGetFormatDescription, CMFormatDescription, CMVideoFormatDescriptionGetDimensions } from 'CoreMedia';
+import { DispatchQueue } from "Dispatch"
+import { UIView, UIImage, UIApplication, UIImageView, UILabel, UIViewController, UIFontDescriptor, UIFont, NSTextAlignment, UITapGestureRecognizer, UIImagePickerController, UIImagePickerControllerDelegate, UINavigationControllerDelegate } from 'UIKit';
+import { CGRect, CGFloat, CGPoint } from 'CoreFoundation';
+import { Barcode, BarcodeScannerOptions, BarcodeFormat, BarcodeScanner, CMVideoDimensions } from "MLKitBarcodeScanning"
+import { VisionImage } from "MLKit"
+import { SCANNING_PHOTO_RESULT, SCANNING_PHOTO_RESULT_BOUND, CALL_RESULT_FUN, AUTH_CALL_BACK_TYPE } from '../interface.uts';
+
+import { NotificationCenter, NSNotification, Notification } from 'Foundation';
+import { Selector } from 'ObjectiveC';
+import { Alignment } from 'ARKit';
+import { CABasicAnimation } from 'QuartzCore';
+
+type ConverXy = {
+	x : number,
+	y : number,
+	minx : number,
+	maxx : number,
+	miny : number,
+	maxy : number,
+}
+type contaiaSize = {
+	width : number,
+	height : number
+}
+type contaiaCalseSize = {
+	scale : number,
+	offsetX : number,
+	offsetY : number
+}
+type contaiPointXy = {
+	x : number,
+	y : number
+}
+// 资料参考：
+// https://github.com/JimmyPun610/BarcodeScanner.Mobile/blob/master/BarcodeScanner.Mobile.Maui/Platforms/iOS/CaptureVideoDelegate.cs
+// 识别结果
+let scanResult = [] as Swift.Array<Barcode>
+let captureSession : null | AVCaptureSession = null;
+
+let captureDeviceAllGlobal : null | AVCaptureDevice = null;
+let FlashButton:null|UILabel = null;
+let flashModel = false;
+// 视频宽
+let videoWidth = 0
+// 视频高
+let videoHeight = 0
+// 图像捕捉事件代理。
+let captureOutDelegate : CaptureOutSessionBuffer | null = null;
+let pointsEvents = [] as PointClickEvent[]
+let isCamreaing = false;
+
+let pointView = [] as UIView[]
+
+let onlyCamera : boolean = false;
+
+let barcodeOptions = BarcodeScannerOptions(formats = BarcodeFormat.all)
+let parentView : UIView | null = null
+let camreaViewLayer : UIView | null = null
+let pointsLayerView : UIView | null = null
+let imageUiView : UIImageView | null = null
+let cameraView : AVCaptureVideoPreviewLayer | null = null
+
+let backevents : BackEvents | null = null;
+let photosevents : PhotoSelectedEvents | null = null;
+let scanevents : ScanEvents | null = null;
+let flashBtnevents:FlashBtnEvents|null = null;
+let rsultCallBack : CALL_RESULT_FUN = (str : string) => { }
+let delegate : null | useImagePickerDelegate = null;
+let openAnimation = true;
+/** 加上这个标签可以持续响应事件,回调执行时必要的标签. */
+@MainActor
+class useImagePickerDelegate implements UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+	call : (image : any | null) => void;
+	constructor(call : (image : any | null) => void) {
+		this.call = call;
+	}
+	imagePickerController(controller : UIImagePickerController, @argumentLabel("didFinishPickingMediaWithInfo") info : Map<UIImagePickerController.InfoKey, any>) {
+		let image = info.get(UIImagePickerController.InfoKey.originalImage)
+		this.call(image)
+		controller.dismiss(animated = true, completion = null)
+	}
+	imagePickerControllerDidCancel(controller : UIImagePickerController) {
+		this.call(null)
+		controller.dismiss(animated = true, completion = null)
+	}
+}
+
+
+class PointClickEvent {
+	private callback : (txt : string) => void
+	private text : string;
+	constructor(callback : (txt : string) => void, atext : string) {
+		this.callback = callback;
+		this.text = atext;
+		super.init()
+	}
+
+	@objc onclick() {
+
+		this.callback(this.text)
+	}
+}
+
+class BackEvents {
+	private callback : () => void
+	constructor(callback : () => void) {
+		this.callback = callback
+		super.init()
+	}
+	@objc onclick() {
+
+		this.callback()
+	}
+}
+class PhotoSelectedEvents {
+	private callback : () => void
+	constructor(callback : () => void) {
+		this.callback = callback
+		super.init()
+	}
+	@objc onclick() {
+
+		this.callback()
+	}
+}
+class ScanEvents {
+	private callback : () => void
+	constructor(callback : () => void) {
+		this.callback = callback
+		super.init()
+	}
+	@objc onclick() {
+
+		this.callback()
+	}
+}
+
+class FlashBtnEvents {
+	private callback : () => void
+	constructor(callback : () => void) {
+		this.callback = callback
+		super.init()
+	}
+	@objc onclick() {
+		this.callback()
+	}
+}
+
+class CaptureOutSessionBuffer implements AVCaptureVideoDataOutputSampleBufferDelegate {
+	callback : (str : SCANNING_PHOTO_RESULT) => void = (str : SCANNING_PHOTO_RESULT) => { }
+	constructor(dv : (str : SCANNING_PHOTO_RESULT) => void) {
+		this.callback = dv;
+		super()
+	}
+	captureOutput(output : AVCaptureOutput, @argumentLabel("didOutput") sampleBuffer : CMSampleBuffer, @argumentLabel("from") connection : AVCaptureConnection) {
+		if (!isCamreaing) return;
+		// console.log('图片捕捉正确')
+		
+		let image = new VisionImage(buffer = sampleBuffer)
+		// 这里会直接影响到测量的起始点。下面是镜像，测量是图片左上为起始，但设备是竖向，因此计算时的x,y坐标其实是相对屏幕向右转下，x,y是反向的，因为是镜像
+		// 所以计算位置时，x,y是反的，宽和高也是相反的。
+		image.orientation = UIImage.Orientation.right
+		let barcodeOptions = BarcodeScannerOptions(formats = BarcodeFormat.all)
+		// options=barcodeOptions
+		let barcodeScanner = new BarcodeScanner.barcodeScanner(options = barcodeOptions)
+
+		barcodeScanner.process(image, completion = (features : Swift.Array<Barcode> | null, error) => {
+
+			if (features == null || error != null) {
+				return;
+			}
+			if (features!.length == 0 || scanResult.length > 0) {
+				return;
+			}
+
+			// 暂停识别。
+			captureSession!.stopRunning()
+
+			scanResult = features!
+			let descVideo : CMFormatDescription | null = CMSampleBufferGetFormatDescription(sampleBuffer);
+			if (descVideo != null) {
+				let dimesionsize : CMVideoDimensions = CMVideoFormatDescriptionGetDimensions(descVideo!)
+				videoWidth = Number(dimesionsize.width)
+				videoHeight = Number(dimesionsize.height)
+			}
+
+
+			let listpos = [] as number[][][]
+			let bounedlist = [] as SCANNING_PHOTO_RESULT_BOUND[]
+			let rulstText = [] as string[]
+
+			for (let i = 0; i < features!.length; i++) {
+				let barcode = features![i]
+				// 位置信息
+				let bounds = barcode.frame
+				// 坐标
+				let corners = barcode.cornerPoints
+				// 解析的内容
+				let rawValue = barcode.rawValue
+				let iminfo = {
+					width: Number(bounds.width),
+					height: Number(bounds.height),
+					centerX: Number(bounds.midX),
+					centerY: Number(bounds.midY)
+				} as SCANNING_PHOTO_RESULT_BOUND
+				let posinfo = [] as number[][]
+				for (pos in corners!) {
+					// pos是pointValue类型并返回CGPoint，其中有x,y
+					let ponit = pos.cgPointValue
+					posinfo.push([Number(ponit.x), Number(ponit.y)] as number[])
+				}
+				listpos.push(posinfo)
+				bounedlist.push(iminfo)
+				rulstText.push(rawValue == null ? '' : (rawValue!))
+
+			}
+			let res = {
+				url: '',
+				position: listpos,
+				bounds: bounedlist,
+				text: rulstText,
+				imgWidth:0,
+				imgHeight:0
+			} as SCANNING_PHOTO_RESULT
+
+			this.callback(res)
+		})
+
+	}
+}
+// 检查权限
+export function isCheckPermissions(callFun : null | AUTH_CALL_BACK_TYPE) {
+	let realcall : AUTH_CALL_BACK_TYPE = (_ : boolean) => { };
+	if (callFun != null) {
+		let cllfunFun = callFun!;
+		realcall = cllfunFun
+	}
+	if (!onlyCamera) {
+		PHPhotoLibrary.requestAuthorization((isok : PHAuthorizationStatus) => {
+			// 拒绝了相册选取权限。
+			if (isok != PHAuthorizationStatus.authorized) {
+				realcall(false)
+				return;
+			}
+			AVCaptureDevice.requestAccess(for = AVMediaType.video, completionHandler = (isok2 : boolean) => {
+				if (!isok2) {
+					realcall(false)
+					return;
+				}
+				realcall(true)
+			})
+		})
+	} else {
+		AVCaptureDevice.requestAccess(for = AVMediaType.video, completionHandler = (isok2 : boolean) => {
+			if (!isok2) {
+				realcall(false)
+				return;
+			}
+			realcall(true)
+		})
+	}
+
+}
+
+
+
+
+function xCamreaInit() {
+	let t = this;
+	let sys = uni.getSystemInfoSync();
+	if (parentView != null) {
+		parentView!.removeFromSuperview()
+	}
+	parentView = new UIView();
+	let scaleAni = new CABasicAnimation(keyPath = "transform.scale")
+	scaleAni.fromValue = 0
+	scaleAni.toValue = 1
+	scaleAni.duration = 0.25
+
+
+	parentView!.frame = new CGRect(x = 0, y = 0, width = (sys.windowWidth).toInt(), height = (sys.screenHeight).toInt())
+	parentView!.backgroundColor = UTSiOS.colorWithString("#000000")
+
+	let parent = UTSiOS.getCurrentViewController() as UIViewController;
+	let windUiview = parent.view as UIView
+	windUiview.addSubview(parentView!)
+
+
+
+	let safeTop = sys.statusBarHeight + 50
+	let safeHeight = sys.screenHeight - 100 - sys.statusBarHeight - 50
+
+	// 绘制界面
+
+	// 创建一张图片预览层。
+	imageUiView = new UIImageView();
+	imageUiView!.frame = new CGRect(x = 0, y = safeTop.toInt(), width = (sys.windowWidth).toInt(), height = (safeHeight).toInt())
+	imageUiView!.isHidden = true;
+
+	parentView!.addSubview(imageUiView!);
+
+	// 创建小绿点层.
+	pointsLayerView = new UIView()
+	pointsLayerView!.frame = new CGRect(x = 0, y = safeTop.toInt(), width = (sys.windowWidth).toInt(), height = (safeHeight).toInt())
+
+	// 创建视频预览层。
+	camreaViewLayer = new UIView()
+	camreaViewLayer!.frame = new CGRect(x = 0, y = safeTop.toInt(), width = (sys.windowWidth).toInt(), height = (safeHeight).toInt())
+	parentView!.addSubview(camreaViewLayer!);
+
+	cameraView = new AVCaptureVideoPreviewLayer(session = captureSession!)
+	// 设置预览层绑定
+	// 下面的缩放会居中显示，因此左顶点可能在左上方
+	cameraView!.videoGravity = AVLayerVideoGravity.resizeAspectFill
+	cameraView!.connection!.videoOrientation = AVCaptureVideoOrientation.portrait
+	cameraView!.frame = new CGRect(x = 0, y = 0, width = (sys.windowWidth).toInt(), height = (safeHeight).toInt())
+
+	DispatchQueue.main.async(execute = () : void => {
+		// 绑定渲染层。
+		camreaViewLayer!.layer.addSublayer(cameraView!)
+		captureSession!.startRunning()
+
+
+		// 创建一个上遮盖板。
+		// let toplayer = new UIView()
+		// toplayer.frame = new CGRect(x = 0, y = 0, width = (sys.windowWidth).toInt(), height = 100)
+		// toplayer.backgroundColor = UTSiOS.colorWithString("rgba(255,0,0,0)")
+		// parentView!.addSubview(toplayer);
+
+		// 创建一个下遮盖板。
+		let bottomlayer = new UIView()
+		bottomlayer.frame = new CGRect(x = 0, y = 0, width = (sys.windowWidth).toInt(), height = 100)
+		bottomlayer.backgroundColor = UTSiOS.colorWithString("#000000")
+		parentView!.addSubview(bottomlayer);
+
+		// 创建一个返回按钮文本。
+		let backButton = new UILabel()
+		backButton.frame = new CGRect(x = 16, y = 58, width = (sys.windowWidth - 16).toInt(), height = 32)
+		backButton.text = String("返回")
+		backButton.font = UIFont.systemFont(ofSize = new CGFloat(16))
+		backButton.textColor = UTSiOS.colorWithString("#FFFFFF")
+
+		parentView!.addSubview(backButton);
+
+		// 创建一个相册选取按钮
+		let photoBtn = new UILabel()
+		photoBtn.frame = new CGRect(x = 16, y = (sys.screenHeight - 88).toInt(), width = 80, height = 32)
+		photoBtn.text = String(onlyCamera ? "" : "相册选取")
+
+		photoBtn.font = UIFont.systemFont(ofSize = new CGFloat(16))
+		photoBtn.textColor = UTSiOS.colorWithString("#FFFFFF")
+		parentView!.addSubview(photoBtn);
+		
+		// 创建个闪光灯打开和关闭的文本层.
+		let flashBtn = new UILabel()
+		flashBtn.frame = new CGRect(x = ((sys.windowWidth - 80)/2).toInt(), y = (sys.screenHeight - 88).toInt(), width = 80, height = 32)
+		flashBtn.text = String("开灯")
+		flashBtn.font = UIFont.systemFont(ofSize = new CGFloat(16))
+		flashBtn.textAlignment = NSTextAlignment.center
+		flashBtn.textColor = UTSiOS.colorWithString("#FFFFFF")
+		parentView!.addSubview(flashBtn);
+		FlashButton = flashBtn;
+		
+
+		// 创建一个继续扫一扫的按钮
+		let scanBtn = new UILabel()
+		scanBtn.frame = new CGRect(x = (sys.windowWidth - 96).toInt(), y = (sys.screenHeight - 88).toInt(), width = 80, height = 32)
+
+		scanBtn.text = String("扫一扫")
+		scanBtn.font = UIFont.systemFont(ofSize = new CGFloat(16))
+		scanBtn.textAlignment = NSTextAlignment.right
+		scanBtn.textColor = UTSiOS.colorWithString("#FFFFFF")
+		parentView!.addSubview(scanBtn);
+
+
+		// 最高层级.
+		parentView!.addSubview(pointsLayerView!);
+
+
+		// 添加事件。
+		// 返回，关闭弹层。
+		backevents = new BackEvents(() => {
+			closeScan();
+			quitView();
+		})
+		// 点击了相册选取。
+		function setToXiangChe() {
+			if (onlyCamera) {
+				return;
+			}
+			let pic = new UIImagePickerController()
+			DispatchQueue.main.async(execute = () : void => {
+				delegate = new useImagePickerDelegate((image : any | null) => {
+					if (image != null) {
+						let realimageds = image! as UIImage;
+						closeScan();
+						imageUiView!.image = realimageds
+						imageUiView!.contentMode = UIView.ContentMode.scaleAspectFit
+						camreaViewLayer!.isHidden = true;
+						imageUiView!.isHidden = false;
+
+						// 图片识别码.
+						let visionImage = new VisionImage(image = realimageds)
+						visionImage.orientation = realimageds.imageOrientation
+
+						let barcodeOptions = BarcodeScannerOptions(formats = BarcodeFormat.all)
+						let barcodeScanner = new BarcodeScanner.barcodeScanner(options = barcodeOptions)
+						barcodeScanner.process(visionImage, completion = (features : Swift.Array<Barcode> | null, error) => {
+
+							if (features == null || error != null) {
+								return;
+							}
+							if (features!.length == 0) {
+								return;
+							}
+
+							scanResult = features!
+
+							videoWidth = Number(realimageds.size.width);
+							videoHeight = Number(realimageds.size.height);
+
+							let listpos = [] as number[][][]
+							let bounedlist = [] as SCANNING_PHOTO_RESULT_BOUND[]
+							let rulstText = [] as string[]
+
+							for (let i = 0; i < features!.length; i++) {
+								let barcode = features![i]
+								// 位置信息
+								let bounds = barcode.frame
+								// 坐标
+								let corners = barcode.cornerPoints
+								// 解析的内容
+								let rawValue = barcode.rawValue
+								let iminfo = {
+									width: Number(bounds.width),
+									height: Number(bounds.height),
+									centerX: Number(bounds.midX),
+									centerY: Number(bounds.midY)
+								} as SCANNING_PHOTO_RESULT_BOUND
+								let posinfo = [] as number[][]
+								for (pos in corners!) {
+									// pos是pointValue类型并返回CGPoint，其中有x,y
+									let ponit = pos.cgPointValue
+									posinfo.push([Number(ponit.x), Number(ponit.y)] as number[])
+								}
+								listpos.push(posinfo)
+								bounedlist.push(iminfo)
+								rulstText.push(rawValue == null ? '' : (rawValue!))
+
+							}
+							let result = {
+								url: '',
+								position: listpos,
+								bounds: bounedlist,
+								text: rulstText,
+								imgWidth:0,
+								imgHeight:0
+							} as SCANNING_PHOTO_RESULT
+							let deg = 0;
+							if (realimageds.imageOrientation == UIImage.Orientation.right) {
+								deg = 90
+							} else if (realimageds.imageOrientation == UIImage.Orientation.up) {
+								deg = 0
+							} else if (realimageds.imageOrientation == UIImage.Orientation.left) {
+								deg = 270
+							} else if (realimageds.imageOrientation == UIImage.Orientation.down) {
+								deg = 180
+							}
+
+							console.log(deg)
+							createPointView(result, deg)
+							uni.setStorageSync("xMlKITScaning", JSON.stringify(result.text))
+							// t.$emit("scan")
+							if (result.text.length == 1) {
+								rsultCallBack(result.text[0])
+								closeScan()
+								quitView()
+							}
+
+						})
+					}
+				});
+				pic.sourceType = UIImagePickerController.SourceType.photoLibrary
+				pic.mediaTypes = ["public.image"]
+				pic.delegate = delegate!
+				UTSiOS.getCurrentViewController().present(pic, animated = true, completion = nil)
+			})
+
+
+		}
+		photosevents = new PhotoSelectedEvents(() => {
+
+			setToXiangChe();
+		})
+		scanevents = new ScanEvents(() => {
+			// 继续扫一扫
+			openAnimation = false
+			startCamera();
+		})
+		flashBtnevents = new FlashBtnEvents(() => {
+			// 开头灯光
+			flashModel = !flashModel
+			setFlashModel(flashModel)
+			flashBtn.text = flashModel?"关灯":String("开灯")
+		})
+		
+
+		// 返回的事件。
+		backButton.isUserInteractionEnabled = true
+		let backevents_rz = new UITapGestureRecognizer()
+		backevents_rz.addTarget(backevents, action = new Selector("onclick"))
+		backButton.addGestureRecognizer(backevents_rz)
+		// 相册 按钮事件。。
+		let photosevents_rz = new UITapGestureRecognizer()
+		photosevents_rz.addTarget(photosevents, action = new Selector("onclick"))
+		photoBtn.addGestureRecognizer(photosevents_rz)
+		photoBtn.isUserInteractionEnabled = true
+		// 扫一扫 按钮事件。。
+		scanBtn.isUserInteractionEnabled = true
+		let scanevents_rz = new UITapGestureRecognizer()
+		scanevents_rz.addTarget(scanevents, action = new Selector("onclick"))
+		scanBtn.addGestureRecognizer(scanevents_rz)
+		//打开灯光事件.setFlashModel
+		flashBtn.isUserInteractionEnabled = true
+		let flashBtnevents_rz = new UITapGestureRecognizer()
+		flashBtnevents_rz.addTarget(flashBtnevents, action = new Selector("onclick"))
+		flashBtn.addGestureRecognizer(flashBtnevents_rz)
+		
+
+		if (openAnimation) {
+			// 增加显示动画.
+			parentView!.layer.add(scaleAni, forKey = "scaleAnimation")
+		}
+		// ios识别太快了，图像还没定焦就识别出来了，稍微延迟下，不要太快了。与安卓对齐 下。
+		setTimeout(function () {
+			isCamreaing = true;
+		}, 300);
+	})
+
+}
+
+function calcPoint(c_w : number, c_h : number, image_w : number, image_h : number, image_point_x : number, image_point_y : number, degration : number) : ConverXy {
+	function scaleAndCenterContent(
+		container : contaiaSize,
+		content : contaiaSize
+	) : contaiaCalseSize {
+		// 计算缩放比例
+		const scaleWidth = container.width / content.width;
+		const scaleHeight = container.height / content.height;
+		const scale = Math.min(scaleWidth, scaleHeight);
+
+		// 计算居中偏移量
+		const offsetX = (container.width - content.width * scale) / 2;
+		const offsetY = (container.height - content.height * scale) / 2;
+
+		return { scale, offsetX, offsetY } as contaiaCalseSize;
+	}
+	function mapContentCoordinatesToContainer(
+		contentX : number,
+		contentY : number,
+		calcsize : contaiaCalseSize
+	) : contaiPointXy {
+		// 映射内容层坐标到容器层坐标
+		const containerX = contentX * calcsize.scale + calcsize.offsetX;
+		const containerY = contentY * calcsize.scale + calcsize.offsetY;
+
+		return { x: containerX, y: containerY } as contaiPointXy;
+	}
+
+	let rc = scaleAndCenterContent(
+		{ width: c_w, height: c_h } as contaiaSize,
+		{ width: image_h, height: image_w } as contaiaSize
+	)
+	if (degration == 0) {
+		rc = scaleAndCenterContent(
+			{ width: c_w, height: c_h } as contaiaSize,
+			{ width: image_w, height: image_h } as contaiaSize
+		)
+	}
+
+	let result = mapContentCoordinatesToContainer(image_point_y, image_point_x, rc)
+	if (degration == 0) {
+		result = mapContentCoordinatesToContainer(image_point_x, image_point_y, rc)
+	}
+	let nexyxcov = {
+		x: c_w - result.x, y: result.y, minx: 0, maxx: 0, miny: 0, maxy: 0
+	} as ConverXy
+	if (degration == 0) {
+		nexyxcov = {
+			x: result.x, y: result.y, minx: 0, maxx: 0, miny: 0, maxy: 0
+		} as ConverXy
+	}
+	return nexyxcov
+
+}
+
+function createPointView(result : SCANNING_PHOTO_RESULT, degration : number) {
+
+	let realCgSize = camreaViewLayer!.frame as CGRect;
+	let realWidth = Number(realCgSize.width);
+	let realHeight = Number(realCgSize.height);
+	clearPointView();
+
+	let pointSize = 30
+	DispatchQueue.main.async(execute = () : void => {
+
+		for (let i = 0; i < result.bounds.length; i++) {
+			let text = result.text[i]
+			let bounds = result.bounds[i]
+			let pos = result.position[i];
+
+			let resutxy = calcPoint(realWidth, realHeight, videoWidth, videoHeight, bounds.centerX, bounds.centerY, degration)
+
+			let x = resutxy.x - 15
+			let y = resutxy.y - 15
+			let rect = new CGRect(x = x.toInt(), y = y.toInt(), width = pointSize.toInt(), height = pointSize.toInt())
+			let pointViewSelf = new UIView();
+			pointViewSelf.layer.frame = rect;
+			pointViewSelf.backgroundColor = UTSiOS.colorWithString('#21d429');
+			pointViewSelf.layer.borderWidth = 2
+			pointViewSelf.layer.borderColor = UTSiOS.colorWithString('#FFFFFF').cgColor;
+			pointViewSelf.layer.cornerRadius = new CGFloat(pointSize / 2);
+
+			let onlick = new PointClickEvent((atext : string) => {
+				rsultCallBack(atext)
+				closeScan()
+				quitView()
+			}, text);
+			pointsEvents.push(onlick)
+			let tapGestureCancel = new UITapGestureRecognizer()
+			tapGestureCancel.addTarget(onlick, action = new Selector("onclick"))
+			pointViewSelf.addGestureRecognizer(tapGestureCancel)
+
+
+			pointsLayerView!.addSubview(pointViewSelf)
+			pointView.push(pointViewSelf)
+
+		}
+	})
+}
+
+/** 手动开启和关闭闪光灯 */
+function setFlashModel(flash : boolean) {
+	if (captureDeviceAllGlobal != null) {
+		let islock = UTSiOS.try(captureDeviceAllGlobal!.lockForConfiguration(), "?")
+		if (islock != null) {
+			captureDeviceAllGlobal!.torchMode = flash ? AVCaptureDevice.TorchMode.on : AVCaptureDevice.TorchMode.off
+			captureDeviceAllGlobal!.unlockForConfiguration()
+		}
+	}
+}
+function clearPointView() {
+	DispatchQueue.main.async(execute = () : void => {
+		for (let i = 0; i < pointView.length; i++) {
+			let item = pointView[i];
+			item.removeFromSuperview();
+		}
+		pointView = [] as UIView[]
+	})
+}
+function closeScan() {
+	// 移除点。
+	clearPointView()
+	if (captureSession != null) {
+		captureSession!.stopRunning()
+
+		for (input in captureSession!.inputs) {
+			captureSession!.removeInput(input)
+		}
+
+		for (output in captureSession!.outputs) {
+			captureSession!.removeOutput(output)
+		}
+		captureSession = null;
+	}
+	scanResult = [] as Swift.Array<Barcode>
+	pointsEvents = [] as PointClickEvent[]
+	
+	captureDeviceAllGlobal = nil;
+	FlashButton = nil;
+
+}
+function startCamera() {
+	isCamreaing = false;
+	closeScan();
+	captureSession = new AVCaptureSession();
+	let captureDevice = AVCaptureDevice.default(for = AVMediaType.video)
+	let captureOut = new AVCaptureVideoDataOutput();
+	captureSession!.sessionPreset = AVCaptureSession.Preset.photo
+	captureOutDelegate = new CaptureOutSessionBuffer((result : SCANNING_PHOTO_RESULT) => {
+
+		createPointView(result, 90)
+
+		uni.setStorageSync("xMlKITScaning", JSON.stringify(result.text))
+		// t.$emit("scan")
+		if (result.text.length == 1) {
+			rsultCallBack(result.text[0])
+
+			setTimeout(function () {
+				closeScan()
+				quitView()
+			}, 150);
+		}
+	})
+
+	// 新建设备的输入设备
+	let inputDevice = UTSiOS.try(new AVCaptureDeviceInput(device = captureDevice!), "?")
+	if (inputDevice != null) {
+		// 添加输入到会话中。
+		captureSession!.addInput(inputDevice!)
+	}
+
+	captureOut.alwaysDiscardsLateVideoFrames = true;
+	// 设置输出会话
+	captureOut.setSampleBufferDelegate(captureOutDelegate!, queue = DispatchQueue.global())
+	if (captureSession!.canAddOutput(captureOut)) {
+		captureSession!.addOutput(captureOut)
+		// console.log("绑定输出层正确！")
+	}
+
+
+	xCamreaInit();
+	captureDeviceAllGlobal = captureDevice
+}
+function quitView() {
+	if (parentView != null) {
+		parentView!.removeFromSuperview()
+	}
+}
+
+export function openCameraApi(callback : CALL_RESULT_FUN, onlyCameras : boolean) {
+	rsultCallBack = callback
+	openAnimation = true;
+	onlyCamera = onlyCameras
+	startCamera();
+}
+export function closeCamera() {
+	closeScan();
+	quitView();
+}

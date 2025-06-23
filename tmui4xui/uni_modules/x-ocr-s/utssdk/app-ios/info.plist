@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>读取您的相册图片,用来识别图片中的文字功能,如果拒绝将无法使用相关识别功能.</string>
+  </dict>
+</plist>

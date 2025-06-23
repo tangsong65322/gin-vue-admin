@@ -1,0 +1,848 @@
+<script lang="ts">
+	import { type PropType } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor,rgbToHex,hexToRgb } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit, getUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+
+	/**
+	 * 
+	 * @name 输入框 xInput
+	 * @description 表单输入框，样式可定制化强
+	 * @page /pages/index/input
+	 * @category 表单组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				nowValue: "",
+				seePass: false,
+				isFocus:false
+			}
+		},
+		emits: [
+			/**
+			 * 点击整个输入框触发
+			 */
+			'click',
+			/**
+			 * 清空时触发
+			 */
+			'clear',
+			/**
+			 * 点击右侧文本时触发,如果你使用了插槽替换了，此事件不会触发
+			 * @param {string} value - 已输入的字符串
+			 */
+			'rightClick',
+			/**
+			 * 输入法点了确认搜索按钮时触发
+			 * @param {string}  value - 已输入的字符串
+			 */
+			'confirm',
+			/**
+			 * 输入时触发
+			 * @param {string}  value - 当前已输入的字符串
+			 */
+			'input',
+			/**
+			 * 获得焦点时
+			 * @param {UniInputBlurEvent} evt - 事件对象
+			 */
+			'focus',
+			/**
+			 * 失去焦点时
+			 * @param {UniInputBlurEvent} evt - 事件对象
+			 */
+			'blur',
+			/**
+			 * 行高变化时,type=textarea时生效
+			 * @param {UniTextareaLineChangeEvent} evt - 事件对象
+			 */
+			'linechange',
+			/**
+			 * 键盘高度变化时触发
+			 * @param {UniInputKeyboardHeightChangeEvent} evt - 事件对象
+			 */
+			'keyboardheightchange', 'update:modelValue'],
+		props: {
+			/**
+			 * 自定义style
+			 * 标签请写_style,不是-style，插件文档转换问题
+			 */
+			_style: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 输入框统一的聚集样式
+			 * 第3表示默认的边颜色(如果为空表示默认边颜色不生效.),第4表示聚焦时的颜色(空表示取全局color,transparent为不生效就是没有聚集样式)
+			 * ['2px','solid','','']
+			 * 全局的配置名称是:inputFocusBorder,可以全局设置.
+			 */
+			focusBorder:{
+				type:Array as PropType<string[]>,
+				default:():string[] => [] as string[]
+			},
+			/**
+			 * 占位的样式
+			 */
+			placeholderStyle: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 自定class
+			 * 标签请写_class,不是-class，插件文档转换问题
+			 */
+			_class: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 输入框圆角
+			 */
+			round: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 是否显示清除图标
+			 */
+			showClear: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 右侧文本
+			 */
+			rightText: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 左侧文本
+			 */
+			leftText: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 双向绑定的输入值
+			 */
+			modelValue: {
+				type: String,
+				default: "",
+			},
+			/**
+			 * 修饰符同vmodel.xxx='',比如v-model.trim=''
+			 */
+			// modelModifiers:{
+			// 	type: Object as PropType<UTSJSONObject>,
+			// 	default: ():UTSJSONObject => ({})
+			// },
+			/**
+			 * 输入框提示语
+			 */
+			placeholder: {
+				type: String,
+				default: "请输入",
+			},
+			/**
+			 * 左图标的颜色
+			 * 默认空值取全局的主题色。
+			 */
+			iconColor: {
+				type: String,
+				default: "",
+			},
+			/**
+			 * 清除图标的颜色
+			 */
+			clearColor: {
+				type: String,
+				default: "#bfbfbf",
+			},
+			/**
+			 * 输入框背景
+			 */
+			color: {
+				type: String,
+				default: "",
+			},
+			/**
+			 * 输入框暗黑背景，空值取全局的配置
+			 * 提供会覆盖全局的配色。默认是透明
+			 */
+			darkBgColor: {
+				type: String,
+				default: "transparent",
+			},
+			/**
+			 * 输入框的字体颜色
+			 */
+			fontColor: {
+				type: String,
+				default: "#333333",
+			},
+			/**
+			 * 如果你提供，就会覆盖自动的反转配色。
+			 * 默认是fontColor的反转颜色。
+			 */
+			darkFontColor: {
+				type: String,
+				default: "",
+			},
+			/**
+			 * 文字大小
+			 */
+			fontSize: {
+				type: String,
+				default: "16",
+			},
+			/**
+			 * 左图标
+			 */
+			leftIcon: {
+				type: String,
+				default: "",
+			},
+			/**
+			 * 见官方文档：https://doc.dcloud.net.cn/uni-app-x/component/input.html
+			 */
+			name: {
+				type: String,
+				default: "",
+			},
+			/**
+			 * 见官方文档：https://doc.dcloud.net.cn/uni-app-x/component/input.html
+			 */
+			disabled: {
+				type: Boolean,
+				default: false,
+			},
+			/**
+			 * 类型
+			 * "text"|"number"|"digit"|"tel"
+			 * 见官方文档：https://doc.dcloud.net.cn/uni-app-x/component/input.html
+			 * 不管你是number,还是digit或者tel是可以让用户按规范填写的只能是数字
+			 * 但你定义modelValue类型时，只能是string，请特别注意。
+			 */
+			type: {
+				type: String as PropType<"text" | "number" | "digit" | "tel" | "textarea">,
+				default: "text",
+			},
+			/**
+			 * 是否是密码类型
+			 */
+			password: {
+				type: Boolean,
+				default: false,
+			},
+			/**
+			 * 最大字符数量，如果要显示统计字符，请设置showChartCount为ture
+			 */
+			maxlength: {
+				type: Number,
+				default: -1
+			},
+			cursorSpacing: {
+				type: Number,
+				default: 0
+			},
+			cursorColor: {
+				type: String,
+				default: "",
+			},
+			autoFocus: {
+				type: Boolean,
+				default: false,
+			},
+			focus: {
+				type: Boolean,
+				default: false,
+			},
+			confirmType: {
+				type: String as PropType<"send" | "search" | "next" | "go" | "done">,
+				default: "next",
+			},
+			confirmHold: {
+				type: Boolean,
+				default: false,
+			},
+			cursor: {
+				type: Number,
+				default: 0
+			},
+			selectionStart: {
+				type: Number,
+				default: -1
+			},
+			selectionEnd: {
+				type: Number,
+				default: -1
+			},
+			adjustPosition: {
+				type: Boolean,
+				default: true,
+			},
+			/**
+			 * 宽
+			 */
+			width: {
+				type: String,
+				default: "auto"
+			},
+			/**
+			 * 高
+			 */
+			height: {
+				type: String,
+				default: "44"
+			},
+			/**
+			 * 自动删除首尾空格?
+			 * 只会在失去焦点时删除.
+			 * 这里需要个解释:由于用户输入过快或者允许用户自由的输入,组件本身不会去干涉用户输入
+			 * 因为一旦干涉就在会在低端机上会出现字符闪烁的情况(特别是微信小程序上的安桌机),看似简单的功能后面隐藏着非常大的风险
+			 * 因此你在事件中收到的字符绝对是经过处理的字符串,但用户的输入框可能还是有空格.
+			 */
+			trim: {
+				type: Boolean,
+				default: true,
+			},
+			/**
+			 * 文本对齐方式
+			 */
+			align: {
+				type: String as PropType<'left' | 'right' | 'center'>,
+				default: "left"
+			},
+			/**
+			 * type=textarea时生效
+			 */
+			autoHeight: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 如果 textarea 是在一个 position:fixed 的区域，需要显示指定属性 fixed 为 true
+			 */
+			fixed: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 显示底部的注释说明及出错信息。
+			 */
+			showFooter: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 是否显示字符统计。
+			 */
+			showChartCount:{
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 格式就是正常的css格式
+			 * 比如：8rpx 8rpx 0rpx 0rpx
+			 */
+			inputPadding: {
+				type: String,
+				default: "8px 12px"
+			},
+			inputmode:{
+				type:String,
+				default:'text'
+			},
+			holdKeyboard:{
+				type:Boolean,
+				default:false
+			}
+		},
+		computed: {
+			_focusBorder():string[]{
+				let style = this.focusBorder.slice(0);
+				if(this.focusBorder.length<4&&xConfig.inputFocusBorder.length==4){
+					style = xConfig.inputFocusBorder.slice(0);
+				}
+				if(style.length <4){
+					
+					return ['0px','solid','transparent'] as string[];
+				}
+				let oldcolor = style[2]
+				let hoverColor = getDefaultColor(style[3])
+				if(oldcolor==""){
+					oldcolor = this._color
+				}
+				if(hoverColor==""){
+					hoverColor = getDefaultColor(xConfig.color)
+				}
+				return [style[0],style[1],this.isFocus?hoverColor:oldcolor];
+			},
+			_inputLen() : number {
+				return this.nowValue.split("").length
+			},
+			_maxlength() : number {
+				return this.maxlength
+			},
+			_showFooter() : boolean {
+				return this.showFooter
+			},
+			_holdKeyboard():boolean{
+				return this.holdKeyboard
+			},
+			_autoHeight() : boolean {
+				return this.autoHeight
+			},
+			_showChartCount():boolean{
+				return this.showChartCount
+			},
+			_fixed() : boolean {
+				return this.fixed
+			},
+			_width() : string {
+				return checkIsCssUnit(this.width, xConfig.unit)
+			},
+			_height() : string {
+				if (this.autoHeight&&this.type == 'textarea') return "auto"
+				return checkIsCssUnit(this.height, xConfig.unit)
+			},
+			_cstyle() : string {
+				return this._style
+			},
+			_placeholderStyle() : string {
+				return this.placeholderStyle==''?xConfig.placeholderStyle:this.placeholderStyle
+			},
+
+			_cclass() : string {
+				return this._class
+			},
+			_round() : string {
+				if(this.round=="") return checkIsCssUnit(xConfig.inputRadius, xConfig.unit)
+				return checkIsCssUnit(this.round, xConfig.unit)
+			},
+			_fontSize() : string {
+				let fontSize = checkIsCssUnit(this.fontSize, xConfig.unit);
+				if (xConfig.fontScale == 1) return fontSize;
+				let sizeNumber = parseInt(fontSize)
+				if (isNaN(sizeNumber)) {
+					sizeNumber = 16
+				}
+				return (sizeNumber * xConfig.fontScale).toString() + getUnit(fontSize)
+			},
+			_fontSizeUnScale() : string {
+				return this.fontSize
+			},
+			_showClear() : boolean {
+				return this.showClear
+			},
+			_rightText() : string {
+				return this.rightText
+			},
+			_leftText() : string {
+				return this.leftText
+			},
+			_confirmType() : string {
+				return this.confirmType
+			},
+			_placeholder() : string {
+				return this.placeholder
+			},
+			_iconColor() : string {
+				if(this.iconColor==""){
+					return getDefaultColor(xConfig.color)
+				}
+				return getDefaultColor(this.iconColor)
+			},
+			_color() : string {
+				let color = getDefaultColor(this.color==''?xConfig.inputBgColor:this.color)
+				if (xConfig.dark == 'dark') {
+					if (this.darkBgColor == "") {
+						color = xConfig.inputDarkColor
+					} else {
+						color = getDefaultColor(this.darkBgColor)
+					}
+				}
+
+				return color
+			},
+			_clearColor():string{
+				if(this.clearColor=='') return this._iconColor
+				return getDefaultColor(this.clearColor)
+			},
+			_fontColor() : string {
+				let color = getDefaultColor(this.fontColor)
+				if (xConfig.dark == 'dark') {
+					if (this.darkFontColor == "") {
+						color = "#ffffff"
+					} else {
+						color = getDefaultColor(this.darkFontColor)
+					}
+				}
+				return color
+			},
+			_cursorColor():string{
+				let color = this.cursorColor
+				if(this.cursorColor==''){
+					color = xConfig.color
+				}
+				return getDefaultColor(color)
+			},
+			_leftIcon() : string {
+				return this.leftIcon
+			},
+			_disabled() : boolean {
+				return this.disabled
+			},
+			_password() : boolean {
+				return this.password
+			},
+			_autoFocus() : boolean {
+				return this.autoFocus
+			},
+			_focus() : boolean {
+				return this.focus
+			},
+			_adjustPosition() : boolean {
+				return this.adjustPosition
+			},
+			_selectionEnd() : number {
+				return this.selectionEnd
+			},
+			_selectionStart() : number {
+				return this.selectionStart
+			},
+
+		},
+		watch: {
+			modelValue(newValue : string) {
+				if (newValue == this.nowValue) return;
+				this.nowValue = newValue;
+			}
+		},
+		mounted() {
+			this.nowValue = this.modelValue;
+		},
+		methods: {
+			getTrimAfterValue(value:string):string{
+				if(this.trim) return value.trim()
+				return value;
+			},
+			confirm() {
+				/**
+				 * 输入法点了确认搜索按钮时触发
+				 * @param {string}  value 已输入的字符串
+				 */
+				this.$emit('confirm', this.getTrimAfterValue(this.nowValue))
+			},
+			inputHndler(evt : UniInputEvent) {
+				this.nowValue = this.getTrimAfterValue(evt.detail.value)
+				
+				/**
+				 * 输入时触发
+				 * @param {string}  value 当前已输入的字符串
+				 */
+				this.$emit('input', this.nowValue)
+				/**
+				 * 等同v-model
+				 */
+				this.$emit('update:modelValue', this.nowValue)
+				this.$forceUpdate()
+			},
+
+			raightCellClick() {
+				/**
+				 * 点击右侧文本时触发,如果你使用了插槽替换了，此事件不会触发
+				 * @param {string} value 已输入的字符串
+				 */
+				this.$emit('rightClick', this.nowValue)
+			},
+			clearHandler() {
+				this.nowValue = "";
+				/**
+				 * 等同v-model
+				 */
+				this.$emit('update:modelValue', "")
+				this.$emit('clear', "")
+			},
+			onBlur(evt : UniInputBlurEvent) {
+				
+				// 对内容进行首尾清空
+				let newVal = this.getTrimAfterValue(this.nowValue)
+				if(newVal != this.nowValue){
+					this.nowValue = newVal
+					this.$emit('update:modelValue', this.nowValue)
+					
+				}
+				/**
+				 * 失去焦点时
+				 * @param {InputBlurEvent} evt
+				 */
+				this.$emit('blur',evt)
+				this.isFocus =false;
+				this.valid();
+			},
+			onFocus(evt : UniInputFocusEvent) {
+				/**
+				 * 获取焦点时
+				 * @param {UniInputFocusEvent} evt
+				 */
+				this.$emit('focus',evt)
+				this.isFocus = true;
+			},
+			onAreaBlur(evt : UniTextareaBlurEvent) {
+				let newVal = this.getTrimAfterValue(this.nowValue)
+				if(newVal != this.nowValue){
+					this.nowValue = newVal
+					this.$emit('update:modelValue', this.nowValue)
+					
+				}
+				/**
+				 * 失去焦点时
+				 * @param {InputBlurEvent} evt
+				 */
+				this.$emit('blur',evt)
+				this.isFocus =false;
+				this.valid();
+			},
+			onAreaFocus(evt : UniTextareaFocusEvent) {
+				/**
+				 * 获取焦点时
+				 * @param {UniInputFocusEvent} evt
+				 */
+				this.$emit('focus',evt)
+				this.isFocus = true;
+			},
+			onkeyboardheightchange(evt : UniInputKeyboardHeightChangeEvent) {
+				/**
+				 * 键盘高度变化时触发
+				 * @param {UniInputKeyboardHeightChangeEvent} evt
+				 */
+				this.$emit('keyboardheightchange', evt)
+			},
+			onLinechange(evt : UniTextareaLineChangeEvent) {
+				/**
+				 * 键盘高度变化时触发
+				 * @param {UniTextareaLineChangeEvent} evt
+				 */
+				this.$emit('linechange', evt)
+			},
+			onClick() {
+				/**
+				 * 点击整个输入框触发
+				 */
+				this.$emit('click')
+			},
+			// #ifdef MP-WEIXIN
+			inpuUnfocusChange(evt){
+				let value = this.getTrimAfterValue(evt.detail.value);
+				if(value!=this.modelValue&&value!=this.nowValue){
+					this.nowValue = value;
+					this.$emit('update:modelValue', value)
+				}
+			},
+			// #endif
+			valid(){
+				let pelement = this.findParent(this);
+				
+				if (pelement == null) return;
+				// @ts-ignore
+				let parent : XFormItemComponentPublicInstance  = pelement as XFormItemComponentPublicInstance;
+				// #ifndef APP-ANDROID
+				if (typeof parent?.validByblur != 'function') return
+				// #endif
+		
+				parent.validByblur(this.nowValue)
+			},
+			findParent(parent:VueComponent|null):VueComponent|null{
+				
+				if(parent == null) return null;
+				// #ifdef WEB||APP-IOS|| MP-WEIXIN
+				if(parent.$parent?.id?.indexOf('xFormItem')>-1) return parent.$parent;
+				// #endif
+				// #ifdef APP-ANDROID
+				if(parent.$parent instanceof XFormItemComponentPublicInstance) return parent.$parent;
+				// #endif
+				
+				let parents = this.findParent(parent.$parent)
+				
+				// #ifdef WEB||APP-IOS || MP-WEIXIN
+			
+				if(parents?.id?.indexOf('xFormItem')>-1) return parents;
+				// #endif
+				// #ifdef APP-ANDROID
+				if(parents instanceof XFormItemComponentPublicInstance) return parents;
+				// #endif
+				return null;
+			}
+		},
+	}
+</script>
+<template>
+	<view>
+		<view @click="onClick" class="xInput" 
+		:style="{width:_width}">
+			<view class="xInputLeft">
+				<!-- 
+				 @slot 左插槽
+				 -->
+				<slot name="left">
+					<x-text v-if="_leftText!=''" :font-size="_fontSizeUnScale"
+						style="padding-right: 12px;">{{_leftText}}</x-text>
+				</slot>
+			</view>
+			<view :class="[_cclass]" class="xInputCenter"
+				:style="[
+					{
+					borderRadius:_round,
+					backgroundColor:_color,
+					borderWidth:_focusBorder[0],
+					borderStyle:_focusBorder[1],
+					borderColor:_focusBorder[2]
+				},_cstyle]">
+				<!-- 
+				 @slot 输入框内的左插槽
+				 -->
+				<slot name="inputLeft"></slot>
+				
+				<view v-if="_leftIcon" style="margin-left:12px;">
+					<x-icon  :color="_iconColor" :name="_leftIcon"
+						:font-size="_fontSizeUnScale"></x-icon>
+				</view>
+				<input v-if="type!='textarea'" :inputmode="inputmode" :holdKeyboard="_holdKeyboard"  :placeholder-style="_placeholderStyle"
+					<!-- #ifdef MP-WEIXIN -->
+					@change="inpuUnfocusChange"
+					<!-- #endif -->
+					:style="{color:_fontColor,fontSize:_fontSize,textAlign:align,padding:inputPadding,height:_height}"
+					@input="inputHndler" @confirm="confirm" @linechange="onLinechange" @blur="onBlur"
+					@keyboardheightchange="onkeyboardheightchange" @focus="onFocus" confirm-type="search"
+					:value="nowValue" :placeholder="_placeholder" class="xInputCenterInput" :type="type"
+					:disabled="_disabled" :password="!seePass&&_password" :maxlength="maxlength"
+					:cursorSpacing="cursorSpacing" :cursor-color="_cursorColor" :autoFocus="_autoFocus" :focus="_focus"
+					:confirmType="confirmType" :confirmHold="confirmHold" :cursor="cursor"
+					:selectionStart="_selectionStart" :selectionEnd="_selectionEnd" :adjustPosition="_adjustPosition"
+					:fixed="_fixed" />
+				<textarea v-if="type=='textarea'" :holdKeyboard="_holdKeyboard" :placeholder-style="_placeholderStyle"
+					:style="{color:_fontColor,fontSize:_fontSize,textAlign:align,padding:inputPadding,height:_height}"
+					@input="inputHndler" @confirm="confirm" @linechange="onLinechange" @blur="onAreaBlur"
+					@keyboardheightchange="onkeyboardheightchange" @focus="onAreaFocus" :value="nowValue"
+					:placeholder="_placeholder" class="xInputCenterInput xInputCenterInputArea" :disabled="_disabled"
+					:maxlength="maxlength" :cursorSpacing="cursorSpacing" :cursor-color="_cursorColor"
+					:autoFocus="_autoFocus" :focus="_focus" :confirmHold="confirmHold" :cursor="cursor"
+					:selectionStart="_selectionStart" :selectionEnd="_selectionEnd" :adjustPosition="_adjustPosition"
+					:fixed="_fixed" :autoHeight="_autoHeight"></textarea>
+				<view @click="clearHandler" v-if="_showClear&&nowValue.length>0" class="xInputclear"
+					style="padding: 0 12px;">
+					<x-icon :color="_clearColor" name="close-circle-fill"></x-icon>
+				</view>
+				<view @click="seePass=!seePass" v-if="_password" class="xInputclear" style="padding: 0 12px;">
+					<x-icon v-if="!seePass" :color="_iconColor" name="eye-off-line"></x-icon>
+					<x-icon v-else :color="_iconColor" name="eye-fill"></x-icon>
+				</view>
+				<!-- 
+				 @slot 输入框内右插槽
+				 -->
+				<slot name="inputRight"></slot>
+			</view>
+			<view class="xInputRight">
+				<!-- 
+				 @slot 右插槽
+				 -->
+				<slot name="right">
+					<x-text v-if="_rightText!=''" @click="raightCellClick" :font-size="_fontSizeUnScale"
+						class="xInputRightText">{{_rightText}}</x-text>
+				</slot>
+			</view>
+		</view>
+		<view class="xInputFooter" v-if="_showFooter||_maxlength>-1">
+			<view>
+				<!-- 
+				 @slot 底部提示插槽
+				 -->
+				<slot v-if="_showFooter" name="footer"></slot>
+			</view>
+			<text v-if="_maxlength>-1&&_showChartCount" style="margin-left: 20px;" class="xInputMaxLen">
+				{{_inputLen}}/{{_maxlength}}
+			</text>
+			<text v-if="_maxlength==-1&&_showChartCount" style="margin-left: 20px;" class="xInputMaxLen">
+				字符数：{{_inputLen}}
+			</text>
+		</view>
+	</view>
+
+</template>
+<style scoped>
+	.xInputFooter {
+		display: flex;
+		flex-direction: row;
+		justify-content: space-between;
+		padding-top: 8rpx;
+	}
+
+	.xInputMaxLen {
+		color: #888;
+		font-size: 12px;
+		text-align: right;
+	}
+
+	.xInputCenterInput {
+		flex: 1;
+		font-size: 16px;
+		/* padding: 16rpx 24rpx; */
+		height: 100%;
+	}
+
+	.xInputCenterInputArea {
+		line-height: 1.6;
+		/* #ifdef WEB || MP-WEIXIN */
+		box-sizing: border-box;
+		/* #endif */
+	}
+
+	.xInput {
+		width: 100%;
+		position: relative;
+		display: flex;
+		flex-direction: row;
+		justify-content: flex-start;
+		align-items: center;
+	}
+
+	.xInputCenter {
+		display: flex;
+		flex-direction: row;
+		justify-content: flex-start;
+		align-items: center;
+		height: 100%;
+		flex: 1;
+	}
+
+	.xInputLeft {
+		display: flex;
+		flex-direction: row;
+		justify-content: flex-start;
+		align-items: center;
+		height: 100%;
+	}
+
+	.xInputRight {
+		display: flex;
+		flex-direction: row;
+		justify-content: flex-end;
+		align-items: center;
+		height: 100%;
+	}
+
+	.xInputRightText {
+		padding-left: 12px;
+		font-size: 16px;
+
+	}
+</style>

@@ -1,0 +1,91 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor"
+			:front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">全屏加载 xLoadingS</x-text>
+			<x-text  color="#999999" >这是全局方法,可以在任意位置调用,会覆盖整个屏幕的内容包括系统界面.可以修改图标,背景,内容背景色支持属性多。用于代替官方的 uni.showLoading</x-text>
+		</x-sheet>
+		<x-sheet >
+			<x-button :block="true" @click="loadAlert1">尝试加载下</x-button>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-24">自定义图标及遮罩背景</x-text>
+			<x-button :block="true" @click="loadAlert2">加载</x-button>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-24">添加标题，高度可自适应，自动断行</x-text>
+			<x-button :block="true" @click="loadAlert3">加载</x-button>
+		</x-sheet>
+		
+		<!-- <x-drawer @beforeClose="closeModal" v-model:show="showModel">
+			<x-sheet>
+				<x-text font-size="18" class=" text-weight-b mb-24">添加标题，高度可自适应，自动断行</x-text>
+			</x-sheet>
+		</x-drawer>
+		<video style="width: 600rpx;height: 150px;" src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"></video>
+		<x-button :block="true" @click="showModel=true">加载</x-button> -->
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	import { showLoading, hideXloading, XLOADINGS_TYPE } from "@/uni_modules/x-loading-s"
+	import { xStore } from "@/uni_modules/tmx-ui/index.uts"
+	export default {
+		data() {
+			return {
+				showModel:false
+			};
+		},
+		computed:{
+			msgBGcolor():string{
+				return xStore.xConfig.dark=='dark'?'#333333':"#ffffff"
+			},
+			maskBGcolor():string{
+				return xStore.xConfig.dark=='dark'?'#000':"#f5f5f5"
+			}
+		},
+		onLoad() {
+			
+		},
+		methods:{
+			closeModal(){
+				showLoading({contentBgColor:this.msgBGcolor} as XLOADINGS_TYPE)
+				setTimeout(function() {
+					hideXloading()
+				}, 1500);
+			},
+			loadAlert1(){
+				
+				showLoading({contentBgColor:this.msgBGcolor} as XLOADINGS_TYPE)
+				setTimeout(function() {
+					hideXloading()
+				}, 1500);
+			},
+			loadAlert2(){
+				showLoading({contentBgColor:this.msgBGcolor,iconCode:"EEC2",maskBgColor:this.maskBGcolor} as XLOADINGS_TYPE)
+				setTimeout(function() {
+					hideXloading()
+				}, 1500);
+			},
+			loadAlert3(){
+				showLoading({contentBgColor:"#FFF",iconSize:42,size:150,titleColor:xStore.xConfig.color,title:"我是测试超长文本顶替非机动车顶替",iconCode:"EEC2",maskBgColor:"rgb(5, 121, 255)"} as XLOADINGS_TYPE)
+				setTimeout(function() {
+					hideXloading()
+				}, 1500);
+			}
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

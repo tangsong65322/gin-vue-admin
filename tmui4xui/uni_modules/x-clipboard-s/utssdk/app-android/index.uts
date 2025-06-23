@@ -1,0 +1,26 @@
+import ClipData from "android.content.ClipData";
+import ClipboardManager from "android.content.ClipboardManager";
+import Context from "android.content.Context";
+
+export const setClipboardData = (data : string):Promise<boolean> => {
+	let context = UTSAndroid.getAppContext()!
+	let clipboard : ClipboardManager | null = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager;
+	let clip : ClipData | null = ClipData.newPlainText("label", data);
+	if (clip != null && clipboard != null) {
+		clipboard.setPrimaryClip(clip);
+		return Promise.resolve(true)
+	} else {
+		return Promise.reject(false) as Promise<boolean>
+	}
+}
+
+export const getClipboardData = ():Promise<string> => {
+	let context = UTSAndroid.getAppContext()!
+	let clipboard : ClipboardManager | null = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager;
+	if (clipboard != null) {
+		if (clipboard.hasText()) {
+			return Promise.resolve(clipboard.getText().toString())
+		}
+	}
+	return Promise.reject('未知错误') as Promise<string>
+}

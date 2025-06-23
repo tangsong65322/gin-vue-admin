@@ -1,0 +1,130 @@
+import Context from 'android.content.Context'
+import LinearLayout from 'android.widget.LinearLayout';
+import RelativeLayout from 'android.widget.RelativeLayout';
+import ViewGroup from 'android.view.ViewGroup';
+import View from 'android.view.View';
+import TextView from 'android.widget.TextView';
+import ImageView from 'android.widget.ImageView';
+import Gravity from 'android.view.Gravity';
+import Color from 'android.graphics.Color';
+import Activity from 'android.app.Activity';
+// import CardView from 'androidx.cardview.widget.CardView';
+import { ref, } from "vue"
+import TextUtils from 'android.text.TextUtils';
+import GradientDrawable from 'android.graphics.drawable.GradientDrawable'
+import MotionEvent from 'android.view.MotionEvent';
+	
+import {hexToRgb,getDefaultColor} from "../util/xCoreColorUtil.uts"
+import {getUid, dp2px} from "../util/xCoreUtil.uts"
+
+import xView from "./view.uts";
+
+class xLinearView extends xView {
+	override view:any;
+	contentParams:LinearLayout.LayoutParams
+	constructor(context : Context){
+		super(context);
+		let box = new LinearLayout(context);
+		this.contentParams = new LinearLayout.LayoutParams(
+			ViewGroup.LayoutParams.MATCH_PARENT,
+			ViewGroup.LayoutParams.WRAP_CONTENT,
+		)
+		box.setLayoutParams(this.contentParams)
+	
+		this.view = box;
+	}
+	override getView():LinearLayout{
+		return this.view as LinearLayout;
+	}
+	
+	override setBackgroundColor(colorStr : string) : xLinearView {
+		console.error("不支持，请通过cardView设置")
+		return this;
+	}
+	
+	override setRadius(radius:any) : xLinearView{
+		console.error("不支持，请通过cardView设置")
+		return this;
+	}
+	
+	override setBorder(w?:number,colorStr?:string,dashed?:boolean):xLinearView{
+		console.error("不支持，请通过cardView设置")
+		return this;
+	}
+	
+	override setHeight(height : number) : xLinearView {
+		console.error("不支持，请通过linerView设置，并将本CardView加入其中来设置高度。")
+		
+		return this;
+	}
+	
+	//让内容的对齐方向，
+	//https://developer.android.google.cn/reference/kotlin/android/view/Gravity
+	//只有tmxTextView,有这个属性。
+	setAlign(cr:Int) : xLinearView{
+		let view = this.view as LinearLayout;
+		view.setGravity(cr)
+		return this;
+	}
+	
+	setLayoutParams(width?:number,height?:number,layouWidth?:number) : xLinearView{
+		let view = this.view as LinearLayout;
+		let w = (0).toInt();
+		let h = ViewGroup.LayoutParams.WRAP_CONTENT;
+		let flex = (1).toFloat();
+		
+		if(typeof width =='number'){
+			w = width!.toInt();
+		}
+		if(typeof height =='number'){
+			h = height!.toInt();
+		}
+		if(typeof layouWidth =='number'&&layouWidth!=-1){
+			let tf = layouWidth!;
+			flex = tf.toFloat();
+			console.log('null',layouWidth)
+			let layoutParams_crd = new LinearLayout.LayoutParams(
+				w,
+				h,
+				flex
+			)
+			this.contentParams = layoutParams_crd
+		}else{
+			console.log('null')
+			let layoutParams_crd = new LinearLayout.LayoutParams(
+				w,
+				h
+			)
+			this.contentParams = layoutParams_crd
+		}
+		
+		return this;
+	}
+	
+	//内容的排版方向：vertical，horizontal
+	setLayoutDirection(dir:string) : xLinearView{
+		let view = this.view as LinearLayout;
+		if(dir=='VERTICAL'){
+			view.setOrientation(LinearLayout.VERTICAL)
+		}else if(dir=='HORIZONTAL'){
+			view.setOrientation(LinearLayout.HORIZONTAL)
+		}
+		
+		return this
+	}
+	
+	append(children : View,...args: View[]) : xLinearView {
+		let view = this.view as ViewGroup;
+		view.addView(children)
+		args.forEach((el)=>view.addView(el))
+		
+		return this;
+	}
+	appendChild(children : View) : xLinearView {
+		let view = this.view as ViewGroup;
+		view.addView(children)
+		return this;
+	}
+}
+
+export default xLinearView;

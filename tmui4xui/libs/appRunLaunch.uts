@@ -1,0 +1,63 @@
+// #ifndef MP
+import { showRunLogo, hideRunLogo ,XRUN_START_LOGO_OPTS} from "@/uni_modules/x-runstart-logo"
+import { showModal,X_MODAL_TYPE } from "@/uni_modules/x-modal-s"
+
+
+// #endif
+
+
+// #ifndef MP
+function setAgree() {
+	uni.setStorageSync('xTmui4.0Xieyi', 'true')
+}
+function getAgree() : boolean {
+	let tonyixie = uni.getStorageSync('xTmui4.0Xieyi')
+
+	return tonyixie == null || tonyixie == ''
+}
+export function showAgree() {
+	const needAgree = getAgree()
+	if (!needAgree) return;
+	showRunLogo({
+		bgColor: '#006deb',
+		logo: 'logo.png',
+		width: 60,
+		height: 60,
+		logoPadding: 20,
+		round: 14,
+		logoBgColor: '#ffffff',
+		rightText: 'tmui4.0x / 2025 by tmzdy',
+		fontSize: 11,
+		fontColor: '#ffffff'
+	} as XRUN_START_LOGO_OPTS)
+	showModal({
+		title: "隐私政策", 
+		content: "<div><span>我同意</span><a style='color:rgb(5, 121, 255);' href='https://xui.tmui.design'>《TMUIX4.0使用协议》</a><span>我确认我使用的是正版tmuix4.0组件及附带插件软件,并承担相应法律风险,同意请点我同意,不同意请点不同意终止访问.</span></div>",
+		cancelText: '不同意',
+		confirmText: "我同意",
+		height:120,
+		clickMaskClose: false,
+		clickLink(url:string){
+			console.log(url)
+			uni.showModal({
+				title:"阅读协议",
+				content:`这个是协议,请阅读`,
+				showCancel:false,
+				confirmText:"已阅读"
+			})
+		},
+		confirm() {
+			setAgree()
+			setTimeout(function () {
+				hideRunLogo()
+			}, 1000);
+		},
+		cancel() {
+			// #ifdef APP
+			uni.exit()
+			// #endif
+		}
+	} as X_MODAL_TYPE)
+
+}
+// #endif

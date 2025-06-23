@@ -1,0 +1,127 @@
+<script lang="ts" setup>
+	import { getDefaultColor,setBgColorLightByDark,isBlackAndWhite } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit, getUid } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+
+	/**
+	 * @name 占位排版 xLayout
+	 * @description 这是一个占位排版布局组件,需要配合x-layout-item组件实现占位排版
+	 * 具体表现为:当组件在可视区域外时或者你指定延迟渲染或者你指定不渲染时,会以一个空的view来占位,内容不渲染.以此来达到排版不塌陷,同时又提高渲染速度.
+	 * 场景:非常适配个人中心/首页,或者需要占位,渲染较多的情况下使用
+	 * @page /pages/index/row
+	 * @category 其它组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| x | x️ | x | x | x️ | 4.14+ | 1.0.1 |
+	 */
+	defineOptions({name:"xLayout"})
+	const props = defineProps({
+		/**
+		 * 默认是false自动判断要不要显示内容
+		 * 如果你强制设置为true那内部不再判断,直接显示内容
+		 * 并且不可动态更新,只有初始设置有效.
+		 */
+		show:{
+			type:Boolean,
+			default:false
+		},
+	
+		/**
+		 * 显示时,是否需要过渡.
+		 */
+		fade:{
+			type:Boolean,
+			default:true
+		},
+		customStyle:{
+			type:Object as PropType<UTSJSONObject>,
+			default:()=>{
+				return {} as UTSJSONObject
+			}
+		},
+		/**
+		 * 占位时的背景
+		 */
+		color:{
+			type:String,
+			default:"transparent"
+		},
+		/**
+		 * 暗黑时的占位背景.
+		 */
+		darkColor:{
+			type:String,
+			default:"transparent"
+		}
+	})
+	const xLayoutRef = ref<UniElement|null>(null)
+	const show = ref<boolean>(props.show)
+	const _customStyle = computed(():any=>props.customStyle)
+	const _isshowInit = ref(false)
+	let domTop = 0 as number|null
+	let winHeight = 0
+	let scrollTop = 0
+	const _bgColor = computed(():string=>{
+		let color = getDefaultColor(props.color)
+		if (xConfig.dark == 'dark' && props.darkColor != '') {
+			color = getDefaultColor(props.darkColor)
+		}
+		if (xConfig.dark == 'dark' && props.darkColor == '') {
+			if (isBlackAndWhite(color)) {
+				color = xConfig.sheetDarkColor;
+			} else {
+				color = setBgColorLightByDark(color)
+			}
+		}
+		return color;
+	})
+	
+	
+	const setDomShow = ()=>{
+		if(xLayoutRef.value==null||winHeight==0||domTop==null||props.show||show.value) return;
+		let dtop = domTop!;
+		if(dtop>0&&dtop<winHeight){
+			show.value = true
+		}
+	}
+	const onInitDom = ()=>{
+		if(xLayoutRef.value!=null){
+			let ele = xLayoutRef.value!;
+			ele.getBoundingClientRectAsync()
+			?.then((rect:DOMRect)=>{
+				domTop= rect.top;
+				_isshowInit.value = true;
+				setDomShow();
+			})
+		}
+	}
+
+	// onResize(()=>{
+	// 	winHeight = uni.getWindowInfo().windowHeight
+	// 	onInitDom();
+	// })
+	// onPageScroll((evt)=>{
+	// 	if(!_isshowInit.value) return;
+	// 	scrollTop = evt.scrollTop;
+	// 	onInitDom()
+	// })
+	
+	uni.$once("onReady",()=>{
+		winHeight = uni.getWindowInfo().windowHeight
+		// onInitDom();
+		// show.value = true;
+	})
+</script>
+<template>
+	<view ref="xLayoutRef" v-if="show"
+	:style="[{backgroundColor:_bgColor}]"
+	>
+		<view  :style="_customStyle">
+			<slot></slot>
+		</view>
+	</view>
+</template>
+<style scoped>
+	
+</style>

@@ -1,0 +1,97 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1" direction="none">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+	
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">遮罩 Overlay</x-text>
+			<x-text color="#999999">
+				内容以及遮罩内的对齐方式，可以直接在组件上写style来编写，自由度比较高。
+				下方是遮罩配合x-animaion轻松创建一个弹层组件动画。
+			</x-text>
+			
+		</x-sheet>
+		<x-sheet>
+			<x-button @click="show=true" :block="true">显示遮罩</x-button>
+		</x-sheet>
+
+		<x-overlay v-model:show="show"  customContentStyle="width:90%;"
+			custom-style="display: flex;align-items: center;justify-content: center;">
+			
+			
+			<x-sheet>
+				<x-slide-verify ></x-slide-verify>
+				<x-text class="py-32">我是显示的内容，点击遮罩也能关闭。</x-text>
+				<x-button @click="show=false" :block="true">关闭遮罩</x-button>
+			</x-sheet>
+		</x-overlay>
+
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b ">嵌套</x-text>
+			<x-overlay customContentStyle="width:90%;"
+				custom-style="display: flex;align-items: center;justify-content: center;">
+				<template #trigger>
+					<x-button :block="true" color="success">显示遮罩1</x-button>
+				</template>
+
+				<x-sheet>
+					<x-text class="py-32">我是遮罩1的内容</x-text>
+					<x-overlay :showClose="true" customContentStyle="width:90%;"
+						custom-style="display: flex;align-items: center;justify-content: center;">
+						<template #trigger>
+							<x-button :block="true" color="success">显示遮罩2</x-button>
+						</template>
+						<x-sheet>
+							<x-text class="py-32">我是遮罩2的内容</x-text>
+						</x-sheet>
+					</x-overlay>
+				</x-sheet>
+
+			</x-overlay>
+		</x-sheet>
+
+
+		<x-overlay :overlay-click="false" :show-close="true" customContentStyle="width:64%;"
+			custom-style="display: flex;align-items: center;justify-content: center;">
+			<template #trigger>
+				<x-cell icon="sparkling-line" title="插槽自动触发显示遮罩" desc="让遮罩带close关闭按钮"></x-cell>
+			</template>
+
+			<x-sheet height="175">
+				<x-text class="line-8">些遮罩没有配合x-animation组件来做动画内容显示。</x-text>
+			</x-sheet>
+
+		</x-overlay>
+
+	<view style="height:500px"></view>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script lang="uts">
+	// import {xOverflay} from "../../uni_modules/x-core"
+	export default {
+		data() {
+			return {
+				show: false,
+				showSlider:false
+			};
+		},
+		onLoad() {
+
+		},
+		methods: {
+
+		}
+	}
+</script>
+
+<style lang="scss" scoped>
+
+</style>

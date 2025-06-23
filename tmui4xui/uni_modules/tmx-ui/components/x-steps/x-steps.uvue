@@ -1,0 +1,213 @@
+<script lang="ts">
+	import { CHIDREN_ITEM } from "../x-steps/interface.uts"
+
+	/**
+	 * @name 步骤条 xSteps
+	 * @description 标签内仅可放置其直接子节点：x-steps-item
+	 * @page /pages/index/steps
+	 * @category 展示组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				list: [] as CHIDREN_ITEM[],
+				activeIndex: 0,
+			}
+		},
+		emits: [
+			/**
+			 * 变换时触发
+			 * @param {number} index - 当前索引值。
+			 */
+			'change', 'update:modelValue'
+		],
+		props: {
+			modelValue: {
+				type: Number,
+				default: 0
+			},
+			/**
+			 * 默认图标，请在子级上动态修改
+			 */
+			icon: {
+				type: String,
+				default: "checkbox-blank-circle-fill"
+			},
+			/**
+			 * 激活时的图标，请在子级上动态修改
+			 */
+			activeIcon: {
+				type: String,
+				default: "checkbox-circle-fill"
+			},
+			/**
+			 * 图标大小,不可动态修改，请在子级上动态修改
+			 */
+			iconSize: {
+				type: String,
+				default: "14"
+			},
+			/**
+			 * 标题大小，请在子级上动态修改
+			 */
+			labelSize: {
+				type: String,
+				default: "14"
+			},
+			/**
+			 * 下面的小文字介绍大小
+			 */
+			descSize: {
+				type: String,
+				default: "11"
+			},
+			/**
+			 * 未选中时的标题颜色，请在子级上动态修改
+			 */
+			color: {
+				type: String,
+				default: "#333333"
+			},
+			/**
+			 * 激活时的颜色，默认空值取全局主题色。，请在子级上动态修改
+			 */
+			activeColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 是否是竖向
+			 */
+			vertical: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 是否反转,不是内容反转,是状态反向.
+			 */
+			reverse:{
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 是否禁用交互，即不可点击项目来切换进度。
+			 */
+			disabled: {
+				type: Boolean,
+				default: true
+			},
+		},
+		provide() {
+			return {
+				xsetpsIcon: this.icon,
+				xsetpsActiveIcon: this.activeIcon,
+				xsetpsiconSize: this.iconSize,
+				xsetpslabelSize: this.labelSize,
+				xsetpsdescSize: this.descSize,
+				xsetpsactiveColor: this.activeColor,
+				xsetpscolor: this.color,
+				xsetpsvertical: this._vertical,
+				xsetpsdisabled: this._disabled,
+			}
+		},
+		computed: {
+			_vertical() : boolean {
+				return this.vertical
+			},
+			_disabled() : boolean {
+				return this.disabled
+			}
+		},
+		watch: {
+			modelValue(newValue : number) {
+				if (newValue == this.activeIndex) return;
+				this.activeIndex = newValue
+				this.pushActive();
+			}
+		},
+		mounted() {
+			this.activeIndex = this.modelValue;
+			this.pushActive()
+		},
+		methods: {
+			addItem(item : CHIDREN_ITEM) {
+				let index = this.list.findIndex((el : CHIDREN_ITEM) : boolean => el.id == item.id)
+				if (index > -1) {
+					this.list.splice(index, 1, item)
+				} else {
+					this.list.push(item)
+				}
+				this.pushChildren()
+				this.pushActive()
+			},
+			delItem(id : string) {
+				let index = this.list.findIndex((el : CHIDREN_ITEM) : boolean => el.id == id)
+				if (index > -1) {
+					this.list.splice(index, 1)
+				}
+				this.pushChildren()
+			},
+			pushChildren() {
+				let ids = this.list.map((el : CHIDREN_ITEM) : string => el.id);
+				this.list.forEach((el : CHIDREN_ITEM) => {
+					el.ele.setList(ids)
+				})
+			},
+			pushActive() {
+				if(this.reverse){
+					this.list.forEach((el : CHIDREN_ITEM, index : number) => {
+						const reverseIndex = this.list.length - 1 - index; // 计算倒序索引
+						el.ele.setActive(reverseIndex <= (this.list.length - 1 - this.activeIndex));
+					})
+				}else{
+					this.list.forEach((el : CHIDREN_ITEM, index : number) => {
+						el.ele.setActive(index <= this.activeIndex)
+					})
+				}
+				
+
+			},
+			addChange(id : string) {
+				let index = this.list.findIndex((el : CHIDREN_ITEM) : boolean => el.id == id)
+				if (index > -1) {
+					this.activeIndex = index;
+				}
+				this.pushActive();
+				/**
+				 * 变换时触发
+				 * @param index {number} 当前索引值。
+				 */
+				this.$emit('change', index)
+				/**
+				 * 等同v-model=""
+				 */
+				this.$emit('update:modelValue', index)
+			}
+		}
+	}
+</script>
+<template>
+	<!-- 横向 -->
+	<view :class="[_vertical?'xStepsV':'xStepsH']">
+		<!-- 
+		 @slot 默认插槽，仅可放置其直接子节点：x-steps-item
+		 -->
+		<slot></slot>
+	</view>
+</template>
+<style scoped>
+	.xStepsH {
+		display: flex;
+		flex-direction: row;
+		align-items: flex-start;
+		justify-content: center;
+	}
+
+	.xStepsV {
+		display: flex;
+	}
+</style>

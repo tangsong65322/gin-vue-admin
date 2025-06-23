@@ -1,0 +1,675 @@
+import { xRequestCall } from "./config.uts"
+import { xRequestOptions, xRequestOptionsCallBack, xRequestResult, xRequestHistoryType, xRequestMethond } from "../../interface.uts"
+
+/**
+ * 请求库xRequest
+ * @version 1.0.0
+ * @author tmzdy
+ * @host https://xui.tmui.design
+ * @description 异常简便，没有繁杂的配置选项，只有快速的开发部署。
+ */
+/**
+ * auth 表示全局设置了全限auth为false，后面的所有请求都被中止请求，从而触发此事件。
+ * 如果此时返回true，将继续请求。
+ * before 如果返回true，将继续请求。返回false被中断请求。
+ * after 可以返回请求的后台数据格式化并返回到最终的请求结果中。
+ * 
+ * auth,before监听函数请务必返回Promise.resolve(boolean),其中函数内得到的arg为xRequestOptionsCallBack类型（请求参数配置数据）
+ * 除了auth，before 函数体内arg 得到的参数全是xRequestResult(请求结果数据), 返回随意，因为内部不采用。
+ * after,需要返回 Promise.resolve(xRequestResult),会覆盖success请求后的数据，相当于你在此hook事件中修改和格式化服务器，并返回到最终结果中。
+ */
+type xRequestEventType = "before" | "after" | "abort" | "timeout" | "error" | "auth" | "success" | "complete"
+type funType = (arg : any) => Promise<any>;
+type funCall = {
+	fun : funType,
+	type : xRequestEventType
+}
+
+function getUid(rdix = 1, length = 12) : string {
+	let ix = "";
+	// #ifndef APP
+	ix = Math.floor(Math.random() * rdix * Math.floor(Math.random() * Date.now())).toString().substring(0, length);
+	// #endif
+
+	// #ifdef APP
+	ix = Math.floor(Math.random() * rdix * Math.floor(Math.random() * Date.now())).toString().substring(0, length as Int);
+	// #endif
+	return ix;
+}
+
+// 缓存管理器
+class xCacheManager {
+	private cache : UTSJSONObject = {};
+
+	constructor() {
+		let cs = uni.getStorageSync('xCacheManager');
+		if (cs instanceof UTSJSONObject) {
+			this.cache = cs! as UTSJSONObject
+		}
+	}
+
+	// 生成缓存键
+	generateCacheKey(config : xRequestOptionsCallBack) : string {
+		const url = config.url;
+		const method = config.method;
+		let keyQ = (url?.split('?')?.[0] ?? url) as string;
+		// 简化缓存键生成，避免复杂对象序列化可能导致的不一致
+		let key = `${method}_${keyQ}`;
+		// 对data进行类似处理
+		if (config.data != null) {
+			// 如果是简单类型，直接使用
+			if (!(config.data instanceof UTSJSONObject)) {
+				key += `_d:${config.data}`;
+			} else if (config.data instanceof UTSJSONObject) {
+				let _data = config.data as UTSJSONObject;
+				let _keys = [] as string[]
+				for (const key in _data) {
+					_keys.push(key)
+				}
+				// 对于对象，只使用键名作为缓存键的一部分
+				const dataKeys = _keys.sort()
+				key += `_d:${dataKeys.join(',')}`;
+			}
+		}
+
+		return key;
+	}
+
+	// 设置缓存
+	set(config : xRequestOptionsCallBack, response : any) : void {
+		const key = this.generateCacheKey(config);
+		this.cache.set(key, {
+			data: response,
+			timestamp: Date.now()
+		} as UTSJSONObject)
+
+		try {
+			uni.setStorageSync('xCacheManager', this.cache);
+		} catch (error) {
+			// 如果存储失败，可能是缓存太大，清理一部分
+			this.pruneCache();
+			try {
+				uni.setStorageSync('xCacheManager', this.cache);
+			} catch (e) {
+				console.error('二次缓存设置失败');
+			}
+		}
+	}
+
+	// 获取缓存
+	get(config : xRequestOptionsCallBack) : any | null {
+		const key = this.generateCacheKey(config);
+		const cacheItem = this.cache.getJSON(key)
+
+		if (cacheItem == null) return null;
+
+		const cacheTime = config.cacheTime == 0 ? 60000 : config.cacheTime
+		const now = Date.now();
+		const timestamp = cacheItem.getNumber("timestamp")!
+		// 检查缓存是否过期
+		if (now - timestamp > cacheTime) {
+			let allkeys = {} as UTSJSONObject;
+			for (const keySelf in this.cache) {
+				if (keySelf != key) {
+					allkeys.set(keySelf, this.cache[keySelf])
+				}
+			}
+			this.cache = allkeys
+			uni.setStorageSync('xCacheManager', allkeys);
+			return null;
+		}
+
+		// console.log('命中缓存:', key);
+		return cacheItem.getAny('data');
+	}
+
+	// 清除缓存
+	clear() : void {
+		this.cache = {};
+		uni.removeStorageSync('xCacheManager');
+	}
+
+
+
+	// 清理部分缓存
+	private pruneCache() : void {
+
+		const _keys = [] as string[]
+		for (const key in this.cache) {
+			_keys.push(key)
+		}
+
+		if (_keys.length > 20) { // 如果缓存项超过20个
+			// 按时间戳排序，删除最旧的一半
+			const sortedKeys = _keys.sort((a : string, b : string) : number => {
+				let ad = this.cache[a]! as UTSJSONObject
+				let bd = this.cache[b]! as UTSJSONObject
+				return ad.getNumber('timestamp')! - bd.getNumber('timestamp')!
+			});
+
+			const toRemove = sortedKeys.slice(0, Math.floor(_keys.length / 2));
+			let allkeys = {} as UTSJSONObject;
+			for (let i = 0; i < sortedKeys.length; i++) {
+				let key = sortedKeys[i]
+				allkeys.set(key, this.cache[key])
+			}
+			this.cache = allkeys
+			uni.setStorageSync('xCacheManager', allkeys);
+			console.log(`已清理${toRemove.length}个旧缓存项`);
+		}
+	}
+}
+
+export class xRequest {
+	private auth = true;
+	private cacheManager : xCacheManager;
+	private selfOpts = {
+		useCache: false,
+		cacheTime: 60 * 1000,
+		hostUrl: xRequestCall.hostUrl,
+		successStatusCode: 200,
+		url: "",
+		data: {} as UTSJSONObject,
+		header: {
+			'content-type': 'application/json'
+		} as UTSJSONObject,
+		method: "GET",
+		timeout: 6000,
+		firstIpv4: false,
+		/** 请求前是否显示loading遮罩 */
+		showLoadToast: xRequestCall.showLoadToast,
+		/** 请求成功后是否提示，否则不提示 */
+		showSuccessToast: xRequestCall.showSuccessToast,
+		/** 出错时，是否显示提示,否则不提示 */
+		showErrorToast: xRequestCall.showErrorToast,
+		loadToastText: "...",
+		successToastText: "操作成功",
+		errorToastText: ""
+	} as xRequestOptionsCallBack
+
+	private _lisentEventList = [] as funCall[]
+
+	private status = null as xRequestEventType | null
+
+
+	private result = {
+		data: null,
+		statusCode: 0,
+		header: {} as any,
+		cookies: [] as string[],
+	} as xRequestResult
+
+	private reqtask = null as null | RequestTask
+	constructor(opts : xRequestOptions | null = null) {
+		this.setOptions(opts)
+		this.cacheManager = new xCacheManager()
+	}
+	/**
+	 * 设置当前请求的参数
+	 * 只影响本次的实例请求，不影响其它请求。
+	 * 但配置中的header,data会与全局的合并。
+	 */
+	setOptions(opts : xRequestOptions | null = null) : xRequestOptionsCallBack {
+	
+		if (opts == null) return this.selfOpts;
+		let headerTmep = opts.header
+		headerTmep = opts.header == null ? this.selfOpts.header : opts.header!
+		// #ifdef WEB
+		headerTmep = opts.header == undefined ? this.selfOpts.header : opts.header
+		// #endif
+
+
+		let dataTmep = opts?.data ?? ({} as UTSJSONObject)
+
+		if (xRequestCall.header != null) {
+			let obj = xRequestCall.header as UTSJSONObject;
+			let newObj = headerTmep! as UTSJSONObject;
+			for (let key in newObj) {
+				obj.set(key, newObj.get(key))
+			}
+			headerTmep = obj;
+		}
+		let firstIpv4 = (opts?.firstIpv4 ?? false) as boolean;
+		let method = (opts?.method ?? this.selfOpts.method) as xRequestMethond
+		let timeout = (opts?.timeout ?? this.selfOpts.timeout) as number
+		let successStatusCode = (opts?.successStatusCode ?? this.selfOpts.successStatusCode) as number
+		let url = (opts?.url ?? this.selfOpts.url) as string
+		let showLoadToast = (opts?.showLoadToast ?? this.selfOpts.showSuccessToast) as boolean
+		let showSuccessToast = (opts?.showSuccessToast ?? this.selfOpts.showSuccessToast) as boolean
+		let showErrorToast = (opts?.showErrorToast ?? this.selfOpts.showErrorToast) as boolean
+		let hostUrl = (opts?.hostUrl ?? xRequestCall.hostUrl) as string
+		let cacheTime = (opts?.cacheTime ?? this.selfOpts.cacheTime) as number
+		let useCache = (opts?.useCache ?? this.selfOpts.useCache) as boolean
+		let loadToastText = (opts?.loadToastText ?? this.selfOpts!.loadToastText) as string
+		let successToastText = (opts?.successToastText ?? this.selfOpts!.successToastText) as string
+		let errorToastText = (opts?.errorToastText ?? this.selfOpts!.errorToastText) as string
+
+		this.selfOpts.firstIpv4 = firstIpv4!
+		this.selfOpts.method = method! as xRequestMethond;
+		this.selfOpts.timeout = timeout!
+		this.selfOpts.cacheTime = cacheTime!
+		this.selfOpts.useCache = useCache!
+		this.selfOpts.successStatusCode = successStatusCode!
+		this.selfOpts.data = dataTmep!
+		this.selfOpts.header = headerTmep!
+		this.selfOpts.url = url! as string
+		this.selfOpts.showLoadToast = showLoadToast! as boolean;
+		this.selfOpts.showSuccessToast = showSuccessToast! as boolean
+		this.selfOpts.showErrorToast = showErrorToast! as boolean
+		this.selfOpts.responseType = opts.responseType
+		this.selfOpts.dataType = opts.dataType
+		this.selfOpts.hostUrl = hostUrl
+		this.selfOpts!.loadToastText = loadToastText
+		this.selfOpts!.successToastText = successToastText
+		this.selfOpts!.errorToastText = errorToastText
+
+		return this.selfOpts;
+	}
+	/**
+	 * 添加事件监听
+	 * 可以重复添加，被添加的函数会被按顺序执行。
+	 * 相当于Hooks
+	 */
+	addEventListener(event : xRequestEventType = "success", fun : (arg : any) => Promise<any>) : xRequest {
+		this._lisentEventList.push({
+			type: event,
+			fun
+		} as funCall)
+
+		return this;
+	}
+	/**
+	 * 中断当前的事件
+	 * @returns {boolean} true表示中断成功，false表示失败
+	 */
+	abort() : boolean {
+		if (this.reqtask != null) {
+			this.reqtask!.abort()
+			return true;
+		}
+
+		return false
+	}
+	/**
+	 * 设置请求授权失败还是通过
+	 * 如果设置了false
+	 * 接下来的所有请求全部会被中断掉。哪怕你异步或者跨页面发起请求。
+	 */
+	static setAuth(isPass : boolean) {
+		xRequestCall.authPass = isPass
+	}
+	/**
+	 * 设置的头数据是会被所有请求共享
+	 * 包括跨页面。
+	 * 同时新增的数据会与旧的数据合并，如果之前不存在则新增。
+	 */
+	static setHeader(header : UTSJSONObject | null = null) : UTSJSONObject | null {
+		if (xRequestCall.header == null) {
+			xRequestCall.header = header;
+		} else {
+			let obj = xRequestCall.header as UTSJSONObject;
+			let newObj = header! as UTSJSONObject;
+			for (let key in newObj) {
+				obj.set(key, newObj.get(key))
+			}
+			xRequestCall.header = obj;
+		}
+
+		return xRequestCall.header
+	}
+	/**
+	 * 设置请求的主域名地址
+	 * 所有的请求共享，包括跨页面。
+	 */
+	static setHostUrl(url : string | null) {
+		xRequestCall.hostUrl = url == null ? "" : url!;
+	}
+	static setDev(dev : boolean = false) {
+		xRequestCall.dev = dev;
+		if (dev) {
+			console.warn('tmui4.0提醒：' + `你开启了请求调试模式`)
+		} else {
+			console.warn('tmui4.0提醒：' + `你关闭了请求调试模式`)
+		}
+	}
+	/**
+	 * 获取整个应用运行期间的所有请求日志列表
+	 */
+	static getHistory() : xRequestHistoryType[] {
+		return xRequestCall.history.slice(0)
+	}
+	static setShowToast(showLoadToast : boolean = true, showSuccessToast : boolean = true, showErrorToast : boolean = true) {
+		xRequestCall.showLoadToast = showLoadToast
+		xRequestCall.showSuccessToast = showSuccessToast
+		xRequestCall.showErrorToast = showErrorToast
+	}
+	/**
+	 * 执行Hooks函数。
+	 */
+	private _callFun_build() : Promise<any[]> {
+		if (this.status == null) return Promise.resolve([true] as any[]);
+		// "before"|"after"|"abort"|"timeout"|"error"|"auth"|"success"|"complete"
+		let fun = this._lisentEventList.filter((el) : boolean => el.type == this.status!)
+		let funCalls = fun.map((el) : funType => el.fun)
+
+		if (funCalls.length == 0) {
+			if (this.status == 'auth' || this.status == 'before') {
+				return Promise.resolve([true] as any[]);
+			}
+			return Promise.resolve([this.result] as any[]);
+		}
+
+		return this._buildPromise(funCalls)
+	}
+	/**
+	 * 递归执行异步函数
+	 * 由于官方的Promise.all，不知道是bug还是什么，始终无法执行成功
+	 * 因此自己写了个。
+	 */
+	private _buildPromise(lst : funType[]) : Promise<any[]> {
+		let _this = this;
+		let len = lst.length;
+		let i = 0;
+		let p = [] as any[]
+		async function customPromiseAll(evt : funType) : Promise<any> {
+			if (i >= len) return Promise.resolve(p);
+			let arg : any = _this.selfOpts
+			// 非这两事件，全部传递结果集给监听事件中。
+			if (_this.status != 'auth' && _this.status != 'before') {
+				arg = _this.result as xRequestResult
+			}
+			let v = await evt(arg);
+			// 如果这两事件中返回的不是boolean，则强制转换为true通过。
+			if ((_this.status == 'auth') && typeof v != 'boolean') {
+				v = true;
+			}
+			if ((_this.status == 'before') && typeof v != 'boolean') {
+
+				let beforeOpts = JSON.stringify(v)
+				_this.setOptions(JSON.parse<xRequestOptions>(beforeOpts!)!)
+				v = true;
+			}
+			// before中按顺序中断了前面的，后面的不要再执行，直接结束。
+			if ((_this.status == 'before') && typeof v == 'boolean') {
+				let iabort = v as boolean;
+				if (!iabort) {
+					p.push(v);
+					return Promise.resolve(p);
+				}
+			}
+
+			// 请后，与事件中返回的修改后的数据覆盖原本的。
+			if ((_this.status == 'after') && typeof v == 'object') {
+				_this.result = v as xRequestResult
+
+			}
+			// 其它事件则全部结果集。
+			if (_this.status == 'success' || _this.status == 'timeout' || _this.status == 'error' || _this.status == 'abort' || _this.status == 'complete') {
+				v = _this.result
+			}
+
+			i += 1;
+			p.push(v);
+			if (i >= len) return Promise.resolve(p);
+			return await customPromiseAll(lst[i]);
+		}
+		return new Promise((res, rej) => {
+
+			customPromiseAll(lst[i]).then(() => {
+				res(p)
+			})
+		})
+
+	}
+
+
+	/**
+	 * 请置指定请求的状态值。
+	 */
+	private _setDevReqStatus(id : string) {
+		if (!xRequestCall.dev) return;
+		let eventType = this.status;
+		let index = -1;
+		for (let i = 0; i < xRequestCall.history.length; i++) {
+			let item = xRequestCall.history[i];
+			if (id == item.id) {
+				index = i;
+				break;
+			}
+		}
+		if (index > -1 && eventType != null) {
+			xRequestCall.history[index].status = eventType;
+			if (eventType == 'complete' || eventType == 'abort' || eventType == 'auth') {
+				xRequestCall.history[index].loaded = true;
+				xRequestCall.history[index].loading = false;
+			}
+			if (eventType == 'before') {
+				xRequestCall.history[index].loading = true;
+			}
+			if (eventType == 'success') {
+				xRequestCall.history[index].time = Date.now() - xRequestCall.history[index].time;
+			}
+			if (eventType == 'complete' || eventType == 'success') {
+				xRequestCall.history[index].result = this.result;
+			}
+		}
+
+	}
+	async request(opts : xRequestOptions | null = null) : Promise<xRequestResult> {
+		let _this = this;
+
+		let _thisOpts = this.setOptions(opts)
+		
+		let requestId = getUid()
+
+		if (xRequestCall.dev) {
+			xRequestCall.history.push({
+				id: requestId,
+				loading: true,
+				loaded: false,
+				status: "",
+				time: Date.now(),
+				api: _thisOpts.url,
+				result: {} as any
+			} as xRequestHistoryType)
+		}
+
+		if (_thisOpts.showLoadToast) {
+			uni.showLoading({ title: _thisOpts!.loadToastText!, mask: true })
+		}
+
+		const url = _thisOpts.hostUrl + _thisOpts.url;
+
+		if (url == "" || _thisOpts.hostUrl == "") {
+			this.status = 'error';
+			this._setDevReqStatus(requestId);
+			await this._callFun_build()
+			console.warn("未填写请求接口")
+			if (_thisOpts.showLoadToast) {
+				uni.hideLoading()
+			}
+			if (_thisOpts.showErrorToast) {
+				return new Promise<xRequestResult>((tres, trej) => {
+					uni.showToast({ title: '未填请求域名', icon: 'error', mask: true, complete() { trej(_this.result) } })
+				})
+			}
+			return Promise.reject(_this.result)
+		}
+
+
+		if (xRequestCall.authPass == false) {
+			this.status = 'auth'
+			console.warn("授权失败，中断请求")
+			this._setDevReqStatus(requestId);
+			await this._callFun_build()
+			if (_thisOpts.showLoadToast) {
+				uni.hideLoading()
+			}
+			return Promise.reject(_thisOpts)
+		}
+
+		// 检查是否使用缓存,只针对post及get方式进行缓存.
+		if (_thisOpts.useCache && (_thisOpts.method == 'GET' || _thisOpts.method == 'POST')) {
+			// 尝试从缓存获取响应
+			const cachedResponse = this.cacheManager.get(_thisOpts);
+
+			if (cachedResponse != null) {
+				if (process.env.NODE_ENV == 'development') {
+					console.log('缓存接口:', _thisOpts.url)
+				}
+				const cachedata = cachedResponse as UTSJSONObject
+				const _cookies = cachedata.getArray<string>('cookies');
+				const cacheResult = {
+					data: cachedata.getAny('data'),
+					statusCode: cachedata.getNumber('statusCode')!,
+					header: cachedata.getAny('header')!,
+					cookies: _cookies == null ? ([] as string[]) : _cookies!,
+				} as xRequestResult
+				if (_thisOpts.showLoadToast) {
+					uni.hideLoading()
+				}
+				return Promise.resolve(cacheResult);
+			}
+		}
+
+
+		this.status = 'before';
+		this._setDevReqStatus(requestId);
+		let jg2 = await this._callFun_build()
+		let isAbor = (jg2 as boolean[]).some((el) : boolean => !el)
+
+		// 是否中断请求
+		if (isAbor) {
+			console.warn("事件before中断了请求")
+			this.status = 'abort';
+			this._setDevReqStatus(requestId);
+			await this._callFun_build()
+			if (_thisOpts.showLoadToast) {
+				uni.hideLoading()
+			}
+			return Promise.reject(this.result)
+		}
+
+
+		// "before" | "after" | "abort" | "timeout" | "error" | "auth" | "success" | "complete"
+		return new Promise((res, rej) => {
+			_this.reqtask = uni.request({
+				url: url,
+				data: _thisOpts.data,
+				header: _thisOpts.header,
+				method: _thisOpts.method,
+				timeout: _thisOpts.timeout,
+				firstIpv4: _thisOpts.firstIpv4,
+				sslVerify: false,
+				withCredentials: false,
+				dataType: _thisOpts.dataType,
+				responseType: _thisOpts.responseType,
+				success(rst) {
+					if (process.env.NODE_ENV == 'development') {
+						console.log('请求接口成功:', _thisOpts.url, rst)
+					}
+					_this.result = {
+						data: rst.data,
+						statusCode: rst.statusCode,
+						header: rst.header,
+						cookies: rst.cookies as string[],
+					} as xRequestResult
+
+					_this.status = 'after';
+					_this._setDevReqStatus(requestId);
+					_this._callFun_build()
+						.then((v) => {
+							if (_thisOpts.successStatusCode != rst.statusCode) {
+								_this.status = 'error';
+								_this.result.statusCode = rst.statusCode
+								_this._setDevReqStatus(requestId);
+								_this._callFun_build()
+									.then(() => {
+										if (_thisOpts.showLoadToast) {
+											uni.hideLoading()
+										}
+										if (_thisOpts.showErrorToast) {
+											let msg =  _thisOpts!.errorToastText
+											msg =  msg==""?('服务器错误:'+rst.statusCode.toString()):msg
+											uni.showToast({ title: msg!, mask: true, icon: 'error', complete() { rej(_this.result) } })
+										} else {
+											rej(_this.result)
+										}
+									})
+								return;
+							}
+							let jgtss = v as xRequestResult[]
+							let formartv = _this.result as xRequestResult
+							if (jgtss.length > 0) {
+								formartv = jgtss[jgtss.length - 1]
+							}
+							_this.result = formartv;
+
+							_this.status = 'success';
+							_this._setDevReqStatus(requestId);
+							_this._callFun_build()
+								.then(() => {
+									if (_thisOpts.showLoadToast) {
+										uni.hideLoading()
+									}
+									_this.cacheManager.set(_thisOpts, _this.result);
+									if (_thisOpts.showSuccessToast) {
+										//默认读取data下的msg字段。
+										let d = formartv.data;
+										let msg =  _thisOpts!.successToastText
+										if (typeof d == 'object' && d != null && !Array.isArray(d)&&msg=="") {
+											try {
+												let s = d as UTSJSONObject;
+												msg = s.getString('msg') != null ? s.getString('msg')! : msg
+											} catch (e) {
+												//TODO handle the exception
+												console.error("服务没有返回msg字段")
+											}
+
+										}
+										msg =  msg==""?'操作成功':msg
+										uni.showToast({ title: msg!, icon: 'none', mask: true, complete() { res(_this.result) } })
+									} else {
+										res(_this.result)
+									}
+
+								})
+
+						})
+
+				},
+				fail(er) {
+					if (process.env.NODE_ENV == 'development') {
+						console.error(er)
+					}
+					if (er.errCode == 5) {
+						_this.status = 'timeout';
+					} else {
+						_this.status = 'error';
+					}
+
+					_this.result.statusCode = er.errCode
+					_this._setDevReqStatus(requestId);
+					_this._callFun_build()
+						.then(() => {
+							if (_thisOpts.showLoadToast) {
+								uni.hideLoading()
+							}
+							if (_thisOpts.showErrorToast) {
+								uni.showToast({ title: '服务器错误：' + er.errCode.toString(), mask: true, icon: 'error', complete() { rej(_this.result) } })
+							} else {
+								rej(_this.result)
+							}
+						})
+				},
+				complete() {
+					_this.status = 'complete';
+					_this._setDevReqStatus(requestId);
+					_this._callFun_build()
+
+				}
+			})
+
+		})
+	}
+}

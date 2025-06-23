@@ -1,0 +1,53 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+			<x-card class="mx-16 my-8"
+			 
+			image="https://store.tmui.design/api_v2/public/random_picture?random=183"
+			title="我就是无法将你移除脑海" subtitle="Girl it's more than I dare to think about" :btns="['付款','详细']"
+			content="女孩 我奢望的远不止于此 There's a dark secret in me 我还有个不为人知的秘密 Don't leave me locked in your heart 不要将我锁入你的心里"
+			>
+			</x-card>
+			<x-card class="mx-16 mb-8"
+			dark-bg-color="#333"
+			title="我就是无法将你移除脑海" subtitle="自定义暗黑背景" :btns="['操作']"
+			>
+			</x-card>
+			<x-card class="mx-16 mb-8"
+			title="我就是无法将你移除脑海" subtitle="Girl it's more than I dare to think about" :btns="['操作']"
+			>
+				<x-image src="https://store.tmui.design/api_v2/public/random_picture?random=18366"></x-image>
+				<x-text>
+					Girl it's more than I dare to think about
+					女孩 我奢望的远不止于此
+				</x-text>
+			</x-card>
+			<x-card class="mx-16 mb-8" 
+			status-icon="" title="Tmui4.0x" subtitle="Girl it's more than I dare to think about" :btns="['操作']"
+			>
+			</x-card>
+		<view class="pa-16"></view>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+				
+			};
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

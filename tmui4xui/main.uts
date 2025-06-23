@@ -1,0 +1,10 @@
+import App from './App'
+import {xui} from "@/uni_modules/tmx-ui/index.uts"
+import { createSSRApp } from 'vue'
+export function createApp() {
+	const app = createSSRApp(App)
+	app.use(xui)
+	return {
+		app
+	}
+}

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools"
+	package="io.dcloud.uni_modules.xFaceDetection">
+	<uses-permission android:name="android.permission.VIBRATE" />
+	<uses-feature android:name="android.hardware.camera.any" />
+	<uses-permission android:name="android.permission.CAMERA" />
+
+	<application>
+		<meta-data android:name="UTS_MLKIT_xFaceDetection" android:value="xFaceDetection" />
+		<activity android:name="uts.sdk.modules.xFaceDetection.DemoActivity"></activity>
+	</application>
+</manifest>
+

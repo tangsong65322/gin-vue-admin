@@ -1,0 +1,325 @@
+<script lang="ts" setup>
+	import { getCurrentInstance } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { FORM_ITEM } from "../x-form/interface.uts"
+	import { FORM_RULE, FORM_SUBMIT_OBJECT, FORM_SUBMIT_RESULT } from "../../interface.uts"
+	type FORMITEM_R = {
+		key : string,
+		value : any | null,
+	}
+	type FORMITEM_J = {
+		value : any | null,
+		item : FORM_ITEM
+	}
+	type labelDirType = 'vertical' | 'horizontal'
+	type errorAlignType = 'left' | 'center'| 'right'
+	/**
+	 * @name 表单 xForm
+	 * @description 从1.1.2开始允许xform可以嵌套view进行form-item布局了,但建议不要嵌套太深,影响性能.
+	 * @page /pages/index/form
+	 * @category 表单组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	defineOptions({name:"xForm"})
+	const proxy = getCurrentInstance()?.proxy??null;
+	const emits = defineEmits([
+		/**
+		 * 按钮提交表单时触发。
+		 * @param {FORM_SUBMIT_RESULT} result 表单验证结果
+		 */
+		'submit',
+		/**
+		 * 校验事件，这个不是submit是用户在输入内容或者在校验阶段向外发出的事件
+		 * 里面包含了实时的校验信息，用于绑定外部的按钮提供实时的可提交状态。
+		 * 它对外输出，不能够双向绑定对内更改校验状态。
+		 */
+		'update:modelValid'
+	])
+	export type xFormPropsType = {
+		/**
+		 * 标签宽（横向表单时有效）
+		 * 不支持动态修改（uniappx 3.99不支持动态传递 inject）,可在子组件上动态修改
+		 */
+		labelWidth:string,
+		/**
+		 * 不支持动态修改（uniappx 3.99不支持动态传递 inject）,可在子组件上动态修改
+		 * vertical,horizontal
+		 */
+		labelDirection:labelDirType,
+		/**
+		 * 标签的文本颜色,不支持动态修改（uniappx 3.99不支持动态传递 inject）,可在子组件上动态修改
+		 */
+		labelFontColor:string,
+		/**
+		 * 出错时，是否滚动到表单的位置
+		 * 不支持动态修改（uniappx 3.99不支持动态传递 inject）,可在子组件上动态修改
+		 */
+		errorAutoPage:boolean,
+		/**
+		 * 等同v-model
+		 */
+		modelValue:any,
+		/**
+		 * 标签文本大小
+		 * 不支持动态修改（uniappx 3.99不支持动态传递 inject）,可在子组件上动态修改
+		 */
+		labelFontSize:string,
+		/**
+		 * 是否显示标题,不支持动态修改（uniappx 3.99不支持动态传递 inject）,可在子组件上动态修改
+		 */
+		showLabel:boolean,
+		/**
+		 * 错误标签的对齐方式,left,center,right
+		 */
+		errorAlign:errorAlignType,
+		/**
+		 * rules这里提供和与formItem上提供的不冲突都可以校验
+		 * 如果两个名称相同会被校验两次。如果两有一边提供也会校验一次。
+		 */
+		rules:Map<string,FORM_RULE[]>,
+		/**
+		 * 是否开启实时全部字段校验获取当前实时的校验状态，
+		 * 通过vmodel:valid对外输出当前实时的校验值，当字段值改变时会一直监测并监听所有字段并返回结果到对外
+		 * 如果你没有这个需求场景，请保持关闭状态，如果你确实外部需要实时改变并观察提交按钮状态可以打开，请在字段少的场景使用。
+		 */
+		watchValidStatus:boolean,
+		/**
+		 * 当前的校验状态，请不要外部改变此值，此值只对外输出当前校验状态
+		 * 需要设置watchValidStatus为true才会实时监听并检测状态。请通过v-model:valid来得到状态值
+		 */
+		modelValid:boolean,
+	}
+	const list = ref<FORM_ITEM[]>([])
+	const top = ref(0)
+	const isOkTop = ref(false)
+	const isdestry = ref(false)
+	const oldFormData = ref<any>({})
+	const id = ("xForm-" + getUid()) as string
+	
+	const props = withDefaults(defineProps<xFormPropsType>(), {
+		labelWidth:"100",
+		labelDirection:"horizontal",
+		labelFontColor:"#333333",
+		errorAutoPage:true,
+		modelValue:{} as UTSJSONObject,
+		labelFontSize:"16",
+		showLabel:true,
+		errorAlign:'left',
+		// @ts-ignore 
+		rules:new Map<string,FORM_RULE[]>(),
+		watchValidStatus:false,
+		modelValid:false
+	})
+	
+	const _modelValue = computed(():any =>props.modelValue)
+	const _rules = computed(():Map<string,FORM_RULE[]> =>props.rules)
+	let validTimeid = 12
+	provide('XFORMITEM_TOP',computed(():number=>top.value))
+	provide('XFORMITEM_LABEL_WIDTH',computed(():string=>props.labelWidth))
+	provide('XFORMITEM_LABEL_Direction',computed(():string=>props.labelDirection))
+	provide('labelFontColor',computed(():string=>props.labelFontColor))
+	provide('XFORMITEM_LABEL_SCROLL',computed(():boolean=>props.errorAutoPage))
+	provide('XFORMITEM_LABEL_FontSize',computed(():string=>props.labelFontSize))
+	provide('XFORMITEM_SHOWLABEL',computed(():boolean=>props.showLabel))
+	provide('XFORMITEM_ERROR_ALIGN',computed(():string=>props.errorAlign))
+	function getNodeInfo() {
+		uni.createSelectorQuery().in(proxy)
+			.select(".xForm")
+			.boundingClientRect().exec((ret) => {
+				let nodeinfo = ret[0] as NodeInfo
+				top.value = nodeinfo.top!;
+				isOkTop.value = true;
+			})
+	}
+	function actionsRequired(templist : FORMITEM_R[]) {
+		list.value.forEach((el : FORM_ITEM) => {
+			let index = templist.findIndex((ele : FORMITEM_R) : boolean => ele.key == el.name)
+			if (index > -1) {
+				el.ele.vaildCompele(templist[index].value)
+			}
+		})
+	
+	}
+	//比较哪个字段有变化
+	function diffFiled(newvals : any, olds : any) {
+		if (isdestry.value) return;
+		if (typeof newvals != 'object' || typeof olds != 'object') return;
+		let newval = JSON.parseObject(JSON.stringify(newvals)) as UTSJSONObject;
+		let old = JSON.parseObject(JSON.stringify(olds)) as UTSJSONObject;
+	
+		let fileds = [] as FORMITEM_R[]
+		for (let key in old) {
+			let val : any | null = newval.get(key)
+			let oldval : any | null = old.get(key)
+			if (Array.isArray(val) && Array.isArray(oldval)) {
+				let temval = val.length
+				let temoldval = oldval.length
+				if (temval != temoldval) {
+					fileds.push({
+						key,
+						value: val
+					} as FORMITEM_R)
+				}
+			} else if (val != oldval) {
+				fileds.push({
+					key,
+					value: val
+				} as FORMITEM_R)
+			}
+	
+		}
+		actionsRequired(fileds)
+		oldFormData.value = JSON.parse<any>(JSON.stringify(_modelValue.value))!;
+	}
+	
+	function _valid(keys : string[],isShowwStatusInTag:boolean = true) : FORM_SUBMIT_RESULT {
+		let toptemp = 0
+		let result = {
+			valid: true,
+			errorMessage: "",
+			key: "",
+			formData: [] as FORM_SUBMIT_OBJECT[]
+		} as FORM_SUBMIT_RESULT
+		let modevalue = JSON.parseObject(JSON.stringify(_modelValue.value)) as UTSJSONObject;
+	
+		for (let key in modevalue) {
+			if (keys.length == 0 || keys.includes(key)) {
+	
+				let valdata : any | null = modevalue.get(key)
+				let index = list.value.findIndex((ele : FORM_ITEM) : boolean => ele.name == key)
+				
+				if (index > -1) {
+					let resultJg = null as FORM_SUBMIT_OBJECT|null
+					if(isShowwStatusInTag){
+						resultJg = list.value[index].ele.vaildCompele(valdata, false) as FORM_SUBMIT_OBJECT
+					}else{
+						resultJg = list.value[index].ele.getVaildStatus(valdata) as FORM_SUBMIT_OBJECT
+					}
+					if (!resultJg!.valid && result.valid) {
+						result.valid = false;
+						result.key = key;
+						result.errorMessage = resultJg!.errorMessage;
+						toptemp = list.value[index].top
+					}
+					result.formData.push(resultJg!)
+				}
+			}
+	
+		}
+		
+		if(isShowwStatusInTag){
+			/**
+			 * 按钮提交表单时触发。
+			 * @param {FORM_SUBMIT_RESULT} result 表单验证结果。
+			 */
+			emits('submit', result)
+			if (props.errorAutoPage && !result.valid && toptemp > 0) {
+				uni.pageScrollTo({
+					scrollTop: toptemp,
+					fail: (_) => {
+						console.error("当前页面没有放置可滚动的列表，但使用了表单出错滚动功能，请关闭表单属性：error-auto-page")
+					}
+				})
+			}
+		}
+	
+		return result;
+	}
+	
+	// 		emits('update:vaild',ispass)
+	// 全局检测校验整体状态。
+	function getStatus(){
+		if(!props.watchValidStatus) return;
+		clearTimeout(validTimeid)
+		validTimeid = setTimeout(function() {
+			const result = _valid([] as string[],false)
+			console.log(result.valid)
+			emits('update:modelValid',result.valid)
+		}, 120);
+
+	}
+	
+	onMounted(()=>{
+		oldFormData.value = JSON.parse<any>(JSON.stringify(_modelValue.value))!;
+		getNodeInfo();
+	})
+	onBeforeUnmount(()=>{
+		clearTimeout(validTimeid)
+		isdestry.value = true;
+		list.value = [] as FORM_ITEM[]
+		oldFormData.value = {} as UTSJSONObject
+	})
+	
+	
+	
+	watch(():any=>props.modelValue,(newValue : any)=>{
+		diffFiled(newValue, oldFormData.value)
+		if(props.watchValidStatus){
+			getStatus()
+		}
+	},{deep:true})
+	
+	
+	
+	defineExpose({
+		pushAdd(item : FORM_ITEM) {
+			if (isdestry.value) return;
+			let index = list.value.findIndex((el : FORM_ITEM) : boolean => el.id == item.id);
+			if (index > -1) {
+				list.value.splice(index, 1, item)
+			} else {
+				list.value.push(item)
+			}
+		},
+		delItem(id : string) {
+			if (isdestry.value) return;
+			if (list.value.length == 0) return;
+			let index : number = list.value.findIndex((el : FORM_ITEM) : boolean => el.id == id);
+			if (index > -1) {
+				list.value.splice(index, 1)
+			}
+		},
+		getRules(key:string):FORM_RULE[]{
+			const _localRules = _rules.value.get(key)
+			if(_localRules == null) return [] as FORM_RULE[]
+			return _localRules!
+		},
+		/**
+		 * 手动执行触发校验函数，如果提供空数组，表示校验所有，如果提供了指定值，则表示只校验提供的字段。
+		 * @public 
+		 * @param {string[]} keys - 待校验的字段
+		 * @returns {FORM_SUBMIT_RESULT} 校验结果
+		 */
+		valid(keys : string[]) : FORM_SUBMIT_RESULT {
+			return _valid(keys);
+		},
+		/**
+		 * 清除校验状态并回到初始状态。
+		 */
+		clearValid(){
+			list.value.forEach((el : FORM_ITEM) => {
+				el.ele.clearValid()
+			})
+		},
+		submit() : FORM_SUBMIT_RESULT {
+			return _valid([] as string[]);
+		}
+	})
+	
+</script>
+<template>
+	<view class="xForm">
+		<!-- 
+		 @slot 插槽内只能放置x-form-item子节点组件 
+		 -->
+		<slot></slot>
+	</view>
+</template>
+<style scoped>
+</style>

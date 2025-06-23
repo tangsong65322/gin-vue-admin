@@ -1,0 +1,301 @@
+import Context from 'android.content.Context'
+import LinearLayout from 'android.widget.LinearLayout';
+import ViewGroup from 'android.view.ViewGroup';
+import View from 'android.view.View';
+import TextView from 'android.widget.TextView';
+import ImageView from 'android.widget.ImageView';
+import Gravity from 'android.view.Gravity';
+import Color from 'android.graphics.Color';
+import Activity from 'android.app.Activity';
+// import CardView from 'androidx.cardview.widget.CardView';
+import { ref, } from "vue"
+import TextUtils from 'android.text.TextUtils';
+import GradientDrawable from 'android.graphics.drawable.GradientDrawable'
+import MotionEvent from 'android.view.MotionEvent';
+import Typeface from 'android.graphics.Typeface';
+import {hexToRgb,getDefaultColor,toFillMarginAr} from "../util/xCoreColorUtil.uts"
+import {getUid,dp2px} from "../util/xCoreUtil.uts"
+
+import xView from "./view.uts";
+
+class xText extends xView {
+	override view:any
+	constructor(context : Context,str:string=""){
+		super(context);
+		let view = new TextView(context);
+		let layoutParams_crd = new LinearLayout.LayoutParams(
+			ViewGroup.LayoutParams.WRAP_CONTENT,
+			ViewGroup.LayoutParams.WRAP_CONTENT,
+			(1).toFloat()
+		)
+		view.setText(str);
+		view.setLayoutParams(layoutParams_crd);
+		
+		this.bgView = new GradientDrawable();
+		this.bgView.setShape(0x00000000)
+		this.bgView.setColor(Color.WHITE)
+		this.bgView.mutate()
+		view.setBackground(this.bgView)
+		
+		this.view = view;
+	}
+	override getView():View{
+		
+		return this.view as View;
+	}
+	override setBackgroundColor(colorStr : string) : xText {
+		this.bgView.mutate()
+		if(colorStr == 'transparent'){
+			this.bgView.setColor(Color.TRANSPARENT)
+		}else{
+			this.bgView.setColor(Color.parseColor(getDefaultColor(colorStr)))
+		}
+		
+		return this;
+	}
+	override setBorder(w?:number,colorStr?:string,dashed?:boolean) : xText {
+		this.bgView.mutate()
+		
+		let tw:number = 1;
+		let tcolor = 'transparent';
+		let tdashed = false;
+		if(typeof tw !== 'undefined'){
+			tw = w as number;
+		}
+		if(typeof tw !== 'undefined'){
+			tcolor = colorStr as string;
+		}
+		
+		if(typeof dashed !== 'undefined'){
+			tdashed = dashed as boolean;
+		}
+		
+		let colorNum = Color.TRANSPARENT;
+		if(tcolor != 'transparent'){
+			colorNum = Color.parseColor(getDefaultColor(tcolor));
+		}
+		if(dashed == true){
+			let dashedWidth = dp2px(6)
+			let dashedGap = dp2px(4)
+			this.bgView.setStroke(dp2px(tw).toInt(),colorNum,dashedWidth.toFloat(),dashedGap.toFloat())
+		}else{
+			this.bgView.setStroke(dp2px(tw).toInt(),colorNum)
+		}
+		
+		
+		return this;
+	}
+	override setRadius(radius:any) : xText{
+		let x =0
+		let y =0
+		this.bgView.mutate()
+		if(Array.isArray(radius)){
+			let rd = radius as number[];
+			if(rd.length==0){
+				let rdfs = 0;
+				this.bgView.setCornerRadius(dp2px(rdfs).toFloat());
+				// view.setBackground(this.bgView)
+			}else if(rd.length==1){
+				let rdfs = rd[0];
+				this.bgView.setCornerRadius(dp2px(rdfs).toFloat());
+				// view.setBackground(this.bgView)
+			}else if(rd.length==2){
+				let tl = [
+					dp2px(rd[0]).toFloat(),dp2px(rd[0]).toFloat(),
+					dp2px(rd[1]).toFloat(),dp2px(rd[1]).toFloat(),
+					x.toFloat(),x.toFloat(),
+					x.toFloat(),x.toFloat()
+				]
+				let tlint = tl.toKotlinList().toFloatArray()
+				this.bgView.setCornerRadii(tlint);
+			}else if(rd.length==3){
+				let tl = [
+					dp2px(rd[0]).toFloat(),dp2px(rd[0]).toFloat(),
+					dp2px(rd[1]).toFloat(),dp2px(rd[1]).toFloat(),
+					dp2px(rd[2]).toFloat(),dp2px(rd[2]).toFloat(),
+					x.toFloat(),x.toFloat()
+				]
+				let tlint = tl.toKotlinList().toFloatArray()
+				this.bgView.setCornerRadii(tlint);
+			}else if(rd.length==4){
+				let tl = [
+					dp2px(rd[0]).toFloat(),dp2px(rd[0]).toFloat(),
+					dp2px(rd[1]).toFloat(),dp2px(rd[1]).toFloat(),
+					dp2px(rd[2]).toFloat(),dp2px(rd[2]).toFloat(),
+					dp2px(rd[3]).toFloat(),dp2px(rd[3]).toFloat(),
+				]
+				let tlint = tl.toKotlinList().toFloatArray()
+				this.bgView.setCornerRadii(tlint);
+			}
+		}else{
+			
+			let rd = radius as number;
+			
+			this.bgView.setCornerRadius(dp2px(rd).toFloat());
+		}
+		
+		
+		return this;
+	}
+
+	setFontSize(n:number):xText{
+		let view = this.view as TextView;
+		view.setTextSize(dp2px(n).toFloat())
+		return this;
+	}
+	setFontColor(str:string):xText{
+		let view = this.view as TextView;
+		view.setTextColor(Color.parseColor(getDefaultColor(str)))
+		
+		return this;
+	}
+	//是否允许复制。
+	setTextIsSelectable(isSelectet:boolean):xText{
+		let view = this.view as TextView;
+		view.setTextIsSelectable(isSelectet)
+		return this;
+	}
+	//bold,normal,ligth
+	setFontWeight(str:string):xText{
+		let view = this.view as TextView;
+		if(str=='bold'){
+			view.setTypeface(null,Typeface.BOLD)
+		}else{
+			view.setTypeface(null,Typeface.NORMAL)
+		}
+		return this;
+	}
+	setFontStyle(str:string):xText{
+		let view = this.view as TextView;
+		if(str=='italtc'){
+			view.setTypeface(null,Typeface.ITALIC)
+		}else if(str=='italtc-bold'){
+			view.setTypeface(null,Typeface.BOLD_ITALIC)
+		}
+		return this;
+	}
+	setText(str:string):xText{
+		let view = this.view as TextView;
+		view.setText(str)
+		
+		return this;
+	}
+	override setPadding(n:any):xText{
+		let view = this.view as TextView;
+		if(Array.isArray(n)){
+			let rd = n as number[];
+			if(rd.length==0){
+				let rds = 0;
+				let rdf = dp2px(rds).toInt();
+				view.setPadding(rdf,rdf,rdf,rdf)
+			}else if(rd.length==1){
+				let rdf = dp2px(rd[0]).toInt();
+				view.setPadding(rdf,rdf,rdf,rdf)
+			}else if(rd.length==2){
+				view.setPadding(dp2px(rd[0]).toInt(),dp2px(rd[1]).toInt(),dp2px(rd[0]).toInt(),dp2px(rd[1]).toInt())
+			}else if(rd.length==3){
+				let rds = 0;
+				let rdf = rds.toInt();
+				view.setPadding(dp2px(rd[0]).toInt(),dp2px(rd[1]).toInt(),dp2px(rd[2]).toInt(),rdf)
+			}else if(rd.length==4){
+				view.setPadding(dp2px(rd[0]).toInt(),dp2px(rd[1]).toInt(),dp2px(rd[2]).toInt(),dp2px(rd[3]).toInt())
+			}
+		}else{
+			
+			let rd = n as number;
+			let rdf = dp2px(rd).toInt();
+			view.setPadding(rdf,rdf,rdf,rdf)
+		}
+		
+		return this;
+	}
+	
+	//让内容的对齐方向，
+	//https://developer.android.google.cn/reference/kotlin/android/view/Gravity
+	//只有xTextView,有这个属性。
+	setAlign(cr:Int) : xText{
+		let view = this.view as TextView;
+		view.setGravity(cr)
+		return this;
+	}
+	//追加文本
+	//start,end不填写就追加到末尾。
+	setIcon(code:string,start:number=0,end:number=0) : xText{
+		let view = this.view as TextView;
+		let nowText = view.getText().toString();
+		
+		let assetManager = view.getContext()!.getAssets();
+		let typeface = Typeface.createFromAsset(assetManager, "remixicon.ttf")
+		view.setTypeface(typeface)
+		
+		if(!TextUtils.isEmpty(code)){
+			let codePoint = Integer.parseInt(code, 16);
+			let charArray = Character.toChars(codePoint);
+			let text = new String(charArray);
+			view.setText(text+" "+nowText);
+		}
+		
+		return this;
+	}
+	setLayoutParams(width?:number,height?:number,layouWidth?:number) : xText{
+		let view = this.view as TextView;
+		let w = (0).toInt();
+		let h = ViewGroup.LayoutParams.WRAP_CONTENT;
+		let flex = (1).toFloat();
+		
+		if(typeof width =='number'){
+			w = width!.toInt();
+		}
+		if(typeof height =='number'){
+			h = height!.toInt();
+		}
+		if(typeof layouWidth =='number'){
+			flex = layouWidth!.toFloat();
+		}
+		
+		let layoutParams_crd = new LinearLayout.LayoutParams(
+			w,
+			h,
+			flex
+		)
+		view.setLayoutParams(layoutParams_crd);
+		
+		return this;
+	}
+	
+	setLineHeight(line:number) : xText{
+		let view = this.view as TextView;
+		view.setLineHeight(line.toInt())
+		return this;
+	}
+	setLetterSpacing(space:number) : xText{
+		let view = this.view as TextView;
+		view.setLineHeight(space.toInt())
+		return this;
+	}
+	setHighlightColor(color:string) : xText{
+		let view = this.view as TextView;
+		if(!TextUtils.isEmpty(color)){
+			view.setHighlightColor(Color.parseColor(getDefaultColor(color)))
+		}
+		
+		return this;
+	}
+	
+	
+	// 设置文字的省略情况,0表示不显示省略号，数字表示几行显示省略号。
+	setEllipsis(lines:number=0) : xText{
+		let view = this.view as TextView;
+		if(lines>0){
+			view.setMaxLines(lines.toInt())
+			view.setEllipsize(TextUtils.TruncateAt.END)
+		}else{
+			view.setMaxLines((1).toInt())
+			view.setEllipsize(null)
+		}
+		return this;
+	}
+	
+}
+
+export default xText;

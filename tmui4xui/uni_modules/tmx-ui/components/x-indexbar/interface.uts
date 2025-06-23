@@ -1,0 +1,7 @@
+export type INDEXBAR_ITEM = {
+	id : string,
+	ele : XIndexbarItemComponentPublicInstance,
+	top:number,
+	name:string,
+	height:number
+}

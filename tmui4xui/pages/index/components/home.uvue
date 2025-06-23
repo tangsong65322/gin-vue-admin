@@ -1,0 +1,181 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view class="flex-1 pageBodyScroll" :class="[_isOpenedMenu?'pageBodyScrollOn':'pageBodyScrollOff']"
+		:style="bgColor">
+	<!-- #endif -->
+	<!-- #ifdef WEB || MP-WEIXIN -->
+	<view class="pageBodyScroll flex-1" style="overflow-y:auto;" :class="[_isOpenedMenu?'pageBodyScrollOn':'pageBodyScrollOff']">
+	<!-- #endif -->
+		
+		<view class="flex flex-row flex-wrap flex-row-top-start ">
+			
+			<view
+			v-for="(item,index) in list" :key="index"
+			style="width:50%;min-height: 200px;"
+		
+			>
+				<view
+				v-if="show||index<3"
+				:style="{
+					margin:`0 14px 14px ${(index+1)%2>0?'14':'0'}px`,
+					shadow:notApp?`0 0 20px ${colorsShadow[index]}`:'none',
+					borderRadius:'14px',
+					backgroundColor:isDark?sheetDarkColor:'#ffffff'
+				}"
+				
+				>
+					<x-sheet :color="colors[index]" :padding="['16','8']" :round="['12','12','0','0']" class="flex flex-row flex-row-center-between" :margin="['0','0','0','6']">
+						<view class="">
+							<x-text font-size="20" line-height="1.1" class="text-weight-b ">{{item.title}}</x-text>
+							<x-text font-size="12" line-height="1.1" class="mt-5">数量 {{item.children.length}} 个</x-text>
+						</view>
+						<image :src="`https://cdn.tmui.design/xui/mpweixin/b-${index+1}.png`" style="width:54px;height:54px"></image>
+					</x-sheet>
+									
+					<template v-for="(item2,index2) in item.children" :key="index2">
+						<navigator :url="item2.url" v-if="index2<4"  :style="{height:_computedCalc('44')}"
+							class="flex flex-row flex-row-center-between px-14 " >
+							<x-text font-size="16" line-height="1.1">{{item2.title}}</x-text>
+							<x-icon color="#b0b0b0" name="arrow-right-s-line"></x-icon>
+						</navigator>
+									
+					</template>
+									
+					<view class="px-12 pb-16 mt-3">
+						<x-overlay customContentStyle="width:90%;" :show-close="true"
+							custom-style="display: flex;align-items: center;justify-content: center;">
+							<template #trigger>
+								<x-button :block="true" icon="sparkling-2-line" font-color="#333333" skin="thin" :font-dark-color="colors[index]"
+									:color="colors[index]" darkColor="#222222">更多</x-button>
+							</template>
+									
+							<x-sheet :padding="['0','12']">
+								<scroll-view style="height: 350px;" :show-scrollbar="false">
+									<navigator v-for="(item4,index4) in item.children" :url="item4.url" :key="index4"
+										:style="{backgroundColor:isDark? '#272727':'#f5f5f5',height:_computedCalc('44')}"
+											class="flex flex-row flex-row-center-between px-14 mx-12 mb-3 round-8">
+										<x-text font-size="16" line-height="1.1">{{item4.title}}</x-text>
+										<x-icon color="#b0b0b0" name="arrow-right-s-line"></x-icon>
+									</navigator>
+								</scroll-view>
+							</x-sheet>
+									
+						</x-overlay>
+									
+					</view>
+				</view>
+			
+			</view>
+		</view>
+
+
+		<!-- 占位 -->
+		<view :style="{height:80+'px'}"></view>
+		
+	<!-- #ifdef WEB || MP-WEIXIN -->
+		</view>
+		<!-- #endif -->
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script lang="uts">
+	import { xStore, xDate} from "@/uni_modules/tmx-ui/index.uts"
+	import { checkIsCssUnit } from "@/uni_modules/tmx-ui//core/util/xCoreUtil.uts"
+	import { listdata, type INDEXITEMINFO_AR } from "../index.uts"
+	import { demoStore } from "@/libs/demoStore.uts";
+	let isApp = true;
+	//  #ifdef MP||WEB
+	isApp = false;
+	// #endif
+	export default {
+	
+		data() {
+			return {
+			
+				list: listdata as INDEXITEMINFO_AR[],
+				fontSizeScale: xStore.xConfig.fontScale,
+				drawrSize: "120px",
+				dark:xStore.getDarkModel()=='dark',
+				notApp:isApp as boolean,
+				show:true,
+				colors: [
+					'#9db8ff',
+					'#ffdd7a',
+					'#a1ffe9',
+					'#d2ff81',
+					'#edbeff',
+					'#e4bda0',
+					'#51eab4',
+					'#69eeed',
+				] as string[],
+				colorsShadow: [
+					'rgba(157,184,255,0.2)',
+					'rgba(255,221,122,0.2)',
+					'rgba(161,255,233,0.2)',
+					'rgba(210,255,129,0.2)',
+					'rgba(237,190,255,0.2)',
+					'rgba(255, 215, 180, 0.2)',
+					'rgba(116, 240, 174, 0.2)',
+					'rgba(103, 153, 240, 0.2)'
+				] as string[]
+			}
+		},
+
+		computed: {
+			_computedCalc():(x:string)=>string{
+				return (x:string):string=>checkIsCssUnit(x,xStore.xConfig.unit)
+			},
+			_isOpenedMenu():boolean{
+				return demoStore.homeMenuOpened
+			},
+			color() : string {
+				return xStore.xConfig.color
+			},
+			isDark() : boolean {
+				return xStore.xConfig.dark == 'dark'
+			},
+			sheetDarkColor() : string {
+				return xStore.xConfig.sheetDarkColor
+			},
+			bgColor() : string {
+				let lightbg = 'background-image: linear-gradient(to bottom,#f9f9f9,#ebebeb,#dedede);'
+				let darkBg = 'background-image: linear-gradient(to bottom,#080808,#000000);'
+				// #ifdef APP
+				lightbg = 'flex:1;' + lightbg
+				darkBg = 'flex:1;' + darkBg
+				// #endif
+				// #ifdef WEB
+				if (xStore.xConfig.dark == 'light') {
+					lightbg = 'text-shadow: 1px 1px white;' + lightbg
+				}
+				// #endif
+
+				return xStore.xConfig.dark == 'dark' ? darkBg : lightbg
+			},
+			gridBgColor() : string[] {
+				let lightbg = ['to right', 'rgb(255,255,255)', 'rgb(248,248,248)'] as string[]
+				let darkbg = ['to right', 'rgb(23,25,35)', 'rgb(22,19,19)'] as string[]
+				return xStore.xConfig.dark == 'dark' ? darkbg : lightbg
+			}
+		},
+		
+	
+		
+		methods: {
+			
+			confirmInput(value:string){
+				uni.navigateTo({
+					url:`/pages/index/search?word=${value}`
+				})
+			},
+			
+
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

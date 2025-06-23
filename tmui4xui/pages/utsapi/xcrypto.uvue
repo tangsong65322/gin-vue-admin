@@ -1,0 +1,133 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">加密 xCrypto</x-text>
+			<x-text color="#999999">
+				md5,sha256,sha512,sha1,hmacSha256,hmacSha512,base64Encode,base64Decode,aesEncrypt,aesDecrypt,desEncrypt,desDecrypt,rsaEncrypt,
+				rsaDecrypt,rc4Encrypt,rc4Decrypt
+			兼容所有平台</x-text>
+			<x-text color="error">本页进来可能会卡几秒,由于打印生成了RSA密钥对.</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">MD5加密</x-text>
+
+			<x-input v-model="md5Value" dark-bg-color=""></x-input>
+
+			<x-sheet color="info" :margin="['0','16','0','0']">
+				<x-text>{{md5str}}</x-text>
+			</x-sheet>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b ">BASE64加密</x-text>
+			<x-input v-model="base64Value" dark-bg-color=""></x-input>
+			<x-sheet color="info" :margin="['0','16','0','0']">
+				<x-text>{{base64str}}</x-text>
+			</x-sheet>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">SHA256加密</x-text>
+
+			<x-input @input="inputChange" v-model="sh256Value" dark-bg-color=""></x-input>
+
+			<x-sheet color="info" :margin="['0','16','0','0']">
+				<x-text>{{sh256ValueEntr}}</x-text>
+			</x-sheet>
+		</x-sheet>
+
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	import {		aesEncrypt2,aesDecrypt2,
+		md5, sha256,sha512, sha1, hmacSha256,hmacSha512, base64Encode, base64Decode, aesEncrypt, aesDecrypt, desEncrypt, desDecrypt, rsaEncrypt,
+		rsaDecrypt, rc4Encrypt, rc4Decrypt,generateRSAKeyPair
+	} from '@/uni_modules/x-crypto-s'
+
+	export default {
+		data() {
+			return {
+				md5Value: "TMUI4.0X",
+				base64Value: "你好TMUI4.0X",
+				sh256Value: "TMUI4.0X",
+				sh256ValueEntr: "",
+			}
+		},
+		onLoad() {
+			// 校验对比:https://www.mklab.cn/utils/des
+			let t = this;
+			t.sh256ValueEntr = sha256(t.sh256Value)
+			console.log('hmacSha256:', hmacSha256(t.sh256Value, t.sh256Value))
+			
+			console.log('sha512:',sha512(t.sh256Value))
+			console.log('hmacSha512:',hmacSha512('123456',t.sh256Value))
+			
+			console.log('sha1:', sha1(t.sh256Value))
+			let aes = aesEncrypt('1234567890abcdefghijklmnopqrstuv', "TMUI4.0X", "CBC", "1234567890abcdef")
+			let deaes = aesDecrypt('1234567890abcdefghijklmnopqrstuv', aes, "CBC", "1234567890abcdef")
+			console.log('aes:', aes, 'deaes:', deaes)
+			
+			let des = desEncrypt(t.sh256Value, t.sh256Value, "CBC", "12345678")
+			let dedes = desDecrypt(t.sh256Value, des, "CBC", "12345678")
+			console.log('des:', des, 'dedes:', dedes)
+			
+			// ----特殊的ios及非ios(安卓,web,小程序)使用Uint8Array加密和解密示例--开始--------
+			let keyar = Uint8Array.from([250, 139,  76, 231, 114,250,   8, 161, 241,  42,93,  38, 254, 107,  69,121])
+			let dataar = Uint8Array.from([177,  17,0,85, 208, 231,110,137,  80,  78, 239,  15,236, 201, 109, 138, 142, 224,103])
+			// #ifndef APP-IOS
+			let aeaes2 = aesEncrypt2(keyar, dataar, "CBC", keyar)
+			let deaes2 = aesDecrypt2(keyar, aeaes2, "CBC", keyar)
+			// #endif
+			// #ifdef APP-IOS
+			let aeaes2Buffer = aesEncrypt2(keyar.buffer, dataar.buffer, "CBC", keyar.buffer)
+			let aeaes2 = Uint8Array.from(aeaes2Buffer)
+			let deaes2Buffer = aesDecrypt2(keyar.buffer, aeaes2.buffer, "CBC", keyar.buffer)
+			let deaes2 = Uint8Array.from(deaes2Buffer)
+			// #endif
+			console.log('aeaes2:', aeaes2.toString())
+			console.log('deaes2:', deaes2.toString())
+			// -----Uint8Array加密和解密示例---结束--------
+			
+			let getRsaKey = generateRSAKeyPair(1024)
+			
+			console.log("生成公钥和私钥:",getRsaKey)
+			
+			let rsa = rsaEncrypt(getRsaKey.publicKey, t.sh256Value)
+			let dersa = rsaDecrypt(getRsaKey.privateKey, rsa)
+			console.log('rsa:', rsa, 'dersa:', dersa)
+			let rc4 = rc4Encrypt(t.sh256Value, t.sh256Value)
+			let derc4 = rc4Decrypt(t.sh256Value, rc4)
+			console.log('rc4:', rc4, 'derc4:', derc4)
+			// sm2:https://juejin.cn/post/7297024168603811876
+		},
+		computed: {
+			md5str() : string {
+				return md5(this.md5Value)
+			},
+			base64str() : string {
+				let b64 = base64Encode(this.base64Value)
+				console.log("base64:",base64Decode(b64))
+				return b64
+			}
+		},
+		methods: {
+
+			inputChange() {
+				let t = this;
+				t.sh256ValueEntr = sha256(t.sh256Value)
+			}
+		}
+	}
+</script>
+
+<style>
+
+</style>

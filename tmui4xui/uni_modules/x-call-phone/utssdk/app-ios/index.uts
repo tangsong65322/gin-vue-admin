@@ -1,0 +1,12 @@
+import { URL } from 'Foundation';
+import { UIApplication } from 'UIKit';
+
+export function makePhone(tel : string) {
+	let phone = new URL(string = `tel://\(${tel})`);
+	
+	if (UIApplication.shared.canOpenURL(phone!)) {
+	
+		UIApplication.shared.open(phone!, options= new Map(), completionHandler= nil)
+		
+	}
+}

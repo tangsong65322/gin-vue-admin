@@ -1,0 +1,77 @@
+<template>
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+	<view style="flex:1">
+		<x-sheet color="primary" >
+			<view ref="domview" class="heightani mb-16" :style="{height:spr+'px'}">
+				<x-text  class="text-size-g text-weight-b ma-16" color="primary">我是丝滑般的差值效果{{spr}}</x-text>
+			</view>
+			<text class="text-size-g text-weight-b text-white">浮动面板 FloatDrawer</text>
+			<text class="text-size-m text-grey mt-10 text-white line-8">可以自由设定露出最小值和最大值，支持rpx,px,%等单位，性能流畅回弹丝滑</text>
+			<text class="text-size-m text-grey mt-10 text-white line-8 mb-16">也可以通过双向绑定手动控制打开和关闭</text>
+			<text class="text-size-m text-grey mt-10 text-white line-8 mb-16">通过movestart,moveend,heightChange配合动画可以实现反向差值动画,类似头条的视频中的评论缩放效果.</text>
+			<x-button :block="true" @click="showFloat=true">打开</x-button>
+			
+		</x-sheet>
+
+		<x-float-drawer content-margin="0px" @beforeClose="onbeforeclose" @movestart='onmovestart' 
+		@moveend="onmoveend" @heightChange="onheightChange" v-model:show="showFloat" size="120px" max-height="75%">
+			<template v-slot:default="{show,height}">
+				<x-sheet :margin="['0']">
+					<x-text  class="text-size-g text-weight-b mb-16">请拖动我查看效果</x-text>
+					<x-button color="success" :block="true" @click="showFloat=false">关闭</x-button>
+				</x-sheet>
+				<x-sheet height="100" v-for="item in 10" :key="item" color="primary" >
+				</x-sheet>
+			</template>
+		</x-float-drawer>
+		<view stle="height:1000px"></view>
+	</view>
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+				showFloat:false,
+				spr:0,
+				ismove:false
+			}
+		},
+		methods: {
+			onbeforeclose(){
+				// console.log(11)
+			},
+			onmovestart(){
+				let dom = this.$refs['domview']! as UniElement;
+				dom.style.setProperty('transition-duration','0ms')
+			},
+			onmoveend(){
+				let dom = this.$refs['domview']! as UniElement;
+				dom.style.setProperty('transition-duration','300ms')
+				
+			},
+			onheightChange(pre:number){
+				let dom = this.$refs['domview']! as UniElement;
+				this.spr = pre*1.5
+				// console.log("接收HeightChange事件日志",this.spr)
+				dom.style.setProperty('height',Math.ceil(this.spr)+'px')
+				// console.log(pre+'%')
+			}
+		}
+	}
+</script>
+
+<style scoped>
+.heightani{
+	/* transition-duration: 0ms; */
+	transition-property: height;
+	transition-timing-function: linear;
+	background-color: #ffffff;
+	overflow: hidden;
+	border-radius: 8px;
+}
+</style>

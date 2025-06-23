@@ -1,0 +1,127 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+	
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">相机 xCamrea</x-text>
+			<x-text color="#999999">可以实时捕捉画面.可以在录制视频的时候拍照.在app,web,h5使用完一定要关闭相机,微信小程序是返回页面时自动关闭</x-text>
+		</x-sheet>
+		<x-sheet>
+			<text>{{flashValue}}</text>
+			<x-camrea-u @recoder="recoder" :orientation='orientation'  :flash="flashValue=='1'" @take="getPhoto" ref="camrea" style="width:100%;height:320px"></x-camrea-u>
+		</x-sheet>
+
+		<x-sheet >
+			<view class="flex flex-row flex-row-center-start mb-20">
+				<x-checkbox class="mr-20" @change="configChange" v-model="flashValue" label="打开闪光灯"></x-checkbox>
+				<x-checkbox @change="configChange" v-model="orientation" value="front" un-check-value="back" label="使用前置摄像头"></x-checkbox>
+			</view>
+			<x-text font-size="18" class=" text-weight-b">相机抓拍</x-text>
+			<view class="flex flex-row flex-row-center-between mb-8">
+				<x-button width="31%" @click="open">打开相机</x-button>
+				<x-button width="31%" @click="close">关闭相机</x-button>
+				<x-button width="31%" @click="take">拍照</x-button>
+			</view>
+			<x-text font-size="18" class=" text-weight-b">视屏录制</x-text>
+			<x-text color="#999999" class=" mb-8">停止是结束录制,不是关闭相机的意思,你需要自己维护状态呈现给用户,点了暂停可点开始继续录制并会接着上次继续</x-text>
+			<view class="flex flex-row flex-row-center-between">
+				<x-button :loading="isRcodering" width="31%" @click="start">开始/继续</x-button>
+				<x-button :disabled="!isRcodering" width="31%" @click="pause">暂停</x-button>
+				<x-button :disabled="!isRcodering" width="31%" @click="stop">停止</x-button>
+			</view>
+		</x-sheet>
+
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">抓拍预览</x-text>
+			<x-image v-if="urlSrc!=''" :src="urlSrc"></x-image>
+			<x-text v-else font-size="12" color="error" class=" text-weight-b ">请点击上方拍照</x-text>
+			<x-text font-size="18" class=" text-weight-b my-8">视频预览</x-text>
+			<video style="height: 125px;width:100%" v-if="videoUrlSrc!=''" :src="videoUrlSrc"></video>
+			<x-text v-else font-size="12" color="error" class=" text-weight-b ">请点击上方录制然后点结束</x-text>
+		</x-sheet>
+		<view style="height: 50px;"></view>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+
+<script>
+	export default {
+		data() {
+			return {
+				urlSrc: '',
+				videoUrlSrc: '',
+				flashValue:'',
+				orientation:'back',
+				isRcodering:false
+			}
+		},
+		methods: {
+			start(){
+				let el = (this.$refs['camrea'] as XCamreaUElement)
+				el.start()
+				this.isRcodering = true;
+			},
+			pause(){
+				let el = (this.$refs['camrea'] as XCamreaUElement)
+				el.pause()
+				this.isRcodering = false;
+			},
+			stop(){
+				let el = (this.$refs['camrea'] as XCamreaUElement)
+				el.stop()
+			},
+			open() {
+				let el = (this.$refs['camrea'] as XCamreaUElement)
+				el.open()
+			},
+			close() {
+				let el = (this.$refs['camrea'] as XCamreaUElement)
+				el.close()
+			},
+			configChange(){
+				if(this.orientation=='front'&&this.flashValue=='1'){
+					uni.showToast({title:'闪光灯不能与前置摄像头同时开启',icon:'none'})
+					return;
+				}
+				this.close()
+				this.$nextTick(()=>{
+					this.open()
+				})
+			},
+			take() {
+				let el = (this.$refs['camrea'] as XCamreaUElement)
+				el.take()
+			},
+			recoder(result:Map<string,string>) {
+				let src = result['path'] as string;
+				if (src != '') {
+					this.videoUrlSrc = src! as string;
+				}
+				
+				console.log(src)
+							
+				this.isRcodering = false;
+			},
+			getPhoto(result:Map<string,string>) {
+				console.log(result)
+				let src = '';
+				src = result['path'] as string;
+				if (src != '') {
+					this.urlSrc = src! as string;
+				}
+			}
+		}
+	}
+</script>
+
+<style>
+
+</style>

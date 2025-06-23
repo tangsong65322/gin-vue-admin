@@ -1,0 +1,71 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">单选按钮 RadioButton</x-text>
+			<x-text  color="#999999" >样式可以随意定制。</x-text>
+		</x-sheet>
+		<x-sheet><x-radio-button text-style="font-weight:bold;" :list="list"></x-radio-button></x-sheet>
+		
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b ">改变颜色和样式</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-radio-button v-model="active" height="44" round="4" space="2" fontSize="16" bg-color="primary" font-color="#ffffff" active-font-color="primary" :list="list"></x-radio-button>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b ">为菜单加上图标</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-radio-button round="32" space="1" font-size="12" v-model="active" :list="list2"></x-radio-button>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b ">当作图标控告选项</x-text>
+		</x-sheet>
+		<x-sheet>
+			<view style="width: 200px;">
+				<x-radio-button  round="6" space="2" font-size="18" v-model="active" :list="list3"></x-radio-button>
+			</view>
+		</x-sheet>
+		
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	import { RADIO_BUTTON } from "@/uni_modules/tmx-ui/interface.uts"
+	export default {
+		data() {
+			return {
+				active:"2",
+				list:[
+					{id:"1",title:"苹果"} as RADIO_BUTTON,
+					{id:"2",title:"香蕉"} as RADIO_BUTTON,
+					{id:"3",title:"李子"} as RADIO_BUTTON,
+					{id:"4",title:"蕉子李"} as RADIO_BUTTON,
+				] as RADIO_BUTTON[],
+				list2:[
+					{id:"1",title:"系统设置",icon:"settings-4-fill"} as RADIO_BUTTON,
+					{id:"2",title:"打印设置",icon:"printer-fill"} as RADIO_BUTTON,
+					{id:"3",title:"订单管理",icon:"price-tag-2-fill"} as RADIO_BUTTON,
+				] as RADIO_BUTTON[],
+				list3:[
+					{id:"1",title:"",icon:"settings-4-fill"} as RADIO_BUTTON,
+					{id:"2",title:"",icon:"printer-fill"} as RADIO_BUTTON,
+					{id:"3",title:"",icon:"price-tag-2-fill"} as RADIO_BUTTON,
+				] as RADIO_BUTTON[]
+			};
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

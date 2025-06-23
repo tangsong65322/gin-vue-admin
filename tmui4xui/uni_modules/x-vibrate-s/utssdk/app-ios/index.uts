@@ -1,0 +1,26 @@
+import * as AudioToolbox from 'AudioToolbox';
+import * as UIKit from 'UIKit';
+import { Thread } from 'Foundation';
+
+
+/**
+ * 震动
+ * @param {number} duriation 震动时间单位ms,ios 13.+有用。
+ */
+export function vibrator(duriation : number):boolean {
+	if (UTSiOS.available("iOS 13.0, *")) {
+		let generator = new UIKit.UIImpactFeedbackGenerator(style = UIKit.UIImpactFeedbackGenerator.FeedbackStyle.medium)
+		generator.prepare();
+		let start = new Date().getTime();
+		let end = start + duriation
+		while(start<end){
+			generator.impactOccurred(intensity = 0.5);
+			Thread.sleep(forTimeInterval = 0.1)
+			start = new Date().getTime();
+		}
+	}else{
+		AudioToolbox.AudioServicesPlayAlertSound(AudioToolbox.kSystemSoundID_Vibrate)
+	}
+	
+	return true;
+}

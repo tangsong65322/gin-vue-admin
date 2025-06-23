@@ -1,0 +1,46 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">警告 xAlert</x-text>
+			<x-text color="#999999">
+				样式丰富，用于警告信息的提醒。
+			</x-text>
+		</x-sheet>
+		<x-alert>默认为thin浅色样式，可以自适应暗黑</x-alert>
+		<x-alert skin='normal'>也可以把skin改成normal变成纯背景</x-alert>
+		<x-alert icon="building-fill" skin='normal' color="#000000">也可以把skin改成normal变成纯背景</x-alert>
+		<x-alert icon="building-fill" skin='normal' color="#dee3e7">也可以把skin改成normal变成纯背景</x-alert>
+		
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b ">可以使用默认的状态来管理颜色</x-text>
+		</x-sheet>
+		<x-alert icon="file-word-2-fill" status="success" skin='normal'>自定义图标</x-alert>
+		<x-alert status="error" skin='normal'>错误提醒</x-alert>
+		<x-alert status="warn" closeIcon="arrow-right-line" skin='normal'>警告提醒</x-alert>
+		<x-alert icon="money-cny-circle-fill" color="#728398" skin='normal'>自定义背景色</x-alert>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b ">比如改些圆角，边线啥的,样式丰富请自行设计</x-text>
+		</x-sheet>
+		<x-alert status="warn" skin='normal' :round="['6']">警告提醒</x-alert>
+		<x-alert status="error" skin='normal' :round="['12','0']">改下圆角</x-alert>
+		<x-alert :border="['2']" >加个小边框</x-alert>
+		<x-alert :border="['2']" :showClose="false"  :borderColor="['#89c0ff']" :darkBorderColor="['#3b5066']">加个小边框,隐藏关闭</x-alert>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script setup>
+
+</script>
+
+<style>
+
+</style>

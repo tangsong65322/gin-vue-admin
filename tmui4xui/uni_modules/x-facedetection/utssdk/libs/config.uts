@@ -1,0 +1,36 @@
+import { XFACE_CHECK_OPTS,XFACE_EVENT_SUCCESS,XFACE_EVENT_CHECK_SUCCESS,XFACE_INS } from "../interface.uts"
+export type XFACE_CHECK_OPTS_REAL = {
+	url : string,
+	buffer : ArrayBuffer,
+	viewId :string,
+	// 活体检测指令，在通过相机视频检测的时候为必填
+	instruction:XFACE_INS[],
+	insTipsEvent:(data:string)=>void,
+	success : (data : XFACE_EVENT_CHECK_SUCCESS) => void,
+	enter : (data : XFACE_EVENT_SUCCESS[],maps:string) => void,
+	fail : (error : string) => void,
+}
+export function getDefaultConfig(config : XFACE_CHECK_OPTS|null = null) : XFACE_CHECK_OPTS_REAL{
+	let cfg = {
+		url: "",
+		buffer: new ArrayBuffer(0),
+		viewId:"",
+		instruction:[] as XFACE_INS[],
+		insTipsEvent:(data:string)=> {},
+		success: (data : XFACE_EVENT_CHECK_SUCCESS) => { },
+		enter : (data : XFACE_EVENT_SUCCESS[],maps:string) => { },
+		fail: (error : string) => { },
+	} as XFACE_CHECK_OPTS_REAL
+	if(config==null) return cfg;
+	cfg.url = config?.url ?? cfg.url;
+	cfg.buffer = config?.buffer ?? cfg.buffer;
+	cfg.success = config?.success ?? cfg.success;
+	cfg.enter = config?.enter ?? cfg.enter;
+	cfg.fail = config?.fail ?? cfg.fail;
+	cfg.viewId = config?.viewId ?? cfg.viewId;
+	cfg.instruction = config?.instruction ?? cfg.instruction;
+	cfg.insTipsEvent = config?.insTipsEvent ?? cfg.insTipsEvent;
+
+	return cfg;
+
+}

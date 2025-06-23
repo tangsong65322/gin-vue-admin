@@ -1,0 +1,796 @@
+<script lang="ts">
+	import { type PropType } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit, getUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { xTableColumns } from "../../interface.uts"
+	type RefreshFun = (type:string) => Promise<any|null>
+	type cellStyleTYpe = {
+		bgStyle : string,
+		textStyle : string,
+		align:string
+	}
+
+	/**
+	 * @name 表格 xTable
+	 * @description 格式与antd一样，我觉得那样的格式比较合理。可以单独设置样式和整体列设置样式。也可以单独设置列宽，项目列宽虽然 可以auto，但数据多的情况下不要用，还是定义具体的百分比或者数字比较快的渲染。
+	 * 支持具名指定单元格插槽及行插槽，用于复杂的布局（使用插槽时，不可排序）
+	 * 不管是头还是单元格它的style格式是一样的style:{key字段:{bgStyle,textStyle,align:'对齐方式:flex-start,center,flex-end'}}
+	 * @page /pages/index/table
+	 * @category 展示组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				totalWrapWidth: "100%",
+				boxWidth: 0,
+				boxHeight:0,
+				boxCellHeight:0,
+				_list: [] as UTSJSONObject[],
+				_listHeaderList: [] as UTSJSONObject[][],
+				descKey: "",
+				desc: "",
+				isrefreshing:false
+			}
+		},
+		emits: [
+			/**
+			 * 单元格被点击
+			 * @param {UTSJSONObject} item - 行数据
+			 * @param {string} key - 当前点击的列字段名称。如果要获取字段内容可以item.getAny(key)!得到
+			 */
+			'cellClick',
+			/**
+			 * 触底刷新时触发.
+			 */
+			'refresh'
+		],
+		props: {
+			/**
+			 * 源数据
+			 */
+			list: {
+				type: Array as PropType<UTSJSONObject[]>,
+				default: () : UTSJSONObject[] => [] as UTSJSONObject[]
+			},
+			/**
+			 * 列标题及字段定义
+			 */
+			columns: {
+				type: Array as PropType<xTableColumns[]>,
+				default: () : xTableColumns[] => [] as xTableColumns[]
+			},
+			/**
+			 * 容器的高，如果不设定，不会有上下滚动
+			 * 而直接从上往下布局。如果数据多建议设置。
+			 */
+			height: {
+				type: String,
+				default: "auto"
+			},
+			/**
+			 * 容器的宽,不可以填写auto。
+			 */
+			width: {
+				type: String,
+				default: "100%"
+			},
+			maxHeight: {
+				type: String,
+				default: "300"
+			},
+			/**
+			 * 单元格的高，不能auto,%
+			 * 请写固定的值，否则影响虚拟列表数据功能。
+			 */
+			cellHeight: {
+				type: String,
+				default: "44"
+			},
+			/**
+			 * 单元格的宽,不填写自动均分
+			 * 它是允许任意值auto,%，固定值等
+			 * 但我经过我测试auto，会影响原生渲染的速率（不是我影响的是自动布局的速率）
+			 */
+			cellWidth: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 单元格的文字大小
+			 * 局部的设置会覆盖这里的
+			 */
+			fontSize: {
+				type: String,
+				default: "14"
+			},
+			/**
+			 * 单元格的文字颜色
+			 * 局部的设置会覆盖这里的
+			 */
+			fontColor: {
+				type: String,
+				default: "#333333"
+			},
+			/**
+			 * 头的背景
+			 */
+			headerBgColor: {
+				type: String,
+				default: "#eeeeee"
+			},
+			/**
+			 * 暗黑时，如果未设置取inputDarkColor
+			 */
+			darkHeaderBgColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 头的文字颜色,暗黑时取白
+			 */
+			headerFontColor: {
+				type: String,
+				default: "#333333"
+			},
+			/**
+			 * 是否间隔波纹
+			 */
+			ripple: {
+				type: Boolean,
+				default: true
+			},
+			/**
+			 * 波纹颜色,
+			 */
+			rippleColor:{
+				type: String,
+				default: "#fafafa"
+			},
+			/**
+			 * 波纹的暗黑颜色，不填写用的是sheetDark
+			 */
+			rippleDarkColor:{
+				type: String,
+				default: ""
+			},
+			/**
+			 * 默认的行背景色，
+			 * 通常你没有在数据中配置背景时，会读取这的颜色。
+			 */
+			rowCellColor:{
+				type:String,
+				default:"#ffffff"
+			},
+			/**
+			 * 默认的行暗黑背景色，
+			 * 通常你没有在数据中配置背景时，会读取这的颜色。
+			 */
+			rowCellDarkColor:{
+				type:String,
+				default:"transparent"
+			},
+			/**
+			 * 是否给文字高防止断行。
+			 * 这是一个兼容性的试验参数，针对部分手机由于uni sdk原生安卓
+			 * 上对文本的测量可能存在精度 问题，导致文本意外的断行。如果为true可以防止这种情况发生
+			 * 可能会产生不能断行或者其它情况发生，请慎重使用。
+			 */
+			safeTextWrap: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 是否启用多行固定功能
+			 * 数据源中如果某行要滚动固定请添加一个字段float:true
+			 * 默认关闭。
+			 */
+			multiRowFloat:{
+				type:Boolean,
+				default:false
+			},
+			/**
+			 * 是否可选并复制文本
+			 */
+			selectable:{
+				type:Boolean,
+				default:false
+			},
+			/**
+			 * 拉到底部时触发
+			 * 如果返回Promise<any|null> 底部刷新提示不会消失
+			 * 类型null|(type:string)=>Promise<any|null>
+			 * null值时不被执行
+			 */
+			refresh: {
+				type: Function as PropType<RefreshFun | null>,
+				default: null
+			},
+			/**
+			 * 是否显示滚动条
+			 */
+			showScrollbar:{
+				type:Boolean,
+				default:false
+			},
+			/**
+			 * 是否隐藏头
+			 */
+			hideHead:{
+				type:Boolean,
+				default:false
+			}
+		},
+		computed: {
+			_headerBgColor() : string {
+				if (xConfig.dark == 'dark') {
+					if (this.darkHeaderBgColor != '') {
+						return getDefaultColor(this.darkHeaderBgColor)
+					} else {
+						return getDefaultColor(xConfig.inputDarkColor)
+					}
+				}
+				return getDefaultColor(this.headerBgColor)
+			},
+			_headerFontColor() : string {
+				if (xConfig.dark == 'dark') return "#ffffff"
+				return getDefaultColor(this.headerFontColor)
+			},
+			_rippleColor() : string {
+				let bgcolor = this.rippleColor
+				if (xConfig.dark == 'dark'){
+					bgcolor = this.rippleDarkColor
+					if(bgcolor==''){
+						bgcolor = "#1e1e1e"
+					}
+				} 
+				return getDefaultColor(bgcolor)
+			},
+			_rippleColorNot() : string {
+				let bgcolor = this.rowCellColor
+				if (xConfig.dark == 'dark'){
+					bgcolor = this.rowCellDarkColor
+					if(bgcolor==''){
+						bgcolor = xConfig.sheetDarkColor
+					}
+				} 
+				return getDefaultColor(bgcolor)
+			},
+			_cellWidth() : string {
+				return this.cellWidth
+			},
+			_cellHeight() : string {
+				return checkIsCssUnit(this.cellHeight, xConfig.unit)
+			},
+			_width() : string {
+				return checkIsCssUnit(this.width, xConfig.unit)
+			},
+			_height() : string {
+				return checkIsCssUnit(this.height, xConfig.unit)
+			},
+			_bodyHeight() : string {
+				if(this.boxHeight==0) return 'auto'
+				return (this.boxHeight - this.boxCellHeight).toString()+'px'
+			},
+			_columns() : xTableColumns[] {
+				return this.columns
+			},
+			_maxHeight() : string {
+				return checkIsCssUnit(this.maxHeight, xConfig.unit)
+			},
+			_fontSize() : string {
+				let fontSize = checkIsCssUnit(this.fontSize, xConfig.unit);
+				if (xConfig.fontScale == 1) return fontSize;
+				let sizeNumber = parseInt(fontSize)
+				if (isNaN(sizeNumber)) {
+					sizeNumber = 14
+				}
+				return (sizeNumber * xConfig.fontScale).toString() + getUnit(fontSize)
+			},
+			_fontColor() : string {
+				if (xConfig.dark == 'dark') return "#dedede"
+				return getDefaultColor(this.fontColor)
+			}
+		},
+		watch: {
+			columns() {
+				this.getTotalwidthNodes();
+			},
+			list() {
+				this._list = this.list;
+				if(this.multiRowFloat){
+					this._listHeaderList = this.fomartDataList()
+				}
+			}
+		},
+
+		mounted() {
+			let _this = this;
+			this._list = this.list;
+			if(this.multiRowFloat){
+				this._listHeaderList = this.fomartDataList()
+			}
+			
+			_this.getTotalwidthNodes();
+			uni.$on("onResize", _this.getTotalwidthNodes)
+		},
+		beforeUnmount() {
+			uni.$off("onResize", this.getTotalwidthNodes)
+		},
+		methods: {
+			/** 表格触底触发. */
+			async onscrollBottom(evt:UniScrollToLowerEvent):Promise<any|null>{
+				/**
+				 * 触底刷新时触发刷新事件.
+				 */
+				this.$emit('refresh')
+				if(this.refresh == null || this.isrefreshing ) return Promise.resolve(null);
+				this.isrefreshing = true;
+				let call =  this.refresh! as RefreshFun
+				await call('bottom')
+				this.isrefreshing = false;
+				return Promise.resolve(null)
+			},
+			// 处理多固定的需求.
+			fomartDataList():UTSJSONObject[][]{
+				let result = [] as  UTSJSONObject[][]
+				let currentGroup = [] as UTSJSONObject[];
+				
+				for(let i=0;i<this._list.length;i++){
+					let obj = this._list[i] as UTSJSONObject;
+					
+					if (obj.getBoolean('float') == true) {
+						if (currentGroup.length > 0) {
+							result.push(currentGroup.slice(0) as UTSJSONObject[]);
+						}
+						currentGroup = [] as UTSJSONObject[];
+						currentGroup.push(obj);
+						
+					} else {
+						currentGroup.push(obj);
+					}
+				}
+			
+				if (currentGroup.length > 0) {
+					result.push(currentGroup.slice(0) as UTSJSONObject[]);
+				}
+				return result
+			},
+			desckRank(isDesc : boolean, key : string) {
+				if (!isDesc) return
+				if (this.descKey != key) {
+
+					this.desc = 'asc'
+				} else {
+					if (this.desc == "") {
+						// 降序
+						this.desc = "desc"
+					} else if (this.desc == "desc") {
+						// 升序
+						this.desc = "asc"
+					} else if (this.desc == "asc") {
+						// 正常
+						this.desc = ""
+					}
+				}
+				this.descKey = key;
+				if (this.desc == "") {
+					this._list = this.list.slice(0)
+					this.$nextTick(function(){
+						if(this.multiRowFloat){
+							this._listHeaderList = this.fomartDataList()
+						}
+					})
+				} else if (this.desc == "desc") {
+					let list = this.list.slice(0) as UTSJSONObject[]
+					list.sort((a : UTSJSONObject, b : UTSJSONObject) : number => {
+						let fe = a.getString(key)
+						fe = fe == null ? "0" : fe!
+						let ee = b.getString(key)
+						ee = ee == null ? "0" : ee!
+
+						return parseFloat(fe!) - parseFloat(ee!);
+					})
+
+					this._list = list
+					this.$nextTick(function(){
+						if(this.multiRowFloat){
+							this._listHeaderList = this.fomartDataList()
+						}
+					})
+				} else if (this.desc == "asc") {
+					let list = this.list.slice(0) as UTSJSONObject[]
+					list.sort((a : UTSJSONObject, b : UTSJSONObject) : number => {
+						let fe = a.getString(key)
+						fe = fe == null ? "0" : fe!
+						let ee = b.getString(key)
+						ee = ee == null ? "0" : ee!
+
+						return parseFloat(ee!) - parseFloat(fe!);
+					})
+					
+					this._list = list
+					this.$nextTick(function(){
+						if(this.multiRowFloat){
+							this._listHeaderList = this.fomartDataList()
+						}
+					})
+				}
+			},
+			isDesc(item : xTableColumns) : boolean {
+				if (item?.desc == null) return false
+				// #ifdef WEB
+				if (item?.desc == undefined) return false
+				// #endif
+				let psc = item!.desc!
+
+				return psc;
+			},
+			CellClickEvent(item : UTSJSONObject, key : string) {
+				this.$emit('cellClick', item, key)
+			},
+			getCellStyle(item : UTSJSONObject, key : string) : cellStyleTYpe {
+				let style = item.getJSON('style')
+				let slf = {
+					bgStyle: "background-color:transparent",
+					textStyle: `font-size:${this._fontSize};color:${this._fontColor}`,
+					align:'center'
+				} as cellStyleTYpe
+
+				let cell = null as xTableColumns | null;
+				for (let i = 0; i < this._columns.length; i++) {
+					let item = this._columns[i] as xTableColumns
+					if (item.key == key) {
+						cell = item;
+						break;
+					}
+				}
+
+				if (cell != null) {
+					let testStyle = null as null | UTSJSONObject;
+
+					// #ifdef WEB || MP-WEIXIN
+					testStyle = cell?.style == undefined ? null : (cell!.style! as UTSJSONObject)
+					// #endif
+					// #ifdef APP
+					testStyle = cell?.style == null ? null : (cell!.style! as UTSJSONObject)
+					// #endif
+
+					if (testStyle != null) {
+						let cellKeyStyle = testStyle!.getJSON(key)
+
+						if (cellKeyStyle != null) {
+							let bgStyle = cellKeyStyle.getString('bgStyle')
+							let textStyle = cellKeyStyle.getString('textStyle')
+							let alignStyle = cellKeyStyle.getString('align')
+							bgStyle = bgStyle == null ? slf.bgStyle : bgStyle;
+							textStyle = textStyle == null ? slf.textStyle : textStyle;
+							alignStyle = alignStyle == null ? slf.align : alignStyle;
+							slf.bgStyle = bgStyle
+							slf.textStyle = textStyle
+							slf.align = alignStyle
+						}
+
+
+					}
+
+				}
+
+
+				if (style != null) {
+					let cellKeyStyle = style!.getJSON(key)
+					if (cellKeyStyle != null) {
+						let bgStyle = cellKeyStyle.getString('bgStyle')
+						let textStyle = cellKeyStyle.getString('textStyle')
+						let alignStyle = cellKeyStyle.getString('align')
+						bgStyle = bgStyle == null ? slf.bgStyle : bgStyle;
+						textStyle = textStyle == null ? slf.textStyle : textStyle;
+						alignStyle = alignStyle == null ? slf.align : alignStyle;
+						slf.bgStyle = bgStyle
+						slf.textStyle = textStyle
+						slf.align = alignStyle
+					}
+				}
+
+				return slf
+			},
+			getHeaderAlign(item : xTableColumns):string{
+				let style = item.style
+				if(style == null) return "center";
+				let selfstyle = style.getJSON(item.key)
+				if(selfstyle == null) return "center";
+				let alignStyle = selfstyle!.getString('align')
+				alignStyle = alignStyle == null ? "center" : alignStyle;
+				return alignStyle!;
+			},
+			getCellWidth(key : string) : string {
+				let cell = null as xTableColumns | null;
+				for (let i = 0; i < this._columns.length; i++) {
+					let item = this._columns[i] as xTableColumns
+					if (item.key == key) {
+						cell = item;
+						break;
+					}
+				}
+				let width = this._cellWidth;
+				if (cell != null) {
+					let tw = cell?.width
+					if(tw==null&&width==''){
+						tw = (100/this._columns.length).toFixed(2)+'%'
+					}
+					if(tw==null&&width!=''){
+						tw = width
+					}
+
+					if (tw != null) {
+						tw = checkIsCssUnit(tw, xConfig.unit);
+
+						if (tw.indexOf('%') > -1) {
+							let d = parseFloat(tw) * this.boxWidth / 100
+							tw = d.toString() + 'px'
+						}
+						if (tw == 'auto') {
+							tw = '0px'
+						}
+						width = tw;
+					}
+
+				}
+				return width
+			},
+
+			getTotalwidthNodes() {
+				let t = this;
+				uni.createSelectorQuery()
+					.in(t)
+					.select('.xTable')
+					.boundingClientRect()
+					.exec((nodes) => {
+						let infoList = nodes[0] as NodeInfo;
+						let totalBox = infoList.width!
+						t.boxWidth = totalBox
+						
+						setTimeout(function () {
+							uni.createSelectorQuery()
+								.in(t)
+								.selectAll('.cellItem')
+								.boundingClientRect()
+								.exec((nodes) => {
+									let infoList = nodes[0] as NodeInfo[];
+									let total = 0
+									infoList.forEach(el => {
+										total += el.width!;
+										t.boxCellHeight = el.height!
+									})
+									if (total > 0) {
+										t.totalWrapWidth = total.toString() + 'px'
+									}
+								})
+						}, 100);
+					});
+
+
+
+			},
+		}
+	}
+</script>
+<template>
+	<scroll-view  :show-scrollbar="showScrollbar"  v-if="multiRowFloat" class="xTable" direction="horizontal" :style="{width:_width,height:_height}">
+		<view  v-if="!hideHead" class="xTabelHoz"
+			:style="{height:_cellHeight,width:totalWrapWidth,backgroundColor:_headerBgColor}">
+			<view @click="desckRank(isDesc(item),item.key)" ref="cellItem" v-for="(item,index) in _columns"
+				:key="index" class="xTabelHozItem cellItem"
+				:style="{width:getCellWidth(item.key),flex:getCellWidth(item.key)=='0px'?'auto':'none',
+				'justify-content':getHeaderAlign(item),
+				height:_cellHeight,backgroundColor:_headerBgColor}">
+				<view class="xTabelHozItemHeaderWrap"
+				
+				>
+					<text class="cellItemText cellItemTextHeader" :style="[{fontSize,color:_headerFontColor}]">
+						{{item.title}}
+					</text>
+				</view>
+				<view v-if="isDesc(item)">
+					<x-icon v-if="desc==''||(descKey!=item.key&&desc!='')" name="expand-up-down-fill"></x-icon>
+					<x-icon v-if="descKey==item.key&&desc=='asc'" name="arrow-up-s-fill"></x-icon>
+					<x-icon v-if="descKey==item.key&&desc=='desc'" name="arrow-down-s-fill"></x-icon>
+				</view>
+			</view>
+		</view>
+		<view :style="{width:totalWrapWidth}">
+			<list-view :show-scrollbar="false" class="xTableWrap" @scrolltolower="onscrollBottom" direction="vertical" :style="{maxHeight:_maxHeight,height:_bodyHeight,width:'100%'}">
+				
+				<sticky-section :push-pinned-header='false' v-for="(itemParent,indexParent) in _listHeaderList" :key="indexParent">
+					<template v-for="(item,index) in itemParent" :key="index">
+						<sticky-header v-if="item.getBoolean('float')==true" >
+							<view class="xTabelHoz" :style="{height:_cellHeight,width:totalWrapWidth,backgroundColor:((index+1)%2)==0&&ripple?_rippleColor:_rippleColorNot}">
+								<view @click="CellClickEvent(item,item2.key)" ref="cellItem" v-for="(item2,index2) in _columns"
+									:key="index2" class="xTabelHozItemContent "
+									:style="[{width:getCellWidth(item2.key),flex:getCellWidth(item2.key)=='0px'?'auto':'none',height:_cellHeight},getCellStyle(item,item2.key).bgStyle]">
+									<text v-if="!safeTextWrap" class="cellItemText" :style="getCellStyle(item,item2.key).textStyle">
+										{{item.getAny(item2.key)}}
+									</text>
+									<text v-else class="cellItemText cellItemTextNowrap"
+										:style="[getCellStyle(item,item2.key).textStyle,{height:_cellHeight,lineHeight:'2.5'}]">
+										{{item.getAny(item2.key)}}
+									</text>
+								</view>
+							</view>
+						</sticky-header>
+						<list-item v-else :key="index" type="1"
+							:style="{height:_cellHeight,width:totalWrapWidth}">
+							<view class="xTabelHoz" :style="{backgroundColor:((index+1)%2)==0&&ripple?_rippleColor:_rippleColorNot}">
+								<view @click="CellClickEvent(item,item2.key)" ref="cellItem" v-for="(item2,index2) in _columns"
+									:key="index2" class="xTabelHozItemContent "
+									:style="[{width:getCellWidth(item2.key),
+									flex:getCellWidth(item2.key)=='0px'?'auto':'none',
+									height:_cellHeight,
+									'align-items':getCellStyle(item,item2.key).align
+									},
+									getCellStyle(item,item2.key).bgStyle
+									]">
+									<!--
+									@slot 行插槽插槽名称就是列的字段名称name:字段名,sucore:utsobject数据 
+									 -->
+									<slot :name="item2.key" :sucore="item">
+										<text :selectable="selectable" v-if="!safeTextWrap" class="cellItemText" :style="[getCellStyle(item,item2.key).textStyle]">
+											{{item.getAny(item2.key)}}
+										</text>
+										<text :selectable="selectable" v-else class="cellItemText cellItemTextNowrap"
+											:style="[getCellStyle(item,item2.key).textStyle,{height:_cellHeight,lineHeight:'2.5'}]">
+											{{item.getAny(item2.key)}}
+										</text>
+									</slot>
+									<!--
+									指定具体单元格插槽，name:字段名+'-'+key的值,sucore:utsobject数据 
+									 -->
+									<slot :name="item2.key+'-'+item.getString('key')" :sucore="item2"></slot>
+								</view>
+							</view>
+						</list-item>
+					</template>
+				</sticky-section>
+				
+				<list-item v-if="isrefreshing&&refresh!=null">
+					<!-- isrefreshing -->
+					<!-- <x-icon v-if="isrefreshing&&refresh!=null" :spin="true" name="loader-2-line" color="primary" font-size="20" ></x-icon> -->
+					<!-- 
+					@slot 触底下拉刷新的插槽,你需要提供事件函数refresh才可开启 
+					 -->
+					<slot name="refresh">
+						<x-skeleton height="25" style="margin-bottom:5px;margin-top: 5px;" ></x-skeleton>
+						<x-skeleton height="25" ></x-skeleton>
+					</slot>
+				</list-item>
+			
+			</list-view>
+		</view>
+		
+	</scroll-view>
+	
+	
+	<scroll-view  :show-scrollbar="showScrollbar"  v-else class="xTable" direction="horizontal" :style="{width:_width,height:_height}">
+		<list-view  :show-scrollbar="false"  @scrolltolower="onscrollBottom" class="xTableWrap" direction="vertical" :style="{maxHeight:_maxHeight,height:_height,width:totalWrapWidth}">
+			<sticky-header v-if="!hideHead" class="xTabelHozHeader">
+				<view class="xTabelHoz" :style="{height:_cellHeight,width:totalWrapWidth,backgroundColor:_headerBgColor}">
+					<view @click="desckRank(isDesc(item),item.key)" ref="cellItem" v-for="(item,index) in _columns"
+						:key="index" class="xTabelHozItem cellItem"
+						:style="{
+							width:getCellWidth(item.key),
+							flex:getCellWidth(item.key)=='0px'?'auto':'none',
+							height:_cellHeight,
+							'justify-content':getHeaderAlign(item),
+							backgroundColor:_headerBgColor
+						}">
+						<view class="xTabelHozItemHeaderWrap"
+						>
+							<text class="cellItemText cellItemTextHeader" :style="[{fontSize,color:_headerFontColor}]">
+								{{item.title}}
+							</text>
+						</view>
+						<view v-if="isDesc(item)">
+							<x-icon v-if="desc==''||(descKey!=item.key&&desc!='')" name="expand-up-down-fill"></x-icon>
+							<x-icon v-if="descKey==item.key&&desc=='asc'" name="arrow-up-s-fill"></x-icon>
+							<x-icon v-if="descKey==item.key&&desc=='desc'" name="arrow-down-s-fill"></x-icon>
+						</view>
+					</view>
+				</view>
+			</sticky-header>
+
+			<list-item v-for="(item,index) in _list" :key="index" type="1"
+				:style="{height:_cellHeight,width:totalWrapWidth}">
+				<view class="xTabelHoz" :style="{backgroundColor:((index+1)%2)==0&&ripple?_rippleColor:_rippleColorNot}">
+					<view @click="CellClickEvent(item,item2.key)" ref="cellItem" v-for="(item2,index2) in _columns"
+						:key="index2" class="xTabelHozItemContent "
+						:style="[{width:getCellWidth(item2.key),flex:getCellWidth(item2.key)=='0px'?'auto':'none',
+						height:_cellHeight,
+						'align-items':getCellStyle(item,item2.key).align
+						},getCellStyle(item,item2.key).bgStyle]">
+						<!-- 
+						行插槽插槽名称就是列的字段名称name:字段名,sucore:utsobject数据 
+						 -->
+						<slot :name="item2.key" :sucore="item" >
+							<text :selectable="selectable" v-if="!safeTextWrap" class="cellItemText" :style="getCellStyle(item,item2.key).textStyle">
+								{{item.getAny(item2.key)}}
+							</text>
+							<text :selectable="selectable" v-else class="cellItemText cellItemTextNowrap" :style="[getCellStyle(item,item2.key).textStyle,{height:_cellHeight,lineHeight:'2.5'}]">
+								{{item.getAny(item2.key)}}
+							</text>
+						</slot>
+						<!--
+						指定具体单元格插槽，name:字段名+'-'+key的值,sucore:utsobject数据 
+						 -->
+						<slot :name="item2.key+'-'+item.getString('key')" :sucore="item"></slot>
+					</view>
+				</view>
+			</list-item>
+		</list-view>
+	</scroll-view>
+</template>
+
+<style scoped>
+	.cellItemTextNowrap {
+		text-align: center;
+
+	}
+
+	.cellItemText {
+		text-align: center;
+		padding: 8rpx 16rpx;
+		/* #ifdef WEB */
+		word-break: break-all;
+		/* #endif */
+	}
+
+	.cellItemTextHeader {
+		font-weight: bold;
+	}
+
+	.xTable {
+		/* display: flex;
+		flex-direction: row; */
+
+	}
+
+	.xTableWrap {
+		/* #ifdef WEB */
+		overflow-x: hidden;
+		/* #endif */
+	}
+
+
+	.xTabelHoz {
+		display: flex;
+		flex-direction: row;
+		flex-wrap: nowrap;
+		flex: 1;
+	}
+
+	.xTabelHozItem {
+		/* height: 100%; */
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		/* justify-content: center; */
+	}
+
+	.xTabelHozItemContent {
+		display: flex;
+		flex-direction: column;
+		/* align-items: center; */
+		justify-content: center;
+	}
+
+	.xTabelHozItemHeaderWrap {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+	}
+</style>

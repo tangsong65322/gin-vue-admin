@@ -1,0 +1,86 @@
+<template>
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+	<view >
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">签名板 SignBoard</x-text>
+			<x-text color="#999999" >
+				提供高性能流畅性的原生绘制
+			</x-text>
+		</x-sheet>
+		<x-sheet dark-color="#333">
+			<x-sign-board height="200" ref="boardRef" :stroke-color="color" ></x-sign-board>
+		</x-sheet>
+		
+		
+		<x-sheet class="flex flex-row">
+			<x-button width="31%"  @click="saveImg">保存图片</x-button>
+			<x-button width="31%"  class="mx-10"  @click="checkCount">是否签名</x-button>
+			<x-button width="31%" color="error" @click="clear">清除</x-button>
+		</x-sheet>
+		
+		<x-sheet dark-color="#333">
+			<x-text font-size="18" class=" text-weight-b mb-8">演示在弹层内</x-text>
+			<x-modal @open="opended" @close="show=false" height="350">
+				<template v-slot:trigger>
+					<x-button :block="true" >打开</x-button>
+				</template>
+				<x-text v-if="!show">加载中</x-text>
+				<x-sign-board v-if="show" height="200" ref="boardRef" :stroke-width="3" :stroke-color="color" ></x-sign-board>
+			</x-modal>
+		</x-sheet>
+
+		
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">点击上方保存图片预览</x-text>
+			<image :style="{width:width+'px',height:height+'px'}" :src="img"></image>
+		</x-sheet>
+	</view>
+</template>
+
+<script lang="uts" setup >
+	const img = ref("")
+	const width = ref(0)
+	const height = ref(0)
+	const color = ref("primary")
+	const boardRef = ref<XSignBoardComponentPublicInstance|null>(null)
+	const clear = ()=>{
+		boardRef.value!.clear()
+	}
+	const saveImg = ()=>{
+		boardRef.value!.getImage().then((res:UTSJSONObject)=>{
+			img.value = res.getString('src') as string;
+			width.value  = res.getNumber('width') as number;
+			height.value  = res.getNumber('height') as number;
+		})
+	}
+	const checkCount = ()=>{
+		let count = boardRef.value!.getLineCount();
+		if(count<5){
+			uni.showToast({
+				title:"连笔过多或者未签名",
+				icon:"error"
+			})
+			return;
+		}
+		uni.showToast({
+			title:"已签名",
+			icon:"success"
+		})
+	}
+
+	const show = ref(false)
+	const opended = ()=>{
+		setTimeout(function() {
+			show.value = true;
+		}, 300);
+	}
+	
+</script>
+
+<style lang="scss">
+
+</style>

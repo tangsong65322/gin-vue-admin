@@ -1,0 +1,16 @@
+import { URL } from 'Foundation';
+import { UIApplication } from 'UIKit';
+export function openWeb(url : string) {
+	let href = new URL(string = url)
+	
+
+	if (UTSiOS.available("iOS 16.0, *")) {
+		if (UIApplication.shared.canOpenURL(href!)) {
+			UIApplication.shared.open(href!, options= new Map(), completionHandler= nil)
+		}
+	}else{
+		if (UIApplication.shared.canOpenURL(href!)) {
+			UIApplication.shared.openURL(href!)
+		}
+	}
+}

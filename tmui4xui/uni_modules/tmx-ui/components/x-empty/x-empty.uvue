@@ -1,0 +1,196 @@
+<script lang="ts">
+	import { colors, getDefaultColor, getDefaultColorObj, getTextColorObj, getThinColorObj, getOutlineColorObj } from "../../core/util/xCoreColorUtil.uts"
+	import { toFillMarginAr, checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { type PropType } from 'vue'
+	import { xConfig } from "../../config/xConfig.uts"
+
+	/**
+	 * @name 空状态 xEmpty
+	 * @description 主要用于列表加载页面或者空状态页面时使用。
+	 * @page /pages/index/action-menu
+	 * @category 展示组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+
+			}
+		},
+		emits: [
+			/**
+			 * 刷新按钮被点击时触发
+			 */
+			'click'],
+		props: {
+			/**
+			 * 加载状态
+			 */
+			loading: {
+				type: Boolean,
+				default: true
+			},
+			/**
+			 * 是否为空
+			 */
+			empty: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 错误状态
+			 */
+			error: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 是否有更多数据状态
+			 */
+			more: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 没有数据时的提示，用于加载更多数据时
+			 */
+			moreLabel: {
+				type: String,
+				default: "没有更多数据啦"
+			},
+			/**
+			 * 列表加载出错时
+			 */
+			errorLabel: {
+				type: String,
+				default: "出错啦~"
+			},
+			/**
+			 * 按钮文本
+			 */
+			btnLabel: {
+				type: String,
+				default: "点击重试"
+			},
+			/**
+			 * 按钮颜色，默认取全局值
+			 */
+			btnColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 按钮文本颜色，默认自动
+			 */
+			btnTextColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 空或者加载出错时的标语
+			 */
+			title: {
+				type: String,
+				default: "当前没有数据"
+			},
+			/**
+			 * 图片路径
+			 */
+			src: {
+				type: String,
+				default: "/static/tmui4xLibs/static/empty.png"
+			},
+			/**
+			 * 是否显示重试按钮
+			 */
+			showBtn: {
+				type: Boolean,
+				default: true
+			}
+		},
+		computed: {
+			_showBtn() : boolean {
+				return this.showBtn
+			},
+			_loading() : boolean {
+				return this.loading
+			},
+			_error() : boolean {
+				return this.error
+			},
+			_more() : boolean {
+				return this.more
+			},
+			_empty() : boolean {
+				return this.empty
+			},
+			_moreLabel() : string {
+				return this.moreLabel
+			},
+			_errorLabel() : string {
+				return this.errorLabel
+			},
+			_btnLabel() : string {
+				return this.btnLabel
+			},
+			_btnColor() : string {
+				if (this.btnColor == "") return getDefaultColor(xConfig.color)
+				return getDefaultColor(this.btnColor)
+			},
+			_btnTextColor() : string {
+				return getDefaultColor(this.btnTextColor)
+			},
+			_title() : string {
+				return this.title
+			}
+		},
+		methods: {
+			onclick() {
+				/**
+				 * 刷新按钮被点击时触发
+				 */
+				this.$emit('click')
+			}
+		},
+	}
+</script>
+<template>
+	<view class="xEmpty">
+		<x-loading v-if="_loading"></x-loading>
+		<view class="xEmptyWrap" v-if="!_loading&&!_more&&(_empty||_error)">
+			<image style="width: 200px;height:200px" :src="src" />
+			<x-text font-size="16" v-if="_empty" style="opacity: 0.5;">{{_title}}</x-text>
+			<x-text font-size="16" v-if="_error" style="opacity: 0.5;">{{_errorLabel}}</x-text>
+			<!-- 
+			 @slot 按钮位置的插槽
+			 -->
+			<slot>
+				<view v-if="_showBtn" style="padding-top: 21px;">
+					<x-button @click="onclick" width="150px" :color="_btnColor"
+						:font-color="_btnTextColor">{{_btnLabel}}</x-button>
+				</view>
+			</slot>
+		</view>
+		<x-text font-size="16" v-if="_more&&!_loading&&!_error&&!_empty"
+			style="padding: 16px;opacity: 0.5;">{{_moreLabel}}</x-text>
+	</view>
+</template>
+<style scoped>
+	.xEmpty {
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+		margin: 16px 0;
+	}
+
+	.xEmptyWrap {
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+	}
+</style>

@@ -1,0 +1,23 @@
+export type  SQLiteConfig = {
+	password?: string;
+	encryption?: boolean;
+	locateFile?: (filename: string) => string;
+	defaultDirectory?: string;
+}
+
+export type SQLiteResult = {
+	rows?: any[][];
+	columns?: string[];
+	changes?: number;
+	lastInsertRowid?: number;
+	error?: string;
+	maps?:Map<string,any>[]
+}
+export type SQLiteExecuteBatchParams = {
+	sql:string,
+	params?:any[]
+}
+export type SQLiteDbFileInfo = {
+	path:string|null,
+	size:number|null
+}

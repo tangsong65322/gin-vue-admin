@@ -1,0 +1,6 @@
+/unpackage/
+/docweb/node_modules/
+/docweb/dist/
+/docs/node_modules/
+.DS_Store
+/uni_modules/x-ocr-s/utssdk/app-ios/Resources/

@@ -1,0 +1,82 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">日历多选 xCalendarMultiple</x-text>
+			<x-text color="#999999">支持多选，范围,如果需要单天选择请前往xCalendarView组件{{currentDate}}</x-text>
+		</x-sheet>
+		<x-sheet :padding="['0']">
+			<x-calendar-multiple style="border-radius: 12px;" @change="onchange" v-model:currentDate="currentDate" :disabledDays="['2024-5-31']" :date-style="dateStyle" headBgColor='rgb(5, 121, 255)' headFontColor='white' v-if="show" v-model="dates"></x-calendar-multiple>
+			<view class="px-12 pb-12">
+				<x-button @click="setdate" skin='thin' :block="true" >赋值</x-button>
+			</view>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">范围选择</x-text>
+			<x-text color="#999999">下面的范围选择限制了只能最多选择20天,如果要不限制设置multipleMax为0即可</x-text>
+		</x-sheet>
+		<x-sheet :padding="['0']">
+			<x-calendar-multiple @change="onchange" currentDate="2024-5-1"  v-if="show" :multipleMax="20" model='range' v-model="dates2"></x-calendar-multiple>
+			<view class="px-12 pb-12">
+				<x-button @click="fuzhi" skin='thin' :block="true" >赋值</x-button>
+			</view>
+		</x-sheet>
+		<view style="height:16px"></view>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script lang="ts">
+	import { xCalendarDateStyle_type } from "@/uni_modules/tmx-ui/interface.uts"
+	import { xConfig } from "@/uni_modules/tmx-ui/config/xConfig.uts"
+	export default {
+		data() {
+			return {
+				dates:[] as string[],
+				dates2:[] as string[],
+				dateStyle: [] as xCalendarDateStyle_type[],
+				currentDate:"",
+				show:false
+			}
+		},
+		onReady() {
+			this.show = true;
+		},
+		methods: {
+			fuzhi(){
+				this.dates2=['2024-5-1','2024-5-19']
+				
+			},
+			onchange(dates:string[]){
+				console.log(dates)
+			},
+			setdate() {
+				this.dates = ['2024-5-1','2024-5-8']
+				this.currentDate = "2024-5-1"
+				nextTick(()=>{
+					this.dateStyle = [
+						{ date: '2024-5-3', color: '#00aa7f', label: '推荐', fontColor: 'white' } as xCalendarDateStyle_type,
+						{ date: '2024-5-20', label: '完成', fontColor: 'orange' } as xCalendarDateStyle_type,
+						{ date: '2024-5-21', label: '爆满', fontColor: 'red' } as xCalendarDateStyle_type,
+						{ date: '2024-5-31', label: '禁用' } as xCalendarDateStyle_type,
+						{ date: '2024-5-18', dot: true } as xCalendarDateStyle_type,
+						{ date: '2024-5-17', dot: true, dotColor: "orange", dotLabel: "36" } as xCalendarDateStyle_type,
+						{ date: '2024-5-1', dot: true, dotColor: "#52c428", dotLabel: "假", label: "劳动节", fontColor: "#52c428" } as xCalendarDateStyle_type,
+						{ date: '2024-5-4', dot: true, dotColor: "#aa55ff", dotLabel: "休", label: "劳动节", fontColor: "#52c428" } as xCalendarDateStyle_type,
+					] as xCalendarDateStyle_type[]
+				})
+			}
+		}
+	}
+</script>
+
+<style>
+
+</style>

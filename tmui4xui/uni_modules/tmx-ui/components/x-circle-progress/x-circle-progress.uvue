@@ -1,0 +1,394 @@
+<script lang="ts">
+	import { getUid, rpx2px } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit,getUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+
+	type OPTIONS = {
+		start : number,
+		end : number,
+		duration : number,
+		run : (current : number) => void,
+		complete : () => void
+	}
+	type ANIMATECALLBACK = {
+		stop : () => void
+	}
+
+	/**
+	 * @name 圆形进度环 xCircleProgress
+	 * @page /pages/index/circle-progress
+	 * @category 展示组件
+	 * @description 样式灵活多变。
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				id: 'xCircleProgeress-' + getUid(),
+				nowValue: 0,
+				tid: 0,
+				oladValue: 0,
+				nowback: {
+					stop: () => { },
+				} as ANIMATECALLBACK
+			}
+		},
+		props: {
+			/**
+			 * 可以是px,rpx,纯数字符串。默认以rpx为单位。
+			 */
+			size: {
+				type: String,
+				default: "60"
+			},
+			/**
+			 * 可以是px,rpx,纯数字符串。默认以rpx为单位。
+			 */
+			lineWidth: {
+				type: String,
+				default: "3"
+			},
+			/**
+			 * 圆环背景颜色,暗黑时取inputDarkColor
+			 */
+			color: {
+				type: String,
+				default: "info"
+			},
+			
+			/**
+			 * 当前激活的进度颜色，空值读取全局值。
+			 */
+			activeColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 当前的值,以百分比为值0-100
+			 * 等同v-model=""
+			 * 您直接:model-value="xx"也是一样可以改变值。
+			 */
+			modelValue: {
+				type: Number,
+				default: 30
+			},
+			/**
+			 * 中间文本字号
+			 */
+			labelFontSize: {
+				type: String,
+				default: "16"
+			},
+			/**
+			 * 数字的单位。
+			 */
+			labelUnit: {
+				type: String,
+				default: "%"
+			},
+			/**
+			 * 是否显示中间文本。
+			 */
+			showLabel: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 中间文本的颜色。
+			 */
+			labelColor: {
+				type: String,
+				default: "#333333"
+			},
+			/**
+			 * 中间文本的暗黑颜色。空值是取白色
+			 */
+			darkLabelColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 进度条动画的时间,单位ms。
+			 * 请不要设置的过慢，否则会有停顿感。
+			 */
+			duration: {
+				type: Number,
+				default: 300
+			},
+		},
+		computed: {
+			_labelFontSize() : string {
+				let fontSize = checkIsCssUnit(this.labelFontSize, xConfig.unit);
+				if(xConfig.fontScale==1) return fontSize;
+				let sizeNumber = parseInt(fontSize)
+				if(isNaN(sizeNumber)){
+					sizeNumber = 14
+				}
+				return (sizeNumber*xConfig.fontScale).toString() + getUnit(fontSize)
+			},
+			_labelUnit() : string {
+				return this.labelUnit
+			},
+			_labelColor() : string {
+				if(xConfig.dark=='dark'){
+					if(this.darkLabelColor!='') return getDefaultColor(this.darkLabelColor)
+					return "#ffffff"
+				}
+				return getDefaultColor(this.labelColor)
+			},
+			_showLabel() : boolean {
+				return this.showLabel
+			},
+			_width() : number {
+				let p = parseInt(this.size);
+				if (this.size.lastIndexOf('rpx') > -1) {
+					p = rpx2px(p);
+				}
+				return p
+			},
+			_lineWidth() : number {
+				let p = parseInt(this.lineWidth);
+				if (this.lineWidth.lastIndexOf('rpx') > -1) {
+					p = rpx2px(p);
+				}
+				return Math.floor(p)
+			},
+			_color() : string {
+				if(xConfig.dark=='dark') return getDefaultColor(xConfig.inputDarkColor)
+				return getDefaultColor(this.color)
+			},
+			_activeColor() : string {
+				if (this.activeColor == "") return getDefaultColor(xConfig.color)
+				return getDefaultColor(this.activeColor)
+			},
+		},
+		watch: {
+			modelValue(newval : number) {
+
+				if (newval != this.nowValue) {
+					this.oladValue = this.nowValue
+					this.nowValue = newval
+					this.play();
+				}
+			}
+		},
+		mounted() {
+			this.nowValue = this.modelValue
+			this.play();
+		},
+		beforeUnmount() {
+			clearTimeout(this.tid)
+		},
+		methods: {
+			play() {
+				this.nowback.stop()
+				clearTimeout(this.tid)
+				this.clear();
+				let t = this;
+				this.nowback = this.animate({
+					start: 0,
+					end: 100,
+					duration: t.duration,
+					complete() {
+
+					},
+					run(cureent : number) {
+						let angle = Math.PI * 2;
+						if (t.nowValue >= t.oladValue) {
+							let startAngle = (t.oladValue / 100) * angle
+							let endAngle = ((cureent / 100) * (t.nowValue - t.oladValue) / 100) * angle
+							endAngle = Math.max(endAngle, 0)
+
+							t.dreawer(startAngle, endAngle + startAngle)
+						} else {
+							let startAngle = (t.nowValue / 100) * angle
+							let endAngle = ((cureent / 100) * (t.oladValue - t.nowValue) / 100) * angle
+							let diff = (t.oladValue - t.nowValue) / 100 * angle
+							t.dreawer(startAngle, diff + startAngle - endAngle)
+						}
+					}
+				} as OPTIONS)
+			},
+			animate(options : OPTIONS) : ANIMATECALLBACK {
+				let tid = this.tid;
+				const start = options.start; // 初始值，默认为0
+				const end = options.end; // 目标值，默认为100
+				const duration = options.duration; // 动画时长，默认为1000毫秒
+				let current = 0; // 当前值
+				let startTime = 0; // 动画开始时间
+				let isRunning = true; // 动画运行状态
+				function run() {
+					if (startTime <= 0) {
+						startTime = Date.now(); // 记录动画开始时间
+					}
+					const progress = Math.min((Date.now() - startTime) / duration, 1); // 计算当前进度
+					current = start + (end - start) * progress; // 根据进度计算当前值
+					if (isRunning) {
+						options.run(current); // 执行传入的运行中状态回调函数
+					}
+					if (progress < 1 && isRunning) {
+						tid = setTimeout(() => {
+							run()
+						}, 16); // 递归调用自身，实现动画效果
+					} else {
+						options.complete(); // 动画结束时执行回调函数
+					}
+				}
+				run(); // 开始执行动画
+				return {
+					stop: () => {
+						// 设置动画运行状态为false
+						isRunning = false;
+					}
+				} as ANIMATECALLBACK;
+			},
+			async dreawer(start : number, end : number):Promise<any|null> {
+				this.clear()
+				let canvas = uni.getElementById(this.id as string) as UniElement
+				let ctx = null as DrawableContext | null
+				let ratio = 1;
+				// #ifdef APP
+				ctx = canvas.getDrawableContext()!
+				// #endif
+				
+				// #ifdef WEB
+				let crect = canvas.getBoundingClientRect();
+				let dom = canvas as HTMLElement;
+				canvas = dom.querySelector('canvas')
+				ratio = window.devicePixelRatio;
+				let w = crect.width
+				let h = crect.height
+				
+				canvas.width = w * ratio
+				canvas.height = h * ratio
+				
+				ctx = canvas.getContext('2d')!
+				// #endif
+				
+				// #ifdef MP-WEIXIN
+				let ctxnode = await uni.createCanvasContextAsync({
+				  id: this.id,
+				  component: this,
+				  })
+				 const canvasContext = ctxnode.getContext('2d')!;
+				 canvas = canvasContext.canvas;
+				 // 处理高清屏逻辑
+				 const dpr = uni.getDeviceInfo().devicePixelRatio ?? 1;
+				 canvas.width = canvas.offsetWidth * dpr;
+				 canvas.height = canvas.offsetHeight * dpr;
+				 canvasContext.scale(dpr, dpr); // 仅需调用一次，当调用 reset 方法后需要再次 scale
+				 ctx = canvasContext
+				// #endif
+				
+				
+				if (ctx == null) return Promise.resolve(null);
+				let cx = (this._width) / 2
+				let cy = cx
+				let cr = (this._width - this._lineWidth) / 2
+				ctx!.beginPath()
+				ctx!.strokeStyle = this._color
+				ctx!.lineWidth = this._lineWidth
+				ctx!.lineCap = "round"
+				ctx!.arc(cx * ratio, cy * ratio, cr * ratio, 0, Math.PI * 2)
+				ctx!.closePath()
+				ctx!.stroke()
+				// 绘制起始的角度。
+				ctx!.beginPath()
+				ctx!.strokeStyle = this._activeColor
+				ctx!.lineWidth = this._lineWidth
+				ctx!.arc(cx * ratio, cy * ratio, cr * ratio, 0, start)
+				ctx!.stroke()
+				// ctx.update()
+
+
+				ctx!.beginPath()
+				ctx!.strokeStyle = this._activeColor
+				ctx!.lineWidth = this._lineWidth
+				ctx!.arc(cx * ratio, cy * ratio, cr * ratio, start, end)
+				ctx!.stroke()
+				// #ifdef APP
+				ctx!.update()
+				// #endif
+				
+				return Promise.resolve(null)
+			},
+			clear(){
+				let canvas = uni.getElementById(this.id as string) as UniElement
+				let ctx = null as DrawableContext | null
+				let ratio = 1;
+				// #ifdef APP
+				ctx = canvas.getDrawableContext()!
+				// #endif
+				// #ifdef WEB
+				let dom = canvas as HTMLElement;
+				canvas = dom.querySelector('canvas')
+				ctx = canvas.getContext('2d')!
+				ratio = window.devicePixelRatio;
+				// #endif
+				
+				
+				
+
+				if (canvas == null || ctx == null) return
+
+				// #ifndef APP
+				ctx!.reset()
+				// #endif
+				
+				ctx!.fillStyle = 'transparent'
+				ctx!.fillRect(0, 0, this._width * ratio, this._width * ratio)
+				ctx!.fill()
+				// #ifdef APP
+				ctx!.update()
+				// #endif
+				
+			}
+		}
+	}
+</script>
+<template>
+
+	<view :style="{width:_width+'px',height:_width+'px',position: 'relative'}">
+		<!-- #ifdef APP -->
+		<view class="xCircleProgress" :id="id" :style="{width:_width+'px',height:_width+'px'}"></view>
+		<!-- #endif -->
+		<!-- #ifdef WEB || MP -->
+		<canvas class="xCircleProgress" :id="id" :style="{width:_width+'px',height:_width+'px'}"></canvas>
+		<!-- #endif -->
+		<view v-if="_showLabel" class="xCircleProgressLabel">
+			<!-- 
+			 @slot 默认文本插槽
+			 @prop {number} current - 当前的进度值。
+			 -->
+			<slot current="nowValue">
+				<text :style="{
+					fontSize:_labelFontSize,
+					color:_labelColor
+				}">{{nowValue}}{{_labelUnit}}</text>
+			</slot>
+		</view>
+
+	</view>
+</template>
+<style scoped>
+	.xCircleProgress {
+		transform: rotate(-90deg);
+	}
+
+	.xCircleProgressLabel {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		position: absolute;
+		left: 0px;
+		top: 0px;
+		width: 100%;
+		height: 100%;
+
+	}
+</style>

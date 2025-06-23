@@ -1,0 +1,696 @@
+<!-- #ifdef MP-WEIXIN -->
+<!-- @vue-docgen-ignore-next-line -->
+<script module="xfs" lang="wxs" src="./xfs.wxs"></script>
+<!-- #endif -->
+<script lang="ts">
+	import { type PropType } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit,rpx2px } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	
+	/**
+	 * @name 单滑块 xSlider
+	 * @description 此为单向滑块,双向滑块见:x-slider-double
+	 * @page /pages/index/slider
+	 * @category 表单组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | x | ☑️ | 4.14+ | 1.0.0 |
+	 */
+	export default {
+		data() {
+			return {
+				percentage: 0,
+				_val: 0,
+				_moving_val:0,
+				boxwidth: 0,
+				boxheight: 0,
+				id: ("xSlider" + getUid()) as string,
+				bgId: ("xSliderbgId" + getUid()) as string,
+				btnId: ("xSlider" + getUid()) as string,
+				_x:0,
+				_now_x:0,
+				boxLeft:0,
+				bgWidth:0,
+				isMoveing:false
+			}
+		},
+		emits: [
+			/**
+			 * 拖动变换时触发
+			 * @param {number} value - 当前的值
+			 */
+			'change', 'update:modelValue'
+		],
+		props: {
+			/**
+			 * 等同v-model当前的值
+			 */
+			modelValue: {
+				type: Number,
+				default: 0
+			},
+			/**
+			 * 最大值
+			 */
+			max: {
+				type: Number,
+				default: 100
+			},
+			/**
+			 * 最小值
+			 */
+			min: {
+				type: Number,
+				default: 0
+			},
+			/**
+			 * 是否禁用
+			 */
+			disabled: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 步进值
+			 */
+			step: {
+				type: Number,
+				default: 0
+			},
+			/**
+			 * 步进值刻度值
+			 * 比如max-min为100总值,刻度为20,那么setpCount就是4,
+			 */
+			stepCount: {
+				type: Number,
+				default: 0
+			},
+			/**
+			 * 激活时的颜色，空值取全局值
+			 */
+			color: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 默认的背景色
+			 */
+			bgColor: {
+				type: String,
+				default: "info"
+			},
+			/**
+			 * 滑条的大小
+			 */
+			size: {
+				type: String,
+				default: "3"
+			},
+			/**
+			 * 滑块的尺寸
+			 */
+			btnSize: {
+				type: String,
+				default: "24"
+			},
+			/**
+			 * 滑条的圆角。
+			 * 为空值时，取全局的进度条值
+			 */
+			round: {
+				type: String,
+				default: ""
+			},
+
+			/**
+			 * 是否显示进度条上的label文本
+			 */
+			showLabel: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 文本颜色
+			 */
+			labelColor: {
+				type: String,
+				default: "black"
+			},
+			/**
+			 * 文本文字大小
+			 */
+			labelFontSize: {
+				type: String,
+				default: "12"
+			}
+		},
+		computed: {
+			_stepCount():number{
+				return this.stepCount;
+			},
+			_round() : string {
+				if (this.round == "") {
+					return checkIsCssUnit(xConfig.progressRadius, xConfig.unit)
+				}
+				return checkIsCssUnit(this.round, xConfig.unit)
+			},
+			_size() : string {
+				return checkIsCssUnit(this.size, xConfig.unit)
+			},
+		
+			_labelColor() : string {
+				return getDefaultColor(this.labelColor)
+			},
+			_labelFontSize() : string {
+				return checkIsCssUnit(this.labelFontSize, xConfig.unit)
+			},
+			_showLabel() : boolean {
+				return this.showLabel
+			},
+			_color() : string {
+				if (this.color == "") return getDefaultColor(xConfig.color)
+				return getDefaultColor(this.color)
+			},
+			_bgColor() : string {
+				return getDefaultColor(this.bgColor)
+			},
+			_max() : number {
+				return this.max
+			},
+			_min() : number {
+				return this.min
+			},
+			_step() : number {
+				let val = this.step / (Math.min(100,this._max) - this._min) * 100
+			
+				return this.ProToWidthByval(val)
+			},
+			_disabled() : boolean {
+				return this.disabled
+			},
+			_btnSize():number{
+				let p = parseInt(this.btnSize);
+				let covertp = checkIsCssUnit(p,xConfig.unit)
+				p = parseFloat(covertp)
+				return Math.floor(p)
+			}
+		},
+		mounted() {
+			this._val = this.modelValue
+			this._moving_val = this.modelValue;
+			this.percentage = this.valueToPro(this._val);
+			this.getNodes();
+			// 兼容电脑端
+			// #ifdef WEB
+			window.addEventListener('mouseup', this.mmEnd);
+			window.addEventListener('mousemove', this.mmMove);
+			// #endif
+			
+			uni.$on("onResize",this.getNodes)
+		},
+		beforeUnmount(){
+			// 兼容电脑端
+			// #ifdef WEB
+			window.removeEventListener('mouseup', this.mmEnd);
+			window.removeEventListener('mousemove', this.mmMove);
+			// #endif
+			uni.$off("onResize",this.getNodes)
+		},
+		
+		watch: {
+			modelValue(newval : number) {
+				if(newval== this._val) return
+				this._val = newval
+				this._moving_val = newval
+				this.percentage = this.valueToPro(this._val);
+				this.getNodes()
+			}
+		},
+		methods: {
+			
+			// #ifdef MP-WEIXIN
+			setOpts(opts){
+				this.isMoving = opts.isMoving
+			},
+			setMoveChanges(opts){
+				this.percentage = Math.ceil(this.widthToPro(opts.x));
+				let nowval = this.proToValue(this.percentage);
+				if(this.step>0){
+					nowval = this.getNearestTick(this.max,this.min,this.step,nowval);
+				}
+				
+				/**
+				 * 拖动变换时触发
+				 * @param {number} value 当前的值
+				 */
+				this.$emit('change',nowval)
+				this._moving_val = nowval;
+			},
+			setEnd(){
+				this.isMoveing = false
+				this._val = this.proToValue(this.percentage);
+				this.boxLeft = this.ProToWidthByval(this.percentage)
+				/**
+				 * 松开拖动按钮时触发同步值，等同v-model
+				 * @param {number} value 当前的值
+				 */
+				this.$emit('update:modelValue',this._val)
+			},
+			// #endif
+			getFontSize(k:string):string{
+				return checkIsCssUnit(k,xConfig.unit)
+			},
+			getNodes() {
+				uni.createSelectorQuery().in(this)
+				.select(".xSlider")
+				.boundingClientRect().exec((ret) => {
+					let nodeinfo = ret[0] as NodeInfo;
+					this.boxwidth = nodeinfo.width!;
+					this.boxheight = nodeinfo.height!;
+					this.boxLeft = this.ProToWidth()
+					this.bgWidth = (this.percentage/100)*this.boxwidth + 2
+					// #ifdef MP-WEIXIN
+					let node = this.$refs['btnId'] as UniElement
+					let bgNode = this.$refs['bgId'] as UniElement
+					node.style.setProperty("left",this.boxLeft +"px")
+					bgNode.style.setProperty("width",`${this.bgWidth}px`)
+					// #endif
+				})
+			},
+			/**
+			 * 比例转值
+			 */
+			proToValue(val : number) : number {
+				const minValue = Math.min(this._min, this._max);
+				const maxValue = Math.max(this._min, this._max);
+				if (minValue === maxValue) {
+					return minValue;
+				}
+				return Math.ceil((val / 100) * (maxValue - minValue) + minValue);
+			},
+			/**
+			 * 值转比例
+			 */
+			valueToPro(val : number) : number {
+				let min = Math.min(this._min, this._max);
+				let max = Math.max(this._min, this._max);
+				let realval = Math.max(Math.min(val, max), min);
+				return (realval - min) / (max - min) * 100;
+			},
+			// 位置宽转比例
+			widthToPro(val:number):number{
+				let maxWidth = this.boxwidth - this._btnSize;
+				let bl = val / maxWidth;
+				return bl * 100
+			},
+			// 比例转位置.
+			ProToWidthByval(percentage:number):number{
+				let maxWidth = this.boxwidth - this._btnSize;
+				let val = maxWidth * percentage / 100;
+				return Math.floor(val)
+			},
+			// 比例转位置.
+			ProToWidth():number{
+				let maxWidth = this.boxwidth - this._btnSize;
+				let val = maxWidth * this.percentage / 100;
+				return Math.floor(val)
+			},
+			mStart(evt:UniTouchEvent){
+				if(this._disabled) return
+				evt.stopPropagation()
+				evt.preventDefault()
+				let node = this.$refs['btnId'] as UniElement
+				
+				let leftpos = parseInt(node.style.getPropertyValue("left")! as string)
+				this._x = evt.changedTouches[0].clientX - leftpos
+				this._now_x = evt.changedTouches[0].clientX
+				this.isMoveing = true
+				
+			},
+			getNearestTick(max:number, min:number, step:number, nowValue:number):number {
+			    // 确保 nowValue 在 min 和 max 之间
+			    if (nowValue < min) {
+			        return min;
+			    }
+			    if (nowValue > max) {
+			        return max;
+			    }
+			
+			    // 计算最近的刻度值
+			    const ticks = Math.round((nowValue - min) / step);
+			    const nearestValue = min + ticks * step;
+			
+			    // 确保 nearestValue 不超过 max
+			    return Math.min(nearestValue, max);
+			},
+			/**
+			 * 判断b离a和c的距离返回最近的值
+			 */
+			isLeftOrRight(a:number,b:number,c:number,diffX:number):number{
+				if(diffX>0){
+					return c;
+				}else if(diffX<0){
+					return a;
+				}
+				return b;
+			},
+			// 滑动条上被点击.
+			sliderClick(evt:UniPointerEvent){
+				if(this._disabled){
+					return;
+				}
+				let node = this.$refs['xSlider'] as UniElement
+				node.getBoundingClientRectAsync()!.then((result:DOMRect|null)=>{
+					if(result!=null){
+						const leftpos = (result as DOMRect).left
+						const maxwidth = (result as DOMRect).width   - this._btnSize
+						let diffX = evt.clientX - leftpos
+						diffX = Math.max(0,Math.min(diffX,maxwidth))
+						let val =  Math.ceil(this.widthToPro(diffX));
+						this._val = val;
+						this.percentage = val
+						let nowval = this.proToValue(this.percentage);
+						
+						// #ifdef APP-ANDROID || APP-IOS || MP
+						let node = this.$refs['btnId'] as UniElement
+						let bgNode = this.$refs['bgId'] as UniElement
+						node.style.setProperty("left",`${diffX}px`)
+						bgNode.style.setProperty("width",`${diffX+4}px`)
+						// #endif
+						
+						// #ifdef WEB
+						this.boxLeft = diffX
+						this.bgWidth = diffX
+						// #endif
+						this._moving_val = nowval;
+						this.$emit('update:modelValue',nowval)
+						this.$emit('change', nowval)
+					}
+				})
+				
+				
+				
+			},
+			mMove(evt:UniTouchEvent){
+				evt.stopPropagation()
+				evt.preventDefault()
+				if(this._disabled) return
+				let node = this.$refs['btnId'] as UniElement
+				let bgNode = this.$refs['bgId'] as UniElement
+				
+				let x = evt.changedTouches[0].clientX - this._x
+				let diffX = evt.changedTouches[0].clientX - this._now_x
+				let maxX = this.boxwidth - this._btnSize;
+				if(this.step>0){
+					let step = this._step;
+					let distanceToMove = Math.abs(diffX);
+					 
+					let qz = Math.floor(x / step) * step;
+				
+					if (distanceToMove>1) {
+						x = this.isLeftOrRight(qz-step,x,qz+step,diffX);
+					}
+					
+				}
+				
+				x = Math.max(Math.min(maxX,x),0)
+				// #ifdef APP-ANDROID || APP-IOS
+				node.style.setProperty("left",`${x}px`)
+				bgNode.style.setProperty("width",`${x+4}px`)
+				// #endif
+				
+				// #ifdef WEB
+				this.boxLeft = x
+				this.bgWidth = x+4
+				// #endif
+				
+				this.percentage = Math.ceil(this.widthToPro(x));
+				let nowval = this.proToValue(this.percentage);
+				if(this.step>0){
+					nowval = this.getNearestTick(this.max,this.min,this.step,nowval);
+				}
+				/**
+				 * 拖动变换时触发
+				 * @param {number} value 当前的值
+				 */
+				this.$emit('change',nowval)
+				this._moving_val = nowval;
+			},
+			mEnd(evt:UniTouchEvent){
+				this.isMoveing = false
+				this._val = this.proToValue(this.percentage);
+				this.boxLeft = this.ProToWidthByval(this.percentage)
+				/**
+				 * 松开拖动按钮时触发同步值，等同v-model
+				 * @param {number} value 当前的值
+				 */
+				this.$emit('update:modelValue',this._val)
+			},
+			// #ifdef WEB
+			// 兼容web
+			mmStart(evt:UniMouseEvent){
+				
+				if(this._disabled) return
+				evt.preventDefault()
+				window.sliderId = this.id;
+				let node = this.$refs['btnId'] as UniElement
+				let leftpos = parseInt(node.style.getPropertyValue("left")! as string)
+				this._x = evt.clientX - leftpos
+				this._now_x = evt.clientX
+				this.isMoveing = true
+			},
+			// 兼容web
+			mmMove(evt:UniMouseEvent){
+				if(window.sliderId!=this.id) return;
+				evt.stopPropagation()
+				evt.preventDefault()
+				if(this._disabled||!this.isMoveing) return
+				let node = this.$refs['btnId'] as UniElement
+				let bgNode = this.$refs['bgId'] as UniElement
+				
+				
+				let x = Math.ceil(evt.clientX - this._x)
+				let diffX = evt.clientX - this._now_x
+				let maxX = this.boxwidth - this._btnSize;
+				if(this.step>0){
+					let step = this._step;
+					let distanceToMove = Math.abs(diffX);
+					let qz = Math.floor(x / step) * step;
+					 
+					if (distanceToMove>1) {
+						x = this.isLeftOrRight(qz-step,x,qz+step,diffX);
+					}
+				}
+				
+				x = Math.max(Math.min(maxX,x),0)
+				
+				
+				// #ifdef APP || MP-WEIXIN
+				node.style.setProperty("left",`${x}px`)
+				bgNode.style.setProperty("width",`${x+4}px`)
+				// #endif
+				
+				// #ifdef WEB
+				this.boxLeft = x
+				this.bgWidth = x+4
+				// #endif
+				
+				
+				this.percentage = Math.ceil(this.widthToPro(x));
+				let nowval = this.proToValue(this.percentage);
+				if(this.step>0){
+					nowval = this.getNearestTick(this.max,this.min,this.step,nowval);
+				}
+				/**
+				 * 拖动变换时触发
+				 * @param {number} value 当前的值
+				 */
+				this.$emit('change',nowval)
+				this._moving_val = nowval;
+			},
+			// 兼容web
+			mmEnd(evt:UniMouseEvent){
+				if(window.sliderId!=this.id) return;
+				this.isMoveing = false
+				/**
+				 * 松开拖动按钮时触发同步值，等同v-model
+				 * @param {number} value 当前的值
+				 */
+				this.$emit('update:modelValue',this.proToValue(this.percentage))
+			},
+			// #endif
+		
+		},
+	}
+</script>
+<template>
+	<view class="xSliderBox" >
+		
+		<view :id="id" class="xSlider" ref="xSlider" :style="{height:_btnSize+'px'}">
+			<view @click="sliderClick" class="xSliderBgBox" :style="{backgroundColor:_bgColor,height:_size,borderRadius:_round,flex:'1'}">
+				<view  ref="bgId" :id="bgId" class="xSliderBg"
+					:style="{backgroundColor:_color,width:`${bgWidth}px`}">
+				</view>
+			</view>
+			<view class="xSliderBgKedu" :style="{paddingRight:_btnSize+'px'}">
+				<view ></view>
+				<view class="xSliderBgKeduKeyDuitem" :style="{marginLeft:(_btnSize)+'px'}" v-for="(item,index) in _stepCount" :key="index"></view>
+				<view ></view>
+			</view>
+			
+			
+			
+	
+			 <!-- #ifdef WEB || MP-WEIXIN -->
+			 <view
+			  :id="btnId"
+			  ref="btnId"
+			  
+			  <!-- #ifdef WEB-->
+			  @touchstart.stop="mStart"
+			  @touchmove.stop="mMove"
+			  @touchend="mEnd"
+			  @mousedown="mmStart"
+			  <!-- #endif -->
+			  
+			  <!-- #ifdef MP-WEIXIN -->
+			  @touchstart.stop="xfs.mStart"
+			  @touchmove.stop="xfs.mMove"
+			  @touchend="xfs.mEnd"
+			  :data-opts="{
+				  disabled:_disabled,
+				  max:max,
+				  min:min,
+				  step:step,
+				  _step:_step,
+				  btnSize:_btnSize,
+				  boxwidth:boxwidth
+			  }"
+			  <!-- #endif -->
+			  
+			  :class="[isMoveing?'xSliderBtnHover':'']"
+			  :style="{left:boxLeft+'px',height:_btnSize+'px',width:_btnSize+'px',backgroundColor:_color}"
+			  class="xSliderBtn"
+			  ></view>
+			 <!-- #endif -->
+			 <!-- #ifdef APP -->
+			 <view
+			  :id="btnId"
+			  ref="btnId"
+			  :class="[isMoveing?'xSliderBtnHover':'']"
+			  @touchstart="mStart"
+			  @touchmove="mMove"
+			  @touchend="mEnd"
+			  :style="{left:boxLeft+'px',height:_btnSize+'px',width:_btnSize+'px',backgroundColor:_color}"
+			  class="xSliderBtn"
+			  ></view>
+			 <!-- #endif -->
+		</view>
+		<!--
+		 @slot 右插槽
+		 @prop {number} value - 当前的值
+		 @prop {number} percentage - 当前的百分比值
+		 -->
+		<slot name="right" :value="_val" :percentage="percentage.toFixed(0)">
+			<view v-if="showLabel" class="xSliderBoxRight" :style="{width:getFontSize('36')}">
+				<x-text :color="(isMoveing?_color:_labelColor)" :font-size="_labelFontSize" :style="{textAlign:'right'}">{{_moving_val}}</x-text>
+			</view>
+		</slot>
+	</view>
+</template>
+<style scoped>
+	.xSliderBgBox{
+		/* #ifdef MP-WEIXIN||WEB */
+		overflow: hidden;
+		box-sizing: border-box;
+		/* #endif */
+	}
+	.xSliderBox {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.xSliderBoxRight {
+		/* width: 36px; */
+	}
+	.xSliderBoxLeft{
+		margin-right: 10px;
+	}
+	.xSlider {
+		flex: 1;
+		position: relative;
+		display: flex;
+		flex-direction: row;
+		justify-content: flex-start;
+		align-items: center;
+	}
+
+	.xSliderBtn {
+	
+		position: absolute;
+		left: 0px;
+		top: 0px;
+		border: 4px solid #ffffff;
+		box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+		border-radius: 100px;
+		z-index: 2;
+		/* #ifdef WEB||MP-WEIXIN */
+		cursor: grab;
+		box-sizing: border-box;
+		/* #endif */
+	}
+	.xSliderBtnHover{
+		border: 2px solid #ffffff;
+	}
+	
+	/* #ifdef WEB */
+	.xSliderBtn:active{
+		cursor: grabbing;
+	}
+	/* #endif */
+	
+	
+
+	.xSliderBg {
+		height: 100%;
+		display: flex;
+		flex-direction: row;
+		justify-content: flex-end;
+		align-items: center;
+		pointer-events: none;
+	}
+	.xSliderBgKedu {
+		height: 100%;
+		display: flex;
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		width:100%;
+		position: absolute;
+		z-index: 1;
+		pointer-events: none;
+	}
+	.xSliderBgKeduKeyDuitem{
+		width:5px;
+		height: 5px;
+		border-radius: 5px;
+		background-color: rgba(0, 0, 0, 0.1);
+	}
+
+	.xSliderBtn {
+		height: 100%;
+		/* background-color: yellow; */
+		padding: 0rpx 5px;
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.xSliderTxt {}
+</style>

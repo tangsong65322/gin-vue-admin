@@ -1,0 +1,82 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">输入框 xInput</x-text>
+			<x-text color="#999999" >定义多样化</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-input v-model="content" darkBgColor=""></x-input>
+			<!-- #ifdef MP-WEIXIN -->
+			<x-text font-size="18" class=" text-weight-b my-8">点击获取微信昵称</x-text>
+			<x-input v-model="content" type="nickname" darkBgColor=""></x-input>
+			<!-- #endif -->
+			
+			<x-text font-size="18" class=" text-weight-b my-8">定义focusBorder聚焦样式</x-text>
+			<x-text color="#999999" class=" mb-16">为了向下兼容,如果你要全局开启,可一全局配置:inputFocusBorder来让全局生效.</x-text>
+			<x-input :focusBorder="['2px','solid','','']" v-model="content" darkBgColor=""></x-input>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18"  class="text-weight-b ">显示密码</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-input darkBgColor="" :password="true"></x-input>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class="text-weight-b ">显示左右文本</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-input darkBgColor="" left-icon="money-cny-circle-line" type="number" placeholder="请输入金额" right-text="万元"  left-text="物料金额" ></x-input>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class="text-weight-b ">通过插槽定义</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-input darkBgColor="" left-icon="terminal-line" placeholder="输入验证码" >
+				<template v-slot:inputLeft>
+					<x-text class="ml-12">4位码</x-text>
+				</template>
+				<template v-slot:inputRight>
+					<x-button round="8" class="mr-2" height="40" width="90">获取</x-button>
+				</template>
+			</x-input>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class="text-weight-b mb-8">文本域-自动高-限制字符</x-text>
+			<x-input darkBgColor="" :showFooter="true" :maxlength="255" align="right" :autoHeight="true" type="textarea">
+				<template #footer>
+					<x-text line-height="1.2" color="error">请不要超过字符数量，详细填写哦！</x-text>
+				</template>
+			</x-input>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class="text-weight-b mb-8">文本域-限定高</x-text>
+			<x-input darkBgColor="" height="80"  type="textarea"></x-input>
+		</x-sheet>
+		<view style="height:50px"></view>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+				content:""
+			};
+		},
+		onLoad() {
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

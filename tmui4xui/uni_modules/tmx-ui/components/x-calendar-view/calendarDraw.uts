@@ -1,0 +1,127 @@
+import { xDateArrayItem,xDateArrayItemType,xCalendarArgs,xCalendarMode } from "../x-calendar-view/interface.uts"
+import { getDefaultColor, hexToRgb, rgbToHex } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+export class calendarDraw {
+	ele:UniElement|null = null
+	proxy:any|null = null
+	cellHeight = 50;
+	sapce = 5
+	model:xCalendarMode = 'day'
+	_fontSize:string =  checkIsCssUnit('16',xConfig.unit)
+	constructor(target:UniElement|null,proxyx:any|null){
+		this.ele = target
+		this.proxy = proxyx
+	}
+	showLabel(item:xDateArrayItemType):string {
+		if(item.isInstart&&item.isInEnd&&this.model=='range') return '本日'
+		if(item.isInstart&&!item.isInEnd&&this.model=='range') return '开始'
+		if(!item.isInstart&&item.isInEnd&&this.model=='range') return '结束'
+		return ""
+	}
+	getColor(color:string,alpha:number):string{
+		if(alpha==1) return color;
+		let rgba = hexToRgb(getDefaultColor(color));
+		return `rgba(${rgba.getNumber('r')},${rgba.getNumber('g')},${rgba.getNumber('b')},${alpha})`
+	}
+	_draw(element:UniElement,Grect:DOMRect,list:xDateArrayItemType[][]){
+		const ctx = element.getDrawableContext()!;
+		ctx.reset()
+		ctx.fillStyle = 'transparent'
+		ctx.fillRect(0, 0, Grect.width,Grect.height)
+		ctx.textAlign = 'center'
+		const _realCellWidth = Grect.width / 7
+		const _h = Math.min(_realCellWidth,50) - this.sapce*2
+		for (let i = 0; i < list.length; i++) {
+			const children = list[i]
+			for(let col=0;col<children.length;col++){
+				let item = children[col];
+				let dstyle = item.style
+				
+				let xy_x = _realCellWidth * col + _realCellWidth / 2;
+				let xy_y = this.cellHeight * i + this.cellHeight / 2;
+				
+				// 绘制选中的背景
+				ctx.fillStyle = this.getColor(dstyle.dstyle.backgroundColor,(item.disabled||!item.inCurrentMonth)&&!item.isInstart&&!item.isInEnd?0.3:1);
+				
+				if(dstyle.dstyle.backgroundColor!='transparent'){
+					ctx.beginPath()
+					ctx.arc(xy_x, xy_y, _h/2, 0, Math.PI * 2)
+					ctx.closePath()
+					ctx.fill()
+				}
+				
+				// 绘制右角标。
+				if (dstyle.dot.dot) {
+					
+					if (dstyle.dot.dotLabel=='') {
+						let lastx = _realCellWidth * col + _realCellWidth / 2 + this.cellHeight/2;
+						let lasty = _realCellWidth * (i) + 5
+						ctx.fillStyle = dstyle.dot.dotColor
+						ctx.beginPath()
+						ctx.arc(lastx, lasty, 4, 0, Math.PI * 2)
+						ctx.closePath()
+						ctx.fill()
+						
+					} else {
+						let lastx = _realCellWidth * col + _realCellWidth / 2 + this.cellHeight/2-5;
+						let lasty = _realCellWidth * (i) + 10
+						ctx.fillStyle = dstyle.dot.dotColor;
+						ctx.beginPath()
+						ctx.arc(lastx, lasty, 10, 0, Math.PI * 2)
+						ctx.closePath()
+						ctx.fill()
+						ctx.font = "10px"
+						ctx.fillStyle = dstyle.dot.dotLabelColor
+						// #ifdef APP-ANDROID
+						ctx.fillText(dstyle.dot.dotLabel, lastx, lasty + 3);
+						// #endif
+						// #ifdef APP-IOS
+						ctx.fillText(dstyle.dot.dotLabel, lastx, lasty + 5);
+						// #endif
+					}
+				}
+				
+				
+				
+				// 绘制文字
+				const text = item.date.day.toString();
+				ctx.fillStyle = this.getColor(dstyle.dstyle.fontColor,(item.disabled||!item.inCurrentMonth)?0.7:1);
+				ctx.font = this._fontSize
+				const textHeight = 34;
+				const _t_x = _realCellWidth * col + _realCellWidth/2
+				let _t_y = this.cellHeight * i + this.cellHeight / 2+2;
+				// #ifdef APP-IOS
+				_t_y = this.cellHeight * i + this.cellHeight / 2+6;
+				// #endif
+				ctx.fillText(text, _t_x, _t_y);
+				let label = this.showLabel(item)
+				label = label==''?dstyle.dstyle.label:label
+				
+				
+				// 绘制底部的label
+				if (label != '') {
+					let labely = this.cellHeight * i + this.cellHeight - 9;
+					// #ifdef APP-ANDROID
+					labely = this.cellHeight * i + this.cellHeight - 12;
+					// #endif
+					ctx.font = "8px"
+					ctx.fillText(label, _t_x, labely);
+				}
+				
+			}
+		}
+		ctx.update()
+	}
+	draw(list:xDateArrayItemType[][],modelv:xCalendarMode = 'day'){
+		let _this = this;
+		_this.model = modelv;
+		this.ele?.getBoundingClientRectAsync()
+		?.then((rect:DOMRect)=>{
+			_this._draw(_this.ele!,rect,list)
+		})
+		.catch((er)=>{
+			console.error(er)
+		})
+	}
+}

@@ -1,0 +1,424 @@
+<script lang="ts">
+	import { checkIsCssUnit, getUnit } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor, colorAddDeepen } from "../../core/util/xCoreColorUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+
+	import { getUid } from '../../core/util/xCoreUtil.uts'
+	import { CHIDREN_ITEM } from "../x-steps/interface.uts"
+	import { type PropType } from "vue"
+
+	/**
+	 * @name 步骤条子组件 xStepsItem
+	 * @description 仅可直接放置在x-steps标签当作直接子接点
+	 * @page /pages/index/steps
+	 * @category 展示组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				id: 'xStepsItemH-' + getUid(),
+				list: [] as string[],
+				active: false,
+				resizeObserver: null as UniResizeObserver | null,
+				eleMinHeight:20
+			}
+		},
+		emits: [
+			/**
+			 * 点击时触发
+			 * @param {number} index - 当前索引值
+			 * @param {boolean} active - 当前是否被选中
+			 */
+			'click'
+		],
+		slots: Object as SlotsType<{
+			default : {
+				active : boolean
+			}
+		}>,
+		props: {
+
+			/**
+			 * 标题
+			 */
+			label: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 辅助信息
+			 */
+			desc: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 未选中时的标题颜色
+			 */
+			color: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 激活时的颜色，默认空值取全局主题色。
+			 */
+			activeColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 默认图标,空值时取父级设置的图标
+			 */
+			icon: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 激活时的图标,空值时取父级设置的图标
+			 */
+			activeIcon: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 图标大小,空值时取父级
+			 */
+			iconSize: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 标题大小,空值时取父级
+			 */
+			labelSize: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 下面的小文字介绍大小
+			 */
+			descSize: {
+				type: String,
+				default: ""
+			}
+		},
+		inject: {
+			xsetpsIcon: { type: String, default: 'checkbox-blank-circle-fill' },
+			xsetpsActiveIcon: { type: String, default: 'checkbox-circle-fill' },
+			xsetpsiconSize: { type: String, default: '11' },
+			xsetpslabelSize: { type: String, default: '14' },
+			xsetpsdescSize: { type: String, default: '12' },
+			xsetpsactiveColor: { type: String, default: '' },
+			xsetpscolor: { type: String, default: '' },
+			xsetpsvertical: { type: Boolean, default: false },
+			xsetpsdisabled: { type: Boolean, default: true },
+		},
+		computed: {
+			_label() : string {
+				return this.label
+			},
+			_desc() : string {
+				return this.desc
+			},
+			indexIdx() : number {
+				let index = this.list.findIndex((el : string) : boolean => el == this.id)
+				return index
+			},
+			_align() : string {
+				// if(this.indexIdx==this.list.length-1) return 'flex-end'
+				return 'center'
+			},
+			_linearColor() : string {
+				let ac = this.activeColor;
+				if (ac == "") {
+					ac = this.xsetpsactiveColor
+				}
+				if (ac == "") {
+					ac = xConfig.color;
+				}
+				if (this.active) return getDefaultColor(ac)
+
+
+				return "#afafaf"
+			},
+			_color() : string {
+				let ac = this.activeColor;
+				if (ac == "") {
+					ac = this.xsetpsactiveColor
+				}
+				if (ac == "") {
+					ac = xConfig.color;
+				}
+				if (this.active) return getDefaultColor(ac)
+
+				let unac = this.color;
+				if (unac == "") {
+					unac = this.xsetpscolor
+				}
+				if (xConfig.dark == 'dark') return "#FFFFFF"
+
+				return getDefaultColor(unac)
+			},
+			_icon() : string {
+				if (this.icon == "") return this.xsetpsIcon
+				return this.icon;
+			},
+			_activeIcon() : string {
+				if (this.activeIcon == "") return this.xsetpsActiveIcon
+				return this.activeIcon;
+			},
+			_iconSize() : string {
+
+				let fontSize = checkIsCssUnit(this.iconSize, xConfig.unit);
+				if (this.iconSize == "") {
+					fontSize = checkIsCssUnit(this.xsetpsiconSize, xConfig.unit)
+				}
+				if (xConfig.fontScale == 1) return fontSize;
+				let sizeNumber = parseInt(fontSize)
+				if (isNaN(sizeNumber)) {
+					sizeNumber = 14
+				}
+				return (sizeNumber * xConfig.fontScale).toString() + getUnit(fontSize)
+			},
+			_labelSize() : string {
+				let fontSize = checkIsCssUnit(this.labelSize, xConfig.unit);
+				if (this.xsetpslabelSize != "") {
+					fontSize = checkIsCssUnit(this.xsetpslabelSize, xConfig.unit)
+				}
+				if (xConfig.fontScale == 1) return fontSize;
+				let sizeNumber = parseInt(fontSize)
+				if (isNaN(sizeNumber)) {
+					sizeNumber = 14
+				}
+				return (sizeNumber * xConfig.fontScale).toString() + getUnit(fontSize)
+			},
+			_descSize() : string {
+				let fontSize = checkIsCssUnit(this.descSize, xConfig.unit);
+				if (this.xsetpsdescSize != "") {
+					fontSize = checkIsCssUnit(this.xsetpsdescSize, xConfig.unit)
+				}
+				if (xConfig.fontScale == 1) return fontSize;
+				let sizeNumber = parseInt(fontSize)
+				if (isNaN(sizeNumber)) {
+					sizeNumber = 14
+				}
+				return (sizeNumber * xConfig.fontScale).toString() + getUnit(fontSize)
+			},
+			_disabled() : boolean {
+				return this.xsetpsdisabled;
+			}
+		},
+		mounted() {
+			let parent : XStepsComponentPublicInstance | null = null;
+			try {
+				parent = this.$parent as XStepsComponentPublicInstance
+			} catch (e) {
+
+			}
+			if (parent != null) {
+				parent.addItem({ id: this.id as string, ele: this } as CHIDREN_ITEM)
+			}
+			let t = this;
+			let ele = this.$refs['xStepsItemHTextVBox'] as UniElement|null
+			// #ifdef APP || WEB
+			if(ele==null) return;
+			if (this.resizeObserver == null) {
+				this.resizeObserver = new UniResizeObserver((entries : Array<UniResizeObserverEntry>) => {
+				  entries.forEach(entry => {
+					if (entry.target == ele) {
+						t.eleMinHeight = ele.getBoundingClientRect().height
+					}
+				  })
+				})
+			}
+			
+			this.resizeObserver!.observe(ele!)
+			// #endif
+			
+			// #ifdef MP
+			ele.getBoundingClientRectAsync().then((res)=>{
+				t.eleMinHeight = res.height
+			})
+			// #endif
+			
+		},
+		updated() {
+			// #ifdef MP-WEIXIN
+			let t = this;
+			let ele = this.$refs['xStepsItemHTextVBox'] as UniElement|null
+			ele.getBoundingClientRectAsync().then((res)=>{
+				t.eleMinHeight = res.height
+			})
+			// #endif
+		},
+		beforeUnmount() {
+			let parent : XStepsComponentPublicInstance | null = null;
+			try {
+				parent = this.$parent as XStepsComponentPublicInstance
+			} catch (e) {
+
+			}
+			if (parent != null) {
+				parent!.delItem(this.id as string)
+			}
+			this.resizeObserver?.disconnect()
+		},
+		methods: {
+			setList(items : string[]) {
+				this.list = items
+			},
+			setActive(isActive : boolean) {
+				this.active = isActive
+			},
+			itemClick() {
+				/**
+				 * 项目被点击时触发。
+				 * @param index {number} 当前索引值
+				 */
+				this.$emit('click', this.indexIdx, this.active);
+
+				if (!this._disabled) {
+					let parent : XStepsComponentPublicInstance | null = null;
+					try {
+						parent = this.$parent as XStepsComponentPublicInstance
+					} catch (e) {
+
+					}
+					if (parent != null) {
+						parent.addChange(this.id as string)
+					}
+				}
+
+			}
+		},
+	}
+</script>
+<template>
+	<view @click="itemClick" :class="[xsetpsvertical?'xStepsItemV':'xStepsItemH']" :style="{height:xsetpsvertical?eleMinHeight+'px':'auto',}">
+		<view v-if="!xsetpsvertical" class="xStepsItemH_border" :style="{marginBottom:'5px'}">
+			<view class="xStepsItemH_border_l" :style="{backgroundColor:indexIdx==0?'transparent':_linearColor}"></view>
+			<view class="xStepsItemH_border_h">
+				<x-icon :color="_linearColor" :font-size="_iconSize" :name="active?_activeIcon:_icon"></x-icon>
+			</view>
+			<view class="xStepsItemH_border_r"
+				:style="{backgroundColor:indexIdx==list.length-1?'transparent':_linearColor}"></view>
+		</view>
+
+		<view v-else class="xStepsItemV_border_box">
+			<x-icon :color="_linearColor" :font-size="_iconSize" :name="active?_activeIcon:_icon"></x-icon>
+		</view>
+
+		<view :class="[xsetpsvertical?'xStepsItemHTextV':'xStepsItemHText']"  >
+			<view style="width: 100%;" ref="xStepsItemHTextVBox">
+				<!--
+				 @slot 默认的文本节点插槽
+				 @prop {boolean} active - 当前是否被选中
+				 -->
+				<slot :active="active">
+					<text class="xStepsText"
+						:style="{textAlign: xsetpsvertical?'left':'center',marginBottom:'2px',fontWeight:'bold',color:_color,fontSize:_labelSize}">{{_label}}</text>
+					<text class="xStepsText"
+						:style="{textAlign: xsetpsvertical?'left':'center',color:_linearColor,fontSize:_descSize}">{{_desc}}</text>
+				</slot>
+				<view v-if="xsetpsvertical" style="height: 16px;"></view>
+			</view>
+			
+		</view>
+		<view v-if="xsetpsvertical" class="xStepsVSlider"
+			:style="{top:_iconSize,backgroundColor:indexIdx==list.length-1?'transparent':_linearColor}"></view>
+	</view>
+</template>
+<style scoped>
+	.xStepsText {
+		/* lines: 1;
+		text-overflow: ellipsis; */
+
+	}
+
+	.xStepsVSlider {
+		width: 1px;
+		height: 100%;
+		position: absolute;
+		left: 16px;
+		z-index: 0;
+	}
+
+	.xStepsItemH {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		justify-content: flex-start;
+
+	}
+
+	.xStepsItemV {
+		/* flex: 1; */
+		display: flex;
+		flex-direction: row;
+		align-items: stretch;
+		justify-content: flex-start;
+
+	}
+
+	.xStepsItemV_border {
+		height: 100%;
+		width: 1px;
+		background: red;
+		position: absolute;
+		z-index: 1;
+		left: 0;
+		top: 3px;
+	}
+
+
+
+	.xStepsItemV_border_box {
+		display: flex;
+		flex-direction: row;
+		align-items: flex-start;
+		justify-content: center;
+		width: 32px;
+		z-index: 2;
+		/* transform: translateY(-3px); */
+
+	}
+
+	.xStepsItemHTextV {
+		display: flex;
+		flex: 1;
+		padding-right: 12px;
+	}
+
+	.xStepsItemHText {
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+		flex-wrap: wrap;
+		flex: 1;
+		padding: 0 5px;
+		
+	}
+
+
+	.xStepsItemH_border {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.xStepsItemH_border_h {
+		padding: 0 5px;
+	}
+
+	.xStepsItemH_border_l,
+	.xStepsItemH_border_r {
+		flex: 1;
+		height: 1px;
+	}
+</style>

@@ -1,0 +1,18 @@
+<template>
+	<view >
+		
+		<x-empty title="暂没有数据!" :showBtn="true" :empty="true" :loading="false" :error="false" ></x-empty>
+
+	</view>
+
+</template>
+
+<script setup lang="uts">
+	import { xStore, xDate } from "@/uni_modules/tmx-ui/index.uts"
+	
+</script>
+
+<style >
+
+
+</style>

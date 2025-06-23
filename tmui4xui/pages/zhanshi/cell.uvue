@@ -1,0 +1,65 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">列表组 Cell</x-text>
+			<x-text color="#999999">
+				插槽丰富方便自定义自己的样式
+			</x-text>
+		</x-sheet>
+
+		<x-cell :link="false" url="/pages/index/button" icon="apps-line" title="常见组件库"></x-cell>
+		<x-cell title="应用设置" url="/pages/index/icon" icon="price-tag-3-line" label="+￥32非卡片模式非卡片模式非卡片模式非卡片模式" label-color="red"
+			icon-color="red"></x-cell>
+		<x-cell title="聊天介绍" url="/pages/index/tag" icon="message-3-line" label="tmx测试" icon-color="green"></x-cell>
+
+		<x-sheet :margin="['16']">
+			<x-text font-size="18" class=" text-weight-b ">非卡片模式 Cell</x-text>
+			<x-text color="#999999">
+				底边线可以左对齐或者右内对齐。
+			</x-text>
+		</x-sheet>
+
+		<x-sheet :padding="['0']">
+			<x-cell :bottomBorderInsert="true" :card="false" url="/pages/index/button" icon="color-filter-line"
+				desc="UTS版本tmui组件库,高质量库" title="常见组件库"></x-cell>
+			<x-cell title="价格设置" :bottomBorderInsert="true" :card="false" url="/pages/index/icon" icon="server-line"
+				label="+￥32" label-color="red" icon-color="red"></x-cell>
+			<x-cell title="书签读书" :bottomBorderInsert="true" :card="false" icon="book-marked-line" url="/pages/index/tag"
+				label="tmx测试" icon-color="orange"></x-cell>
+			<x-cell title="标签页面" :bottomBorderInsert="true" :card="false" :show-bottom-border="false" icon="gift-line"
+				url="/pages/index/tag" label="tmx测试" icon-color="success"></x-cell>
+		</x-sheet>
+
+
+
+
+		<view class="py-32"></view>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+
+			};
+		},
+		onLoad() {
+
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

@@ -1,0 +1,158 @@
+import LinearLayout from 'android.widget.LinearLayout';
+import Context from 'android.content.Context'
+import RelativeLayout from 'android.widget.RelativeLayout';
+import ViewGroup from 'android.view.ViewGroup';
+import View from 'android.view.View';
+import { XRUN_START_LOGO_OPTS, RGBA } from "../interface.uts"
+import Color from 'android.graphics.Color';
+import Gravity from 'android.view.Gravity';
+import GradientDrawable from 'android.graphics.drawable.GradientDrawable';
+import TextView from 'android.widget.TextView';
+import Typeface from 'android.graphics.Typeface';
+import TextUtils from 'android.text.TextUtils';
+import Uri from 'android.net.Uri';
+import ObjectAnimator from 'android.animation.ObjectAnimator';
+import ValueAnimator from 'android.animation.ValueAnimator';
+import TimeInterpolator from 'android.animation.TimeInterpolator';
+import MotionEvent from 'android.view.MotionEvent';
+import { hexToRgb } from "../libs/color.uts"
+import ViewPropertyAnimator from 'android.view.ViewPropertyAnimator';
+import ScrollView from 'android.widget.ScrollView';
+import FrameLayout from 'android.widget.FrameLayout';
+
+import Fresco from 'com.facebook.fresco.Fresco';
+// import DraweeController from 'com.facebook.drawee.interfaces.DraweeController';
+import SimpleDraweeView from 'com.facebook.drawee.view.SimpleDraweeView';
+import File from 'java.io.File';
+import WindowManager from 'android.view.WindowManager';
+import WindowManagerWrapper from 'com.dcloud.android.widget.toast.SafeToastContext.WindowManagerWrapper';
+import Build from 'android.os.Build';
+import BitmapFactory from "android.graphics.BitmapFactory";
+import Bitmap from 'android.graphics.Bitmap';
+import ImageView from 'android.widget.ImageView';
+// import ImageRequest from 'com.facebook.imagepipeline.request.ImageRequest';
+// import ImageRequestBuilder from 'com.facebook.imagepipeline.request.ImageRequestBuilder';
+
+
+let maskerDom : null | RelativeLayout = null;
+let maskDomId = 686
+let tid = 0
+let isClsoing = false
+function px2dp(n : number) : number {
+	const mets = UTSAndroid.getAppContext()!.resources!.getDisplayMetrics()
+	return mets.density * n
+}
+
+export function hideRunLogo() {
+	let decorView = UTSAndroid.getUniActivity()!.window.decorView as ViewGroup
+	let mk = decorView.findViewById<View>((maskDomId).toInt())
+	if (mk != null) {
+		decorView.removeView(mk)
+	}
+}
+function rgbToColorNumber(rgba : RGBA) : Int {
+	return Color.argb((rgba.a * 255).toInt(), rgba!.r.toInt(), rgba!.g.toInt(), rgba!.b.toInt())
+}
+
+export function showRunLogo(opts : XRUN_START_LOGO_OPTS) {
+
+	const context = UTSAndroid.getAppContext()! as Context
+
+	let win = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager;
+
+
+
+
+	let decorView = UTSAndroid.getUniActivity()!.window.decorView as ViewGroup
+	let config : XRUN_START_LOGO_OPTS = opts!
+
+	try {
+		let mk = decorView.findViewById<View | null>((maskDomId).toInt())
+		if (mk != null) {
+			decorView.removeView(mk!)
+		}
+
+	} catch (e) {
+		//TODO handle the exception
+	}
+	if (isClsoing) return;
+	let bgColor = rgbToColorNumber(hexToRgb(config.bgColor)!);
+	let logoBgcolor = rgbToColorNumber(hexToRgb(config.logoBgColor)!);
+	let fontColor = rgbToColorNumber(hexToRgb(config.fontColor)!);
+
+	let maskerDom = new RelativeLayout(context)
+	let maskerDomLayrPrams = new LinearLayout.LayoutParams(
+		ViewGroup.LayoutParams.MATCH_PARENT,
+		ViewGroup.LayoutParams.MATCH_PARENT
+	)
+
+	maskerDom.setLayoutParams(maskerDomLayrPrams)
+	maskerDom.setBackgroundColor(bgColor)
+	maskerDom.setId((maskDomId).toInt())
+
+	//创建一个容器用来在底部显示.
+
+	let container = new LinearLayout(context);
+	container.setOrientation(LinearLayout.VERTICAL)
+	container.setGravity(Gravity.CENTER)
+	let containerLayrPrams = new RelativeLayout.LayoutParams(
+		ViewGroup.LayoutParams.MATCH_PARENT,
+		ViewGroup.LayoutParams.WRAP_CONTENT
+	)
+	containerLayrPrams.addRule(RelativeLayout.CENTER_HORIZONTAL)
+	containerLayrPrams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM)
+	let containerPadding = px2dp(80).toInt();
+	container.setPadding(0, 0, 0, containerPadding)
+	container.setLayoutParams(containerLayrPrams)
+
+	// 创建一个logo容器
+	let logoBox = new LinearLayout(context)
+	logoBox.setBottom(px2dp(16).toInt())
+	let wpxlogoBox_w = px2dp(config.width + config.logoPadding).toInt();
+	let wpxlogoBox_h = px2dp(config.height + config.logoPadding).toInt();
+	logoBox.setGravity(Gravity.CENTER)
+
+	// 设置圆角背景
+	let bg = new GradientDrawable()
+	bg.setColor(logoBgcolor)
+	bg.setCornerRadius((px2dp(config.round)).toFloat())
+	logoBox.setClipToOutline(true)
+	logoBox.setBackground(bg)
+	logoBox.setLayoutParams(new LinearLayout.LayoutParams(wpxlogoBox_w, wpxlogoBox_h))
+
+	function loadImageFromAssets(fname : string) : Bitmap|null{
+		let bitmap : Bitmap | null = null
+		try {
+			let assetManager = UTSAndroid.getAppContext()!.getAssets()
+			let inputStream = assetManager.open(fname)
+			bitmap = BitmapFactory.decodeStream(inputStream)
+		} catch (e) {
+
+		}
+
+		return bitmap
+	}
+
+	// 创建图片显示logo;
+	let img = new ImageView(context)
+	img.setImageBitmap(loadImageFromAssets(config.logo))
+	img.setLayoutParams(new FrameLayout.LayoutParams(px2dp(config.width).toInt(), px2dp(config.height).toInt()))
+	logoBox.addView(img)
+
+	//底部的版权.
+	let titleDiv = new TextView(context)
+	// let titleDivheight = px2dp(titleHeight).toInt();
+	titleDiv.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+	titleDiv.setGravity(Gravity.CENTER)
+	titleDiv.setTextSize((config.fontSize).toFloat())
+	titleDiv.setTextColor(fontColor)
+	titleDiv.setText(config.rightText)
+	let titleDivPadding = px2dp(8).toInt();
+	titleDiv.setPadding(0, titleDivPadding, 0, 0)
+
+	container.addView(logoBox)
+	container.addView(titleDiv)
+	maskerDom.addView(container)
+	decorView.addView(maskerDom!)
+
+}

@@ -1,0 +1,103 @@
+<template>
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor"
+			:front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+	<view style="flex:1;display: flex;flex-direction: column;">
+
+		<x-input class="mx-14 mb-14" @input="searchWordList" v-model="word" color="white" left-icon="search-2-line" placeholder="输入关联组件名或者英文名"></x-input>
+		
+		<!-- #ifdef MP -->
+		<view style="flex:1;display: flex;flex-direction: column;position: relative;margin:0 16px;">
+		<!-- #endif -->
+		<list-view class="flex-1"
+		<!-- #ifdef MP -->
+		style="position: absolute;height: 100%;width:100%"
+		<!-- #endif -->
+		<!-- #ifndef MP -->
+		style="margin:0 16px;"
+		<!-- #endif -->
+		>
+			<list-item v-for="(item,index) in list" :key="index">
+				<navigator :url="item.url" class="lsitCell flex flex-row flex-row-center-between" :style="{backgroundColor: listBgcColor}">
+					<text :style="{color:textcColor}">{{item.title}}</text>
+				</navigator>
+			</list-item>
+			
+			<list-item>
+				<x-empty title="没组件,换个词" :showBtn="false" :empty="true" :loading="false" :error="false" v-if="list.length==0"></x-empty>
+			</list-item>
+		</list-view>
+		<!-- #ifdef MP -->
+		</view>
+		<!-- #endif -->
+
+	</view>
+
+</template>
+
+<script setup lang="uts">
+	import { listdata, type INDEXITEMINFO_AR,INDEXITEMINFO } from "./index.uts"
+	import { xStore, xDate } from "@/uni_modules/tmx-ui/index.uts"
+	const word = ref('')
+	const list = ref<INDEXITEMINFO[]>([])
+	let tid = 2232
+	const listBgcColor = computed(():string=>{
+		return xStore.xConfig.dark == 'dark'?xStore.xConfig.sheetDarkColor:'#ffffff'
+	})
+	const textcColor = computed(():string=>{
+		return xStore.xConfig.dark == 'dark'?'#fff':'#333'
+	})
+	
+	const searchWordList = (value:string)=>{
+		if(value.trim()==''){
+			list.value = [] as INDEXITEMINFO[]
+			return
+		}
+		clearTimeout(tid)
+		let temvalue = value.toLowerCase()
+		tid = setTimeout(function() {
+			let listtem = [] as INDEXITEMINFO[];
+			for(let i=0;i<listdata.length;i++){
+				let children = listdata[i].children;
+				for(let j=0;j<children.length;j++){
+					let item = children[j];
+					let title = item.title.toLowerCase();
+					let pagename = item.url.split('/').pop()!.toLowerCase()
+					if(title.indexOf(temvalue)>-1||pagename.indexOf(temvalue)>-1){
+						listtem.push(item)
+					}
+				}
+			}
+			list.value = [...listtem]
+		}, 350);
+	}
+	onLoad((obj:OnLoadOptions)=>{
+		let tempWord = obj['word'] ?? ""
+		searchWordList(tempWord)
+		word.value = tempWord
+	})
+	onBeforeUnmount(()=>{
+		clearTimeout(tid)
+	})
+</script>
+
+<style >
+	/* #ifdef MP */
+	page,body{
+		height:100vh;
+		display: flex;
+		flex-direction: column;
+	}
+	/* #endif */
+	.lsitCell{
+		height: 50px;
+		padding: 0 16px;
+		margin-bottom: 1px;
+		/* #ifndef APP */
+		box-szing:border-box;
+		/* #endif */
+	}
+</style>

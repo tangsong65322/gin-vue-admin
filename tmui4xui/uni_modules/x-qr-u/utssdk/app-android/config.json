@@ -1,0 +1,6 @@
+{
+  "minSdkVersion": "20",
+  "dependencies":[
+	  "com.github.SumiMakito:AwesomeQRCode-Kotlin:1.0.5"
+  ]
+}

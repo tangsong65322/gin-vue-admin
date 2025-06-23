@@ -1,0 +1,93 @@
+import { Archive } from "ZIPFoundation"
+import { URL, FileManager, URLResourceKey, CharacterSet } from 'Foundation';
+import { UIDocumentBrowserAction, UIDocumentPickerViewController, UIDocumentPickerMode, UIViewController } from 'UIKit';
+
+export const addZip = (path : string, target : string,filename:string,callback:(path:string)=>void) => {
+
+	let fileManager = FileManager.default
+	let archiveURL = new URL(fileURLWithPath = UTSiOS.convert2AbsFullPath(target))
+	archiveURL.appendPathComponent(filename)
+	console.log(archiveURL.path, '----')
+	let socurl = new URL(fileURLWithPath = UTSiOS.convert2AbsFullPath(path))
+
+	let archive = UTSiOS.try(new Archive(url = archiveURL, accessMode = Archive.AccessMode.create), "?")
+	if (archive == null) {
+		console.log("archiveURL:fail", archive)
+		callback('')
+		return;
+	}
+
+	let enumerator : FileManager.DirectoryEnumerator = fileManager.enumerator(at = socurl, includingPropertiesForKeys = [URLResourceKey.isRegularFileKey, URLResourceKey.isDirectoryKey])!
+	let fileURL : URL | null = enumerator.nextObject() as URL | null
+	let i = 1
+	while (fileURL != null) {
+		let str = fileURL!.path.replace(socurl.path, '') as String
+		str = str.replace('/private', '') as String
+		let relativePath = str.trimmingCharacters(in = new CharacterSet(charactersIn = "/"))
+		if (!fileManager.fileExists(atPath = fileURL!.path)) {
+			fileURL = enumerator.nextObject() as URL | null
+			continue;
+		}
+		let parentstr = fileURL!.path.substring(0, fileURL!.path.lastIndexOf("/"))
+		let parentUrl = new URL(fileURLWithPath = parentstr.replace('/private', ''))
+		UTSiOS.try(archive!.addEntry(with = relativePath, fileURL = fileURL!), '?')
+		fileURL = enumerator.nextObject() as URL | null
+		i += 1;
+	}
+	console.log("zip:ok", archiveURL.path)
+	callback(archiveURL.path)
+}
+export const addZipAndSaveDisk = (path : string, filename:string,callback:(path:string)=>void) => {
+	let fileManager = FileManager.default
+	let downloadsDirectory = FileManager.default.temporaryDirectory
+	let archiveURL = downloadsDirectory as URL
+	archiveURL.appendPathComponent(filename)
+	console.log(archiveURL.path, '----')
+	let socurl = new URL(fileURLWithPath = UTSiOS.convert2AbsFullPath(path))
+	let archive = UTSiOS.try(new Archive(url = archiveURL, accessMode = Archive.AccessMode.create), "?")
+	if (archive == null) {
+		console.log("archiveURL:fail", archive)
+		callback('')
+		return;
+	}
+
+	let enumerator : FileManager.DirectoryEnumerator = fileManager.enumerator(at = socurl, includingPropertiesForKeys = [URLResourceKey.isRegularFileKey, URLResourceKey.isDirectoryKey])!
+	let fileURL : URL | null = enumerator.nextObject() as URL | null
+	let i = 1
+	while (fileURL != null) {
+		let str = fileURL!.path.replace(socurl.path, '') as String
+		str = str.replace('/private', '') as String
+
+		let relativePath = str.trimmingCharacters(in = new CharacterSet(charactersIn = "/"))
+		if (!fileManager.fileExists(atPath = fileURL!.path)) {
+			fileURL = enumerator.nextObject() as URL | null
+			continue;
+		}
+		let parentstr = fileURL!.path.substring(0, fileURL!.path.lastIndexOf("/"))
+		let parentUrl = new URL(fileURLWithPath = parentstr.replace('/private', ''))
+
+		// relativePath = relativePath.substring((relativePath.lastIndexOf("/")+1).toInt())
+		UTSiOS.try(archive!.addEntry(with = relativePath, fileURL = fileURL!), '?')
+		console.log("序号:", i, str)
+		fileURL = enumerator.nextObject() as URL | null
+
+		i += 1;
+
+	}
+	console.log("zip:ok", archiveURL.path)
+	let documentPicker = new UIDocumentPickerViewController(url = archiveURL, in = UIDocumentPickerMode.exportToService)
+	let rootview = UTSiOS.getCurrentViewController() as UIViewController
+	rootview.present(documentPicker, animated = true, completion = nil)
+	callback(archiveURL.path)
+}
+export const unZip = (path : string, target : string) => {
+	let fileManager = FileManager.default
+	let targetpath = new URL(fileURLWithPath = UTSiOS.convert2AbsFullPath(target))
+	let zippathfile = new URL(fileURLWithPath = UTSiOS.convert2AbsFullPath(path))
+	let result = UTSiOS.try(fileManager.unzipItem(at = zippathfile, to = targetpath), "?")
+	if (result == null) {
+		console.log("unzip:fail", result)
+		return;
+	}
+	console.log("unzip:ok")
+}

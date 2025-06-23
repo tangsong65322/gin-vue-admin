@@ -1,0 +1,65 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet :margin="['0']" :round="['0']">
+			<x-text font-size="18" class=" text-weight-b mb-8">时间周 xWeekbar</x-text>
+			<x-text color="#999999" >
+				样式丰富,非常精美,能够适应不同设计要求.
+			</x-text>
+		</x-sheet>
+		<x-weekbar></x-weekbar>
+		<x-sheet :margin="['0','8','0','0']" :round="['0']">
+			<x-text font-size="18" class=" text-weight-b ">无操作栏及圆模式</x-text>
+		</x-sheet>
+		<x-weekbar :showAction="false" mode="circular" :padding="['0','4']"></x-weekbar>
+		<x-sheet :margin="['0','8','0','0']" :round="['0']">
+			<x-text font-size="18" class=" text-weight-b ">无背景模式</x-text>
+		</x-sheet>
+		<x-weekbar :showAction="false" color="transparent" fontActiveColor="primary" mode="none" :padding="['0','0']"></x-weekbar>
+		<x-sheet :margin="['0']" :round="['0']">
+			<x-text font-size="18" class=" text-weight-b ">个性化</x-text>
+		</x-sheet>
+		<x-weekbar :showAction="false" 
+		color="#fff60a" 
+		fontDarkColor="black"
+		darkColor="#fff60a" activeBgColor="black" mode="circular" :padding="['0','4']"></x-weekbar>
+		<x-sheet :margin="['0']" :round="['0']">
+			<x-text font-size="18" class=" text-weight-b ">个性化(默认不选中)</x-text>
+		</x-sheet>
+		<x-weekbar
+		actionIcon="arrow-left-circle-line"
+		rectRound="8"
+		color="error" 
+		darkColor="error" 
+		fontColor="rgba(255,255,255,0.7)" 
+		fontDarkColor="rgba(255,255,255,0.8)" 
+		activeBgColor="#6b0902" 
+		mode="rect" 
+		actionDarkColor="rgba(255,255,255,0.4)"
+		actionColor="rgba(255,255,255,0.5)"
+		bottomHeight="50"
+		topHeight="32"
+		:padding="['4','8']"
+		:emptyValueSelected="false"
+		>
+		</x-weekbar>
+		<view style="height: 50px;"></view>
+		
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script setup>
+
+</script>
+
+<style>
+
+</style>

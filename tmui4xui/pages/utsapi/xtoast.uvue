@@ -1,0 +1,83 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor"
+			:front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">提示消息 xToastS</x-text>
+			<x-text  color="#999999" >这是全局方法,可以在任意位置调用,会覆盖整个屏幕的内容包括系统界面. 支持属性多。用于代替官方的 uni.showToast</x-text>
+		</x-sheet>
+		<x-sheet >
+			<x-button :block="true" @click="loadAlert1">打开消息提示</x-button>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-24">定义图标，颜色等</x-text>
+			<x-button :block="true" @click="loadAlert2">打开</x-button>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-24">仅限示标题</x-text>
+			<x-button :block="true" @click="loadAlert3">打开</x-button>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-24">仅限示图标</x-text>
+			<x-button :block="true" @click="loadAlert4">打开</x-button>
+		</x-sheet>
+		
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	import { showToast,XTOAST_TYPE } from "@/uni_modules/x-toast-s"
+	import { xStore } from "@/uni_modules/tmx-ui/index.uts"
+	export default {
+		data() {
+			return {
+				
+			};
+		},
+		computed:{
+			msgBGcolor():string{
+				return xStore.xConfig.dark=='dark'?'#333333':"#ffffff"
+			},
+			maskBGcolor():string{
+				return xStore.xConfig.dark=='dark'?'#000':"#f5f5f5"
+			}
+		},
+		onLoad() {
+			
+		},
+		methods:{
+			loadAlert1(){
+
+				showToast({
+					title:"提示消息提示消息提示消息提示消息操作成功操作成功提示消息提示消息提示消息提示消息操作成功操作成功",
+					duration:1000*3,
+					close() {
+						console.log('error close....')
+					}
+				})
+				
+			},
+			loadAlert2(){
+				showToast({iconCode:"EB79",title:"操作成功",contentBgColor:"#333",titleColor:"#1fc73d",iconColor:"#1fc73d"} as XTOAST_TYPE)
+			},
+			loadAlert3(){
+				showToast({iconCode:"",title:"提示消息提示消息提示消息提示消息操作成功操作成功提示消息提示消息提示消息提示消息操作成功操作成功"} as XTOAST_TYPE)
+			},
+			loadAlert4(){
+				showToast({iconCode:"F100",title:""} as XTOAST_TYPE)
+			}
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

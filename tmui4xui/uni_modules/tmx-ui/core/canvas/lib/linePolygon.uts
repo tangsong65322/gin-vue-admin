@@ -1,0 +1,314 @@
+import { Shape } from './shape.uts';
+import { ICanvas } from '@/uni_modules/tmx-ui/core/canvas/ICanvas.uts';
+import { IShapeBoundRect, IShapeOptional } from '../interface.uts';
+
+function getControlPoints(x0 : number, y0 : number, x1 : number, y1 : number, x2 : number, y2 : number, t : number) : number[] {
+	const d01 = Math.sqrt(Math.pow(x1 - x0, 2) + Math.pow(y1 - y0, 2)),
+		d12 = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2)),
+		fa = (t * d01) / (d01 + d12),
+		fb = (t * d12) / (d01 + d12),
+		p1x = x1 - fa * (x2 - x0),
+		p1y = y1 - fa * (y2 - y0),
+		p2x = x1 + fb * (x2 - x0),
+		p2y = y1 + fb * (y2 - y0);
+
+	return [p1x, p1y, p2x, p2y];
+}
+
+function expandPoints(p : number[], tension : number) : number[] {
+	const len = p.length
+	const allPoints : Array<number> = [];
+
+	for (let n = 2; n < len - 2; n += 2) {
+		const cp = getControlPoints(
+			p[n - 2],
+			p[n - 1],
+			p[n],
+			p[n + 1],
+			p[n + 2],
+			p[n + 3],
+			tension
+		);
+		if (isNaN(cp[0])) {
+			continue;
+		}
+		allPoints.push(cp[0]);
+		allPoints.push(cp[1]);
+		allPoints.push(p[n]);
+		allPoints.push(p[n + 1]);
+		allPoints.push(cp[2]);
+		allPoints.push(cp[3]);
+	}
+
+	return allPoints;
+}
+
+export class ILinePolygon extends Shape {
+	override type = 'ILinePolygon'
+	constructor(config : IShapeOptional, canvas : ICanvas) {
+		super(config, canvas);
+	}
+
+	override getBoundRect() : IShapeBoundRect {
+		let points = this.points;
+		if (points.length < 4) {
+			let cp = [] as number[]
+			for(let i=0;i<(4-points.length);i++){
+				cp.push(0)
+			}
+			points = points.concat(cp)
+			return {
+				x: points[0],
+				y: points[1],
+				width: 0,
+				height: 0,
+			};
+		}
+		if (this.tension !== 0) {
+			points = [
+				points[0],
+				points[1],
+				...this._getTensionPoints(false),
+				points[points.length - 2],
+				points[points.length - 1],
+			];
+		} else {
+			points = this.points;
+		}
+		let minX = this.points[0] + this.x;
+		let maxX = this.points[0] + this.x;
+		let minY = this.points[1] + this.y;
+		let maxY = this.points[1] + this.y;
+		let x=0
+		let y =0;
+		for (let i = 0; i < points.length / 2; i++) {
+			x = points[i * 2] + this.x;
+			y = points[i * 2 + 1] + this.y;
+			minX = Math.min(minX, x);
+			maxX = Math.max(maxX, x);
+			minY = Math.min(minY, y);
+			maxY = Math.max(maxY, y);
+		}
+		let borderWidth = this.strokeWidth / 2;
+		return {
+			x: minX - borderWidth,
+			y: minY - borderWidth,
+			width: maxX - minX + this.strokeWidth,
+			height: maxY - minY + this.strokeWidth,
+		} as IShapeBoundRect;
+
+
+	}
+
+	private getTensionPoints() {
+		return this._getTensionPoints();
+	}
+	private _getTensionPoints(isXYOffset:boolean = true) {
+
+		if (this.closed) {
+			return this._getTensionPointsClosed(isXYOffset);
+		} else {
+			return expandPoints(isXYOffset?this._getPoints():this.points, this.tension);
+		}
+	}
+	private _getTensionPointsClosed(isXYOffset:boolean = true) {
+		const p = isXYOffset?this._getPoints():this.points
+		const len = p.length;
+		const tension = this.tension;
+		const firstControlPoints = getControlPoints(
+			p[len - 2],
+			p[len - 1],
+			p[0],
+			p[1],
+			p[2],
+			p[3],
+			tension
+		);
+		const lastControlPoints = getControlPoints(
+			p[len - 4],
+			p[len - 3],
+			p[len - 2],
+			p[len - 1],
+			p[0],
+			p[1],
+			tension
+		);
+		const middle = expandPoints(p, tension);
+		const tp = [firstControlPoints[2], firstControlPoints[3]]
+			.concat(middle)
+			.concat([
+				lastControlPoints[0],
+				lastControlPoints[1],
+				p[len - 2],
+				p[len - 1],
+				lastControlPoints[2],
+				lastControlPoints[3],
+				firstControlPoints[0],
+				firstControlPoints[1],
+				p[0],
+				p[1],
+			]);
+
+		return tp;
+	}
+
+	private _getPoints():number[]{
+		return this.points.map((el:number,index:number)=>{
+			return (index+1)%2 == 0 ?el+this.y:el+this.x;
+		})
+	}
+	override draw(ctx : CanvasRenderingContext2D) {
+		if (this.visible == false || this.points.length < 4) return;
+		super.draw(ctx);
+		ctx.beginPath();
+
+		let points = this._getPoints()
+		let length = points.length
+		let tension = this.tension
+		let closed = this.closed
+		let bezier = this.bezier
+		let tp = [] as number[]
+		let len = 0
+		let n = 0;
+
+		if (length==0) {
+			return;
+		}
+
+		ctx.beginPath();
+		ctx.moveTo(points[0], points[1]);
+
+	
+		if (tension !== 0 && length > 4) {
+			tp = this.getTensionPoints();
+			len = tp.length;
+			n = closed ? 0 : 4;
+
+			if (!closed) {
+				ctx.quadraticCurveTo(tp[0], tp[1], tp[2], tp[3]);
+			}
+
+			while (n < len - 2) {
+				
+				// #ifdef APP-ANDROID
+				ctx.bezierCurveTo(
+					tp[(n++).toInt()],
+					tp[(n++).toInt()],
+					tp[(n++).toInt()],
+					tp[(n++).toInt()],
+					tp[(n++).toInt()],
+					tp[(n++).toInt()]
+				);
+				// #endif
+				// #ifndef APP-ANDROID
+				ctx.bezierCurveTo(
+					tp[n++],
+					tp[n++],
+					tp[n++],
+					tp[n++],
+					tp[n++],
+					tp[n++]
+				);
+				// #endif
+			}
+
+			if (!closed) {
+				ctx.quadraticCurveTo(
+					tp[len - 2],
+					tp[len - 1],
+					points[length - 2],
+					points[length - 1]
+				);
+			}
+		} else if (bezier) {
+			
+			n = 2;
+			while (n < length) {
+				
+				// #ifdef APP-ANDROID
+				ctx.bezierCurveTo(
+					points[(n++).toInt()],
+					points[(n++).toInt()],
+					points[(n++).toInt()],
+					points[(n++).toInt()],
+					points[(n++).toInt()],
+					points[(n++).toInt()]
+				);
+				// #endif
+				// #ifndef APP-ANDROID
+				ctx.bezierCurveTo(
+					points[n++],
+					points[n++],
+					points[n++],
+					points[n++],
+					points[n++],
+					points[n++]
+				);
+				// #endif
+			}
+		} else {
+			for (n = 2; n < length; n += 2) {
+				ctx.lineTo(points[n], points[n + 1]);
+			}
+		}
+
+		if (closed&&this.fill!='') {
+			ctx.closePath();
+			ctx.fill();
+		} else if(this.stroke!='') {
+			ctx.stroke();
+		}
+
+		ctx.restore();
+	}
+
+    override isPointInPath(x : number, y : number, shapeId : string) : boolean {
+		if (!this.visible || (shapeId != "" && shapeId != this.id)) return false;
+		const rect = this.getBoundRect()
+		const realX = x - (this.offsetX) - this.x - this.points[0];
+		const realY = y - (this.offsetY) - this.y - this.points[1];
+		if (this.rotation != 0) {
+			const angle = -this.rotation * Math.PI / 180;
+			const cos = Math.cos(angle);
+			const sin = Math.sin(angle);
+			let centerX = 0;
+			let centerY = 0;
+			
+			// 根据不同的旋转中心点设置centerX和centerY
+			switch(this.rotateCenter) {
+				case 'topLeft':
+					centerX = 0;
+					centerY = 0;
+					break;
+				case 'topRight':
+					centerX = this.width;
+					centerY = 0;
+					break;
+				case 'bottomLeft':
+					centerX = 0;
+					centerY = this.height;
+					break;
+				case 'bottomRight':
+					centerX = this.width;
+					centerY = this.height;
+					break;
+				case 'center':
+				default:
+					centerX = this.width/2;
+					centerY = this.height/2;
+					break;
+			}
+			
+			const dx = realX - centerX;
+			const dy = realY - centerY;
+			const rotatedX = centerX + dx * cos - dy * sin;
+			const rotatedY = centerY + dx * sin + dy * cos;
+			return rotatedX >= 0 && rotatedX <= rect.width* this.scaleX && rotatedY >= 0 && rotatedY <= rect.height* this.scaleY;
+		}
+		let isInRect = realX >= 0 && realX <= rect.width* this.scaleX && realY >= 0 && realY <= rect.height* this.scaleY;
+
+		return isInRect
+	}
+
+	
+}

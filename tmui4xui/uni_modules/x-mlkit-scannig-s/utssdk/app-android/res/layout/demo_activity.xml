@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:orientation="vertical"
+    android:layout_width="match_parent"  android:background="#000000" android:layout_height="match_parent">
+
+	<LinearLayout android:layout_width="match_parent" android:id="@+id/surface_camera_box" android:layout_height="match_parent" android:layout_gravity="center_vertical">
+		<SurfaceView android:id="@+id/surface_camera" android:layout_width="match_parent"
+		    android:layout_height="match_parent" android:layout_gravity="center_vertical">
+		</SurfaceView>
+	</LinearLayout>	
+
+
+    <RelativeLayout android:orientation="vertical" android:layout_marginBottom="100dp" android:id="@+id/scan_box" android:layout_width="match_parent"
+        android:layout_height="match_parent"  >
+
+
+    </RelativeLayout>
+
+    <RelativeLayout android:orientation="vertical"
+        android:layout_gravity="center_vertical"
+        android:id="@+id/camre_center_preview"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"  >
+    </RelativeLayout>
+    <RelativeLayout android:orientation="vertical" android:id="@+id/relative_layout" android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
+            android:layout_gravity="top|bottom" android:orientation="vertical">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+                android:gravity="top" android:orientation="horizontal">
+                <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                    android:layout_width="match_parent" android:layout_height="100dp" android:paddingLeft="32dp"
+                    android:paddingTop="88px" android:orientation="vertical" android:gravity="center_horizontal|left"
+                    android:id="@+id/header_top">
+
+                    <!-- 这里的内容将会水平居中并底部对齐 -->
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:textColor="#ffffff" android:textSize="16dp" android:id="@+id/header_back"
+                        android:text="返回" />
+
+                </LinearLayout>
+            </LinearLayout>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+                android:gravity="bottom" android:orientation="horizontal">
+                <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                    android:layout_width="match_parent" android:layout_height="100dp"
+                    android:orientation="horizontal" android:background="#000000" android:gravity="center_horizontal|top"
+                    android:id="@+id/header_bottom">
+                    <TextView  android:paddingTop="30px" android:id="@+id/footer_asml" android:height="50dp" android:layout_width="0dp" android:textAlignment="center" android:layout_weight="1" android:layout_height="wrap_content"
+                        android:textColor="#fff" android:text="相册选取" android:textSize="16dp" />
+                    <!-- 这里的内容将会水平居中并底部对齐 -->
+                    <TextView android:paddingTop="30px"   android:height="50dp" android:id="@+id/footer_camre" android:textAlignment="center" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
+                        android:textColor="#fff" android:text="" android:textSize="16dp" />
+                    <TextView android:paddingTop="30px"  android:id="@+id/footer_scanning"  android:height="50dp" android:textAlignment="center" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
+                        android:textColor="#fff" android:text="扫一扫" android:textSize="16dp" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </RelativeLayout>
+
+
+
+</FrameLayout>

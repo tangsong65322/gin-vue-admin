@@ -1,0 +1,18 @@
+export function toPngFile(data : string) : Promise<string> {
+	let bdataBase64 = data.split(',')[1]
+	let fileMg = wx.getFileSystemManager();
+	let filepath = `${wx.env.USER_DATA_PATH}/${Math.random().toString(16).substring(4, 20)}.png`
+	return new Promise((res, rej) => {
+		fileMg.writeFile({
+			filePath: filepath,
+			data: bdataBase64,
+			encoding: "base64",
+			success() {
+				res(filepath)
+			},
+			faile() {
+				rej("")
+			}
+		})
+	})
+}

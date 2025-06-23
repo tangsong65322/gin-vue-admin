@@ -1,0 +1,10 @@
+import Base64 from "android.util.Base64"
+import ByteBuffer from 'java.nio.ByteBuffer';
+
+export const base64ToArrayBuffer = (data : string) :ArrayBuffer => {
+	return ArrayBuffer.fromByteBuffer(ByteBuffer.wrap(Base64.decode(data, Base64.DEFAULT)))
+}
+
+export const arrayBufferToBase64 = (data : ArrayBuffer) : string => {
+	return Base64.encodeToString(data.toByteBuffer().array(),Base64.DEFAULT)
+}

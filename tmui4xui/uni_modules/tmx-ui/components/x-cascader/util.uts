@@ -1,0 +1,125 @@
+import { CASCADER_TREE_ITEM, CASCADER_PATH_MENU_TYPE } from "../../interface.uts"
+
+/**
+ * 当前树有多少个被选中了。
+ */
+export function getTreeSelectedNum(item : CASCADER_TREE_ITEM[], target : Set<string>) : number {
+	let inx = 0;
+	function jshz(tree : CASCADER_TREE_ITEM[]) {
+		for (let i = 0; i < tree.length; i++) {
+			let item = tree[i]
+			if (item.children.length > 0) {
+				jshz(item.children)
+			} else if (target.has(item.id)) {
+				inx += 1
+			}
+		}
+	}
+	jshz(item)
+	return inx;
+}
+
+/**
+ * 根据目标节点，过滤掉父节点。
+ * @param item 
+ * @param target 
+ */
+export function filterParentNode(item : CASCADER_TREE_ITEM[], target : Set<string>) : string[] {
+	function jshz(tree : CASCADER_TREE_ITEM[]) : string[] {
+		let arr = [] as string[]
+		for (let i = 0; i < tree.length; i++) {
+			let item = tree[i]
+			if (item.children.length > 0) {
+				arr = arr.concat(jshz(item.children))
+			} else if (target.has(item.id)) {
+				arr.push(item.id)
+			}
+		}
+		return arr;
+	}
+	return jshz(item)
+}
+
+/**
+ * 是否是父节点
+ * @param item 
+ * @param target 
+ */
+export function isParent(item : CASCADER_TREE_ITEM[], target : string) : boolean {
+	let parent = false;
+	function jshz(tree : CASCADER_TREE_ITEM[]) {
+		if (parent) {
+			return;
+		}
+		for (let i = 0; i < tree.length; i++) {
+			let item = tree[i]
+			if (item.id == target && item.children.length > 0) {
+				parent = true;
+			} else if (item.id != target && item.children.length > 0) {
+				jshz(item.children)
+			}
+		}
+	}
+	jshz(item)
+	return parent
+}
+/** 通过节点获取当前节点的索引路径和ids数组 */
+export function getIndexPathAndIds(tree : CASCADER_TREE_ITEM[], targetId : string) : string[] {
+	const path : string[] = [];
+
+	function dfs(node : CASCADER_TREE_ITEM[]) : boolean {
+		for (let i = 0; i < node.length; i++) {
+			let item = node[i];
+			path.push(item.id);
+			if (item.id === targetId) {
+				return true;
+			}
+			if (dfs(item.children)) {
+				return true;
+			}
+			path.pop();
+		}
+		return false;
+	}
+
+	if (dfs(tree)) {
+		return path;
+	} else {
+		return [] as string[];
+	}
+}
+
+/** 通过节点获取当前节点的索引路径和ids数组 */
+export function getTreeNodesPath(tree : CASCADER_TREE_ITEM[], targetId : string) : CASCADER_PATH_MENU_TYPE|null {
+	const path : string[] = [];
+	const indexPaths:number[] = [];
+	const pathData:CASCADER_TREE_ITEM[] = [];
+	function dfs(node : CASCADER_TREE_ITEM[]) : boolean {
+		for (let i = 0; i < node.length; i++) {
+			let item = node[i];
+			path.push(item.id);
+			indexPaths.push(i)
+			pathData.push(item)
+			if (item.id === targetId) {
+				return true;
+			}
+			if (dfs(item.children)) {
+				return true;
+			}
+			path.pop();
+			indexPaths.pop();
+			pathData.pop();
+		}
+		return false;
+	}
+
+	if (dfs(tree)) {
+		return {
+			indexPath:indexPaths,
+			ids:path,
+			pathData
+		} as CASCADER_PATH_MENU_TYPE;
+	}
+	
+	return null
+}

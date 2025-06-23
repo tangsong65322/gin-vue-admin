@@ -1,0 +1,951 @@
+import CameraManager from 'android.hardware.camera2.CameraManager'
+import CameraDevice from 'android.hardware.camera2.CameraDevice'
+import StateCallback from 'android.hardware.camera2.CameraDevice.StateCallback'
+import CameraCaptureSession from 'android.hardware.camera2.CameraCaptureSession'
+
+import CaptureRequest from 'android.hardware.camera2.CaptureRequest'
+import TotalCaptureResult from 'android.hardware.camera2.TotalCaptureResult'
+import StreamConfigurationMap from 'android.hardware.camera2.params.StreamConfigurationMap'
+import MeteringRectangle from 'android.hardware.camera2.params.MeteringRectangle'
+import OutputConfiguration from 'android.hardware.camera2.params.OutputConfiguration'
+import SessionConfiguration from 'android.hardware.camera2.params.SessionConfiguration'
+import CameraCharacteristics from 'android.hardware.camera2.CameraCharacteristics'
+import CameraMetadata from 'android.hardware.camera2.CameraMetadata'
+
+
+import ImageFormat from 'android.graphics.ImageFormat'
+import Size from 'android.util.Size'
+import SurfaceTexture from 'android.graphics.SurfaceTexture'
+import Handler from 'android.os.Handler'
+import Surface from 'android.view.Surface'
+import Image from 'android.media.Image'
+import LinearLayout from 'android.widget.LinearLayout';
+import Intent from 'android.content.Intent';
+import Integer from 'java.lang.Integer';
+import ByteOrder from 'java.nio.ByteOrder';
+
+import SurfaceHolder from 'android.view.SurfaceHolder'
+import SurfaceView from 'android.view.SurfaceView'
+import TextureView from 'android.view.TextureView'
+import View from 'android.view.View'
+import ViewGroup from 'android.view.ViewGroup'
+import Context from 'android.content.Context'
+import Manifest from "android.Manifest";
+import Uri from 'android.net.Uri';
+import File from 'java.io.File'
+import System from 'java.lang.System'
+import Activity from 'android.app.Activity';
+import Bundle from 'android.os.Bundle';
+import Intent from 'android.content.Intent';
+import IntentFilter from 'android.content.IntentFilter';
+import R from 'io.dcloud.uni_modules.xMlkitScannigS.R';
+import Rect from 'android.graphics.Rect';
+import Matrix from 'android.graphics.Matrix'
+import ImageReader from 'android.media.ImageReader'
+import ByteBuffer from 'java.nio.ByteBuffer'
+import MediaStore from 'android.provider.MediaStore'
+import Plane from 'android.media.Image.Plane'
+import Bitmap from "android.graphics.Bitmap"
+import BitmapFactory from "android.graphics.BitmapFactory"
+import Vibrator from "android.os.Vibrator"
+import Animation from "android.view.animation.Animation"
+import ScaleAnimation from "android.view.animation.ScaleAnimation"
+import AnimationUtils from "android.view.animation.AnimationUtils"
+
+
+import Color from "android.graphics.Color"
+import Window from "android.view.Window"
+import WindowManager from "android.view.WindowManager"
+import TextView from "android.widget.TextView"
+import RelativeLayout from "android.widget.RelativeLayout"
+import ImageView from "android.widget.ImageView"
+import Bundle from 'android.os.Bundle'
+import Handler from 'android.os.Handler'
+import HandlerThread from 'android.os.HandlerThread'
+import YuvImage from 'android.graphics.YuvImage'
+import ByteArrayOutputStream from 'java.io.ByteArrayOutputStream'
+import GradientDrawable from 'android.graphics.drawable.GradientDrawable'
+import MotionEvent from 'android.view.MotionEvent';
+import { decoderUriPathToQr, decoderBuffToQr, decoderUriPathToQrByUri } from "./index.uts"
+import xView from "./libview/view.uts"
+import Gravity from 'android.view.Gravity';
+
+// x
+import ProcessCameraProvider from "androidx.camera.lifecycle.ProcessCameraProvider"
+import PreviewView from "androidx.camera.view.PreviewView"
+import CameraController from "androidx.camera.view.CameraController"
+import CameraSelector from "androidx.camera.core.CameraSelector"
+import Preview from 'androidx.camera.core.Preview'
+import Camera from 'androidx.camera.core.Camera'
+import LifecycleObserver from "androidx.lifecycle.LifecycleObserver"
+import LifecycleOwner from "androidx.lifecycle.LifecycleOwner"
+import OnLifecycleEvent from "androidx.lifecycle.OnLifecycleEvent"
+import ImageAnalysis from 'androidx.camera.core.ImageAnalysis'
+import ImageProxy from 'androidx.camera.core.ImageProxy'
+import NonNull from 'androidx.annotation.NonNull'
+import ExecutorService from 'java.util.concurrent.ExecutorService'
+import Executors from 'java.util.concurrent.Executors'
+import ContextCompat from 'androidx.core.content.ContextCompat';
+import LifecycleRegistry from "androidx.lifecycle.LifecycleRegistry"
+import Lifecycle from "androidx.lifecycle.Lifecycle"
+import FrameLayout from 'android.widget.FrameLayout';
+import ViewPropertyAnimator from 'android.view.ViewPropertyAnimator';
+
+import { SCANNING_OPTIONS, CAMERA_PHOTO_SIZE, CALL_RESULT_FUN, Call_BACK, Call_BACK_TYPE, SCANNING_PHOTO_RESULT, SCANNING_PHOTO_RESULT_BOUND } from "../interface.uts"
+type buffoptsPlanesType = {
+	data : ByteBuffer,
+	getRowStride : number,
+	getPixelStride : number,
+}
+type buffoptsType = {
+	width : number,
+	height : number,
+	format : number,
+	rect : Rect,
+	planes : buffoptsPlanesType[],
+}
+type ConverXy = {
+	x : number,
+	y : number,
+	minx : number,
+	maxx : number,
+	miny : number,
+	maxy : number,
+}
+type contaiaSize = {
+	width : number,
+	height : number
+}
+type contaiaCalseSize = {
+	scale : number,
+	offsetX : number,
+	offsetY : number
+}
+type contaiPointXy = {
+	x : number,
+	y : number
+}
+let parentView : RelativeLayout | null = null;
+
+let maskDomId = 8586
+
+
+function px2dp(n : number) : number {
+	const mets = UTSAndroid.getAppContext()!.resources!.getDisplayMetrics()
+	return mets.density * n
+}
+
+
+export class xCamera {
+	/** 手动震动服务 */
+	vibrator = null as null | Vibrator
+	context : Context;
+	// 识别点的区域
+	resultView : RelativeLayout | null = null;
+	// 存放小绿点的数组
+	imgPointsBycanmarea = [] as RelativeLayout[]
+	//相机容器
+	camreaLayouView:RelativeLayout|null = null;
+	// 图片容器层.
+	imageLayouView:RelativeLayout|null = null;
+
+	viewBox_width = 0
+	viewBox_height = 0
+
+	imageView = null as null | ImageView
+	imageUrl = null as null | Uri
+	isSelectedImging = false;
+
+	// 相机区域视图
+	cameraView : PreviewView | null = null;
+	cameraProvider : ProcessCameraProvider | null = null
+	camera : Camera | null = null;
+	cameraPreview : Preview | null = null;
+
+
+	// 当前是否在解析码制中。
+	isDecoderQring = false
+	// 当前相机是否正在预览中。
+	isOpeningCameraing = false;
+
+	callFunEvent : CALL_RESULT_FUN = (str : string) => { }
+	onlyCamera:boolean = false;
+	// 临时存放的识别成功的结果，防止重复扫码。
+	tempresultList = [] as string[];
+	activityresult = (requestCode : Int, resultCode : Int, data ?: Intent)=>{
+		let t = this;
+		if (resultCode == Activity.RESULT_OK && data != null && data?.data != null) {
+			let selectedImageUri = data.data!
+			this.camreaLayouView!.setVisibility(View.GONE)
+			this.imageUrl = selectedImageUri
+			this.isSelectedImging = false
+			decoderUriPathToQrByUri(this.imageUrl!,(res:SCANNING_PHOTO_RESULT)=>{
+				t.isOpeningCameraing = false
+				t.clearImageView();
+				t.imageView!.setImageURI(t.imageUrl!);
+				let matrix = t.getCorrectionMatrixByimgUri(t.imageView!, t.cameraView!,90)
+				let ruslt = res as SCANNING_PHOTO_RESULT;
+				if(ruslt.text.length>0){
+					t.setVibatar()
+				}
+				for (let i = 0; i < ruslt.bounds.length; i++) {
+					let item = ruslt.bounds[i]
+					
+					let result = t.calcPoint(t.imageView!, t.cameraView!,item.centerX,item.centerY,0)
+					
+					// let ponit = floatArrayOf(item.centerX.toFloat(), item.centerY.toFloat())
+					// matrix.mapPoints(ponit)
+					// item.centerX = ponit[0]
+					// item.centerY = ponit[1]
+					item.centerX = result.x
+					item.centerY = result.y
+				}
+				t.setImageViewRusletBox(ruslt)
+				if (ruslt.text.length == 1) {
+					t.callFunEvent(ruslt.text[0])
+					t.close()
+				}
+				
+			})
+	
+		} else {
+			this.isSelectedImging = false
+	
+		}
+	}
+	constructor() {
+		this.context = UTSAndroid.getAppContext()! as Context
+		this.vibrator = this.context!.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator;
+	}
+	clearImageView() {
+		this.clearImagePonit();
+		if (!this.isOpeningCameraing) {
+			this.imageView!.setImageDrawable(null)
+		}
+		
+	}
+	setVibatar() {
+		if (this.vibrator == null) return
+		// 检查设备是否支持震动
+		if (this.vibrator!.hasVibrator()) {
+			// 触发短暂的震动，持续时间为200毫秒
+			this.vibrator!.vibrate(80);
+		}
+	}
+	openCamera(call:CALL_RESULT_FUN,onlyCameras:boolean) {
+		this.onlyCamera = onlyCameras;
+		let t = this;
+		this.callFunEvent = call
+		if (parentView == null) {
+			this.createView();
+			t._openCamera()
+		} else {
+			this._openCamera()
+		}
+	}
+
+	close() {
+		UTSAndroid.offAppActivityResult(this.activityresult)
+		let decorView = UTSAndroid.getUniActivity()!.window.decorView as ViewGroup
+		this.closeCamera();
+		this.clearImagePonit();
+		if (parentView != null) {
+			decorView.removeView(parentView)
+		}
+		parentView = null;
+		
+	}
+	private _openCamera() {
+		let _this = this;
+		this.closeCamera();
+		this.clearImagePonit();
+		let cameraProviderFuture = ProcessCameraProvider.getInstance(this.context)
+		this.camreaLayouView!.setVisibility(View.VISIBLE)
+		class IntentRunable extends Runnable {
+			override run() {
+				let cameraProvider : ProcessCameraProvider = cameraProviderFuture.get()
+				let previewView = _this.cameraView! as PreviewView
+				let cameraSelector : CameraSelector = new CameraSelector.Builder()
+					.requireLensFacing(CameraSelector.LENS_FACING_BACK)
+					.build();
+				let preview : Preview = new Preview.Builder().build();
+
+				preview.setSurfaceProvider(previewView.getSurfaceProvider())
+
+				let imageAnalysis = new ImageAnalysis.Builder()
+					.setTargetResolution(new Size(800, 800))
+					.setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+					.build();
+				class MyImageAnalyzer implements ImageAnalysis.Analyzer {
+					constructor() {
+						super()
+					}
+					override analyze(image : ImageProxy) {
+						_this.qrDecoder(image)
+
+					}
+					override getDefaultTargetResolution() : Size {
+						return new Size(_this.viewBox_width.toInt(), _this.viewBox_height.toInt());
+					}
+
+				}
+				let cameraExecutor = Executors.newSingleThreadExecutor();
+				imageAnalysis.setAnalyzer(cameraExecutor, new MyImageAnalyzer());
+				let camera : Camera = cameraProvider.bindToLifecycle(
+					UTSAndroid.getUniActivity()! as LifecycleOwner, cameraSelector, preview, imageAnalysis);
+				
+				_this.camera = camera
+				_this.cameraPreview = preview
+
+				_this.cameraProvider = cameraProvider
+				_this.isDecoderQring = false
+				_this.isOpeningCameraing = true
+				
+
+			}
+		}
+
+		cameraProviderFuture.addListener(new IntentRunable(), ContextCompat.getMainExecutor(this.context))
+	}
+	closeCamera() {
+		this.cameraProvider?.unbindAll()
+		this.cameraPreview?.setSurfaceProvider(null)
+		this.isOpeningCameraing = false;
+		
+	}
+	clearImagePonit(){
+		for (let i = 0; i < this.imgPointsBycanmarea.length; i++) {
+			this.resultView?.removeView(this.imgPointsBycanmarea[i])
+		}
+	}
+	private createView() {
+		let t = this;
+		let decorView = UTSAndroid.getUniActivity()!.window.decorView as ViewGroup
+		// 创建父容器。
+		parentView = new RelativeLayout(this.context);
+		parentView!.setId((maskDomId).toInt())
+		// parentView!.setOrientation(LinearLayout.VERTICAL)
+		parentView!.setBackgroundColor(Color.BLACK)
+		
+		
+		
+		parentView!.setLayoutParams(new LinearLayout.LayoutParams(
+			ViewGroup.LayoutParams.MATCH_PARENT,
+			ViewGroup.LayoutParams.MATCH_PARENT
+		))
+
+		class MaskerDomClickListsner extends View.OnTouchListener {
+			constructor() {
+				super();
+			}
+			//阻止事件向下穿透。
+			override onTouch(view : View, event : MotionEvent) : Boolean {
+				return true;
+			}
+		}
+		parentView!.setOnTouchListener(new MaskerDomClickListsner())
+
+		let continaer = new LinearLayout(this.context);
+		continaer.setOrientation(LinearLayout.VERTICAL)
+		continaer.setBackgroundColor(Color.TRANSPARENT)
+		let continaerLayparams = new LinearLayout.LayoutParams(
+			ViewGroup.LayoutParams.MATCH_PARENT,
+			ViewGroup.LayoutParams.MATCH_PARENT
+		)
+
+		continaer.setLayoutParams(continaerLayparams)
+
+
+		// 创建一个中间容器
+		let boxWrapParent = new LinearLayout(this.context);
+		boxWrapParent.setOrientation(LinearLayout.VERTICAL)
+
+		let boxLayparams = new LinearLayout.LayoutParams(
+			ViewGroup.LayoutParams.MATCH_PARENT,
+			ViewGroup.LayoutParams.MATCH_PARENT
+		)
+		boxLayparams.weight = (1).toFloat();
+		boxLayparams.height = 0;
+		boxWrapParent.setLayoutParams(boxLayparams)
+		//  创建一个定位容器
+		let boxWrap = new RelativeLayout(this.context);
+		boxWrap.setLayoutParams(new LinearLayout.LayoutParams(
+			ViewGroup.LayoutParams.MATCH_PARENT,
+			ViewGroup.LayoutParams.MATCH_PARENT
+		))
+
+		boxWrapParent.addView(boxWrap)
+
+		//监听尺寸变化。
+		
+		class previewChangeRectadd extends View.OnLayoutChangeListener {
+			override onLayoutChange(v : View, left : Int, top : Int, right : Int, bottom : Int,
+				oldLeft : Int, oldTop : Int, oldRight : Int, oldBottom : Int
+			) {
+				t.viewBox_width = right - left;
+				t.viewBox_height = bottom - top;
+				
+			}
+		}
+		boxWrap.addOnLayoutChangeListener(new previewChangeRectadd())
+
+		let rongqitop = new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+		rongqitop.topMargin = 0
+		rongqitop.leftMargin = 0
+		// 创建容器内小绿点容器。
+		this.resultView = new RelativeLayout(this.context);
+		this.resultView!.setLayoutParams(rongqitop)
+
+		// 图片容器
+		let imgPview = new RelativeLayout(this.context);
+		let rongqitop2 = new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+		rongqitop2.topMargin = 0
+		rongqitop2.leftMargin = 0
+		imgPview.setLayoutParams(rongqitop2)
+
+		// 创建一张图片
+		this.imageView = new ImageView(this.context);
+		this.imageView!.setScaleType(ImageView.ScaleType.CENTER_INSIDE)
+		this.imageView!.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+		imgPview.addView(this.imageView!)
+		this.imageView!.setImageDrawable(null)
+		// 相机容器。
+		let cview = new RelativeLayout(this.context);
+		let rongqitop3 = new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+		
+		// rongqitop3.width = 1000
+		// rongqitop3.height = 1000
+		cview.setLayoutParams(rongqitop3)
+		// 相机预览层。
+		let sv = new PreviewView(this.context)
+		// https://developer.android.google.cn/reference/androidx/camera/view/PreviewView.ScaleType?hl=en
+		sv.setScaleType(PreviewView.ScaleType.FILL_CENTER)
+		
+		// 让相机的高和宽与组件对齐。
+		let layaout = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+		sv.setLayoutParams(layaout)
+		this.cameraView = sv;
+		cview.addView(this.cameraView!)
+
+		
+		// this.imageView!.setVisibility(View.INVISIBLE)
+		//相机容器
+		this.camreaLayouView = cview;
+		// 图片容器层.
+		this.imageLayouView= imgPview;
+		boxWrap.addView(imgPview)
+		boxWrap.addView(cview)
+		boxWrap.addView(this.resultView!)
+
+
+
+
+		// 创建底
+		let footerWrap = new LinearLayout(this.context);
+		footerWrap.setOrientation(LinearLayout.HORIZONTAL)
+		
+		let footerWrapLayparams = new LinearLayout.LayoutParams(
+			ViewGroup.LayoutParams.MATCH_PARENT,
+			ViewGroup.LayoutParams.WRAP_CONTENT
+		)
+
+		footerWrapLayparams.height = px2dp(100).toInt();
+		footerWrap.setLayoutParams(footerWrapLayparams)
+
+		// 创建选择相册
+		let photoView = new LinearLayout(this.context);
+		photoView.setLayoutParams(new LinearLayout.LayoutParams(
+			ViewGroup.LayoutParams.WRAP_CONTENT,
+			ViewGroup.LayoutParams.WRAP_CONTENT
+		))
+		let xiangcheText = new TextView(this.context);
+		xiangcheText.setTextColor(Color.WHITE)
+		xiangcheText.setPadding(32, 52, 0, 0)
+		xiangcheText.setTextSize((16).toFloat())
+		xiangcheText.setGravity(Gravity.LEFT)
+		xiangcheText.setText(!this.onlyCamera?"相册选择":" ")
+		xiangcheText.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+		class XiangcheClickListsner extends View.OnTouchListener {
+			constructor() {
+				super();
+			}
+			override onTouch(view : View, event : MotionEvent) : Boolean {
+				UTSAndroid.offAppActivityResult(t.activityresult)
+				if(event.getAction()==MotionEvent.ACTION_UP){
+					t.closeCamera()
+					t.isSelectedImging = true;
+					let intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+					UTSAndroid.onAppActivityResult(t.activityresult);
+					UTSAndroid.getUniActivity()!.startActivityForResult(intent, 1)
+				}
+				
+				
+				return true;
+			}
+		}
+		if(!this.onlyCamera){
+			xiangcheText.setOnTouchListener(new XiangcheClickListsner())
+		}
+		photoView.addView(xiangcheText)
+
+		// 中间占位
+		let cneterView = new LinearLayout(this.context);
+		let cneterViewParams = new LinearLayout.LayoutParams(
+			ViewGroup.LayoutParams.WRAP_CONTENT,
+			ViewGroup.LayoutParams.WRAP_CONTENT
+		)
+		cneterViewParams.weight = (1).toFloat();
+		cneterView.setLayoutParams(cneterViewParams)
+
+
+		// 扫一扫view
+		let scanView = new LinearLayout(this.context);
+		scanView.setLayoutParams(new LinearLayout.LayoutParams(
+			ViewGroup.LayoutParams.WRAP_CONTENT,
+			ViewGroup.LayoutParams.WRAP_CONTENT
+		))
+		scanView.setGravity(Gravity.RIGHT)
+
+		let shaoyishaoText = new TextView(this.context);
+		shaoyishaoText.setTextColor(Color.WHITE)
+		shaoyishaoText.setPadding(0, 52, 32, 0)
+		shaoyishaoText.setTextSize((16).toFloat())
+		shaoyishaoText.setGravity(Gravity.RIGHT)
+		shaoyishaoText.setText("扫一扫")
+		shaoyishaoText.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+		class ShaoyishaoTextClickListsner extends View.OnTouchListener {
+			constructor() {
+				super();
+			}
+			override onTouch(view : View, event : MotionEvent) : Boolean {
+				if(event.getAction()==MotionEvent.ACTION_UP){
+					t._openCamera()
+				}
+				
+				return true;
+			}
+		}
+		shaoyishaoText.setOnTouchListener(new ShaoyishaoTextClickListsner())
+		scanView.addView(shaoyishaoText)
+
+
+
+		footerWrap.addView(photoView)
+		footerWrap.addView(cneterView)
+		footerWrap.addView(scanView)
+
+		// 创建一个顶部
+		let titleView = new RelativeLayout(this.context);
+		// titleView!.setOrientation(LinearLayout.HORIZONTAL)
+		// titleView!.setBackgroundColor(Color.RED)
+		let tplays = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+		tplays.topMargin = px2dp(60).toInt()
+		tplays.leftMargin = px2dp(16).toInt()
+		titleView!.setLayoutParams(tplays)
+		// 创建一个返回按钮
+		let backBtn = new TextView(this.context);
+		backBtn.setTextColor(Color.WHITE)
+		backBtn.setTextSize((16).toFloat())
+		backBtn.setGravity(Gravity.BOTTOM)
+		backBtn.setText("返回")
+
+		backBtn.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+		class BackDomClickListsner extends View.OnTouchListener {
+			constructor() {
+				super();
+			}
+			override onTouch(view : View, event : MotionEvent) : Boolean {
+				t.close();
+				return true;
+			}
+		}
+		backBtn.setOnTouchListener(new BackDomClickListsner())
+		titleView!.addView(backBtn)
+
+
+
+		continaer.addView(boxWrapParent)
+		continaer.addView(footerWrap)
+
+		parentView!.addView(continaer)
+		parentView!.addView(titleView)
+		decorView.addView(parentView!)
+		
+		// 增加动画
+		try {
+			let s0 = (0).toFloat()
+			let s1 = (1).toFloat()
+			parentView!.setAlpha(s0)
+			parentView!.setScaleX(s0)
+			parentView!.setScaleY(s0)
+			
+			
+			let ani = parentView!.animate() as ViewPropertyAnimator;
+			ani.alpha(s1)
+				.scaleX(s1)
+				.scaleY(s1)
+				.setDuration(250)
+				.start()
+		
+		} catch (e) {
+			//TODO handle the exception
+		}
+	}
+	// 设置图片上的小圆的识别位置。
+	setImageViewRusletBox(jieguo : SCANNING_PHOTO_RESULT) {
+		let t = this;
+		let btnwidth = 100;
+		let btnwidth2 = 50;
+
+		for (let i = 0; i < jieguo.bounds.length; i++) {
+			let item = jieguo.bounds[i];
+			let layoutParams = new LinearLayout.LayoutParams(
+				LinearLayout.LayoutParams.WRAP_CONTENT,
+				LinearLayout.LayoutParams.WRAP_CONTENT
+			)
+
+			let x = item.centerX
+			let y = item.centerY
+
+			layoutParams.topMargin = (y - btnwidth2).toInt() // 设置顶部边距
+			layoutParams.leftMargin = (x - btnwidth2).toInt() // 设置左边距
+			let relativeLayout = new RelativeLayout(t.context)
+			relativeLayout.layoutParams = layoutParams
+
+			const rtxt = jieguo.text[i]
+			let v = new xView(t.context)
+			v.setSize(btnwidth, btnwidth)
+				.setRadius(100)
+				.setBackgroundColor('#21d429')
+				.setBorder(12, "#ffffff", false)
+				.setClick((event : MotionEvent) => {
+					try {
+						// t.callFunEvent([rtxt], 'click')
+						t.callFunEvent(rtxt)
+						t.close()
+					} catch (e) {
+						//TODO handle the exception
+					}
+				})
+			let ov = v.getView();
+
+
+			// 创建缩放动画
+			let scaleAnimation = new ScaleAnimation(1.0.toFloat(), 0.7.toFloat(), 1.0.toFloat(), 0.7.toFloat(), Animation.RELATIVE_TO_SELF, 0.7.toFloat(), Animation.RELATIVE_TO_SELF, 0.7.toFloat());
+			scaleAnimation.setDuration(600); // 设置动画持续时间
+			scaleAnimation.setRepeatMode(Animation.REVERSE); // 设置重复模式为反向
+			scaleAnimation.setRepeatCount(Animation.INFINITE); // 设置重复次数为无限
+			// 启动动画
+			ov.startAnimation(scaleAnimation);
+			relativeLayout.addView(ov)
+			this.imgPointsBycanmarea.push(relativeLayout)
+			this.resultView!.addView(relativeLayout)
+		}
+
+
+	}
+	
+	
+	YUV42088ToNV21Copy(a:ByteBuffer,b:ByteBuffer,c:ByteBuffer,widths:number,heights:number,yr:number,ur:number,vr:number) : ByteArray {
+		// 获取图像的宽度、高度以及各平面的行间距
+		let width = widths
+		let height = heights;
+		// 获取各平面的数据与信息
+	
+		let yBuffer = a;
+		let uBuffer = b;
+		let vBuffer = c;
+		
+		yBuffer.rewind();
+		uBuffer.rewind();
+		vBuffer.rewind();
+		
+		let yRowStride = yr;
+		let uvRowStride = ur;
+		let uvPixelStride = vr; // U 和 V 的像素间距通常是一样的
+	
+		// 创建一个足够大的NV21输出数组
+		let nv21Data = new ByteArray((width * height * 3 / 2).toInt());
+	
+		// 指针用于遍历输出数组
+		let yIndex = 0;
+		let uvIndex = width * height;
+		let bytesPerPixel = 1
+		try {
+			// 遍历Y平面
+			for (let row = 0; row < height; row++) {
+				for (let col = 0; col < width; col++) {
+					nv21Data[(yIndex++).toInt()] = yBuffer.get();
+				}
+				// 跳过未使用的行数据（如果有）
+				let rowRemainder = yRowStride - width * bytesPerPixel;
+	
+				if (rowRemainder > 0) {
+					yBuffer.position((yBuffer.position() + rowRemainder).toInt());
+				} else {
+					yBuffer.position((yBuffer.position() + width * bytesPerPixel).toInt()); // 防止由于计算错误导致的负数
+				}
+	
+			}
+		} catch (e) {
+			//TODO handle the exception
+		}
+		// // 处理UV平面
+		try {
+			for (let row = 0; row < height / 2; row++) {
+				for (let col = 0; col < width / 2; col++) {
+					// 先读取U分量
+					nv21Data[(uvIndex++).toInt()] = uBuffer.get();
+					// 如果UV像素不是交错存储，则跳过一个位置
+					if (uvPixelStride == 2) {
+						uBuffer.position((uBuffer.position() + 1).toInt());
+					}
+	
+					// 再读取V分量
+					nv21Data[(uvIndex++).toInt()] = vBuffer.get();
+					// 如果UV像素是交错存储，这里也需要相应调整位置
+					if (uvPixelStride == 2) {
+						vBuffer.position((vBuffer.position() + 1).toInt());
+					}
+				}
+				// 跳过未使用的行数据（如果有）
+				let uvRowSkip = uvRowStride - (width / 2) * uvPixelStride;
+				if (uvRowSkip > 0) {
+					uBuffer.position((uBuffer.position() + uvRowSkip).toInt());
+					vBuffer.position((vBuffer.position() + uvRowSkip).toInt());
+				}
+			}
+		} catch (e) {
+			//TODO handle the exception
+		}
+		return nv21Data;
+	}
+	
+	copyImagePlan(plane:Plane):ByteBuffer{
+		// 创建一个新的ByteBuffer来存储复制的数据
+		let copiedBuffer = ByteBuffer.allocateDirect(plane.getBuffer().capacity());
+		copiedBuffer.order(ByteOrder.nativeOrder()); // 确保字节顺序与原Buffer一致
+		
+		// 将原始Plane的ByteBuffer内容复制到新的ByteBuffer中
+		plane.getBuffer().rewind(); // 移动缓冲区指针到开始位置（可选，如果已经知道在开始处则无需此步）
+		copiedBuffer.put(plane.getBuffer());
+		
+		// 复制完成后，可以移动新ByteBuffer的指针回到起始位置以便读取
+		copiedBuffer.rewind();
+		
+		return copiedBuffer
+	}
+	getCorrectionMatrixByimgUri(imgView : ImageView, previewView : PreviewView,rotationDegrees:number) : Matrix {
+		
+		let matrix = new Matrix()
+		let imgWidt = imgView.drawable!.intrinsicWidth as number
+		let imgHeight = imgView.drawable!.intrinsicHeight as number
+		let d0 = (0).toFloat()
+		let source = floatArrayOf(
+			d0,
+			d0,
+			imgWidt.toFloat(),
+			d0,
+			imgWidt.toFloat(),
+			imgHeight.toFloat(),
+			d0,
+			imgHeight.toFloat()
+		)
+		
+		// A float array of the destination vertices in clockwise order.
+		let destination = floatArrayOf(
+			d0,
+			d0,
+			previewView.width.toFloat(),
+			d0,
+			previewView.width.toFloat(),
+			previewView.height.toFloat(),
+			d0,
+			previewView.height.toFloat()
+		)
+		
+		
+		let vertexSize = 2
+		let shiftOffset = rotationDegrees / 90 * vertexSize;
+		let tempArray = destination.clone()
+		for (toIndex in source.indices) {
+			let fromIndex = (toIndex + shiftOffset) % source.size
+			destination[toIndex] = tempArray[fromIndex.toInt()]
+		}
+		
+		let success = matrix.setPolyToPoly(source, 0, destination, 0, 4)
+	
+		return matrix
+	}
+	getCorrectionMatrix(imageProxy : ImageProxy, previewView : PreviewView) : Matrix {
+		let cropRect = imageProxy.cropRect
+		let rotationDegrees = imageProxy.imageInfo.rotationDegrees
+		let matrix = new Matrix()
+		
+		// A float array of the source vertices (crop rect) in clockwise order.
+		
+		let source = floatArrayOf(
+			cropRect.left.toFloat(),
+			cropRect.top.toFloat(),
+			cropRect.right.toFloat(),
+			cropRect.top.toFloat(),
+			cropRect.right.toFloat(),
+			cropRect.bottom.toFloat(),
+			cropRect.left.toFloat(),
+			cropRect.bottom.toFloat()
+		)
+		let d0 = (0).toFloat()
+		// A float array of the destination vertices in clockwise order.
+		let destination = floatArrayOf(
+			d0,
+			d0,
+			previewView.width.toFloat(),
+			d0,
+			previewView.width.toFloat(),
+			previewView.height.toFloat(),
+			d0,
+			previewView.height.toFloat()
+		)
+		
+		
+		let vertexSize = 2
+		let shiftOffset = rotationDegrees / 90 * vertexSize;
+		let tempArray = destination.clone()
+		for (toIndex in source.indices) {
+			let fromIndex = (toIndex + shiftOffset) % source.size
+			destination[toIndex] = tempArray[fromIndex.toInt()]
+		}
+		
+		let success = matrix.setPolyToPoly(source, 0, destination, 0, 4)
+	
+		return matrix
+	}
+
+	
+	calcPoint(imgView : ImageView, previewView : PreviewView, image_point_x : number, image_point_y : number,degration:number) : ConverXy {
+		
+		const image_w = imgView.drawable!.intrinsicWidth as number
+		const image_h = imgView.drawable!.intrinsicHeight as number
+		const c_w = previewView.width;
+		const c_h = previewView.height;
+		
+		function scaleAndCenterContent(
+			container : contaiaSize,
+			content : contaiaSize
+		) : contaiaCalseSize {
+			// 计算缩放比例
+			const scaleWidth = container.width / content.width;
+			const scaleHeight = container.height / content.height;
+			const scale = Math.min(scaleWidth, scaleHeight);
+	
+			// 计算居中偏移量
+			const offsetX = (container.width - content.width * scale) / 2;
+			const offsetY = (container.height - content.height * scale) / 2;
+	
+			return { scale, offsetX, offsetY } as contaiaCalseSize;
+		}
+		function mapContentCoordinatesToContainer(
+			contentX : number,
+			contentY : number,
+			calcsize : contaiaCalseSize
+		) : contaiPointXy {
+			// 映射内容层坐标到容器层坐标
+			const containerX = contentX * calcsize.scale + calcsize.offsetX;
+			const containerY = contentY * calcsize.scale + calcsize.offsetY;
+	
+			return { x: containerX, y: containerY } as contaiPointXy;
+		}
+	
+		let rc = scaleAndCenterContent(
+			{ width: c_w, height: c_h } as contaiaSize,
+			{ width: image_h, height: image_w } as contaiaSize
+		)
+		if(degration==0){
+			rc = scaleAndCenterContent(
+				{ width: c_w, height: c_h } as contaiaSize,
+				{ width: image_w, height: image_h } as contaiaSize
+			)
+		}
+		
+		let result = mapContentCoordinatesToContainer(image_point_y, image_point_x, rc)
+		if(degration==0){
+			result = mapContentCoordinatesToContainer(image_point_x,image_point_y,rc)
+		}
+		let nexyxcov = {
+			x: c_w - result.x, y: result.y, minx: 0, maxx: 0, miny: 0, maxy: 0
+		} as ConverXy
+		if(degration==0){
+			nexyxcov = {
+				x: result.x, y: result.y, minx: 0, maxx: 0, miny: 0, maxy: 0
+			} as ConverXy
+		}
+		return nexyxcov
+	
+	}
+	
+	qrDecoder(img : ImageProxy) {
+		let t = this;
+		let image = img.getImage();
+		if (!this.isDecoderQring&&image!=null&&t.isOpeningCameraing) {
+			this.isDecoderQring = true;
+			let width = image.getWidth();
+			let height = image.getHeight();
+			
+			// 获取各平面的数据与信息
+			let planes = image.getPlanes();
+			
+			let a = this.copyImagePlan(planes[0]);
+			let b = this.copyImagePlan(planes[1]);
+			let c = this.copyImagePlan(planes[2]);
+			let yr = planes[0].getRowStride()
+			let ur = planes[1].getRowStride()
+			let vr = planes[1].getPixelStride()
+			
+			let starttime = new Date().getTime()
+			
+			let av = this.YUV42088ToNV21Copy(a,b,c,width,height,yr,ur,vr)
+			let rotationDegrees = img.imageInfo.rotationDegrees
+			
+			decoderBuffToQr(av, width, height, 0)
+				.then((res) => {
+					if (res != null ) {
+						let matrix = t.getCorrectionMatrix(img, t.cameraView!)
+						if (res.text.length > 0) {
+							let ruslt = res as SCANNING_PHOTO_RESULT;
+							for (let i = 0; i < ruslt.bounds.length; i++) {
+								let item = ruslt.bounds[i]
+								let ponit = floatArrayOf(item.centerX.toFloat(), item.centerY.toFloat())
+								// let xy = t.covertXy(img, t.cameraView!,item.centerX,item.centerY);
+								matrix.mapPoints(ponit)
+								item.centerX = ponit[0]
+								item.centerY = ponit[1]
+								// item.centerX = xy[0]
+								// item.centerY = xy[1]
+								// console.log(item.centerX ,item.centerY)
+								
+							}
+							if(ruslt.text.length>0){
+								t.setVibatar()
+							}
+							t.setImageViewRusletBox(ruslt)
+							t.closeCamera()
+							if (ruslt.text.length == 1) {
+								t.callFunEvent(ruslt.text[0])
+								t.close()
+							}
+						}else{
+							t.isDecoderQring = false
+						}
+					}
+					// image.close();
+				})
+				.catch(() => {
+					t.isDecoderQring = false
+				})
+		}
+		img.close();
+	}
+	
+
+
+}

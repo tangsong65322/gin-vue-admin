@@ -1,0 +1,500 @@
+<script lang="ts">
+	import { PropType } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { FORM_RULE, FORM_SUBMIT_OBJECT} from "../../interface.uts"
+	import { FORM_ITEM } from "../x-form/interface.uts"
+	import { formVaild} from "../x-form/util.uts"
+	
+	/**
+	 * @name 表单子组件 xFormItem
+	 * @description 从1.1.2开始允许非xform直接子节点了,也就是在xform可以嵌套view进行form-item布局了,但建议不要嵌套太深,影响性能.
+	 * @page /pages/index/form
+	 * @category 表单组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		name:"xFormItem",
+		data() {
+			return {
+				id: ("xFormItem-" + getUid()) as string,
+				errorText: "请正确填写",
+				isError: false,
+				first: true,
+				tid: 0
+			}
+		},
+		props: {
+			/**
+			 * 表单名称
+			 */
+			label: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 是否显示标题
+			 */
+			showLabel: {
+				type: [Boolean, null] as PropType<boolean | null>,
+				default: null
+			},
+			/**
+			 * 校验的字段名称
+			 * 字段名称一定要存在于form表单数据中。否则报错。
+			 */
+			field: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 是否是必填项.
+			 * 设置了此值，才会执行校验。
+			 */
+			required: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 是否显示校验必填项前面的红*符号
+			 */
+			showRequired: {
+				type: Boolean,
+				default: true
+			},
+			/**
+			 * 校验规则对象,uniappx暂不支持对象中嵌套泛型函数
+			 * 从1.1.10开始rule对象中增加了trigger:change,blur校验时机,blur主要是用在input组件上的
+			 * 如果你内部没有input而使用blur,会造成不校验的问题,请认真阅读文档.
+			 */
+			rule: {
+				type: Array as PropType<FORM_RULE[]>,
+				default: () : FORM_RULE[] => [] as FORM_RULE[]
+			},
+			/**
+			 * 标签宽（横向表单时有效）
+			 * 默认空值取父form统一的设置。
+			 */
+			labelWidth: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 默认空值取父form统一的设置。
+			 * vertical|horizontal
+			 */
+			labelDirection: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 默认空值取父form统一的设置。
+			 * 标签的文本颜色
+			 */
+			labelFontColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 默认空值取父form统一的设置。
+			 * 标签的文本颜色
+			 */
+			labelFontSize: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 标签标题对齐方式
+			 * left,right,center
+			 */
+			labelAlign:{
+				type:String,
+				default:"left"
+			},
+			/**
+			 * 是否显示底部边框
+			 */
+			showBottomBorder: {
+				type: Boolean,
+				default: true
+			},
+			/**
+			 * 排版布局上和下的间隙。
+			 * 数组必须是2长度
+			 * 第一个是上间隙，第二个是下间隙，
+			 * 如果showBottomBorder为false时下间隙第二个参数会被取消。
+			 * 如果label为horizontal横向时，第一个参数的上间隙生效，如果是上下排列不生效。
+			 */
+			cellPadding: {
+				type: Array as PropType<string[]>,
+				default: () : string[] => ['10', '10'] as string[]
+			},
+			/**
+			 * 排版布局上和下的间隙。
+			 * 数组必须是2长度
+			 * 第一个是上间隙，第二个是下间隙，
+			 * 如果label为horizontal横向时，些参数失效，只有竖向时才生效。
+			 */
+			labelPadding: {
+				type: Array as PropType<string[]>,
+				default: () : string[] => ['12', '12'] as string[]
+			},
+			/**
+			 * 校验时，是否显示下边的出错信息
+			 */
+			showError:{
+				type:Boolean,
+				default:true
+			},
+			/**
+			 * 默认区域内的自定样式
+			 */
+			contentStyle:{
+				type:String,
+				default:""
+			}
+		},
+		inject: {
+			XFORMITEM_TOP: { type: Number, default: 0 },
+			XFORMITEM_LABEL_WIDTH: { type: String, default: '100' },
+			XFORMITEM_LABEL_Direction: { type: String, default: 'horizontal' },
+			XFORMITEM_LABEL_FontColor: { type: String, default: '#333333' },
+			XFORMITEM_LABEL_SCROLL: { type: Boolean, default: true },
+			XFORMITEM_LABEL_FontSize: { type: String, default: '16' },
+			XFORMITEM_SHOWLABEL: { type: Boolean, default: true },
+			XFORMITEM_ERROR_ALIGN: { type: String, default: 'right' },
+		},
+
+		mounted() {
+			this.pushDataToParent();
+		},
+		beforeUnmount() {
+			this.removeSelf();
+			clearTimeout(this.tid);
+		},
+		computed: {
+			_contentStyle():string{
+				return this.contentStyle
+			},
+			_showError():boolean{
+				return this.showError
+			},
+			_cellPadding() : string[] {
+				let mb = checkIsCssUnit(this.cellPadding[0], xConfig.unit)
+				let pb = checkIsCssUnit(this.cellPadding[1], xConfig.unit)
+				return [mb, pb]
+			},
+			_labelPadding() : string[] {
+				let mb = checkIsCssUnit(this.labelPadding[0], xConfig.unit)
+				let pb = checkIsCssUnit(this.labelPadding[1], xConfig.unit)
+				return [mb, pb]
+			},
+			_parentTop() : number {
+				return this.XFORMITEM_TOP
+			},
+			_labelWidth() : string {
+				if (this.labelWidth != "") return checkIsCssUnit(this.labelWidth, xConfig.unit)
+				return checkIsCssUnit(this.XFORMITEM_LABEL_WIDTH, xConfig.unit)
+			},
+			_labelFontSize() : string {
+				let labelsize = checkIsCssUnit(this.XFORMITEM_LABEL_FontSize, xConfig.unit)
+				if (this.labelFontSize != "") {
+					labelsize = checkIsCssUnit(this.labelFontSize, xConfig.unit)
+				}
+				return labelsize
+			},
+			_labelDirection() : string {
+				if (this.labelDirection != "") return this.labelDirection
+				return this.XFORMITEM_LABEL_Direction
+			},
+			_labelFontColor() : string {
+				if (this.labelFontColor != "") return getDefaultColor(this.labelFontColor)
+				return getDefaultColor(this.XFORMITEM_LABEL_FontColor)
+			},
+			_label() : string {
+				return this.label
+			},
+			_showLabel() : boolean {
+				let show = this.XFORMITEM_SHOWLABEL;
+				if (this.showLabel != null) {
+					show = this.showLabel! as boolean;
+				}
+				return show
+			},
+
+			_showRequired() : boolean {
+				return this.showRequired
+			},
+			_rule() : FORM_RULE[] {
+				return this.rule;
+			},
+			_showBottomBoder() : boolean {
+				return this.showBottomBorder
+			},
+			_required() : boolean {
+				return this.required
+			},
+			_errorFontsize() : string {
+				return (xConfig.fontScale * 14).toString() + 'px'
+			},
+			_bordrBottomSolid() : string {
+				if (!this.showBottomBorder) return "border-bottom:none";
+				let lightSolid = "border-bottom: 1px solid #f5f5f5";
+				let darkSolid = `border-bottom: 1px solid ${xConfig.borderDarkColor}`
+				return xConfig.dark == 'dark' ? darkSolid : lightSolid
+			},
+			_labelAlign():string{
+				let dq = 'flex-start'
+				if(this.labelAlign=='right'){
+					dq = 'flex-end'
+				}else if(this.labelAlign=='center'){
+					dq = 'center'
+				}
+				return dq;
+			}
+		},
+		watch: {
+			field() {
+				this.pushDataToParent();
+			},
+		},
+		methods: {
+			pushDataToParent() {
+				let pelement = this.findParent(this);
+				
+				if (pelement == null) return;
+				// @ts-ignore
+				let parent : XFormComponentPublicInstance  = pelement as XFormComponentPublicInstance;
+				
+				// 预先传递，怕子组件内的内容复杂导致查询延误，导致顺序错乱。
+				parent.pushAdd({
+					id: this.id,
+					ele: this,
+					top: 0,
+					name: this.field,
+				} as FORM_ITEM)
+				let t = this;
+				uni.createSelectorQuery().in(t)
+					.select(".xFormItem")
+					.boundingClientRect().exec((ret) => {
+						let nodeinfo = ret[0] as NodeInfo
+						parent.pushAdd({
+							id: t.id,
+							ele: t,
+							top: nodeinfo.top!,
+							name: t.field,
+						} as FORM_ITEM)
+					})
+			},
+			removeSelf() {
+				let pelement = this.findParent(this);
+				if (pelement == null) return;
+				// @ts-ignore
+				let parent : XFormComponentPublicInstance  = pelement as XFormComponentPublicInstance;
+				
+				parent.delItem(this.id)
+			},
+			getParentRules():FORM_RULE[] {
+				let pelement = this.findParent(this);
+				if (pelement == null) return [] as FORM_RULE[];
+				// @ts-ignore
+				let parent : XFormComponentPublicInstance  = pelement as XFormComponentPublicInstance;
+				
+				return parent.getRules(this.field) as FORM_RULE[]
+			},
+			vaildCompele(val : any|null,isSkipBlur:boolean|null = true) : FORM_SUBMIT_OBJECT {
+				this.first = false;
+				if (!this._required) {
+					return {
+						valid: true,
+						key: this.field,
+						value: val,
+						errorMessage: ""
+					} as FORM_SUBMIT_OBJECT;
+				}
+				const rulesList = [...this._rule,...this.getParentRules()] as FORM_RULE[]
+				
+				if (rulesList.length == 0 && this._required) {
+					let isSuccess = formVaild(val,{} as FORM_RULE)
+					this.isError = !isSuccess
+				
+					return {
+						valid: isSuccess,
+						key: this.field,
+						value: val,
+						errorMessage: isSuccess ? "" : '请正确填写/选择'
+					} as FORM_SUBMIT_OBJECT;
+				}
+				let isSuccess = true;
+				for (let i = 0; i < rulesList.length; i++) {
+					let item = rulesList[i]
+					if(item.trigger == 'blur'&&isSkipBlur==true) continue;
+					isSuccess =  formVaild(val,item)
+					this.isError = !isSuccess
+					if (!isSuccess) {
+						if (item.errorMessage != "" && typeof item.errorMessage == 'string') {
+							this.errorText = item.errorMessage! as string
+						} else {
+							this.errorText = '请正确填写/选择'
+						}
+						break;
+					}
+				}
+				return {
+					valid: isSuccess,
+					key: this.field,
+					value: val,
+					errorMessage: isSuccess ? "" : this.errorText
+				} as FORM_SUBMIT_OBJECT;
+
+			},
+			
+			clearValid(){
+				this.isError=false;
+				this.first = true;
+			},
+			/**
+			 * 实时校验结果。form中要开启，如果没有这种需求可以不开启，会损耗性能。
+			 */
+			getVaildStatus(val : any|null) : FORM_SUBMIT_OBJECT {
+			
+				if (!this._required) {
+					return {
+						valid: true,
+						key: this.field,
+						value: val,
+						errorMessage: ""
+					} as FORM_SUBMIT_OBJECT;
+				}
+				const rulesList = [...this._rule,...this.getParentRules()] as FORM_RULE[]
+				if (rulesList.length == 0 && this._required) {
+					let isSuccess = formVaild(val,{} as FORM_RULE)
+					return {
+						valid: isSuccess,
+						key: this.field,
+						value: val,
+						errorMessage: isSuccess ? "" : '请正确填写/选择'
+					} as FORM_SUBMIT_OBJECT;
+				}
+				let isSuccess = true;
+				let errotips = ''
+				for (let i = 0; i < rulesList.length; i++) {
+					let item = rulesList[i]
+					isSuccess =  formVaild(val,item)
+					if (!isSuccess) {
+						if (item.errorMessage != "" && typeof item.errorMessage == 'string') {
+							errotips = item.errorMessage! as string
+						} else {
+							errotips = '请正确填写/选择'
+						}
+						break;
+					}
+				}
+				return {
+					valid: isSuccess,
+					key: this.field,
+					value: val,
+					errorMessage: isSuccess ? "" : errotips
+				} as FORM_SUBMIT_OBJECT;
+			
+			},
+			/**
+			 * 为Input定制校验函数.
+			 */
+			validByblur(value:any){
+				this.vaildCompele(value,false)
+			},
+			findParent(parent:VueComponent|null):VueComponent|null{
+				
+				if(parent == null) return null;
+				// #ifdef WEB||APP-IOS|| MP-WEIXIN
+				if(parent.$parent?.id?.indexOf('xForm')>-1) return parent.$parent;
+				// #endif
+				// #ifdef APP-ANDROID
+				if(parent.$parent instanceof XFormComponentPublicInstance) return parent.$parent;
+				// #endif
+				
+				let parents = this.findParent(parent.$parent)
+				
+				// #ifdef WEB||APP-IOS || MP-WEIXIN
+				if(parents?.id?.indexOf('xForm')>-1) return parents;
+				// #endif
+				// #ifdef APP-ANDROID
+				if(parents instanceof XFormComponentPublicInstance) return parents;
+				// #endif
+				return null;
+			}
+
+		}
+	}
+</script>
+<template>
+	<view class="xFormItem" ref="xFormItem" :style="[
+			_bordrBottomSolid,
+			{
+				paddingTop: _cellPadding[0],
+				paddingBottom: _cellPadding[1]
+			}
+		]">
+		<view class="xFormIitemWrap" :style="{flexDirection:_labelDirection=='horizontal'?'row':'column'}">
+			<view v-if="_showLabel" class="xFormIteLabel" :style="{
+				width:_labelDirection=='horizontal'?_labelWidth:'auto',
+				paddingBottom:_labelDirection=='horizontal'?'0':_labelPadding[1],
+				paddingTop:_labelDirection=='horizontal'?'0':_labelPadding[0],
+				'justify-content': _labelAlign
+				}">
+				<!-- 
+				 @slot 标题
+				 -->
+				<slot name="label">
+					<text v-if="_showRequired&&_required"
+						:style="{fontSize:_labelFontSize,color:'red',paddingRight:'8rpx'}">*</text>
+					<x-text v-if="_label" :font-size="_labelFontSize" :color="_labelFontColor">
+						{{_label}}
+					</x-text>
+				</slot>
+			</view>
+			<view class="xFormIteContent" :style="[{flex:_labelDirection=='horizontal'?'1':'auto'},_contentStyle]">
+				<!-- 
+				 @slot 默认内容区域
+				 -->
+				<slot></slot>
+			</view>
+		</view>
+		<view v-if="isError&&!first&&_required&&_showError" class="xFormItemError">
+			<!-- 
+			 @slot 出错提示的插槽
+			 -->
+			<slot name="error">
+				<text class="xFormItemErrorText" :style="{fontSize:_errorFontsize,textAlign:XFORMITEM_ERROR_ALIGN}">{{errorText}}</text>
+			</slot>
+		</view>
+	</view>
+</template>
+<style scoped>
+	.xFormIteLabel {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+	}
+
+	.xFormItem {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.xFormItemErrorText {
+		color: red;
+		padding-top: 5px;
+		display: flex;
+
+	}
+	.xFormIitemWrap{
+		display: flex;
+	}
+</style>

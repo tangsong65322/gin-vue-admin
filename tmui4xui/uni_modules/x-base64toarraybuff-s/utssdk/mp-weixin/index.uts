@@ -1,0 +1,9 @@
+import {decode,encode} from "./base64ToArraybuffer.uts"
+
+export const base64ToArrayBuffer = (data : string) :ArrayBuffer => {
+	return decode(data)
+}
+
+export const arrayBufferToBase64 = (data : ArrayBuffer) : string => {
+	return encode(data)
+}

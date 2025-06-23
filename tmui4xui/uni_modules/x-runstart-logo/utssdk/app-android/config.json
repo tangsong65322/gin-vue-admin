@@ -1,0 +1,6 @@
+{
+  "minSdkVersion": "21",
+  "dependencies":[
+	  "com.facebook.fresco:drawee:3.1.3"
+  ]
+}

@@ -1,0 +1,105 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">分享 xShare</x-text>
+			<x-text class="mb-20" color="#999999">
+				文本无法分享到微信，其它的视频，图片，文件可以分享到微信，QQ等相关应用。
+			</x-text>
+			<x-button :block="true" @click="shareText">分享文本</x-button>
+		</x-sheet>
+	
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">扫码Api xScanS</x-text>
+			<x-text class="mb-20" color="#999999">
+				可以分享到微信，qq等
+			</x-text>
+			<x-button :block="true" @click="shareImage">分享图片</x-button>
+		</x-sheet>
+		
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">分享文件</x-text>
+			<x-text class="mb-20" color="#999999">
+				可以分享到微信，qq等
+			</x-text>
+			<x-button :block="true" @click="sharePdf">分享PDF文件</x-button>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">分享视频</x-text>
+			<x-text class="mb-20" color="#999999">
+				可以分享到微信，qq等
+			</x-text>
+			
+			<x-button :block="true" @click="shareMp4">分享视频</x-button>
+		</x-sheet>
+		
+
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script lang="uts">
+	import { xShare } from "@/uni_modules/x-share-s"
+	export default {
+		data() {
+			return {
+
+			};
+		},
+		onShow() {
+
+		},
+		onLoad() {
+
+		},
+		methods: {
+			shareText(){
+				xShare("TMUI4.0x好棒 https://x-ui.design","text/plain","TMUI4.0x好棒 https://x-ui.design",null)
+			},
+			shareImage(){
+				uni.downloadFile({
+					url:"https://xui.tmui.design/assets/logo-a483vlZl.png",
+					success(res){
+						xShare("我是分享的文本","image/*",null,res.tempFilePath)
+					}
+				})
+			},
+			sharePdf(){
+				let _this = this;
+				uni.showLoading({title:"..."})
+				uni.downloadFile({
+					url:"https://www.espressif.com/sites/default/files/documentation/0a-esp8266ex_datasheet_cn.pdf",
+					success(evt) {
+						uni.hideLoading()
+						let decodedPath = evt.tempFilePath
+						xShare("我是分享的文本","*/*",null,decodedPath)
+					},
+					fail() {
+						uni.hideLoading()
+					}
+				})
+			},
+			shareMp4(){
+				uni.showLoading({ title: "..." })
+				uni.downloadFile({
+					url: "https://cdn.tmui.design/public/testDownVideo.mp4",
+					success(evt) {
+						uni.hideLoading()
+						let decodedPath = evt.tempFilePath
+						xShare("我是分享的视频","*/*",null,decodedPath)
+						uni.hideLoading()
+					},
+					fail() {
+						uni.hideLoading()
+					}
+				})
+			}
+		},
+
+	}
+</script>
+
+<style lang="scss">
+</style>

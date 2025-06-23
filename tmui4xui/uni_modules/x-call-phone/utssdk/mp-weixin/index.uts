@@ -1,0 +1,8 @@
+export function makePhone(tel : string) {
+	wx.makePhoneCall({
+		phoneNumber:tel,
+		fail(er) {
+			console.error(er)
+		}
+	})
+}

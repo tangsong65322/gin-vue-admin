@@ -1,0 +1,499 @@
+<script lang="ts">
+	import { type PropType } from "vue"
+	import { checkIsCssUnit, getUid,getUnit } from "../../core/util/xCoreUtil.uts";
+	import { xConfig,xProvitae } from "../../config/xConfig.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	type IMG_MODEL = "fill" | "top" | "bottom" | "center" | "left" | "right" | "top left" | "top right" | "bottom left" | "bottom right" | "aspectFit" | "aspectFill" | "widthFix" | "heightFix" | "scaleToFill";
+	type IMG_SIZE_INFO = {
+		width : number,
+		height : number,
+	}
+	type IMG_SIZE_INFO_PLACE = {
+		width : string,
+		height : string,
+	}
+
+	/**
+	 * @name 图片 xImage
+	 * @description 宽高可以设置，支持百分比，px,rpx
+	 * @page /pages/index/image
+	 * @category 展示组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				id: ("xImage-" + getUid()) as string,
+				idBox: ("xImage-" + getUid()) as string,
+				/** 是否正在加载，默认为false */
+				isLoading: true,
+				/** 是否加载出错，默认为false */
+				isError: false,
+				reload: 0,
+				imgrealWidth: 0,
+				imgrealHeight: 0,
+				boxWidth: 0,
+				boxHeight: 0,
+				ratioWidth: 0,
+				ratioHeight: 0,
+				isLoaded:false,
+				tid:0,
+				resizeObserver: null as UniResizeObserver | null,
+				androidAndWebUrl:"",
+				dateTime: 0,
+				_x: 0,
+				_y: 0,
+				boxLeft:0,
+				boxTop:0,
+				isVisibled:false,
+				tid2:0,
+				keyidsf:0
+			}
+		},
+		emits:[
+			/**
+			 * 图片被点击
+			 */
+			'click'],
+		props: {
+			/** 
+			 * 宽度，默认100%
+			 * 18rpx,18px,15%支持这三种单位，如果只写"18"就表示18rpx
+			 */
+			width: {
+				type: String,
+				default: "100%"
+			},
+			/** 
+			 * 高度,auto,%,rpx,px,string number
+			 * 18rpx,18px,15%支持这三种单位，如果只写"18"就表示18rpx
+			 */
+			height: {
+				type: String,
+				default: "auto"
+			},
+			/** 图片源 */
+			src: {
+				type: String,
+				default: ""
+			},
+			/** 
+			 * 预览的图片源,如果为空则与src同步
+			 */
+			previewSrc:{
+				type:String,
+				default:""
+			},
+			/** 
+			 * 模式
+			 * @link https://uniapp.dcloud.net.cn/uni-app-x/component/image.html#mode-values
+			 * 
+			 */
+			model: {
+				type: String as PropType<IMG_MODEL>,
+				default: "fill"
+			},
+			/**
+			 * 点击后是否预览图片
+			 */
+			preview: {
+				type: Boolean,
+				default: true
+			},
+			/**
+			 * 预览占位比例
+			 * 宽/高，当数据没加载前，如果你设置了一项值比如宽，高会自动根据这个比例计算
+			 * 当图片加载成功后，使用正确的原图片比例设置。
+			 * 默认是5/4=1.25
+			 */
+			ratio: {
+				type: Number,
+				default: 1.25
+			},
+			/**
+			 * 圆角
+			 */
+			round: {
+				type: String,
+				default: '0'
+			},
+			/**
+			 * 加载和失败时的图标大小。
+			 */
+			iconSize:{
+				type:String,
+				default:"16"
+			},
+			/**
+			 * 占位背景色
+			 */
+			placeBgColor:{
+				type:String,
+				default:"#F5F5F5"
+			},
+			/**
+			 * 点位暗黑时的背景，如果不填写默认填充inputDarkBgcolor
+			 */
+			placeDarkBgColor:{
+				type:String,
+				default:""
+			},
+			/**
+			 * 是否在安卓上显示过渡动画
+			 */
+			fadeShow:{
+				type:Boolean,
+				default:false
+			},
+			/**
+			 * 用于在scorllview根节点的页面进行懒加载,不可视范围内的不显示.请仅慎使用,不可在list-view中使用.
+			 */
+			lazy:{
+				type:Boolean,
+				default:false
+			}
+		},
+		mounted() {
+			let t= this;
+			// #ifdef APP
+			this.imgLoad()
+			// #endif
+			let ele = uni.getElementById(this.idBox!);
+			if(ele==null) return;
+			// #ifdef APP || WEB
+			if (this.resizeObserver == null) {
+				this.resizeObserver = new UniResizeObserver((entries : Array<UniResizeObserverEntry>) => {
+				  entries.forEach(entry => {
+					if (entry.target == ele) {
+					 // #ifdef APP
+					 t.tid = setTimeout(function() {
+					 	t.getNodes();
+					 }, 50);
+					 // #endif
+					 // #ifdef WEB
+					 t.getNodes();
+					 // #endif
+					}
+				  })
+				})
+			}
+			
+			this.resizeObserver!.observe(ele!)
+			// #ifdef uniVersion >= 4.31 && APP-ANDROID
+				t.tid = setTimeout(function() {
+					t.getNodes();
+				}, 50);
+			// #endif
+			
+			// #endif
+			// #ifdef MP-WEIXIN
+			this.getNodes();
+			// #endif
+			this.setIsVisibledShow()
+		},
+		beforeUnmount() {
+			clearTimeout(this.tid)
+			clearTimeout(this.tid2)
+			this.resizeObserver?.disconnect()
+		},
+		updated() {
+			// #ifdef MP-WEIXIN
+			this.getNodes()
+			// #endif
+		},
+		computed: {
+			_model():string{
+				return this.model;
+			},
+			_placeBgColor():string{
+				let bgcolor = this.placeBgColor;
+				if(xConfig.dark=='dark'){
+					bgcolor = this.placeDarkBgColor
+					if(this.placeDarkBgColor==''){
+						bgcolor = xConfig.inputDarkColor
+					}
+				}
+				return getDefaultColor(bgcolor)
+			},
+			_round() : string {
+				return checkIsCssUnit(this.round, xConfig.unit)
+			},
+			_src() : string {
+				return this.src;
+			},
+			_previewSrc() : string {
+				if(this.previewSrc == '') return this.src;
+				return this.previewSrc;
+			},
+			
+			_place_size() : IMG_SIZE_INFO_PLACE {
+				return {
+					width: checkIsCssUnit(this.width, xConfig.unit),
+					height: checkIsCssUnit(this.height, xConfig.unit),
+				} as IMG_SIZE_INFO_PLACE
+			},
+			_scrollTop():number{
+				return xProvitae.scrollTop;
+			},
+			_img_box_size() : IMG_SIZE_INFO_PLACE {
+				
+				if(this.imgrealHeight>0){
+					return this._img_size;
+				}
+				
+				let _w = this.width;
+				let _h = this.height;
+				let us_w = checkIsCssUnit(this.width, xConfig.unit)
+				let us_h = checkIsCssUnit(this.height, xConfig.unit)
+				if(this.width.lastIndexOf('%')>-1||this.width=='auto' ){
+					us_w = '100%'
+					_w = '100%'
+				}
+				
+				if(this.height.lastIndexOf('%')>-1||this.height=='auto' || this.isError){
+					if(this.boxHeight>=5){
+						_h = (this.boxHeight).toString()+'px'
+					}else{
+						if(this.width.lastIndexOf('%')>-1||this.width=='auto'){
+							if(this.height=='100%'){
+								_h = (this.ratio * this.boxHeight).toString()+'px'
+							}else{
+								_h = (this.ratio * this.boxWidth).toString()+'px'
+							}
+						}else{
+							_h = (this.ratio * parseFloat(us_w)).toString()+getUnit(us_w)
+						}
+					}
+					
+					return { width: _w, height: _h } as IMG_SIZE_INFO_PLACE
+				}
+				
+				return { width: us_w, height: us_h } as IMG_SIZE_INFO_PLACE
+			},
+			_img_size() : IMG_SIZE_INFO_PLACE {
+
+				let us_w = checkIsCssUnit(this.width, xConfig.unit)
+				let us_h = checkIsCssUnit(this.height, xConfig.unit)
+			
+				
+				if (!this.isLoaded) {
+					return { width: "300px", height: "300px" } as IMG_SIZE_INFO_PLACE
+				}
+				
+				if (this.boxWidth > 0) {
+					let ratio = this.boxWidth / this.imgrealWidth;
+					
+				
+					// 如果图片高为auto，表示自动高。
+					if((this.height=='auto')){
+						us_h = (ratio*this.imgrealHeight).toString()+'px'
+					}
+					
+					if((this.width=='auto')){
+						us_w = this.boxWidth.toString()+'px'
+					}
+					
+					if((this.height.lastIndexOf('%')>-1)){
+						us_h = (this.boxHeight).toString()+'px'
+					}
+					if((this.width.lastIndexOf('%')>-1)){
+						us_w = (this.boxWidth).toString()+'px'
+					}
+					
+					
+					
+				}
+
+				return { width: us_w, height: us_h } as IMG_SIZE_INFO_PLACE
+			},
+			_styleMap() : Map<string, string> {
+				let styleMap = new Map<string, string>();
+				styleMap.set("width", this._img_size.width)
+				styleMap.set("height", this._img_size.height)
+				styleMap.set("transform", this.isLoading ? 'scale(0.1)' : 'scale(1)')
+				styleMap.set("visibility", this.isLoading ? 'visible' : (!this.isError ? 'visible' : 'hidden'))
+				styleMap.set("opacity", this.isLoading ? '0' : '1')
+				styleMap.set("border-raiuds", this._round)
+
+				return styleMap;
+			}
+		},
+		watch:{
+			src(){
+				// #ifdef APP-ANDROID || WEB
+				this.imgLoad()
+				// #endif
+			},
+			_scrollTop(){
+				if(!this.lazy) return;
+				clearTimeout(this.tid2)
+				let t = this;
+				this.tid2 = setTimeout(function() {
+					t.setIsVisibledShow()
+				}, 10);
+			}
+		},
+		methods: {
+			setIsVisibledShow(){
+			
+				let win = uni.getWindowInfo()
+				
+				let t = this;
+				// let ele = this?.$parent?.$el as UniElement||null;
+				uni.createSelectorQuery().in(this)
+				.select(".xImage")
+				.boundingClientRect().exec((ret) => {
+					let nodeinfo = ret[0] as NodeInfo;
+					let winHeight = win.windowHeight;
+					// let winWidth = win.windowWidth;
+					let eleTop = nodeinfo.top!
+					let eleBotom = nodeinfo.bottom!
+					t.isVisibled = eleBotom < 0 || eleTop > winHeight ?false:true;
+				
+				})
+				
+				
+			},
+			prevImage() {
+				/**
+				 * 图片被点击
+				 */
+				this.$emit('click')
+				if (this.preview) {
+					uni.previewImage({
+						current: this._previewSrc,
+						urls: [this._previewSrc]
+					})
+				}
+
+			},
+			imgLoad2(evt : ImageLoadEvent) {
+			
+				this.imgrealWidth = evt.detail.width;
+				this.imgrealHeight = evt.detail.height;
+				this.isLoading = false;
+				this.androidAndWebUrl = this._src
+				this.isError = false;
+				this.isLoaded = true;
+			},
+			imgLoad() {
+				let t = this;
+				uni.getImageInfo({
+					src:this._src,
+					fail(error:IMediaError){
+						console.log('error',error.errMsg)
+						t.isError = true;
+						t.isLoading = false
+					},
+					success(result:GetImageInfoSuccess){
+						
+						t.isLoading = false;
+						t.isError = false;
+						t.isLoaded = true;
+						if( result.path!=t.androidAndWebUrl){
+							t.imgrealWidth = result.width
+							t.imgrealHeight = result.height
+							t.androidAndWebUrl = result.path;
+							t.keyidsf+=1;
+						}
+					}
+				} as GetImageInfoOptions)
+			
+			},
+			// evt:ImageErrorEvent
+			imgError() {
+				this.isError = true;
+				this.isLoading = false
+			},
+			
+			getNodes() {
+				let t = this;
+				// let ele = this?.$parent?.$el as UniElement||null;
+				uni.createSelectorQuery().in(this)
+				.select(".xImage")
+				.boundingClientRect().exec((ret) => {
+					let nodeinfo = ret[0] as NodeInfo;
+					t.boxWidth = nodeinfo.width!
+					t.boxHeight = nodeinfo.height!
+				})
+			},
+			resize(){
+				this.isLoaded = false
+				let t = this;
+				// let ele = this?.$parent?.$el as UniElement||null;
+				uni.createSelectorQuery().in(this)
+				.select(".xImage")
+				.boundingClientRect().exec((ret) => {
+					let nodeinfo = ret[0] as NodeInfo;
+					t.boxWidth = nodeinfo.width!
+					t.boxHeight = nodeinfo.height!
+					t.isLoaded = true
+				})
+			}
+		},
+	}
+</script>
+<template>
+	
+	<view
+	 :key="keyidsf"
+	 @click="prevImage"
+	 class="xImage" ref="xImage" :id="idBox" :style="{width:_place_size.width,height:_place_size.height}">
+		<view class="xImageBox"
+			:style="{width:_img_box_size.width,height:_img_box_size.height,borderRadius:_round,pointerEvent:'none'}">
+			<!-- 
+			 @slot 加载中的插槽,插槽内自行给你布局的view宽和高写100%
+			 -->
+			<slot name="loading" v-if="isLoading">
+				<view  class="xImagePlace" :style="{backgroundColor:_placeBgColor}">
+					<x-icon :font-size="iconSize" v-if="isLoading" name="loader-2-line" color="primary" :spin="true"></x-icon>
+				</view>
+			</slot>
+			<!-- 
+			 @slot 加载失败时的插槽,插槽内自行给你布局的view宽和高写100%
+			 -->
+			<slot name="error" v-if="isError">
+				<view  class="xImagePlace" :style="{backgroundColor:_placeBgColor}">
+					<x-icon :font-size="iconSize" v-if="isError" color="error" name="landscape-line"></x-icon>
+				</view>
+			</slot>
+			<!-- @error="imgError" -->
+			<!-- #ifdef APP -->
+			<image  :fade-show="fadeShow" v-if="!isError" class="xImageImg" :class="[isLoading?'xImageImgAbs':'']"
+				 :mode="_model" :style="[_styleMap,{visibility:isVisibled||!lazy?'visible':'hidden'}]" :src="_src" >
+			</image>
+			<!-- #endif -->
+			<!-- #ifndef APP -->
+			<image @load="imgLoad2" @error="imgError" :fade-show="fadeShow" v-if="!isError" class="xImageImg" :class="[isLoading?'xImageImgAbs':'']"
+				 :mode="_model" :style="[_styleMap,{visibility:isVisibled||!lazy?'visible':'hidden'}]" :src="_src" >
+			</image>
+			<!-- #endif -->
+		</view>
+	</view>
+</template>
+<style scoped>
+
+	.xImage {
+		position: relative;
+		overflow: hidden;
+	}
+	.xImageBox{
+		pointer-events: none;
+	}
+	.xImagePlace {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		width: 100%;
+		height: 100%
+	}
+
+	.xImageImgAbs {
+		position: absolute;
+		pointer-events: none;
+	}
+</style>

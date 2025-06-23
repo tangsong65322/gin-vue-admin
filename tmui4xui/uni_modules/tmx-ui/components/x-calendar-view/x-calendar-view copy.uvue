@@ -1,0 +1,455 @@
+<script lang="ts">
+	import { type PropType } from "vue"
+	import { getUid, rpx2px } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { xDate, dateCovertXdate, xDateTypeTime } from "../../core/util/xDate.uts"
+	import { xDateDayInfoType, xCalendarDateStyle_type } from "../../interface.uts"
+	import { xCalendarDateStyle_real_type, dateStyleDot, dateStyleBg, dateStyleType, BODY_SIZE_TYPE, xCalendarViewUpdateType } from "./interface"
+	import { xCalendarView } from "./xCalendarUtil.uts"
+	import calender from "./calender.uvue"
+	/**
+	 * @name 日历 xCalendar
+	 * @page /pages/index/calendar-view
+	 * @category 表单组件
+	 * @description 日历面板，支持指定日期新式设置，角标，底部文本设置等暂不同时支持多选，因为不支持联合类型后期需要分开组件使用。
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | x | ☑️ | 4.14+ | 1.0.0 |
+	 */
+	export default {
+		components:{
+			'calendar':calender
+		},
+		data() {
+			return {
+				nowDate: new xDate(),
+				selectedDate:"",
+				weeksCn: ["周一", "周二", "周三", "周四", "周五", "周六", "周日"],
+				bodyHeight: (6 * 50).toString() + 'px',
+			
+			
+				tid: 0,
+				caleBodySize: { height: (6 * 50), width: 0 } as BODY_SIZE_TYPE,
+				xCalendarViewObj: null as null | xCalendarView,
+				isShowYearAndMonthBox: false,
+				boxWidth:0,
+				boxHeight:350,
+				swiperCuureindex:0,
+				list:[] as string[],
+				fullyeBox:{ height: 0, width: 0 } as BODY_SIZE_TYPE,
+				nowYear:0
+			}
+		},
+		emits: [
+
+			/**
+			 * 日期改变时触发,不管是月份，年份等操作只日期变了就触发。
+			 * @param {String} date - 当前日期时间字符串
+			 */
+			'change',
+			/**
+			 * 点击日期改变时触发，仅用户在点击日历面板上的日期时才会触发
+			 * @param {String} date - 当前日期时间字符串
+			 */
+			'click',
+			/**
+			 * 当前显示的月份或者年份改变时触发，仅在切换年，月时触发。
+			 * @param {String} date - 当前日期时间字符串
+			 */
+			'currentChange',
+			/**
+			 * 等同v-model
+			 */
+			'update:modelValue'
+		],
+		props: {
+			/**
+			 * 同步当前时间v-model
+			 * 不想受控:model-value
+			 */
+			modelValue: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 禁用的日期字符串如"2023-12-12"
+			 * 它与下面的start，end不冲突。
+			 */
+			disabledDays: {
+				type: Array as PropType<string[]>,
+				default: () : string[] => {
+					return [] as string[]
+				}
+			},
+			/**
+			 * 允许选择的开始日期
+			 */
+			startDate: {
+				type: String,
+				default: "2020-1-1"
+			},
+			/**
+			 * 允许选择的结束日期
+			 */
+			endDate: {
+				type: String,
+				default: "2040-12-31"
+			},
+			/**
+			 * 设置指定日期的样式
+			 * 数据类型见：xCalendarDateStyle_type
+			 */
+			dateStyle: {
+				type: Array as PropType<xCalendarDateStyle_type[]>,
+				default: () : xCalendarDateStyle_type[] => [] as xCalendarDateStyle_type[]
+			},
+			/**
+			 * 同步vmodel时格式化模板
+			 */
+			format: {
+				type: String,
+				default: "YYYY-MM-DD"
+			},
+			/**
+			 * 选中的主题色，默认空值，取全局主题色
+			 */
+			color: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 隐藏顶部操作栏，可自己定义顶部工具要栏
+			 */
+			hideHeader:{
+				type:Boolean,
+				default:false
+			},
+			/**
+			 * 禁用日历切换，会提高性能，因为只渲染一个层，可以手动切换日历
+			 */
+			disabledSwiper:{
+				type:Boolean,
+				default:false
+			},
+			/**
+			 * 禁止用户操作选中,相当于仅展示日历
+			 */
+			disabled:{
+				type:Boolean,
+				default:false
+			},
+			/**
+			 * 是否上下切换日历
+			 */
+			vertical:{
+				type:Boolean,
+				default:false
+			}
+		},
+		watch: {
+			modelValue(newVal : string) {
+				if(newVal==''){
+					this.selectedDate = ''
+				}else if(new xDate(newVal).isBetweenOf(this.nowDate, '=', 'm')){
+					this.selectedDate = new xDate(newVal).format('YYYY-MM-DD')
+				}else{
+					this.nowDate = new xDate(newVal)
+					this.selectedDate = this.nowDate.format('YYYY-MM-DD')
+					this.list = this.setDataListBySiperIndex(newVal)
+				}
+				this.nowYear = this.nowDate.getYear()
+			},
+
+			
+		},
+		computed:{
+			_nowDateValue():string{
+				return this.nowDate.format('YYYY-MM-DD')
+			},
+			_vertical():boolean{
+				return this.vertical
+			},
+			_hideHeader():boolean{
+				return this.hideHeader
+			},
+			_disabledSwiper():boolean{
+				return this.disabledSwiper
+			},
+			_disabled():boolean{
+				return this.disabled
+			},
+			_nowDateLable():string{
+				if(this.swiperCuureindex>this.list.length-1) return ""
+				let date = this.list[this.swiperCuureindex]
+				return new xDate(date).format('YYYY年MM月')
+			},
+			
+			nowMonth():number{
+				
+				return this.nowDate.getMonth()+1
+			},
+			_startDate() : xDate {
+				return new xDate(this.startDate)
+			},
+			_endDate() : xDate {
+				return new xDate(this.endDate)
+			},
+			_color() : string {
+				if (this.color == "") {
+					return getDefaultColor(xConfig.color)
+				}
+				return getDefaultColor(this.color)
+			},
+			_isMonthBgcolor() : string {
+				if (xConfig.dark == 'dark') return xConfig.sheetDarkColor
+				return "#ffffff"
+			}
+		},
+		mounted() {
+			if(this.modelValue!=''){
+				this.nowDate = new xDate(this.modelValue)
+				this.selectedDate = this.nowDate.format('YYYY-MM-DD')
+				this.nowYear = this.nowDate.getYear()
+			}
+			this.list = this.getDefaultBoxListData()
+		},
+		methods:{
+			
+			
+			getDefaultBoxListData():string[]{
+				let xd = this.nowDate.getClone().format('YYYY-MM')+'-01'
+				let start = this.nowDate.getClone().subtraction(1,'m').format('YYYY-MM')+'-01'
+				let end = this.nowDate.getClone().add(1,'m').format('YYYY-MM')+'-01'
+				return [xd,end,start]
+			},
+			setDataListBySiperIndex(date:string):string[]{
+				let index = this.swiperCuureindex
+				let currentData = new xDate(date)
+				let xd = currentData.getClone().format('YYYY-MM')+'-01'
+				let start = currentData.getClone().subtraction(1,'m').format('YYYY-MM')+'-01'
+				let end = currentData.getClone().add(1,'m').format('YYYY-MM')+'-01'
+				
+				let datas = [end,start,xd]
+				if(index==0){
+					datas = [xd,end,start]
+				}else if(index==1){
+					datas = [start,xd,end]
+				}
+				return datas;
+			},
+			getlistDataByNowdate(index:number):string[]{
+				let currentData = new xDate(this.list[index])
+				let xd = currentData.getClone().format('YYYY-MM')+'-01'
+				let start = currentData.getClone().subtraction(1,'m').format('YYYY-MM')+'-01'
+				let end = currentData.getClone().add(1,'m').format('YYYY-MM')+'-01'
+				let currswilistdata = this.list[index]
+				let datas = [end,start,xd]
+				if(index==0&&currswilistdata==xd){
+					datas = [xd,end,start]
+				}else if(index==1&&currswilistdata==xd){
+					datas = [start,xd,end]
+				}
+				return datas;
+			},
+			swiperChange(evt:UniSwiperChangeEvent){
+				let index = evt.detail.current;
+				this.swiperCuureindex = index
+				this.list = this.getlistDataByNowdate(index)
+			},
+			dateChange(date:string,index:number){
+				
+				if(date==''){
+					this.selectedDate = ''
+				}else{
+					this.selectedDate = new xDate(date).format('YYYY-MM-DD')
+				}
+				this.updateEvents();
+				this.$emit('click',this.selectedDate)
+			},
+			setNowDate() {
+				this.nowDate = new xDate()
+				this.selectedDate = this.nowDate.format('YYYY-MM-DD')
+				this.list = this.getDefaultBoxListData()
+				this.swiperCuureindex = 0
+				this.nowYear = this.nowDate.getYear()
+				this.updateEvents();
+			},
+			clearDate() {
+				this.selectedDate = ''
+				this.updateEvents();
+			},
+			showYear(show:boolean){
+				let t = this;
+				uni.createSelectorQuery().in(this)
+					.select(".xCalendar")
+					.boundingClientRect()
+					.exec((result) => {
+						let node = result[0]! as NodeInfo
+						t.fullyeBox.width = node.width!;
+						t.fullyeBox.height = node.height!;
+						t.isShowYearAndMonthBox = show;
+					})
+			},
+			updateEvents(){
+				let formatdate = this.selectedDate;
+				/**
+				 * 点击日期时触发
+				 * @property value {String} 点击日期时触发，禁用的日期不会触发
+				 */
+				this.$emit('update:modelValue', formatdate)
+							
+				/**
+				 * 变化时触发
+				 * @property value {String} 时间变动时触发
+				 */
+				this.$emit('change', formatdate)
+			},
+			yearChange(year : number) {
+				let dtx = this.nowDate.getClone().setDateOf(year, 'y').format('YYYY-MM-DD')
+				this.nowDate = new xDate(dtx)
+				this.selectedDate = this.nowDate.format('YYYY-MM-DD')
+				
+				this.list = this.setDataListBySiperIndex(this.selectedDate)
+				
+				this.updateEvents();
+				this.$emit('currentChange',this.selectedDate)
+			},
+			setMonth(index : number) {
+				let dtx = this.nowDate.getClone().setDateOf(index, 'm').format('YYYY-MM-DD')
+				this.nowDate = new xDate(dtx)
+				this.selectedDate = this.nowDate.format('YYYY-MM-DD')
+				this.list = this.setDataListBySiperIndex(this.selectedDate)
+				this.updateEvents();
+				this.isShowYearAndMonthBox = false;
+				this.nowYear = this.nowDate.getYear()
+				this.$emit('currentChange',this.selectedDate)
+			},
+		}
+		
+	}
+</script>
+<template>
+	<view class="xCalendar">
+		<view  v-if="!_hideHeader"
+			style="display: flex;flex-direction: row;justify-content: space-between;align-items: center;height: 40px;">
+			<!-- @click="showYear(true)" -->
+			<view  @click="showYear(true)"
+				style="flex:1;display:flex;flex-direction: row;justify-content: flex-start;align-items: center;">
+				<x-text color="#333" font-size="16" class="xCalendarNowSelecTtitle">{{_nowDateLable}}</x-text>
+				<x-icon font-size="24" name="arrow-down-s-fill"></x-icon>
+			</view>
+			<view style="display: flex;flex-direction: row;justify-content: center;align-items: center;height: 100%;">
+				<view @click="setNowDate" class="headerItemXcalendar" hover-class="hoverOpacity" >
+					<x-text color="#333" font-size="16">本日</x-text>
+				</view>
+				<view @click="clearDate" class="headerItemXcalendar" hover-class="hoverOpacity" >
+					<x-text color="#333" font-size="16">清空</x-text>
+				</view>
+			</view>
+		</view>
+		
+		<view class="xCalendarViewHeader">
+			<view class="xCalendarViewDate" v-for="(item,index) in 7" :key="index">
+				<x-text color="#333" font-size="14">{{weeksCn[index]!}}</x-text>
+			</view>
+		</view>
+		<swiper v-if="!_disabledSwiper" :current="swiperCuureindex" :vertical="_vertical" :circular="true" :autoplay="false" @change="swiperChange" :style="{height:caleBodySize.height+'px'}">
+			<swiper-item v-for="(item,index) in list" :key="index" :style="{height:caleBodySize.height+'px'}">
+				<calendar :disabled="_disabled"  :disabledDays="disabledDays" :startDate="startDate" :endDate="endDate" :dateStyle="dateStyle" ref="calendar" @change="dateChange($event as string,index)" :modelValue="selectedDate" :date="item"></calendar>
+			</swiper-item>
+		</swiper>
+		<view v-if="_disabledSwiper&&list.length>0">
+			<calendar :disabled="_disabled"  :disabledDays="disabledDays" :startDate="startDate" :endDate="endDate" :dateStyle="dateStyle" ref="calendar" @change="dateChange($event as string,0)" :modelValue="selectedDate" :date="list[0]"></calendar>
+		</view>
+		
+		<view v-if="!_hideHeader" style="display: flex;flex-direction: row;justify-content: center;align-items: center;height: 40px;">
+			<x-text color="#707070" font-size="14"
+				class="xCalendarNowSelecTtitle">{{selectedDate!=''?'您已选择: '+selectedDate:'未选择日期'}}</x-text>
+		</view>
+		
+		<!-- 设置年月 -->
+		<view class="xCalendarSetBox" :style="{opacity:isShowYearAndMonthBox?'1':'0',width:isShowYearAndMonthBox?(fullyeBox.width+'px'):'0px',height:isShowYearAndMonthBox?(fullyeBox.height+'px'):'0px',backgroundColor:_isMonthBgcolor}">
+			<view
+				style="display: flex;flex-direction: row;justify-content: space-between;align-items: center;height: 60px;">
+				<view @click="showYear(false)"
+					style="flex:1;display:flex;flex-direction: row;justify-content: flex-start;align-items: center;">
+					<x-text :color="_color" font-size="16" class="xCalendarNowSelecTtitle">{{_nowDateLable}}</x-text>
+					<x-icon :color="_color" font-size="24" name="arrow-up-s-fill"></x-icon>
+				</view>
+				<view
+					style="display: flex;flex-direction: row;justify-content: center;align-items: center;">
+					<x-stepper @change="yearChange" width="170" btn-width="50" height="40" v-model="nowYear"
+						:min="_startDate.getYear()" :max="_endDate.getYear()"></x-stepper>
+				</view>
+			</view>
+			<view class="xCalendarSetBoxMonth">
+				<view @click="setMonth(index)" :style="{backgroundColor:nowMonth==item?_color:'transparent'}"
+					class="xCalendarSetBoxMonthItem" v-for="(item,index) in 12" :key="index">
+					<x-text :color="(nowMonth==item?'white':'#333')" fontSize="18">{{item}}月</x-text>
+				</view>
+			</view>
+		</view>
+	</view>
+
+</template>
+<style scoped>
+	.xCalendar{
+		display: flex;
+		position: relative;
+	}
+	.xCalendarSetBoxMonthItem {
+		width: 33.33%;
+		height: 25%;
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+		border-radius: 10px;
+	}
+	
+	.xCalendarSetBoxMonth {
+		flex: 1;
+		/* background-color: white; */
+		display: flex;
+		flex-direction: row;
+		flex-wrap: wrap;
+	}
+	
+	.xCalendarSetBox {
+		position: absolute;
+		display: flex;
+		flex-direction: column;
+		transition-property: width,height,opacity;
+		transition-duration: 0.2s;
+		transition-timing-function: cubic-bezier(.42,.38,.15,.93);
+	}
+	.xCalendarNowSelecTtitle {
+		font-size: 16px;
+		font-weight: bold;
+		padding-left: 10px;
+	}
+	.headerItemXcalendar {
+		padding: 0 16px;
+		height: 100%;
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+	}
+	.xCalendarViewHeader {
+		display: flex;
+		flex-direction: row;
+	}
+	
+	.xCalendarViewDate {
+		width: 14.28%;
+		height: 40px;
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+	}
+</style>

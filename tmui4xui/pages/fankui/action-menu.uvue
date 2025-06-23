@@ -1,0 +1,93 @@
+<template>
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+	<view>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">动作菜单 ActionMenu</x-text>
+			<x-text color="#999999" >
+				从底部弹出的菜单选项，自由度高。
+			</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-action-menu @item-click="itemclick" @cancel="oncancel" :list="list2" title="测试菜单">
+				<template #trigger>
+					<x-button :block="true">默认</x-button>
+				</template>
+			</x-action-menu>
+		</x-sheet>
+		<x-sheet>
+			<x-action-menu :list="list">
+				<template #trigger>
+					<x-button :block="true">可以定义颜色显示</x-button>
+				</template>
+			</x-action-menu>
+		</x-sheet>
+	</view>
+</template>
+
+<script>
+	import { XACTION_MENU_ITEM_INFO } from "@/uni_modules/tmx-ui/interface.uts"
+	import { xStore } from "@/uni_modules/tmx-ui/index.uts"
+	export default {
+		data() {
+			return {
+		
+				list:[
+					{
+						icon:"notification-line",
+						text:"通知栏",
+						id:"1"
+					} as XACTION_MENU_ITEM_INFO,
+					{
+						icon:"notification-line",
+						text:"我被禁用",
+						id:"2",
+						disabled:true
+					} as XACTION_MENU_ITEM_INFO,
+					{
+						icon:"notification-line",
+						text:"我修改了颜色",
+						id:"3",
+						iconColor:'red',
+						fontColor:'red'
+					} as XACTION_MENU_ITEM_INFO,
+					{
+						text:"我没有图标",
+						id:"4"
+					} as XACTION_MENU_ITEM_INFO
+				] as XACTION_MENU_ITEM_INFO[],
+				list2:[
+					{
+						text:"我是菜单栏",
+						id:"1"
+					} as XACTION_MENU_ITEM_INFO,
+					{
+						text:"我是菜单栏",
+						id:"2",
+					} as XACTION_MENU_ITEM_INFO,
+					{
+						text:"我是菜单栏",
+						id:"3",
+					} as XACTION_MENU_ITEM_INFO
+				] as XACTION_MENU_ITEM_INFO[]
+			};
+		},
+		onLoad(){
+		},
+		methods:{
+			itemclick(index:number){
+				console.log(index)
+			},
+			oncancel(){
+				console.log(4)
+			}
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

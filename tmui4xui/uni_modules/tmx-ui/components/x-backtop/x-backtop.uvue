@@ -1,0 +1,190 @@
+<script lang="ts">
+	import { type PropType } from "vue"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit, rpx2px,getUid } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { xProvitae } from "../../config/xConfig.uts"
+
+	/**
+	 * @name 返回顶部 xBacktop
+	 * @page /pages/index/backtop
+	 * @category 导航组件
+	 * @description 在uvue页面中，根节点一定是scroll-view并且设置为flex:1才可滚动到顶部。如果你想改变或者自定位置，你可以直接在组件上写style来覆盖定位。详见：https://doc.dcloud.net.cn/uni-app-x/api/page-scroll-to.html
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | x | ☑️ | 4.14+ | 1.0.0 |
+	 */
+	export default {
+		data() {
+			return {
+				opened: false,
+			}
+		},
+		emits: [
+			/**
+			 * 点击时触发
+			 */
+			'click'
+		],
+		props: {
+			/**
+			 * 圆角,空值时取全局的drawr圆角。
+			 */
+			round: {
+				type: String,
+				default: "50px"
+			},
+
+			/**
+			 * 向下滚动页面时，如果超过此值显示返回顶部按钮。
+			 */
+			offset: {
+				type: Number,
+				default: 100
+			},
+			/**
+			 * 背景,支持渐变值如:linear-gradient(to left, #FFED46, #FF7EC7)
+			 * 默认空值，取全局主题值。
+			 */
+			bgColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 高度
+			 */
+			width: {
+				type: String,
+				default: '50px'
+			},
+			/**
+			 * 宽度
+			 */
+			height: {
+				type: String,
+				default: '50px'
+			},
+			/**
+			 * 图标颜色。
+			 */
+			color: {
+				type: String,
+				default: "white"
+			},
+			/**
+			 * 图标
+			 */
+			icon: {
+				type: String,
+				default: "skip-up-fill"
+			},
+			/**
+			 * 图标大小
+			 */
+			iconSize: {
+				type: String,
+				default: '30'
+			}
+			
+		},
+		computed: {
+			_stop() : number {
+				return xProvitae.scrollTop;
+			},
+			_icon() : string {
+				return this.icon;
+			},
+			_iconSize() : string {
+				return this.iconSize
+			},
+			_round() : string {
+				return checkIsCssUnit(this.round, xConfig.unit)
+			},
+			_width() : number {
+				let p = parseInt(this.width);
+				if (this.width.lastIndexOf('rpx') > -1 ) {
+					p = rpx2px(p);
+				}
+				return Math.floor(p)
+			},
+			_height() : number {
+				let p = parseInt(this.height);
+				if (this.height.lastIndexOf('rpx') > -1) {
+					p = rpx2px(p);
+				}
+				return Math.floor(p)
+			},
+			_styleMap() : Map<string, string> {
+				let styleMap = new Map<string, string>()
+				styleMap.set('width', this._width.toString() + 'px')
+				styleMap.set('height', this._height.toString() + 'px')
+				styleMap.set('borderRadius', this._round)
+				if (this.bgColor.indexOf('linear-gradient') > -1) {
+					styleMap.set('backgroundImage', this.bgColor)
+				} else {
+					let color = this.bgColor == "" ? getDefaultColor(xConfig.color) : getDefaultColor(this.bgColor)
+					styleMap.set('backgroundColor', color)
+				}
+				styleMap.set('transform', this.opened ? 'scale(1)' : 'scale(0)')
+				styleMap.set('opacity', this.opened ? '1' : '0')
+				return styleMap;
+			},
+			_color() : string {
+				return getDefaultColor(this.color)
+			}
+		},
+		watch: {
+			_stop(newValue : number) {
+				this.opened = newValue >= this.offset
+			}
+		},
+		methods: {
+			onclick() {
+				/**
+				 * 点击组件时触发。
+				 */
+				this.$emit("click")
+				/**
+				 * h5端的uni.pageScrollTo有bug，延迟厉害，性能差，不如原生快。
+				 */
+				// #ifdef WEB
+				window.scrollTo({ top: 0, behavior: 'smooth' })
+				// #endif
+				// #ifndef WEB
+				uni.pageScrollTo({
+					scrollTop: 0,
+					duration: 650
+				})
+				// #endif
+			}
+		},
+	}
+</script>
+<template>
+	<view @click="onclick" class="xBackTop" :style="_styleMap">
+		<!-- 
+		 @slot 默认图标插槽
+		 -->
+		<slot>
+			<x-icon :font-size="_iconSize" :name="_icon" :color="_color"></x-icon>
+		</slot>
+	</view>
+</template>
+<style scoped>
+	.xBackTop {
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+		position: fixed;
+		right: 16px;
+		bottom: 24px;
+		transition-duration: 350ms;
+		transition-property: transform, opacity;
+		transition-timing-function: cubic-bezier(0, 0.55, 0.45, 1);
+		transform: scale(0);
+		opacity: 1;
+		box-shadow: 0 5px 24px rgba(0, 0, 0, 0.06);
+	}
+</style>

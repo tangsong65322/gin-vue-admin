@@ -1,0 +1,43 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+	
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">翻页器 xPagination</x-text>
+			<x-text color="#999999" class="text-size-b mb-20">
+				提供简单和复杂两种类型
+			</x-text>
+			<x-pagination v-model="current as number" :total="1000" @change="pageChange"></x-pagination>
+		</x-sheet>
+	
+		<x-sheet >
+			<x-text font-size="18" class=" text-weight-b mb-20">自定中间按钮最小数量</x-text>
+			<x-pagination :total="50" :max-buttons="2"></x-pagination>
+		</x-sheet>
+		<x-sheet >
+			<x-text font-size="18" class=" text-weight-b mb-20">简单型</x-text>
+			<x-pagination :simple="true" :total="1000" :max-buttons="2"></x-pagination>
+		</x-sheet>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script setup>
+	import {ref} from "vue"
+	const current = ref<number>(5)
+	const pageChange = (index:number)=>{
+		console.log("页码",index)
+	}
+	
+</script>
+
+<style>
+		
+</style>

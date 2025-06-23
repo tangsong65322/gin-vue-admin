@@ -1,0 +1,340 @@
+<script lang="ts">
+	import { getDefaultColor, getDefaultColorObj, getTextColorObj, getThinColorObj, setTextColorLightByDark } from "../../core/util/xCoreColorUtil.uts"
+	import { toFillMarginAr, checkIsCssUnit, getUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { PropType } from 'vue'
+	type ITEMINFO = {
+		text : string,
+		color : string,
+		isHeightLight : boolean
+	}
+	/**
+	 * @name 文本 xText
+	 * @description 支持多文本高亮显示，目前uniapp x 4.0.1+正则。
+	 * 可允许拓展：比如根据正则高亮电话号码，邮箱等，点击后打电话，发邮件。使用时一定要注意:尽量标签内容写文本,不要用label属性,label属性是用来高亮和正则的
+	 * @page /pages/index/text
+	 * @category 常用组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+
+			}
+		},
+		emits: [
+			/**
+			 * 点击时触发
+			 */
+			'click',
+			/**
+			 * 正则的项目被点击
+			 * @description  微信及web有效,app无效
+			 * 这个功能取决于uniapp x官方的支持。
+			 * @param {string} str - 被点击的文本内容
+			 */
+			'item-click'
+		],
+		props: {
+			/**
+			 * 自定文件标签的样式
+			 */
+			_style: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 自定文件标签的类,仅对标签插槽内的有效,如果使用label属性会变成richtext渲染,因为类将失效.
+			 */
+			_class: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 源文本，显示 的文本。
+			 */
+			label: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 需要特别高亮的词
+			 */
+			heightLight: {
+				type: Array as PropType<string[]>,
+				default: () : string[] => [] as string[]
+			},
+			/**
+			 * 高亮的正则,
+			 * 请尽量不要和heightLight字段结果集重叠,
+			 * 也不要提供的正则数组出现重叠混乱。
+			 * 默认是正则电话，邮箱
+			 */
+			heightLightReg: {
+				type: Array as PropType<string[]>,
+				default: () : string[] => [] as string[]
+			},
+			/**
+			 * 高亮文本的自定义样式
+			 */
+			heightLightStyle: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 最多显示几行，默认0不限制。
+			 * 超过了此行会出现省略号。
+			 */
+			lines: {
+				type: Number,
+				default: 0
+			},
+			/**
+			 * 是否允许复制。
+			 */
+			selectable: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 文本颜色
+			 */
+			color: {
+				type: String,
+				default: "#333333"
+			},
+			/**
+			 * 暗黑时的文本颜色，如果你不提供，将自动反转。
+			 * 自动反转是根据亮度反转，色相不变。
+			 */
+			darkColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 高亮颜色
+			 */
+			heightLightColor: {
+				type: String,
+				default: "primary"
+			},
+			/**
+			 * 行高
+			 */
+			lineHeight: {
+				type: String,
+				default: "1.7"
+			},
+			/**
+			 * 文字大小。
+			 */
+			fontSize: {
+				type: String,
+				default: ""
+			}
+		},
+		computed: {
+			___class() : string {
+				return this._class
+			},
+			___style() : string {
+				return this._style
+			},
+			_fontSize() : string {
+				let basefontsize = this.fontSize == ''?xConfig.fontSize:this.fontSize;
+				let fontSize = checkIsCssUnit(basefontsize, xConfig.unit);
+				if (xConfig.fontScale == 1) return fontSize;
+				let sizeNumber = parseInt(fontSize)
+				if (isNaN(sizeNumber)) {
+					sizeNumber = 14
+				}
+				return (sizeNumber * xConfig.fontScale).toString() + getUnit(fontSize)
+			},
+			_color() : string {
+				let color = this.color;
+				if (xConfig.dark == 'dark') {
+					if (this.darkColor != "") {
+						color = this.darkColor!
+						return getDefaultColor(color)
+					}
+					return setTextColorLightByDark(color)
+				}
+				return getDefaultColor(this.color)
+			},
+			_heightLightColor() : string {
+				return getDefaultColor(this.heightLightColor)
+			},
+			_label() : string {
+				return this.label
+			},
+			_texts() : ITEMINFO[] {
+				if(this.label=='') return [] as ITEMINFO[]
+				let keywords = this.heightLight
+				let albel = this.label;
+
+				if ((keywords.length == 0 && this.heightLightReg.length == 0) || albel.length == 0) {
+					return [{ text: albel, color: this._color, isHeightLight: false } as ITEMINFO]
+				}
+				
+				let regexxAr = [] as string[];
+
+				this.heightLightReg.forEach(function (reg : string) {
+					let regex = new RegExp(reg, 'gi');
+					
+					let rulst = regex.exec(albel)
+					while (rulst != null && Array.isArray(rulst)) {
+						if (Array.isArray(rulst)) {
+							let str = rulst[0]! as string;
+							if (!regexxAr.includes(str)) {
+								regexxAr.push(str)
+							}
+
+						}
+						rulst = regex.exec(albel)
+					}
+
+				});
+
+				keywords = keywords.concat(regexxAr)
+			
+				// 遍历关键词数组
+				keywords.forEach(function (keyword : string) {
+					// 创建一个正则表达式，使用'i'标志表示不区分大小写
+					let reg:RegExp = new RegExp('[\\*]','gi')
+					let isFuhao = reg.test(keyword)
+					let regex = new RegExp(isFuhao?('\\'+keyword):keyword, 'gi');
+					// 使用replace方法将匹配到的关键词用带有高亮样式的span标签包裹起来
+					albel = albel.replace(regex, `~-<span>${keyword}</span>~-`);
+				});
+
+				let ps = albel.split('~-')
+				let ar = [] as ITEMINFO[]
+				ps.forEach((el : string) => {
+					if (el.length > 0) {
+						let start = el.indexOf('<span>')
+						if (start > -1) {
+							let end = el.lastIndexOf('</span>')
+							ar.push({
+								text: el.substring(start + 6, end),
+								color: this._heightLightColor,
+								isHeightLight: true
+							} as ITEMINFO)
+						} else {
+							ar.push({
+								text: el,
+								color: this._color,
+								isHeightLight: false
+							} as ITEMINFO)
+						}
+					}
+				})
+				return ar;
+			},
+			_texts2() : string {
+				let txt = ''
+				for (let i = 0; i < this._texts.length; i++) {
+					let item = this._texts[i];
+					txt += `<a href="https://x-ui.com" style="text-decoration:none;"><span style="color:${item.color};${item.isHeightLight ? this.heightLightStyle : ''}">${item.text}</span></a>`
+				}
+				return txt;
+			},
+			_styleMap() : Map<string, string> {
+				let styleMap = new Map<string, string>();
+				if(this.lines>0){
+					// #ifdef APP
+					styleMap.set("lines", this.lines.toString())
+					// #endif
+					// #ifndef APP
+					styleMap.set("-webkit-line-clamp", this.lines)
+					// #endif
+				}
+				
+				styleMap.set("line-height", this.lineHeight)
+				styleMap.set("font-size", this._fontSize)
+				styleMap.set("color", this._color)
+				return styleMap
+			}
+		},
+		methods: {
+			allClick() {
+				/**
+				 * 整个组件被点击
+				 */
+				this.$emit('click')
+			},
+			itemClick(str : string) {
+				// let str = event.detail.href;
+				/**
+				 * 文本被点击。比如高亮的文本被点击。
+				 * @param str {string} 当前点击的文本。
+				 */
+				this.$emit('item-click', str)
+			}
+		},
+	}
+</script>
+<template>
+	<!-- #ifndef MP-WEIXIN -->
+	<text @click="allClick" :style="[_styleMap,___style]" :class="___class" class="xTextLines" :selectable="selectable"
+		>
+		<!--
+		 @slot 默认文本插槽，如果使用插槽，那么相关特性功能将会失效。
+		 如果没有特殊需求,建议使用插槽，文本写在标签内.如果需求正则则用label属性控制.
+		 -->
+		<slot>
+			<text v-if="_label==''" @click="allClick" :style="[_styleMap,___style]" :class="___class" class="xTextLines"
+				:selectable="selectable" >
+				{{_label}}
+			</text>
+		</slot>
+		<text @click="itemClick(item.text)" :class="[___class]" :selectable="selectable" :style="[{
+			color:item.color,
+			lineHeight:lineHeight,
+			fontSize:_fontSize,
+		},item.isHeightLight?heightLightStyle:{},___style]" v-for="(item,index) in _texts" :key="index" >
+			{{item.text}}
+		</text>
+	</text>
+	<!-- #endif -->
+	<!-- sdk 4.44 text无法响应文本...呵呵 -->
+	<!-- #ifdef MP-WEIXIN -->
+	<view @click="allClick" :style="[_styleMap,___style]" :class="___class" class="xTextLines" >
+		<slot>
+			<text v-if="_label==''"  :style="[_styleMap,___style]" :class="___class" class="xTextLines"
+				:selectable="selectable" >
+				{{_label}}
+			</text>
+		</slot>
+		<text @click.stop="itemClick(item.text)" :class="[___class]" :selectable="selectable" :style="[{
+			color:item.color,
+			lineHeight:lineHeight,
+			fontSize:_fontSize,
+		},item.isHeightLight?heightLightStyle:{},___style]" v-for="(item,index) in _texts" :key="index" >
+			{{item.text}}
+		</text>
+	</view>
+
+	<!-- #endif -->
+</template>
+<style scoped>
+	.xTextRegx {
+		display: flex;
+		flex-direction: row;
+		flex-wrap: wrap;
+	}
+
+	.xTextLines {
+		text-overflow: ellipsis;
+		/* #ifndef APP */
+		text-wrap: wrap;
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+		word-break: break-all;
+		/* #endif */
+	
+	}
+</style>

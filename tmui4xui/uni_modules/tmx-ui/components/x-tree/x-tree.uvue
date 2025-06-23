@@ -1,0 +1,340 @@
+<script lang="ts">
+	import { type PropType,toRaw } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { findParentIds, setChildrenByid, findParentNode,flatChildrensId,getAllParentIds,findNodeIndeterminate } from "./util.uts"
+	type callbackType = (id : string) => Promise<UTSJSONObject[]>
+
+	/**
+	 * @name 树 xTree
+	 * @description 无限嵌套，异步加载（二级下app不行，受限于uniappx，待后期官方修复）。可以单独控制展开和关闭。
+	 * @page /pages/index/tree
+	 * @category 表单组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				nowIds: [] as string[],
+				folderExopenids: [] as string[],
+				_list: [] as UTSJSONObject[]
+			}
+		},
+		emits: [
+			/**
+			 * 选中切换时触发
+			 * @param {string[]} ids - 所有选中的id
+			 * @param {string[]} allParent - 所有选中仅包含父节点
+			 * @param {string[]} allChildrenId - 所有选中仅包含子节点id,不含父节点
+			 * @param {string[]} allIdsAndInd - 所有选中节点,及包含半选中状态的父节点
+			 */
+			'change',
+			/**
+			 * 节点标签被点击
+			 * @@param {UTSJSONObject} item - 打开的id数组 
+			 */
+			'childrenClick',
+			/**
+			 * 父节点展开和关闭
+			 * @@param {string[]} ids - 打开的id数组 
+			 */
+			'openFolderChange',
+			/**
+			 * 等同v-model:folder-id
+			 */
+			"update:folderId",
+			"update:modelValue"
+		],
+		props: {
+			/**
+			 * 等同v-model，当前选中的id
+			 */
+			modelValue: {
+				type: Array as PropType<string[]>,
+				default: () : string[] => [] as string[]
+			},
+			/**
+			 * 需要默认展开的父级id
+			 * 如果这个id在深层等级，那它的所有父级都会被展开。
+			 * 比如["1-2"]，此时1-2在最深级，那么它的父"1","1-1"会全部被默认打开
+			 * 因此["1-2"]与["1","1-1","1-2"]其实没有区别
+			 */
+			folderId: {
+				type: Array as PropType<string[]>,
+				default: () : string[] => [] as string[]
+			},
+			/**
+			 * 是否允许选中父级的时候把它的所有子级也选上。
+			 * 注意这个属性的区别,如果你打开,那么意味着你无法控制父框选中状态,它的状态由它的子集来控制
+			 * 比如子集全选中时,它自动选中,如果部分选中(它还是不会选中,但会有半选中状态),如果子集没有全选中,它会自动取消选中.点击本身时会取消或者选中所有子.
+			 * 如果你设置为false,那就表示所有节点可以单独选择,它不受子节点控制.点击自己时,也不会选中子节点.
+			 */
+			parentSelectedFullChildren: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 是否禁用父框选中,如果不禁用，但你的数据禁用了，还是会禁用。
+			 * 但不影响你赋值选中
+			 */
+			disabledParentBox: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 是否停用选中功能，只能是已读状态了
+			 * 但不影响你赋值选中
+			 */
+			disabled: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 列表数据,请一定要包含children字段代表子级。
+			 * 如果需要异步加载需要包含一个children:[]空数组，如果没有子级
+			 * 就不要包含children字段。字段:showEdite 显示编辑按钮,字段:showRemove显示删除节点按钮
+			 * showAdd 增加下级
+			 */
+			list: {
+				type: Array as PropType<UTSJSONObject[]>,
+				default: () : UTSJSONObject[] => [] as UTSJSONObject[]
+			},
+			/**
+			 * id字段名称
+			 */
+			idKey: {
+				type: String,
+				default: "id"
+			},
+			/**
+			 * 标题名称
+			 */
+			labelKey: {
+				type: String,
+				default: "text"
+			},
+			/**
+			 * 选中时的高亮颜色或者主题
+			 */
+			color: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 异步选项时执行的异步加载
+			 * 需要返回 Promise<UTSJSONObject[]>来自动填充到当前级别中的数据。
+			 */
+			beforeOpenFloder: {
+				type: Function as PropType<callbackType>,
+				default: (itemId : string) : Promise<UTSJSONObject[]> => {
+					return Promise.resolve([] as UTSJSONObject[])
+				}
+			},
+			/**
+			 * 关闭和打开时图标/图片地址
+			 * 必须为长度2,第一项关闭时图标,第2项关闭时图标
+			 */
+			floaderIcon:{
+				type:Array as PropType<string[]>,
+				default:():string[] => ['add-circle-line','indeterminate-circle-line'] as string[]
+			},
+			/**
+			 * 是否显示默认前置开和关的图标
+			 */
+			showFloaderIcon:{
+				type:Boolean,
+				default:true
+			},
+			/**
+			 * 是否显示选中的box图标
+			 */
+			showChecked:{
+				type:Boolean,
+				default:true
+			},
+			/**
+			 * 选中与未选中时的图标/图片地址
+			 * 必须为长度2,第一项未选中,第二项选中时图标
+			 */
+			checkedIcon:{
+				type:Array as PropType<string[]>,
+				default:():string[] => ['checkbox-blank-circle-line','checkbox-circle-fill'] as string[]
+			},
+		},
+		computed: {
+			_folderExopenids() : string[] {
+				return this.folderExopenids
+			},
+
+			_color() : string {
+				if (this.color == "") return getDefaultColor(xConfig.color)
+				return getDefaultColor(this.color)
+			},
+			_disabledParentBox() : boolean {
+				return this.disabledParentBox
+			},
+			_disabled() : boolean {
+				return this.disabled
+			},
+			_parentSelectedFullChildren() : boolean {
+				return this.parentSelectedFullChildren
+			}
+
+
+		},
+		watch: {
+			folderId(newVal : string[]) {
+
+				if (newVal.join("") == this.folderExopenids.join("")) return;
+				this.$nextTick(function () {
+					this.folderExopenids = this.getAllFoldreIdByF(newVal)
+
+				})
+
+			},
+			list() {
+				this.folderExopenids = this.getAllFoldreIdByF(this.folderExopenids.slice(0))
+				this._list = this.list
+			},
+			modelValue(newVal : string[]) {
+				if (newVal.join("") == this.nowIds.join("")) return;
+				this.nowIds = newVal.slice(0);
+			}
+		},
+		mounted() {
+			this._list = this.list
+			this.folderExopenids = this.getAllFoldreIdByF(this.folderId.slice(0))
+			this.nowIds = this.modelValue.slice(0)
+
+		},
+		methods: {
+			getAllFoldreIdByF(onids : string[]) : string[] {
+				let ids = [] as string[]
+				let _this = this;
+				onids.forEach(id => {
+					ids = ids.concat(findParentIds(_this._list, id, _this.idKey))
+				})
+
+				return ids;
+			},
+			openFolderChange(ids : string[], type : string, id : string) {
+				let idscopty = ids.slice(0);
+				this.folderExopenids = idscopty;
+				this.$emit('update:folderId', idscopty)
+				this.$emit('openFolderChange', idscopty)
+
+			},
+			childrenClickEnd(item : UTSJSONObject) {
+
+				this.$emit("childrenClick", item)
+			},
+			upateParentIds(){
+				// 从底层节点开始向上递归更新父节点状态
+				let  updateNodeStatus = (nodes: UTSJSONObject[]):string[] => {
+					return [] as string[]
+				}
+				updateNodeStatus = (nodes: UTSJSONObject[]): string[] => {
+					let selectedParentIds = [] as string[]
+					
+					for(let i = 0; i < nodes.length; i++){
+						let item = nodes[i]
+						let children = item.getArray<UTSJSONObject>('children')
+						let nodeId = item.getString(this.idKey)!
+						
+						// 如果有子节点，先递归处理子节点
+						if(children != null && Array.isArray(children) && children.length > 0){
+							// 递归处理子节点，获取已选中的子节点ID
+							let childSelectedIds = updateNodeStatus(children)
+							let index = this.nowIds.findIndex((yid:string):boolean => yid == nodeId)
+							// 获取所有子节点ID
+							let allChildrenIds = flatChildrensId(item, this.idKey)
+							
+							
+							
+							// 检查是否所有子节点都被选中
+							let allSelected = true
+							for(let j = 0; j < allChildrenIds.length; j++){
+								if(!this.nowIds.includes(allChildrenIds[j])){
+									allSelected = false
+									break
+								}
+							}
+							if(this._parentSelectedFullChildren){
+								// 如果所有子节点都被选中，则将当前节点也标记为选中
+								if(allSelected && allChildrenIds.length > 0 && !this.nowIds.includes(nodeId)){
+									this.nowIds.push(nodeId)
+									selectedParentIds.push(nodeId)
+								}else if(index>-1&&!allSelected){
+									this.nowIds.splice(index,1)
+								}
+							}else{
+								
+							}
+							
+						}
+					}
+					
+					return selectedParentIds
+				}
+				
+				// 开始递归处理
+				let selectedIds = updateNodeStatus(this._list)
+				return selectedIds
+			},
+			
+			
+			changeEnd(ids : string[]) {
+				let idscopty = ids.slice(0);
+				this.nowIds = idscopty
+				
+				// 更新父节点状态，从底层节点开始向上递归
+				const updatedParentIds = this.upateParentIds()
+			
+				// 如果有父节点被更新，需要将它们添加到选中列表中
+				if(updatedParentIds.length > 0) {
+					// 更新选中ID列表，确保不重复添加
+					idscopty = this.nowIds.slice(0)
+				}
+				const allParents = toRaw(getAllParentIds(this._list,this.idKey)) as string[]
+				const allIds = toRaw(this.nowIds) as string[]
+				// 所有选中的父节点.
+				const allSelectedParents = allIds.filter((id:string):boolean => allParents.includes(id))
+				const allSelectedChildrenIds = allIds.filter((id:string):boolean => !allParents.includes(id))
+				//包含父节点及半选状态的父节点
+				let allSelectedChildrenIdsAnyInd = findNodeIndeterminate(this._list,allIds,this.idKey)
+				
+				this.$emit('change', allIds,allSelectedParents,allSelectedChildrenIds,[...allSelectedChildrenIdsAnyInd,...allIds] as string[])
+				this.$emit('update:modelValue', allIds )
+			},
+			setChildrenDataEnd(id : string, item : UTSJSONObject[]) {
+				// 暂时不修改unix 的bug UTSJSONObject层级超过2无法动态修改。
+				// this._list = [];
+				// this.$nextTick(function(){
+				// 	this._list = item
+				// 	console.log(this._list,item)
+				// })
+			},
+		}
+	}
+</script>
+<template>
+	<view>
+		<x-tree-item 
+			:checkedIcon="checkedIcon"
+			:showChecked="showChecked"
+		    :showFloaderIcon="showFloaderIcon"
+			:floaderIcon="floaderIcon"
+		    @setChildrenData="setChildrenDataEnd" :beforeOpenFloder="beforeOpenFloder"
+			:parentSelectedFullChildren="_parentSelectedFullChildren" @change="changeEnd" :disabled="_disabled"
+			:disabledParentBox="_disabledParentBox" :color="_color" @childrenClick="childrenClickEnd"
+			@openFolderChange="openFolderChange" :folderId="_folderExopenids" :idKey="idKey" :labelKey="labelKey"
+			:list="_list" :idList="nowIds"></x-tree-item>
+	</view>
+</template>
+<style scoped>
+</style>

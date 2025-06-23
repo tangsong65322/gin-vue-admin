@@ -1,0 +1,52 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b ">分割线 Divider</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-divider></x-divider>
+			<x-divider class="mt-16" darkColor='error' color="error"></x-divider>
+			<x-divider class="mt-16" darkColor='success' color="success"></x-divider>
+		</x-sheet>
+		<x-sheet>
+			<x-divider label="标题测试"></x-divider>
+		</x-sheet>
+		<x-sheet>
+			<x-divider align="right" label="标题测试"></x-divider>
+		</x-sheet>
+		<x-sheet>
+			<x-divider align="left" label="左侧"></x-divider>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b ">竖向</x-text>
+		</x-sheet>
+		<x-sheet class="flex flex-row ">
+			<x-divider :vertical="true" height="50px"></x-divider>
+			<x-divider :vertical="true" darkColor='success' color="success" height="50px" class="ml-16"></x-divider>
+		</x-sheet>
+
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+
+			};
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

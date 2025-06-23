@@ -1,0 +1,81 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+	<x-sheet>
+		<x-text font-size="18" class=" text-weight-b mb-8">数字键盘 KeyboardNumber</x-text>
+		<x-text color="#999999" >允许小数点，整数，最大长度的控制,可定制性强</x-text>
+		
+		<x-sheet dark-color="#333" :margin="['0','16']" color="#f5f5f5">
+			<x-text>输入的值：{{price}}</x-text>
+		</x-sheet>
+		<x-keyboard-number :max="100" v-model="price">
+			<x-button :block="true">打开默认键盘(控制最大100)</x-button>
+		</x-keyboard-number>
+		<x-keyboard-number :digit="false" :max="100" v-model="price">
+			<x-button class="mt-20" :block="true">整数键盘</x-button>
+		</x-keyboard-number>
+		
+	</x-sheet>
+	
+
+	<x-sheet>
+		<x-text font-size="18" class=" text-weight-b mb-24">通过属性定制不同样式键盘</x-text>
+		<x-keyboard-number btn-color="white" v-model="price">
+			<x-button  class="mb-24" color="info" darkColor="#333" :block="true">打开白色键盘</x-button>
+		</x-keyboard-number>
+		<x-keyboard-number bg-color="#111111" btn-color="#232323" font-color="#f0f0f0" v-model="price">
+			<x-button color='success' :block="true">打开黑色键盘</x-button>
+		</x-keyboard-number>
+	</x-sheet>
+	
+	<x-sheet>
+		<x-text font-size="18" class=" text-weight-b mb-24">密码键盘</x-text>
+		
+		<x-keyboard v-model="password">
+			<x-button darkColor="#333" color="info" :block="true">打开密码键盘</x-button>
+		</x-keyboard>
+		
+	</x-sheet>
+
+	
+	<x-sheet>
+		<x-text font-size="18" class=" text-weight-b mb-24">身份证键盘</x-text>
+		<x-keyboard-idcard>
+			<x-button darkColor="#333" :block="true">打开身份证键盘</x-button>
+		</x-keyboard-idcard>
+	</x-sheet>
+	
+	<x-sheet>
+		<x-text font-size="18" class=" text-weight-b mb-24">车牌键盘</x-text>
+		<x-keyboard-car>
+			<x-button darkColor="#333" :block="true">打开车牌键盘</x-button>
+		</x-keyboard-car>
+	</x-sheet>
+	
+	
+	<view style="height: 50px;"></view>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+				price:'',
+				password:''
+			};
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

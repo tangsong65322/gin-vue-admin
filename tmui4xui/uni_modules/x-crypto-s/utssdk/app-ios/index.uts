@@ -1,0 +1,120 @@
+import Foundation, { Data, JSONDecoder, NSNumber } from 'Foundation'
+import { CryptoKit, SymmetricKey } from 'CryptoKit'
+import CommonCrypto from 'CommonCrypto'
+import { UInt8, UnsafeRawBufferPointer , Int } from "Swift";
+import { RSARANDOMKEY } from "../interface.uts"
+
+
+
+export function md5(str : string) : string {
+	return UniversalCryptoHelper.md5(input = str);
+}
+export function base64Encode(str : string) : string {
+	return UniversalCryptoHelper.base64Encode(input = str);
+}
+export function base64Decode(str : string) : string {
+	return UniversalCryptoHelper.base64Decode(input = str);
+}
+export function sha256(str : string) : string {
+	return UniversalCryptoHelper.sha256(input = str);
+}
+export function sha512(str : string) : string {
+	return UniversalCryptoHelper.sha512(input = str);
+}
+export function hmacSha256(key:string,data : string) : string {
+	return UniversalCryptoHelper.hmacSha256(key = key,data = data);
+}
+export function hmacSha512(key:string,data : string) : string {
+	return UniversalCryptoHelper.hmacSha512(key = key,data = data);
+}
+export function sha1(str : string) : string {
+	return UniversalCryptoHelper.sha1(input = str);
+}
+export function aesEncrypt(key:string,data : string,mode:string = "ECB",iv:string|null = null,keySize:number|null=null) : string {
+	return UniversalCryptoHelper.aesEncrypt(input = data,key = key,mode = mode,iv = iv,keySize = (keySize==null?16:keySize!).toInt());
+}
+export function aesDecrypt(key:string,data : string,mode:string = "ECB",iv:string|null = null,keySize:number|null=null) : string {
+	return UniversalCryptoHelper.aesDecrypt(input = data,key = key,mode = mode,iv = iv,keySize=(keySize==null?16:keySize!).toInt());
+}
+
+/**
+ * AES加密 - ArrayBuffer版本
+ * @param {ArrayBuffer} key ArrayBuffer数据它会根据keySize来截取和补足0
+ * @param {ArrayBuffer} data 待加密的ArrayBuffer
+ * @param {string} mode ECB,CBC
+ * @param {ArrayBuffer} iv 固定是16位,不足会补齐0
+ * @param {number} keySize 对key的加密补位,也就是加密位数16为128,24为192,32为256
+ * @returns {number[]} 加密后的数据
+ */
+export function aesEncrypt2(key:ArrayBuffer,data : ArrayBuffer,mode:string = "ECB",iv:ArrayBuffer|null = null,keySize:number|null=null) : number[] {
+
+	const keyArray = key.toData()
+	const dataArray = data.toData()
+	const ivArray = (iv == null ? null :iv.toData()) as Data|null;
+	const result = UniversalCryptoHelper.aesEncrypt2(input = dataArray, key = keyArray, mode = mode, iv = ivArray, keySize = (keySize==null?16:keySize!).toInt())
+	
+	let resuitAr:number[] = result.bytes.map((el:UInt8):number=> NSNumber.from(new Int(el)))
+	return resuitAr
+}
+
+/**
+ * AES解密 - ArrayBuffer版本
+ * @param {ArrayBuffer} key ArrayBuffer数据它会根据keySize来截取和补足0
+ * @param {ArrayBuffer} data 待解密的ArrayBuffer
+ * @param {string} mode ECB,CBC
+ * @param {ArrayBuffer} iv 固定是16位,不足会补齐0
+ * @param {number} keySize 对key的加密补位,也就是加密位数16为128,24为192,32为256
+ * @returns {number[]} 解密后的数据
+ */
+export function aesDecrypt2(key:ArrayBuffer,data : ArrayBuffer,mode:string = "ECB",iv:ArrayBuffer|null = null,keySize:number|null=null) : number[] {
+	const keyArray = key.toData()
+	const dataArray = data.toData()
+	const ivArray = (iv == null ? null :iv.toData()) as Data|null;
+	
+	const result = UniversalCryptoHelper.aesDecrypt2(input = dataArray, key = keyArray, mode = mode, iv = ivArray, keySize = (keySize==null?16:keySize!).toInt())
+	let resuitAr:number[] = result.bytes.map((el:UInt8):number=> NSNumber.from(new Int(el)))
+	return resuitAr
+}
+export function desEncrypt(key:string,data : string,mode:string = "ECB",iv:string|null = null) : string {
+	return UniversalCryptoHelper.desEncrypt(input = data,key = key,mode=mode,iv=iv);
+}
+export function desDecrypt(key:string,data : string,mode:string = "ECB",iv:string|null = null) : string {
+	return UniversalCryptoHelper.desDecrypt(input = data,key = key,mode=mode,iv=iv);
+}
+export function generateRSAKeyPair(keySize : number = 2048) : RSARANDOMKEY {
+	const crypt = UTSiOS.try(UniversalCryptoHelper.generateRSAKeyPair(keySize = keySize.toInt()),"?")
+	 
+	if(crypt==null){
+		return {
+			publicKey: "",
+			privateKey: "",
+		} as RSARANDOMKEY
+	}
+	return {
+		publicKey: crypt!.publicKey,
+		privateKey: crypt!.privateKey
+	} as RSARANDOMKEY
+}
+
+export function rsaEncrypt(publicKey:string,data : string) : string {
+	const crypt = UTSiOS.try(UniversalCryptoHelper.rsaEncrypt(data,publicKey = publicKey),"?")
+	// 	return UniversalCryptoHelper.rsaEncrypt(input = data,publicKey = publicKey);
+	if(crypt==null) return ""
+	return crypt!;
+}
+
+export function rsaDecrypt(privateKey:string,data : string) : string {
+	const crypt = UTSiOS.try(UniversalCryptoHelper.rsaDecrypt(data,privateKey = privateKey),"?")
+	if(crypt==null) return ""
+	// 	return UniversalCryptoHelper.rsaDecrypt(input = data,privateKey = privateKey);
+	return crypt!;
+}
+//返回的是hex字符串
+export function rc4Encrypt(key:string,data : string) : string {
+	return UniversalCryptoHelper.rc4Encrypt(data = data,key = key);
+}
+
+// key是hex字符
+export function rc4Decrypt(key:string,data : string) : string {
+	return UniversalCryptoHelper.rc4Decrypt(encryptedHex = data,key = key);
+}

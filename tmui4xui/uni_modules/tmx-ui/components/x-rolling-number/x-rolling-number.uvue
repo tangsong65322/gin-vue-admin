@@ -1,0 +1,177 @@
+<script lang="ts">
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit, getUnit } from "../../core/util/xCoreUtil.uts"
+	import { xAnimate } from '../../core/util/xAnimate.uts';
+	import { XANIMATE_OPIONS } from "../../interface";
+	import { SlotsType } from "vue"
+	import { xConfig } from "../../config/xConfig.uts"
+	/**
+	 * @name 数字翻滚 xRollingNumber
+	 * @description 是否小数点，取决与你的的endVal目标值，如果它带小数点，那动画也是相应带小数点。
+	 * @page /pages/index/rolling-number
+	 * @category 展示组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				listval: [] as string[],
+				oldvallist: [] as string[],
+				ani: null as null | xAnimate,
+				endValue: 0,
+				oldValue: 0,
+				targetValue: '0'
+			};
+		},
+		props: {
+			/**
+			 * 文字大小
+			 */
+			fontSize: {
+				type: String,
+				default: "32"
+			},
+			/**
+			 * 文字颜色
+			 */
+			fontColor: {
+				type: String,
+				default: "black"
+			},
+			/**
+			 * 暗黑时的文字颜色，如果为空取白
+			 */
+			darkFontColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 起始值
+			 */
+			startVal: {
+				type: Number,
+				default: 0
+			},
+			/**
+			 * 目标值（当前需要显示的值）
+			 */
+			endVal: {
+				type: Number,
+				default: 0
+			},
+			/**
+			 * 动画速率。控制翻滚动的动画效果。
+			 */
+			duration: {
+				type: Number,
+				default: 600
+			}
+		},
+		slots: Object as SlotsType<{
+			default : {
+				value : string
+			}
+		}>,
+		watch: {
+			endVal(newValue : number, oldValue : number) {
+				this.targetValue = oldValue.toString()
+				this.endValue = newValue
+				this.oldValue = oldValue
+
+				this.play()
+
+			}
+		},
+		computed: {
+
+			_fontSize() : string {
+				let fontSize = checkIsCssUnit(this.fontSize, xConfig.unit);
+				if (xConfig.fontScale == 1) return fontSize;
+				let sizeNumber = parseInt(fontSize)
+				if (isNaN(sizeNumber)) {
+					sizeNumber = 32
+				}
+				return (sizeNumber * xConfig.fontScale).toString() + getUnit(fontSize)
+			},
+			_fontColor() : string {
+				if (xConfig.dark == 'dark') {
+					if (this.darkFontColor != '') getDefaultColor(this.darkFontColor)
+					return "#FFFFFF"
+				}
+				return getDefaultColor(this.fontColor)
+			},
+			_dmit() : number {
+				let str = this.endVal.toString();
+				let pasa = str.indexOf(".")
+				let endStrNum = 0
+				if (pasa > -1) {
+					endStrNum = str.substring(pasa + 1).length
+				}
+				return endStrNum
+			}
+		},
+		mounted() {
+			let t = this;
+			t.endValue = t.endVal
+			this.ani = new xAnimate(null, {
+				frame(propress : number) {
+					t.targetValue = (propress * (t.endValue - t.oldValue) + t.oldValue).toFixed(t._dmit)
+				},
+				complete() {
+					t.targetValue = t.endValue.toFixed(t._dmit)
+				}
+			} as XANIMATE_OPIONS)
+
+			t.play()
+
+
+		},
+		beforeUnmount() {
+			this.ani?.stop()
+			this.ani = null;
+		},
+		methods: {
+			play() {
+					let t = this;
+				this.ani = new xAnimate(null, {
+					frame(propress : number) {
+						t.targetValue = (propress * (t.endValue - t.oldValue) + t.oldValue).toFixed(t._dmit)
+					},
+					complete() {
+						t.targetValue = t.endValue.toFixed(t._dmit)
+					}
+				} as XANIMATE_OPIONS)
+			
+				t.ani!.stop()
+				t.ani!.attr('run', '0', '100')
+				t.ani!.setDurations(t.duration)
+				t.ani!.play()
+			},
+			setClapNum(val : number) : string[] {
+				return val.toString().split("")
+			}
+		}
+	}
+</script>
+<template>
+	<view class="xRolling">
+		<!-- 
+		 @slot 默认插槽
+		 @prop {string} targetValue - 当前的值
+		 -->
+		<slot :value="targetValue">
+			<text :style="{fontSize:_fontSize,color:_fontColor}">{{targetValue}}</text>
+		</slot>
+	</view>
+</template>
+<style scoped>
+	.xRolling {
+		display: flex;
+		flex-direction: row;
+		flex-wrap: nowrap;
+		justify-content: center;
+	}
+</style>

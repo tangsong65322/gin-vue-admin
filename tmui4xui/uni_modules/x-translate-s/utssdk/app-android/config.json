@@ -1,0 +1,6 @@
+{
+  "minSdkVersion": "21",
+  "dependencies":[
+	  "com.google.mlkit:translate:17.0.3"
+	]
+}

@@ -1,0 +1,304 @@
+<script lang="ts">
+	import { PropType } from "vue";
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+
+	import { xTween } from "@/uni_modules/tmx-ui/index.uts"
+	import { xTweenAnimate, xTweenEventCallFunType} from "@/uni_modules/tmx-ui/interface.uts"
+	
+	/**
+	 * @name 动画 xAnimation
+	 * @page /pages/index/animation
+	 * @description 动画组件
+	 * @category 其它组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | x | ☑️ | 4.14+ | 1.0.0 |
+	 */
+	export default {
+		data() {
+			return {
+				element: null as Element | null,
+				id: "xAnimation" + getUid() as String,
+				playStatus: 'complete' as 'reset' | 'playing' | 'complete',
+				playFag: '',
+				tid: 0
+			}
+		},
+
+		emits: [
+			/**
+			 * 播放前执行
+			 */
+			'beforePlay',
+			/**
+			 * 播放完成执行
+			 */
+			'complete',
+			/**
+			 * 播放时触发
+			 */
+			'play',
+			/**
+			 * 同步控制播放参数
+			 * 等同v-model:control
+			 */
+			'update:control',
+			/**
+			 * 当前播放的状态
+			 * 等同vmodel:status
+			 * 它是单向输出的
+			 */
+			'update:status'],
+		props: {
+			/**
+			 * 是否自动播放
+			 */
+			autoPlay: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 动画播放的时间+50+5
+			 */
+			duration: {
+				type: Number,
+				default: 350
+			},
+			/**
+			 * 动画名称
+			 */
+			name: {
+				type: String as PropType<'fadeIn' | 'fadeOut' | 'zoomIn' | 'zoomOut' | 'left' | 'right' | 'top' | 'bottom'>,
+				default: 'fadeIn'
+			},
+			/**
+			 * 是否允许反转，如果允许反转
+			 * 播放当前动画后。再点播放，会反方向播放动画。接着再播放又是正常，这样反复。
+			 */
+			revert: {
+				type: Boolean,
+				default: true
+			},
+			/**
+			 * 自动监测是否播放。如果标志为play就开始播放动画，但
+			 * 如果动画在播放中这个值不会有任何响应，而且需要v-model:playing用法来双向绑定读取此属性
+			 * 你可以通过播放事件来确定修改此值。
+			 *  
+			 */
+			control: {
+				type: String as PropType<'play' | 'default'>,
+				default: 'default'
+			},
+			/**
+			 * 播放状态，只能用来读取此值，不可更改，使用时请v-model:status来读取动态的状态值
+			 *  
+			 */
+			status: {
+				type: String as PropType<'reset' | 'playing' | 'complete'>,
+				default: 'complete'
+			},
+		},
+		watch: {
+			control() {
+				if (this.playStatus == 'playing' || this.control != 'play') {
+
+					this.$emit('update:control', 'default')
+					return;
+				}
+				this.play()
+			}
+		},
+		computed: {
+			_animationFun() : string {
+				return xConfig.animationFun
+			}
+		},
+		mounted() {
+			let t = this;
+			this.resetStatusInitType();
+			this.tid = setTimeout(function () {
+				t.autoPlaySetFlex()
+				if (t.autoPlay) {
+
+					t.play();
+
+				}
+			}, 50);
+		},
+		beforeUnmount() {
+			clearTimeout(this.tid)
+		},
+		methods: {
+
+			resetStatusInitType() {
+				// ||this.playStatus == 'reset'
+				this.element = this.$refs["xAnimation"] as UniElement
+				if (this.element == null) return;
+				this.playStatus = 'reset'
+				this.$emit('update:status', 'reset')
+				// if(this.name=='fadeIn'||this.name=='fadeOut'){
+				// 	this.element!.style.setProperty("transition-property",'opacity')
+				// }else{
+				// 	this.element!.style.setProperty("transition-property",'transform')
+				// }
+				if (this.playFag == '') {
+					this.element!.style.setProperty("transition-duration", '0ms')
+					if (this.name == 'fadeIn') {
+						this.element!.style.setProperty("opacity", 0)
+					}
+					if (this.name == 'fadeOut') {
+						this.element!.style.setProperty("opacity", 1)
+					}
+					if (this.name == 'zoomIn') {
+						this.element!.style.setProperty("opacity", 0)
+						this.element!.style.setProperty("transform", 'scale(0.65)')
+					}
+					if (this.name == 'zoomOut') {
+						this.element!.style.setProperty("opacity", 1)
+						this.element!.style.setProperty("transform", 'scale(1)')
+					}
+					if (this.name == 'left') {
+						this.element!.style.setProperty("transform", 'translateX(1000%)')
+					}
+					if (this.name == 'right') {
+						this.element!.style.setProperty("transform", 'translateX(-100%)')
+					}
+					if (this.name == 'top') {
+						this.element!.style.setProperty("transform", 'translateY(-100%)')
+					}
+					if (this.name == 'bottom') {
+						this.element!.style.setProperty("transform", 'translateY(100%)')
+					}
+				}
+			},
+			autoPlaySetFlex() {
+				this.element = this.$refs["xAnimation"] as UniElement
+				if (this.element == null) return;
+				this.element!.style.setProperty("display", 'flex')
+			},
+			/**
+			 * 播放动画
+			 * @public
+			 */
+			play() {
+				this.element = this.$refs["xAnimation"] as UniElement
+				if (this.element == null || this.playStatus == 'playing') return;
+				if (this.playStatus != 'reset') {
+					this.resetStatusInitType()
+				}
+				/**
+				 * 播放前触发
+				 */
+				this.$emit('beforePlay')
+				this.playStatus = 'playing'
+				this.$emit('update:status', 'playing')
+				let t = this;
+				clearTimeout(this.tid)
+				//需要一个反应时间。
+				this.tid = setTimeout(function () {
+					/**
+					 * 播放时触发
+					 */
+					t.$emit('play')
+					if (t.playFag == '') {
+						t.element!.style.setProperty("transition-duration", t.duration.toString() + 'ms')
+						if (t.name == 'fadeIn') {
+							t.element!.style.setProperty("opacity", 1)
+						}
+						if (t.name == 'fadeOut') {
+							t.element!.style.setProperty("opacity", 0)
+						}
+						if (t.name == 'zoomIn') {
+							t.element!.style.setProperty("transform", 'scale(1)')
+							t.element!.style.setProperty("opacity", 1)
+						}
+						if (t.name == 'zoomOut') {
+							t.element!.style.setProperty("transform", 'scale(0.65)')
+							t.element!.style.setProperty("opacity", 0)
+						}
+						if (t.name == 'left' || t.name == 'right') {
+							t.element!.style.setProperty("transform", 'translateX(0%)')
+						}
+
+						if (t.name == 'top' || t.name == 'bottom') {
+							t.element!.style.setProperty("transform", 'translateY(0%)')
+						}
+					} else {
+						t.element!.style.setProperty("display", 'flex')
+						t.element!.style.setProperty("transition-duration", t.duration.toString() + 'ms')
+						if (t.name == 'fadeIn') {
+							t.element!.style.setProperty("opacity", 0)
+						}
+						if (t.name == 'fadeOut') {
+							t.element!.style.setProperty("opacity", 1)
+						}
+						if (t.name == 'zoomIn') {
+							t.element!.style.setProperty("transform", 'scale(0.65)')
+							t.element!.style.setProperty("opacity", 0)
+						}
+						if (t.name == 'zoomOut') {
+							t.element!.style.setProperty("transform", 'scale(1)')
+							t.element!.style.setProperty("opacity", 1)
+						}
+						if (t.name == 'left') {
+							t.element!.style.setProperty("transform", 'translateX(100%)')
+						}
+						if (t.name == 'right') {
+							t.element!.style.setProperty("transform", 'translateX(-100%)')
+						}
+
+						if (t.name == 'top') {
+							t.element!.style.setProperty("transform", 'translateY(-100%)')
+						}
+						if (t.name == 'bottom') {
+							t.element!.style.setProperty("transform", 'translateY(100%)')
+						}
+					}
+
+				}, 5);
+			},
+			playEnd() {
+
+				if (this.playStatus != 'reset') {
+
+					this.playStatus = 'complete'
+					/**
+					 * 播放完成触发
+					 */
+					this.$emit('complete')
+					this.$emit('update:status', 'complete')
+					this.$emit('update:control', 'default');
+					if (this.revert) {
+						if (this.playFag == '') {
+							this.playFag = 'revert'
+						} else {
+							this.playFag = ''
+						}
+					}
+
+
+				}
+
+			}
+		}
+	}
+</script>
+<template>
+	<view ref="xAnimation"   @transitionend="playEnd" class="xAnimation" :id="id"
+		:style="{'transition-timing-function':_animationFun}">
+		<!--
+			默认插槽
+			@prop {object} status - 状态 {state:'reset'|'playing'|'complete',flag:'play'|'default'}
+		-->
+		<slot :status="{state:playStatus,flag:playFag}"></slot>
+	</view>
+</template>
+<style>
+	.xAnimation {
+		display: none;
+		transition-property: opacity, transform;
+		transition-duration: 350ms;
+	}
+</style>

@@ -1,0 +1,144 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+	
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">轮播 Swiper</x-text>
+			<x-text  color="#999999" >注意：本组件非官方的swiper轮播封装，而是作者设计并开发的轮播,后续拓展更为自由</x-text>
+		</x-sheet>
+
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b">横向</x-text>
+			<x-text  class="mb-16" color="#999999" >拉到最后一个继续向左拉会有惊喜！！！</x-text>
+			<x-swiper v-model="activeIndex" @change="change" :loop="false" :showLastView="true"  height="150" :autoPlay="true" >
+				<x-swiper-item  v-for="(item,index) in list" :order="index" :key="index">
+					<x-image @click="clicktest(index)" :preview="false" height="150" :src="item.image"></x-image>
+				</x-swiper-item>
+			</x-swiper>
+			<x-text font-size="18" class=" text-weight-b my-16">纵向</x-text>
+			<x-swiper v-model="activeIndex" :vertical="true" height="150" :autoPlay="true" >
+				<x-swiper-item  v-for="(item,index) in list" :order="index" :key="index">
+					<x-image @click="clicktest(index)" :preview="false" height="150" :src="item.image"></x-image>
+				</x-swiper-item>
+			</x-swiper>
+			
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b ">单边向左边露出</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-swiper height="150" :space="5" model="spaceOnly" :spaceOffset="20" :autoPlay="true" >
+				<x-swiper-item v-for="(item,index) in 4" :order="index" :key="index">
+					<x-image :preview="false"   height="150" :src="`https://store.tmui.design/api_v2/public/random_picture?random=12${index}73`"></x-image>
+				</x-swiper-item>
+				
+			</x-swiper>
+		
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b ">两边露出</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-swiper  :modelValue="1" height="150" :space="10" width="325" model="space" :spaceOffset="25" :autoPlay="false" >
+				<x-swiper-item v-for="(item,index) in 5" :order="index" :key="index">
+					<x-image :preview="false"  width="325"  height="150" :src="`https://store.tmui.design/api_v2/public/random_picture?random=12${index}3`"></x-image>
+				</x-swiper-item>
+				
+			</x-swiper>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b ">向里堆叠</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-swiper :modelValue="1" height="150" :space="10" model="spaceIn" :spaceOffset="25" :autoPlay="false" >
+				<x-swiper-item v-for="(item,index) in 5" :order="index" :key="index">
+					<x-image :preview="false"   height="150" :src="`https://store.tmui.design/api_v2/public/random_picture?random=12${index}3`"></x-image>
+				</x-swiper-item>
+				
+			</x-swiper>
+		</x-sheet>
+		
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">自定义插槽指示</x-text>
+			<x-text  color="#999999" >如果你想了解如何自定义,请参考示例修改，插槽中已经返回了你所需参数。可以随意制作你想要样式</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-swiper  height="150":autoPlay="true" >
+				
+				<x-swiper-item v-for="(item,index) in 5" :order="index" :key="index">
+					<x-image :preview="false"   height="150" :src="`https://store.tmui.design/api_v2/public/random_picture?random=12${index}3`"></x-image>
+				</x-swiper-item>
+				
+				<template #dot="{current,len}">
+					<view class="flex flex-row flex-center">
+						<view v-for="(item,index) in (len as number)" :key="index"
+						class="dotTest mx-5 round-16 flex flex-row flex-center" 
+						:style="{backgroundColor:current==index?'rgb(0, 115, 255)':'rgba(255,255,255,0.5)'}">
+							<text :style="{color:current==index?'white':'rgba(255,255,255,1)',fontSize:'9px'}">{{index+1}}</text>
+						</view>
+					</view>
+				</template>
+			</x-swiper>
+		</x-sheet>
+		
+	
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	type itemType = {
+		image:string,
+		title:string
+	}
+	export default {
+		data() {
+			return {
+				testCount:5,
+				activeIndex:0,
+				list:[] as itemType[]
+			};
+		},
+		onLoad(){
+			let t=  this
+			setTimeout(function() {
+				t.list = [
+					{image:'https://store.tmui.design/api_v2/public/random_picture?random=12',title:"1"} as itemType,
+					{image:'https://store.tmui.design/api_v2/public/random_picture?random=162',title:"1"} as itemType,
+					{image:'https://store.tmui.design/api_v2/public/random_picture?random=962',title:"1"} as itemType,
+					{image:'https://store.tmui.design/api_v2/public/random_picture?random=962',title:"1"} as itemType,
+					{image:'https://store.tmui.design/api_v2/public/random_picture?random=962',title:"1"} as itemType,
+				] as itemType[]
+			
+			}, 1000);
+		},
+		methods:{
+			change(page:number){
+				console.log('change',page,'***')
+			},
+			clicktest(page:number){
+				let t = this;
+				console.log('click',page,'+++')
+				// uni.previewImage({
+				// 	current:t.list[page].image,
+				// 	urls:t.list.map((el:itemType):string=>el.image)
+				// })
+				
+			}
+		}
+	}
+</script>
+
+<style lang="scss">
+.dotTest{
+	width:16px;
+	height:16px;
+}
+</style>

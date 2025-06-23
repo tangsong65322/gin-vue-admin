@@ -1,0 +1,1140 @@
+<script lang="ts">
+	import { PropType } from "vue"
+	import { getUid, rpx2px } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { SWIPER_ITEM, POSITON, SIZE } from "../x-swiper/interface.uts"
+	type DICR = "none"|"left"|"right"|"bottom"|"up"
+	/**
+	 * @name 轮播 xSwiper
+	 * @description 注意：本组件非官方的swiper轮播的封装，而是作者设计并开发的轮播，因此有些使用上的区别，请仔细看文档。
+	 * 之所以要重新设计轮播，是为了后期的功能扩展。当前的一些功能已经比官方的还更好。
+	 * 比如支持阻尼动效的设计，动效函数的设置。临界位置回弹的设置。指示点位置的偏移设置（这点非常有用，然官方不支持，而我的由于是自行开发的可以随意设置）
+	 * 如果你有更多需求，你只需要阅读源码后自行扩展更多的功能。
+	 * 内部只能放置子组件x-swiper-item
+	 * @page /pages/index/swiper
+	 * @category 展示组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				id: ("xSwiperItem-" + getUid()) as string,
+				parentId: ("xSwiperParent-" + getUid()) as string,
+				status: 'runing' as 'runing' | 'pause',
+				/** 当前操作结束后的方向 */
+				dirs: "none" as DICR,
+				/** 记录鼠标起始时的滑动位置。含元素的左和上*/
+				swiperTouchMove: {
+					x: 0,
+					y: 0
+				} as POSITON,
+				/** 记录鼠标起始时的滑动位置。不含元素的左和上*/
+				touchStartPos: {
+					x: 0,
+					y: 0
+				} as POSITON,
+				/**实时位置 */
+				nowPos: {
+					x: 0,
+					y: 0
+				} as POSITON,
+
+				/** 当前所在的索引位置 */
+				nowCureentIndex: 0,
+				/** 手指是否在触摸中 */
+				isMoveing: false,
+				/** 当前触摸开始与结束时的滑动距离 */
+				swiperDiff: 0,
+				/** 容器尺寸信息 */
+				containerSize: {
+					width: 0,
+					height: 0
+				} as SIZE,
+
+				list: [] as SWIPER_ITEM[],
+
+				startLeft: 0,
+				startTop: 0,
+				tid: 0,
+				//是否在反转播放中。
+				isResert: false,
+				resizeObserver: null as UniResizeObserver | null,
+				dateIdff:0,
+				key:1,
+				tid2:12,
+				isLastingAniMoveing:false,
+				_pos_x:0,
+				_pos_y:0,
+				isSwiper:'none',
+				isReady:false
+			}
+		},
+		emits: [
+			/**
+			 * 切换变化时触发
+			 * @param {number} index - 当前的索引值。
+			 */
+			'change',
+			/**
+			 * 组件被点击时触发。
+			 * @param {number} index - 当前的索引值。
+			 */
+			'click',
+			/**
+			 * 当用户拖拉时，拖到最右侧最后一个后，还继续拉，拉不动时触发
+			 * 这个有点像头条首页的视频推荐拉到最右时触发打开新视频页面的需求功能。
+			 */
+			'dragLastEnd',
+			'update:modelValue',
+		],
+		props: {
+			/**
+			 * 当前播放的索引值，可v-model动态更改。
+			 */
+			modelValue: {
+				type: Number,
+				default: 0
+			},
+			/**
+			 * 宽
+			 */
+			width: {
+				type: String,
+				default: "auto"
+			},
+			/**
+			 * 高是必填，不可为auto。
+			 */
+			height: {
+				type: String,
+				default: "150"
+			},
+			/**
+			 * 当滑动时小于此值，会回弹到原位。
+			 */
+			threshold: {
+				type: Number,
+				default: 30
+			},
+			/**
+			 * 当拖动时，如果已经达到了左右临界值时
+			 * 可以继续拖拉时的缓动阻尼值
+			 * 越小，拖的越费劲,1是不限制可以流畅的拖动
+			 */
+			damping: {
+				type: Number,
+				default: 0.1
+			},
+			/**
+			 * 当打开或者松开时的动画时间
+			 */
+			animationDuration: {
+				type: Number,
+				default: 350
+			},
+			/**
+			 * 露边出来的距离，px单位
+			 */
+			spaceOffset: {
+				type: Number,
+				default: 0
+			},
+			/**
+			 * 露边出来的间隙，px单位
+			 */
+			space: {
+				type: Number,
+				default: 0
+			},
+			/**
+			 * space 两边露出，只对横向有效
+			 * spaceIn 两边露出，但它是被叠在了视图中的下方，只对横向有效
+			 * spaceOnly 单边向左露出
+			 * card 左右滑动切换，使用了这个就不要去设置space,spaceOffset
+			 * 空值正常普通轮播
+			 */
+			model:{
+				type:String,
+				default:''
+			},
+			
+			/**
+			 * 缓动动画函数。
+			 * 见：https://easings.net/zh-cn
+			 */
+			animationFun: {
+				type: String,
+				default: "cubic-bezier(0, 0.55, 0.45, 1)"
+			},
+			/**
+			 * 轮播时的间隔
+			 */
+			duration: {
+				type: Number,
+				default: 5000
+			},
+			/**
+			 * 是否竖向
+			 */
+			vertical: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 圆角
+			 */
+			round: {
+				type: String,
+				default: "10"
+			},
+			/**
+			 * 指示点的颜色
+			 */
+			dotColor: {
+				type: String,
+				default: "rgba(255,255,255,0.5)"
+			},
+			/**
+			 * 指示点的激活色
+			 */
+			dotActiveColor: {
+				type: String,
+				default: "rgba(255,255,255,1)"
+			},
+			/**
+			 * 指示点距离边界的位置
+			 */
+			dotOffset: {
+				type: String,
+				default: "15"
+			},
+			/**
+			 * 指示点大小。
+			 */
+			dotSize: {
+				type: String,
+				default: "6"
+			},
+			/**
+			 * 是否显示指示
+			 */
+			showDot:{
+				type: Boolean,
+				default: true
+			},
+			/**
+			 * 是否开启自动播放。
+			 */
+			autoPlay: {
+				type: Boolean,
+				default: true
+			},
+			/**
+			 * 当你拖拉时，拉到最右侧/底部时
+			 * 是否需要返回到第一个视频继续可以拖拉。
+			 */
+			loop:{
+				type:Boolean,
+				default:true
+			},
+			/**
+			 * 当拉到最右侧时继续左拉时，是否显示
+			 * 右侧自定的内容。具体见demo,
+			 * 要使用此尽可能的关闭loop，并且配合事件dragLastEnd来达到业务需求。
+			 */
+			showLastView:{
+				type:Boolean,
+				default:false
+			},
+			/**
+			 * 是否开启缩放动画，
+			 * 即前后显示时，有一个缩放的动画过程，如果不开启就是平缓的切换。
+			 * 如果后期支持3d样式，也可后期定义更多动画。目前如果你有需要
+			 * 你可以在子节点中改变源码中的动画效果过程，不局限于缩放效果。
+			 */
+			showScalAni: {
+				type: Boolean,
+				default: false
+			}
+		},
+		slots: Object as SlotsType<{
+			dot : {
+				current : number,
+				len : number
+			},
+			dotV : {
+				current : number,
+				len : number
+			}
+		}>,
+		computed: {
+			_height() : string {
+				return checkIsCssUnit(this.height, xConfig.unit)
+			},
+			_width() : string {
+				return checkIsCssUnit(this.width,  xConfig.unit)
+			},
+			_round() : string {
+				return checkIsCssUnit(this.round,  xConfig.unit)
+			},
+			_dotColor() : string {
+				return getDefaultColor(this.dotColor)
+			},
+			_dotActiveColor() : string {
+				return getDefaultColor(this.dotActiveColor)
+			},
+
+			_dotOffset() : string {
+				return checkIsCssUnit(this.dotOffset,  xConfig.unit)
+			},
+			_autoPlay() : boolean {
+				return this.autoPlay
+			},
+			_dotSize() : number {
+				let p = parseInt(this.dotSize);
+				if (this.dotSize.lastIndexOf('rpx') > -1) {
+					p = rpx2px(p);
+				}
+				return Math.floor(p)
+			},
+			_showScalAni() : boolean {
+				return this.showScalAni
+			},
+			boxHeight():number{
+				
+				if(!this.vertical) return this.containerSize.height;
+				return this.containerSize.height*this.list.length
+			},
+			boxWidth():number{
+				if(this.vertical) return this.containerSize.width;
+				return this.containerSize.width*this.list.length
+			},
+			_modelValue():number{
+				return this.modelValue
+			},
+			_showDot():boolean{
+				return this.showDot
+			},
+			_containerSizeHeight():number{
+				return this.containerSize.height
+			}
+
+		},
+		watch: {
+			autoPlay() {
+				this.pause()
+				this.init(true)
+			},
+			list:{
+				deep:true,
+				handler(){
+					this.pause()
+					this.init(true)
+				}
+			},
+			modelValue(newvalue : number) {
+				if (newvalue == this.nowCureentIndex) return;
+				this.nowCureentIndex = newvalue;
+				this.pause()
+				this.init(false)
+			}
+		},
+		provide() {
+			return {
+				xSwiperRadius: this._round,
+				xSwipershowScalAni: this._showScalAni,
+				xSwiperSpace: this.space,
+				xSwiperSpaceOffset: this.spaceOffset,
+				xSwiperModel: this.model,
+				xSwiperLoop: this.loop,
+			}
+		},
+		mounted() {
+			
+			if (this.vertical) {
+				this.dirs = "up"
+			}
+			let t = this
+			// #ifdef APP
+			this.tid = setTimeout(function() {
+				t.getNodeInfo()
+			}, 200);
+			// #endif
+			// #ifdef WEB || MP
+			t.getNodeInfo()
+			// #endif
+			uni.$on('onHide',this.pause)
+			uni.$on('onShow',this.pauseInStart)
+		},
+		beforeUnmount() {
+			clearInterval(this.tid)
+			// uni.$off('onResize', this.resize)
+			uni.$off('onHide', this.pause)
+			uni.$off('onShow', this.pauseInStart)
+			this.resizeObserver?.disconnect()
+		},
+		/**
+		 * web端sdk在切换下面时,此组件在上页时,所有动画及资源会被干掉
+		 * 这是已知sdk的缺陷
+		 */
+		deactivated(){
+			// #ifdef WEB
+			clearInterval(this.tid)
+			uni.$off('onHide', this.pause)
+			uni.$off('onShow', this.pauseInStart)
+			this.resizeObserver?.disconnect()
+			// #endif
+		},
+		activated(){
+			// #ifdef WEB
+			if (this.vertical) {
+				this.dirs = "up"
+			}
+			let t = this
+			// #ifdef APP
+			this.tid = setTimeout(function() {
+				t.getNodeInfo()
+			}, 200);
+			// #endif
+			// #ifdef WEB || MP
+			t.getNodeInfo()
+			// #endif
+			uni.$on('onHide',this.pause)
+			uni.$on('onShow',this.pauseInStart)
+			// #endif
+		},
+		methods: {
+			pause(){
+				this.status = 'pause'
+				clearInterval(this.tid)
+			},
+			pauseInStart(){
+				this.init(false)
+			},
+			getPageLeftPos(page:number):number{
+				
+				let pg = Math.max(0,Math.min(this.list.length-1,page))
+				if(this.vertical){
+					return pg * this.containerSize.height * -1
+				}
+				return pg * this.containerSize.width * -1
+			},
+			gerRestHeight(){
+				let t = this;
+				clearTimeout(this.tid2)
+				t.tid2 = setTimeout(function() {
+					t.getNodeInfoNoInt()
+				}, 300);
+			},
+			resize(){
+				let t = this;
+				let ele = this.$refs["xSwiper"]
+				if (this.resizeObserver == null) {
+					this.resizeObserver = new UniResizeObserver((entries : Array<UniResizeObserverEntry>) => {
+					  entries.forEach(entry => {
+						if (entry.target == ele) {
+						 t.pause()
+						 t.getNodeInfo()
+						}
+					  })
+					})
+				}
+				
+				
+			},
+			init(isDefault:boolean) {
+				if(this.containerSize.width==0) return;
+				let t = this;
+				clearInterval(this.tid)
+				this.status = 'pause'
+				if(isDefault){
+					t.nowCureentIndex = Math.max(0,Math.min(this.list.length-1,this.modelValue))
+				}
+				let post = this.getPageLeftPos(this.nowCureentIndex);
+				this.pushArrayChildrenList(this.nowCureentIndex,-1);
+				
+				this.setStylePos(post,true)
+				
+				if(!this._autoPlay) return;
+				this.tid= setInterval(()=>{
+					let pgs = t.nowCureentIndex+(t.isResert?-1:1)
+					pgs = Math.max(0,pgs)
+					let anima = true
+					// if(pgs>=this.list.length-1){
+					// 	// pgs = 0
+					// 	// anima = false
+					// 	t.isResert = true;
+					// }else if(pgs==0){
+					// 	t.isResert = false;
+					// }
+					
+					if(pgs>=this.list.length){
+						pgs = 0
+						this.isLastingAniMoveing = true;
+					}
+					t.updateEvents(pgs)
+					t.nowCureentIndex = pgs
+					let pos = t.getPageLeftPos(pgs)
+				
+					t.setStylePos(pos,anima)
+					
+					t.status = 'runing'
+					
+					t.pushArrayChildrenList(t.nowCureentIndex,-1);
+					t.gerRestHeight();
+				},this.duration)
+			},
+			
+			updateEvents(index:number){
+				if(index == this.nowCureentIndex ) return;
+				this.$emit('change',index);
+				this.$emit('update:modelValue',index);
+				
+			},
+			pushAdd(item : SWIPER_ITEM) {
+				this.list.push(item)
+				this.pushArrayChildrenComs()
+				this.init(true)
+			},
+			delItem(id : string) {
+				if (this.list.length == 0) return;
+				let index : number = this.list.findIndex((el : SWIPER_ITEM) : boolean => el.id == id);
+				if (index > -1) {
+					this.list.splice(index, 1)
+				}
+				this.nowCureentIndex = 0
+				this.pushArrayChildrenList(this.nowCureentIndex,-1);
+				this.init(false)
+			},
+			pushArrayChildrenComs() {
+				if (this.list.length == 0) return;
+				this.list.forEach((el : SWIPER_ITEM) => {
+					el.ele.setConfig(this.containerSize)
+				})
+			},
+			pushArrayChildrenList(currentIndex:number,nextindex:number) {
+				if (this.list.length == 0) return;
+				try {
+					let ids = this.list.map((el : SWIPER_ITEM) : string => el.id);
+					let nowid = this.list[currentIndex].id;
+					let t = this;
+					this.list.forEach((el : SWIPER_ITEM) => {
+						el.ele.setList(ids, nowid)
+						
+						if(nextindex>-1){
+							let nextid = t.list[nextindex].id;
+							el.ele.setNextOrNext(nextid)
+							
+						}
+					})
+				} catch (e) {
+					//TODO handle the exception
+				}
+
+			},
+			getNodeInfo() {
+				let t = this;
+				
+				uni.createSelectorQuery().in(t)
+					.select(".xSwiper")
+					.boundingClientRect().exec((ret) => {
+						let nodeinfo = ret[0] as NodeInfo
+						t.containerSize.width = nodeinfo.width!
+						t.containerSize.height = nodeinfo.height!
+						t.pushArrayChildrenComs()
+						t.init(true)
+						t.key = t.key+1
+						t.isReady = true;
+					})
+			},
+			getNodeInfoNoInt() {
+				let t = this;
+				uni.createSelectorQuery().in(t)
+					.select(".xSwiper")
+					.boundingClientRect().exec((ret) => {
+						if(ret.length==0) return;
+						let nodeinfo = ret[0] as NodeInfo
+						t.containerSize.width = nodeinfo.width!
+						t.containerSize.height = nodeinfo.height!
+						t.pushArrayChildrenComs()
+						
+					})
+			},
+			dotClick(index : number) {
+				if(index!=this.nowCureentIndex){
+					this.updateEvents(index)
+					
+				}
+				
+				this.nowCureentIndex = index
+				
+				this.pause()
+				this.setStylePos(this.getPageLeftPos(index),true)
+				this.pauseInStart()
+				
+			},
+		
+			setStylePos(pos:number,isAni:boolean){
+				let node = uni.getElementById(this.id) as UniElement|null
+				
+				if(node==null) return;
+				if(isAni&&this.isLastingAniMoveing==false){
+					node!.style.setProperty('transition-duration',this.animationDuration+'ms')
+				}else{
+					node!.style.setProperty('transition-duration','0ms')
+				}
+				
+				if(this.vertical){
+					node!.style.setProperty('transform',`translateY(${pos}px)`)
+					this.startTop = pos
+				}else{
+					node!.style.setProperty('transform',`translateX(${pos}px)`)
+					this.startLeft = pos
+				}
+				
+				this.isLastingAniMoveing = false;
+			},
+			
+			async translateStart(x:number,y:number):Promise<any>{
+				let node = this.$refs['xSwiperWrap'] as UniElement
+				let parentNode = this.$refs['xSwiper'] as UniElement
+				let lastEndRightViewRef = this.$refs['lastEndRightView'] as UniElement | null;
+				if(lastEndRightViewRef!=null){
+					lastEndRightViewRef.style.setProperty('transition-duration',`0ms`)
+				}
+				let left = 0
+				let top = 0;
+				// #ifdef APP || WEB
+				let rect = parentNode.getBoundingClientRect();
+				left = rect.left
+				top = rect.top;
+				// #endif
+				// #ifdef MP
+				let rect2 = await parentNode.getBoundingClientRectAsync();
+				left = rect2.left
+				top = rect2.top;
+				// #endif
+				let pos = { x, y } as POSITON;
+				this.touchStartPos = pos;
+				this.swiperTouchMove = {
+					x: x - left,
+					y: y - top
+				} as POSITON
+				node.style.setProperty('transition-duration','0ms')
+				return Promise.resolve(true)
+			},
+			
+			// 获取当前手势方向。
+			getDICT(x:number,y:number):DICR{
+				if(x==y&&x==0) return "none"
+				let dicr:DICR = "none"
+				if(Math.abs(x)>=Math.abs(y)){
+					if(x>0){
+						dicr = "left"
+					}else{
+						dicr = "right"
+					}
+				}
+				if(Math.abs(x)<Math.abs(y)){
+					if(y>0){
+						dicr = "up"
+					}else{
+						dicr = "bottom"
+					}
+				}
+				return dicr
+			},
+			
+			// 横向滚动时的左右拖拉.
+			setHorizontalSwiper(x:number,y:number){
+				let node = this.$refs['xSwiperWrap'] as UniElement
+				let lastEndRightViewRef = this.$refs['lastEndRightView'] as UniElement|null
+				let maxwidth = this.containerSize.width * (this.list.length - 1);
+				
+				//差值,起点与当前点之间的差值。
+				let diff_x = this.touchStartPos.x - x
+				// let diff_y = this.touchStartPos.y - y
+				// let dirc:DICR = this.getDICT(diff_x,diff_y)
+				
+				let _x = -diff_x+this.startLeft
+				
+				if(_x>0){
+					 _x = _x* (this.damping)
+				}
+				let rightViewDiffx = 0
+				if(_x<maxwidth*-1&&_x<0){
+					const maxPullValue = maxwidth*-1;
+					const decayRate = 1-this.damping; // 衰减率，越小则越接近限制时增加越慢
+					_x = _x + (maxPullValue - _x) * decayRate
+					
+					rightViewDiffx = maxPullValue-_x
+				}
+			
+				if(lastEndRightViewRef!=null){
+					lastEndRightViewRef.style.setProperty('transform',`translateX(${rightViewDiffx*-1}px)`)
+				}
+				node.style.setProperty('transform',`translateX(${_x}px)`)
+			
+				this.nowPos.x = _x;
+				
+			},
+			// 竖向滚动时的左右拖拉.
+			setVerticalSwiper(x:number,y:number){
+				let node = this.$refs['xSwiperWrap'] as UniElement
+				let maxheight = this.containerSize.height * (this.list.length - 1);
+				
+				//差值,起点与当前点之间的差值。
+				let diff_x = this.touchStartPos.x - x
+				let diff_y = this.touchStartPos.y - y
+				let dirc:DICR = this.getDICT(diff_x,diff_y)
+				
+				
+				let _x = -diff_x+this.startLeft
+				
+				let _y = -diff_y+this.startTop
+				
+				if(_y>0){
+					 _y = _y* (this.damping)
+				}
+				if(_y<maxheight*-1&&_y<0){
+					const maxPullValue = maxheight*-1;
+					const decayRate = 1-this.damping; // 衰减率，越小则越接近限制时增加越慢
+					_y = _y + (maxPullValue - _y) * decayRate
+				}
+				
+				
+				node.style.setProperty('transform',`translateY(${_y}px)`)
+				// this.touchStartPos.x = _x
+				this.nowPos.y = _y;
+				
+			},
+			translateMove(x:number,y:number){
+				
+				if(!this.vertical){
+					this.setHorizontalSwiper(x,y)
+				}else{
+					this.setVerticalSwiper(x,y)
+				}
+				
+			},
+			// 获取当前滚动页数
+			getPageByX(x:number,y:number,realLeftx:number):number{
+				let maxwidth = this.containerSize.width * (this.list.length - 1);
+				let minwidth = 0
+				
+				if(realLeftx>minwidth){
+					return 0;
+				}else if(this.nowPos.x<maxwidth*-1){
+					return this.list.length - 1
+				}
+				
+				let page = Math.floor(Math.abs(realLeftx)/this.containerSize.width)
+				page = Math.max(0,Math.min(page,this.list.length - 1))
+				// 如果没有跨页产生不了滚动页，就可以根据滑动的距离判断回位还是主动翻页。
+				if(this.nowCureentIndex == page){
+					let diffx = x - this.touchStartPos.x
+					let diffy = y - this.touchStartPos.x
+					let dirc = this.getDICT(diffx,diffy)
+				
+					if(x>0&&Math.abs(diffx)>this.threshold){
+						page+=1
+					}else if(x<0&&Math.abs(diffx)>this.threshold){
+						page-=1
+					}
+					
+				}
+				page = Math.max(0,Math.min(page,this.list.length - 1))
+				return page;
+			},
+			// 获取当前滚动页数
+			getPageByY(x:number,y:number,realLeftx:number):number{
+				let maxwidth = this.containerSize.height * (this.list.length - 1);
+				let minwidth = 0
+				
+				if(realLeftx>minwidth){
+					return 0;
+				}else if(this.nowPos.x<maxwidth*-1){
+					return this.list.length - 1
+				}
+				
+				let page = Math.floor(Math.abs(realLeftx)/this.containerSize.height)
+				page = Math.max(0,Math.min(page,this.list.length - 1))
+				// 如果没有跨页产生不了滚动页，就可以根据滑动的距离判断回位还是主动翻页。
+				if(this.nowCureentIndex == page){
+					let diffx = x - this.touchStartPos.x
+					let diffy = y - this.touchStartPos.x
+					let dirc = this.getDICT(diffx,diffy)
+					
+					if(y>0&&Math.abs(diffy)>this.threshold){
+						page+=1
+					}else if(y<0&&Math.abs(diffy)>this.threshold){
+						page-=1
+					}
+					
+				}
+				page = Math.max(0,Math.min(page,this.list.length - 1))
+				return page;
+			},
+			setHorizontalSwiperMend(x:number,y:number){
+				
+				let page = this.getPageByX(x,y,this.nowPos.x)
+				if(this.nowCureentIndex == page&&page!=0){
+					if(this.loop){
+						page = 0
+					}
+					/**
+					 * 触发最后一个事件。
+					 */
+					this.$emit('dragLastEnd',page);
+					this.isLastingAniMoveing = true;
+				}
+				
+				if(this.isSwiper!='swiper'){
+					page = this.nowCureentIndex;
+				}
+				
+				if(this.nowCureentIndex != page){
+					this.updateEvents(page)
+					this.nowCureentIndex = Math.abs(page)
+					this.pushArrayChildrenList(this.nowCureentIndex,-1)
+				}
+				
+				this.setStylePos(this.getPageLeftPos(page),true)
+				
+				this.gerRestHeight();
+				let lastEndRightViewRef = this.$refs['lastEndRightView'] as UniElement|null
+				if(lastEndRightViewRef!=null){
+					lastEndRightViewRef.style.setProperty('transition-duration',`${0}ms`)
+					lastEndRightViewRef.style.setProperty('transform',`translateX(0px)`)
+				}
+			},
+			setVerticalSwiperMend(x:number,y:number){
+				let page = this.getPageByY(x,y,this.nowPos.y)
+				
+				if(this.nowCureentIndex == page&&page!=0){
+					if(this.loop){
+						page = 0
+					}
+					/**
+					 * 触发最后一个事件。
+					 */
+					this.$emit('dragLastEnd',page);
+					this.isLastingAniMoveing = true;
+				}
+				if(this.isSwiper!='swiper'){
+					page = this.nowCureentIndex;
+				}
+				if(this.nowCureentIndex != page){
+					this.updateEvents(page)
+					this.nowCureentIndex = Math.abs(page)
+					this.pushArrayChildrenList(this.nowCureentIndex,-1)
+				}
+				this.setStylePos(this.getPageLeftPos(page),true)
+				this.gerRestHeight();
+			},
+			swiperClick(currentPageIn:number|null=null){
+				if(this.isLastingAniMoveing) return;
+				this.updateEvents(currentPageIn!)
+				this.nowCureentIndex = currentPageIn!
+				this.setStylePos(this.getPageLeftPos(this.nowCureentIndex),true)
+				this.pushArrayChildrenList(this.nowCureentIndex,-1)
+				/**
+				 * 点击事件
+				 */
+				this.$emit('click',this.nowCureentIndex)
+			},
+			mStart(evt : UniTouchEvent,currentPageIn:number|null=null) {
+				this.pause()
+				this.dateIdff = Date.now()
+				if(evt.changedTouches.length==0) return;
+				this.translateStart(evt.changedTouches[0].clientX,evt.changedTouches[0].clientY)
+				this.isMoveing = true;
+				this._pos_x = evt.touches[0].clientX
+				this._pos_y = evt.touches[0].clientY
+				this.isSwiper = 'none'
+				
+			},
+			mMove(evt : UniTouchEvent,currentPageIn:number|null=null) {
+				this.pause()
+				if(!this.isMoveing) return;
+				if(evt.changedTouches.length==0) return;
+				const diffX = this._pos_x - evt.changedTouches[0].clientX
+				const diffY = this._pos_y - evt.changedTouches[0].clientY
+				const isHorizontal = Math.abs(diffX) > Math.abs(diffY)
+				const isVorizontal = Math.abs(diffX) < Math.abs(diffY)
+				// 判断是否有明显的方向
+				const hasDirection = Math.max(Math.abs(diffX),Math.abs(diffY)) > 3
+				if(hasDirection && this.isSwiper == 'none'){
+					if(!this.vertical){
+						if(isHorizontal){
+							this.isSwiper = 'swiper'
+						} else {
+							// 垂直滑动，禁用左滑
+							this.isSwiper = 'off'
+						}
+					}else{
+						if(!isHorizontal){
+							this.isSwiper = 'swiper'
+						} else {
+							// 垂直滑动，禁用左滑
+							this.isSwiper = 'off'
+						}
+					
+					}
+				}
+				
+				// 只有在启用左滑状态下才执行滑动
+				if (this.isSwiper == 'swiper') {
+					evt.preventDefault()
+					evt.stopPropagation()
+					this.translateMove(evt.changedTouches[0].clientX,evt.changedTouches[0].clientY)
+				}
+			},
+			
+			mEnd(evt : UniTouchEvent,currentPageIn:number|null=null) {
+				this.isMoveing = false;
+				this.pause()
+				let t = this;
+				if(this._autoPlay){
+					this.tid = setTimeout(function() {
+						t.pauseInStart()
+					}, this.animationDuration);
+				}
+				
+				if(!this.vertical){
+					this.setHorizontalSwiperMend(evt.changedTouches[0].clientX,evt.changedTouches[0].clientY);
+				}else{
+					this.setVerticalSwiperMend(evt.changedTouches[0].clientX,evt.changedTouches[0].clientY);
+				}
+				
+			},
+			// #ifdef WEB
+			mmStart(evt:UniMouseEvent,currentPageIn:number|null=null){
+				this.pause()
+				this.dateIdff = Date.now()
+				this.translateStart(evt.clientX,evt.clientY)
+				this.isMoveing = true;
+				this._pos_x = evt.clientX
+				this._pos_y = evt.clientY
+				this.isSwiper = 'none'
+			},
+			mmMove(evt:UniMouseEvent,currentPageIn:number|null=null){
+				this.pause()
+				if(!this.isMoveing) return;
+				const diffX = this._pos_x - evt.clientX
+				const diffY = this._pos_y - evt.clientY
+				const isHorizontal = Math.abs(diffX) > Math.abs(diffY)
+				// 判断是否有明显的方向
+				const hasDirection = Math.max(Math.abs(diffX),Math.abs(diffY)) > 3
+				if(hasDirection && this.isSwiper == 'none'){
+					if(!this.vertical){
+						if(isHorizontal){
+							this.isSwiper = 'swiper'
+						} else {
+							// 垂直滑动，禁用左滑
+							this.isSwiper = 'off'
+						}
+					}else{
+						if(!isHorizontal){
+							this.isSwiper = 'swiper'
+						} else {
+							// 垂直滑动，禁用左滑
+							this.isSwiper = 'off'
+						}
+					
+					}
+				}
+				
+				// 只有在启用左滑状态下才执行滑动
+				if (this.isSwiper == 'swiper') {
+					evt.preventDefault()
+					evt.stopPropagation()
+					this.translateMove(evt.clientX,evt.clientY)
+				}
+			
+			},
+			mmEnd(evt:UniMouseEvent,currentPageIn:number|null=null){
+				this.isMoveing = false;
+				this.pause()
+				let t = this;
+				if(this._autoPlay){
+					this.tid = setTimeout(function() {
+						t.pauseInStart()
+					}, this.animationDuration);
+				}
+				
+				if(!this.vertical){
+					this.setHorizontalSwiperMend(evt.clientX,evt.clientY);
+				}else{
+					this.setVerticalSwiperMend(evt.clientX,evt.clientY);
+				}
+			}
+			
+			// #endif
+		},
+	}
+</script>
+<template>
+	<view 
+		
+		ref="xSwiper" class="xSwiper "
+		:style="{height:_height,width:_width,borderRadius:_round}"
+		>
+		<view 
+			
+			:id="id" 
+			ref="xSwiperWrap" 
+			class="xSwiperWrap" 
+			:class="[vertical?'xSwiperV':'xSwiperH']" 
+			:style="{
+			width:boxWidth+'px',
+			height:boxHeight+'px',
+			borderRadius:_round
+			}">
+			
+			
+			<template v-if="isReady">
+				<!--
+				 @slot 插槽内只允许放其子节点x-swiper-item
+				 -->
+				<slot></slot>
+			</template>
+			
+		</view>
+		<view v-if="showLastView" ref="lastEndRightView" class="lastEndRightView">
+			<slot name="lastView">
+				<view style="width: 20px;margin-left: 5px;">
+					<x-text >不要再拉了</x-text>
+				</view>
+			</slot>
+		</view>
+
+		<view v-if="vertical&&_showDot" class="xSwiperDotV" :style="{right:_dotOffset}" @clik.stop="">
+			<!-- 
+			@slot 竖向指示插槽,可完全自定义指示样式
+			@prop {number} current - 当前的索引
+			@prop {number} len - 总项目数量
+			 -->
+			<slot name="dotV" :current="nowCureentIndex" :len="list.length">
+				<view @click.stop="dotClick(index)" v-for="(item,index) in list" :key="index" class="xSwiperDotItemV"
+					:style="{
+					height:nowCureentIndex==index?(_dotSize*3)+'px':_dotSize+'px',
+					width:_dotSize+'px',
+					backgroundColor:nowCureentIndex==index?_dotActiveColor:_dotColor,
+					'transition-timing-function':animationFun
+				}"></view>
+			</slot>
+
+		</view>
+		<view v-if="!vertical&&_showDot" class="xSwiperDotH" :style="{bottom:_dotOffset}">
+			<!--
+			@slot 横向指示插槽,可完全自定义指示样式
+			@prop {number} current - 当前的索引
+			@prop {number} len - 总项目数量
+			 -->
+			<slot name="dot" :current="nowCureentIndex" :len="list.length">
+				<view v-for="(_item,index) in list" :key="index" @click.stop="dotClick(index)" class="xSwiperDotItemH"
+					:style="{
+					width:nowCureentIndex==index?(_dotSize*3)+'px':_dotSize+'px',
+					height:_dotSize+'px',
+					backgroundColor:nowCureentIndex==index?_dotActiveColor:_dotColor,
+					'transition-timing-function':animationFun
+				}"></view>
+			</slot>
+
+		</view>
+	</view>
+</template>
+<style scoped>
+	.lastEndRightView{
+		height:100%;
+		width:80px;
+		right: -80px;
+		position:absolute;
+		z-index: 8;
+		transition-duration: 0ms;
+		transition-property: transform;
+		transition-timing-function: cubic-bezier(.42, .38, .15, .93);
+	}
+	.xSwiper {
+		transition-duration: 350ms;
+		transition-property: height;
+		transition-timing-function: cubic-bezier(.42, .38, .15, .93);
+		position: relative;
+		overflow: hidden;
+	}
+
+	.xSwiperH {
+		display: flex;
+		flex-direction: row;
+	}
+
+	.xSwiperV {
+		display: flex;
+		flex-direction: column;
+		
+	}
+
+	.xSwiperWrap {
+		display: flex;
+		transform:translate(0px);
+		transition-property: transform;
+		transition-duration: 0ms;
+		position: relative;
+		/* pointer-events: none; */
+		transition-timing-function: linear;
+		/* #ifdef WEB */
+		cursor: grab;
+		/* #endif */
+		overflow: hidden;
+	}
+
+	.xSwiperDotH {
+		position: absolute;
+		height: 32px;
+		width: 100%;
+		display: flex;
+		flex-direction: row;
+		align-items: flex-end;
+		justify-content: center;
+		z-index: 9;
+		pointer-events: none;
+	}
+
+	.xSwiperDotItemH {
+		width: 6px;
+		height: 6px;
+		margin: 0px 3px;
+		transition-property: width;
+		transition-duration: 300ms;
+		border-radius: 8px;
+		/* pointer-events: auto; */
+	}
+
+	.xSwiperDotV {
+		position: absolute;
+		height: 100%;
+		width: 30px;
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
+		justify-content: center;
+		z-index: 9;
+		pointer-events: none;
+	}
+
+	.xSwiperDotItemV {
+		width: 6px;
+		height: 6px;
+		margin: 5px 0rpx;
+		transition-property: height;
+		transition-duration: 300ms;
+		border-radius: 8px;
+		z-index: 9;
+	}
+</style>

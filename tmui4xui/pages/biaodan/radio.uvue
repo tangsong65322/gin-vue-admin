@@ -1,0 +1,146 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">单选框 xRadio</x-text>
+			<x-text  color="#999999" >
+				由于uniappx3.98不支持联合类型推断，因此选中和未选中值只能是string，待后续官方兼容类型推断
+				允许单个使用，与checkbox无异。组合使用时只能选一个。
+			</x-text>
+		</x-sheet>
+		<x-loading v-if="loading"></x-loading>
+		<view v-if="!loading">
+
+			<x-sheet class="flex flex-row">
+				
+				<x-radio label="苹果"></x-radio>
+				<x-radio color="error" unCheckColor="black" darkUnCheckColor="#999999" class="ml-12" label="香蕉"></x-radio>
+				<x-radio color="warn" model-value="1"  unCheckColor="error" class="ml-12" label="豆腐"></x-radio>
+				<x-radio :disabled="true"   color="success" unCheckColor="warn" class="ml-12" label="我被禁用"></x-radio>
+			</x-sheet>
+			<x-sheet>
+				<x-radio unCheckColor="primary" >
+					<template #label><x-text >由于uniappx3.98不支持联合类型推断，因此选中和未选中值只能是string，待后续官方兼容类型推断</x-text></template>
+				</x-radio>
+				<x-radio color="error" unCheckColor="error"  class="mt-16">
+					<template #label><x-text >由于uniappx3.98不支持联合类型推断，因此选中和未选中值只能是string，待后续官方兼容类型推断</x-text></template>
+				</x-radio>
+				<x-radio :only-checked="true" color="error" unCheckColor="error"  class="mt-16">
+					<template #label><x-text >单个使用,设置选中后不允许取消,点我!</x-text></template>
+				</x-radio>
+				<x-radio-group direction='column'>
+					<x-radio color="error" unCheckColor="error"  class="mt-16">
+						<template #label>
+							<view style="width: 99%;">
+								<x-text >由于uniappx3.98不支持联合类型推断，因此选中和未选中值只能是string，待后续官方兼容类型推断</x-text>
+							</view>
+						</template>
+					</x-radio>
+				</x-radio-group>
+				
+			</x-sheet>
+			<x-sheet>
+				<x-text font-size="18" class=" text-weight-b mb-8">通过插槽完全自定样式</x-text>
+				<x-text color="#999999" >不需要再引入其它变量，可通过插槽变量控制样式</x-text>
+			</x-sheet>
+			<x-sheet>
+				<x-radio :hidden-checkbox="true">
+					<template #label="{checked,value}">
+						<x-sheet :margin="['0']" :color="checked?'primary':'info'"
+							class="flex flex-row flex-row-center-start">
+							<x-radio :model-value="value" color="warn"></x-radio>
+							<x-text :class="[checked?'text-white':'text-black']" >{{checked}}点击我来切换选中</x-text>
+						</x-sheet>
+					</template>
+				</x-radio>
+
+				<x-radio :hidden-checkbox="true">
+					<template #label="{checked,value}">
+						<x-sheet :margin="['0','16','0','0']" :color="checked?'success':'info'"
+							class="flex flex-row flex-row-center-start">
+							<x-radio :model-value="value" :color="checked?'warn':'error'"></x-radio>
+							<x-text :class="[checked?'text-white':'text-black']" >{{checked}}点击我来切换选中</x-text>
+						</x-sheet>
+					</template>
+				</x-radio>
+
+			</x-sheet>
+			<x-sheet>
+				<x-text font-size="18" class=" text-weight-b">修改选中的图标</x-text>
+			</x-sheet>
+			<x-sheet class="flex flex-row">
+				<x-radio model-value="1" icon="check-double-line" label="苹果"></x-radio>
+				<x-radio model-value="1" icon="thunderstorms-fill" color="error" class="ml-12"
+					label="香蕉"></x-radio>
+				<x-radio model-value="1" icon="flutter-fill" color="success" class="ml-12" label="香蕉"></x-radio>
+			</x-sheet>
+
+			<x-sheet>
+				<x-text font-size="18" class=" text-weight-b mb-8">单选框组 x-radio-group</x-text>
+				<x-text color="#999999" >使用时,x-radio只能是x-radio-group的直接子节点</x-text>
+				<x-text color="#999999" >{{checkbox}},选项组时value是唯一值，不可重复。</x-text>
+			</x-sheet>
+			
+			<x-sheet>
+				<!-- 不允许全部取消,至少要选中一项. -->
+				<x-radio-group  v-model="checkbox">
+					<x-radio :onlyChecked="true" v-for="(item,index) in list" :key="index" class="pr-12 mb-12" :label="item.label"
+						:value="item.id"></x-radio>
+				</x-radio-group>
+				<x-button :block="true" @click="checkbox = '4'">赋值4</x-button>
+			</x-sheet>
+			
+			<x-sheet>
+				<x-radio-group v-model="checkbox" direction="column">
+					<view hover-class="opacity-5" :hover-stay-time="100" @click="checkbox = item.id" v-for="(item,index) in list" :key="index" class="flex flex-row flex-row-center-between">
+						<x-text>{{item.label}}</x-text>
+						<x-radio style="pointer-events: none;" class="py-12" :value="item.id" labelSpace="0"></x-radio>
+					</view>
+				</x-radio-group>
+			</x-sheet>
+			
+
+			
+		</view>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	type listtype = {
+		label : string,
+		id : string
+	}
+	export default {
+		data() {
+			return {
+				loading:true,
+				checkbox: "" ,
+				checkbox2:  "" ,
+				indeterminate: false,
+				checked: "",
+				list: [
+					{ label: "香蕉", id: "1" } as listtype,
+					{ label: "豆腐", id: "2" } as listtype,
+					{ label: "苹果", id: "3" } as listtype,
+					{ label: "大豆", id: "4" } as listtype,
+					{ label: "李子", id: "5" } as listtype,
+				] as listtype[]
+			};
+		},
+		onReady() {
+			this.loading = false;
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

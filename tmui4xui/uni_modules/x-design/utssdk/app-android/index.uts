@@ -1,0 +1,134 @@
+// import UniversalBlurHelper from 'uts.sdk.modules.utsXdBlur.UniversalBlurHelper';
+import Color from 'android.graphics.Color';
+import View from 'android.view.View';
+
+import Blurry from 'jp.wasabeef.blurry.Blurry'
+import ViewGroup from "android.view.ViewGroup";
+import Bitmap from "android.graphics.Bitmap";
+import ImageView from 'android.widget.ImageView';
+import Canvas from 'android.graphics.Canvas';
+
+import BitmapDrawable from "android.graphics.drawable.BitmapDrawable";
+import { hexToRgb } from '../libs/color.uts'
+import { ManiWinFloat } from './mainWinFloa.uts'
+
+export class xModalPage {
+	contentView : View | null = null;
+	rootWin : ManiWinFloat = new ManiWinFloat();
+	constructor() {
+
+	}
+	setView(ele : UniElement | null) {
+		if (ele == null) return;
+		let userView = ele.getAndroidView() as View | null
+
+
+		if (userView == null) return;
+
+		this.contentView = userView;
+		this.rootWin.setContent(userView)
+	}
+	show() {
+		this.rootWin.show()
+
+	}
+	hide() {
+
+	}
+	destroy() {
+
+	}
+}
+
+
+
+export class xdBlur {
+	$element : UniNativeViewElement;
+	targetView : View | null = null;
+	// bgView:bgBlurView = new bgBlurView(UTSAndroid.getAppContext()!)
+	constructor(element : UniNativeViewElement) {
+		//接收传递过来的UniNativeViewElement
+		this.$element = element;
+		this.bindView();
+	}
+	bindView() {
+		//通过UniElement.getAndroidActivity()获取android平台activity 用于创建view的上下文
+		this.targetView = new View(this.$element.getAndroidActivity()!);  //构建原生view
+		// this.targetView = new bgBlurView(this.$element.getAndroidActivity()!);  //构建原生view
+
+		// this.targetView.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT))
+
+		// //限制原生Button 文案描述不自动大写
+		// this.button?.setAllCaps(false)
+		// //监听原生Button点击事件
+		// this.button?.setOnClickListener(_ => {
+		// 	const detail = {}
+		// 	//构建自定义UniNativeViewEvent返回对象
+		// 	const event = new UniNativeViewEvent("customClick", detail)
+		// 	//触发原生Button的点击事件
+		// 	this.$element.dispatchEvent(event)
+		// })
+		//UniNativeViewEvent 绑定 安卓原生view
+		this.$element.bindAndroidView(this.targetView!);
+	}
+
+
+	setFilterBg(blur : number, bgcolor : string, ele : UniElement | null = null) {
+		// let decorView = UTSAndroid.getUniActivity()!.window.decorView as ViewGroup
+		// this.targetView?.refreshBG(decorView)
+
+		let colorrgba = hexToRgb(bgcolor)
+		let r = (colorrgba?.r ?? 255).toInt()
+		let g = (colorrgba?.g ?? 255).toInt()
+		let b = (colorrgba?.b ?? 255).toInt()
+		let a = ((colorrgba?.a ?? 1) * 255).toInt()
+		let br = (blur / 100 * 25).toFloat()
+		let view = this.targetView!;
+		view.setBackgroundColor(Color.argb(a, r, g, b))
+		let decorView = UTSAndroid.getUniActivity()!.window.decorView as ViewGroup
+		let context = UTSAndroid.getAppContext()!;
+
+		let bitmap : Bitmap = Blurry.with(context)
+			.radius(br.toInt())           // 模糊度
+			.sampling(8)          // 采样
+			.color(Color.argb(a, r, g, b))
+			.capture(decorView)  // 捕获背景View
+			.get()
+		let location = new IntArray(2);
+		view.getLocationInWindow(location);
+		let top = (location[1]).toInt()
+		let left = location[0]
+		let okbitm = Bitmap.createBitmap(bitmap, left, top, view.getWidth(), view.getHeight());
+		view.setBackground(new BitmapDrawable(view.getResources(), okbitm));
+	}
+
+	public static setFilterSelfBg(ele : UniElement, bg : UniElement, blur : number, bgcolor : string) {
+		let colorrgba = hexToRgb(bgcolor)
+		let r = (colorrgba?.r ?? 255).toInt()
+		let g = (colorrgba?.g ?? 255).toInt()
+		let b = (colorrgba?.b ?? 255).toInt()
+		let a = ((colorrgba?.a ?? 1) * 255).toInt()
+		let br = (blur / 100 * 25).toFloat()
+		let view = ele.getAndroidView()! as View
+		let viewbg = bg.getAndroidView()! as View
+		let context = UTSAndroid.getAppContext()!;
+
+		let bitmapbg = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
+		let canvas = new Canvas(bitmapbg)
+		view.draw(canvas)
+
+		let imgview = new ImageView(context)
+		Blurry.with(context)
+			.radius(br.toInt())
+			.sampling(8)
+			.color(Color.argb(a, r, g, b))
+			.from(bitmapbg)
+			.into(imgview)
+
+		viewbg.setBackground(imgview.getDrawable());
+	}
+
+
+
+}
+

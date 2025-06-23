@@ -1,0 +1,483 @@
+<script lang="ts">
+	// import pickerItem from './picker-item.uvue'
+	import { PropType} from "vue"
+	import { getUid,rpx2px } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { PICKER_ITEM_INFO } from "../../interface.uts"
+	import { X_PICKER_X_ITEM } from "./interface.uts"
+	import {setDefaultByValueAr} from "./util.uts"
+	type DEFAULTIDS_INDEX = {
+		ids: string[],
+		indexs: number[],
+	}
+	/**
+	 * 
+	 * @displayName 选择器容器 PickerView
+	 * 
+	 * **描述**：这是非官方pickerView封装,由于我是自行开发的，
+				因此比较好的能控制动画，回弹，阻尼，禁用项等
+				如果你不喜欢这个样式可以修改源码，比官方的更好更改样式。
+				组件采用数组id式选择，非索引。考虑到实际实用中多以id为交互提交数据。因此摒弃了传统的索引选项
+	 * 	 
+	 * ## 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | x | x | ☑️ | 4.02+ | 1.0.1 |
+	 */
+	export default {
+		// components:{
+		// 	pickerItem
+		// },
+		data(){
+			return {
+				wrapTotalWidth:0,
+				nowValue:[] as string[],
+				okNodeInfo:false,
+				tid:0,
+				parentIndex:0,
+				nowValueIndex:[] as number[],
+				showList:[] as X_PICKER_X_ITEM[][],
+				showView:false
+			}
+		},
+		emits:['update:modelValue','change'],
+		props:{
+			/**
+			 * 选项的高度
+			 */
+			cellHeight:{
+				type:String,
+				default:'100'
+			},
+			/**
+			 * 数据项
+			 * 格式类型为：PICKER_ITEM_INFO
+			 */
+			list: {
+				type: Array as PropType<PICKER_ITEM_INFO[]>,
+				default: () : PICKER_ITEM_INFO[] => [] as PICKER_ITEM_INFO[]
+			},
+			/**
+			 * 当前选中项的id值
+			 */
+			modelValue: {
+				type: Array as PropType<string[]>,
+				default: () : string[] => [] as string[]
+			},
+			cellUnits:{
+				type: Array as PropType<string[]>,
+				default: () : string[] => [] as string[]
+			},
+			/**
+			 * 项目的字体号大小
+			 */
+			fontSize:{
+				type:String,
+				default:"30"
+			}
+		},
+		
+		mounted(){
+			
+			let t = this;
+			t.showView = true;
+			let yanchi = 100
+			// #ifdef WEB
+			yanchi=0
+			// #endif
+			this.tid = setTimeout(function() {
+				t.getNodeInfo().then(()=>{
+					t.nowValue = t.modelValue.slice(0);
+					let nowindex = [] as number[]
+					if(t.nowValue.length==0){
+						nowindex = t.getDefaultIndexs().indexs;
+					}else{
+						nowindex = t.getDefaultIndexsByIds(t.nowValue)
+					}
+					t.nowValueIndex = nowindex
+					// #ifdef WEB
+					t.showList =  t.getListByIndexs(nowindex)
+					// #endif
+					
+					// #ifdef APP
+					t.tid = setTimeout(function() {
+						t.showList =  t.getListByIndexs(nowindex)
+					}, 150);
+					// #endif
+				})
+			}, yanchi);
+		},
+		watch: {
+			modelValue(newValue:string[]) {
+				let t = this;
+				if(newValue.join('') == this.nowValue.join('')) return;
+				clearTimeout(this.tid)
+				this.tid = setTimeout(function() {
+					t.nowValue = newValue;
+					t.showView = false;
+					t.showList =  t.getListByIndexs(t.nowValueIndex)
+					t.$nextTick(()=>{
+						t.nowValueIndex = t.getDefaultIndexsByIds(t.nowValue)
+						t.showView = true;
+					})
+				}, 10);
+				
+				
+			},
+			list(){
+				let t = this;
+				clearTimeout(this.tid)
+				this.tid = setTimeout(function() {
+					let values = t.nowValue.slice(0);
+					let nowindex = [] as number[]
+					if(values.length==0){
+						nowindex = t.getDefaultIndexs().indexs;
+					}else{
+						nowindex = t.getDefaultIndexsByIds(values)
+					}
+					t.showList =  t.getListByIndexs(nowindex)
+					t.nowValueIndex = nowindex
+				}, 50);
+			},
+			
+		},
+		beforeUnmount() {
+			clearTimeout(this.tid);
+		},
+		computed:{
+			_cellHeight() : string {
+				return checkIsCssUnit(this.cellHeight, 'rpx')
+			},
+		
+			_list() : X_PICKER_X_ITEM[] {
+				let list = this.list.slice(0) as PICKER_ITEM_INFO[];
+				function addOptionalFieldsToTreeClolone(tree : PICKER_ITEM_INFO[]) : X_PICKER_X_ITEM[] {
+					let nowlist = [] as X_PICKER_X_ITEM[]
+					for (let i = 0; i < tree.length; i++) {
+						const node = tree[i];
+						node.disabled = node.disabled == null ? false : node.disabled! as boolean;
+						node.id = node.id == null ? i.toString() : node.id! as string;
+						node.children = node.children == null ? ([] as PICKER_ITEM_INFO[]) : node.children! as PICKER_ITEM_INFO[];
+						let item = {
+							id:node.id!,
+							title:node.title,
+							disabled:node.disabled!,
+							children:[] as X_PICKER_X_ITEM[]
+						} as X_PICKER_X_ITEM
+						if ((node.children!).length > 0) {
+							item.children = addOptionalFieldsToTreeClolone(node.children! as PICKER_ITEM_INFO[]);
+						}
+						nowlist.push(item)
+					}
+					
+					return nowlist
+				}
+				return addOptionalFieldsToTreeClolone(list)
+			},
+			_maxDeep():number{
+				if(this._list.length==0) return 0;
+				function getdiepWidth(list : X_PICKER_X_ITEM[]) : number {
+					let deepIndex = 1;
+					const node = list[0];
+					if(node.children.length>0){
+						deepIndex += getdiepWidth(node.children);
+					}
+					
+					return deepIndex;
+				}
+				return getdiepWidth(this._list);
+			},
+			_fontSize() : string {
+			
+				return checkIsCssUnit(this.fontSize, 'rpx')
+			},
+			_deepWidth():number{
+				if(this._list.length==0) return this.wrapTotalWidth;
+				
+				return this.wrapTotalWidth / Math.max(1,this.showList.length) 
+			},
+			_boxHeight() : number {
+				let p = parseInt(this.cellHeight);
+				if (this.cellHeight.lastIndexOf('rpx') > -1 || this.cellHeight.lastIndexOf('px') == -1) {
+					p = rpx2px(p);
+				}
+				return p
+			},
+			_modelValue():string[]{
+				let value = this.nowValue.slice(0);
+				if(value.length!=this._maxDeep){
+					value = setDefaultByValueAr(this._list,value,this._maxDeep)
+				}
+				return value;
+			}
+		},
+		methods: {
+			// 没有选择时，取默认选中的顺序值
+			getDefaultIndexs():DEFAULTIDS_INDEX{
+				let list = this._list;
+				let ids = [] as string[];
+				let indexs = [] as number[]
+				function getid(listitem:X_PICKER_X_ITEM[]){
+					if(listitem.length==0) return;
+					let id = listitem[0].id
+					ids.push(id==null?'0':id!)
+					indexs.push(0)
+					let children = listitem[0].children==null?([] as X_PICKER_X_ITEM[]) : listitem[0].children!
+					if(children.length>0){
+						getid(children)
+					}
+				}
+				getid(list);
+				return {
+					ids:ids,
+					indexs:indexs
+				} as DEFAULTIDS_INDEX
+			},
+			/**
+			 * 检查是否有禁用选项，如果有，则回拨到没有禁用选项中。
+			 */
+			isDisabledIndex(indexs:number[],list:X_PICKER_X_ITEM[][]):number[]{
+				let testindexs = indexs.slice(0)
+				
+				for(let i=0;i<indexs.length;i++){
+					let dindex = testindexs[i];
+					let item = list[i][dindex]
+					if(item.disabled){
+						
+						dindex = this.nowValueIndex[i]>dindex?dindex+1:dindex-1;
+						dindex = Math.max(list.length,dindex)
+						dindex = Math.min(0,dindex)
+					}
+					testindexs.splice(i,1,dindex)
+				}
+				
+				return testindexs;
+			},
+			//通过默认选中的索引值，取得当前的列表数据
+			getListByIndexs(indexs:number[]):X_PICKER_X_ITEM[][]{
+				let testlist = [] as X_PICKER_X_ITEM[][];
+				function getlist(list:X_PICKER_X_ITEM[],sellectedsIndex:number[]){
+					let index = sellectedsIndex.shift();
+					if(index==null||list.length==0) return;
+					testlist.push(list.slice(0))
+					let item = [] as X_PICKER_X_ITEM[]
+					if(index<list.length){
+						item = list[index!].children.slice(0)
+					}
+					if(sellectedsIndex.length>0&&item.length>0){
+						getlist(item,sellectedsIndex)
+					}
+					
+				}
+				getlist(this._list,indexs.slice(0))
+				return testlist;
+			},
+			//通过选中的索引值，取得当前选中的id值。
+			getDefaultIdsByindexs(currentsIndexs:number[]):string[]{
+				let t = this;
+				let ids = [] as string[];
+				function getlist(index:number){
+					if(index==null||t.showList.length==0||index>=t.showList.length||index>=currentsIndexs.length||currentsIndexs.length==0) return;
+					let item = t.showList[index][currentsIndexs[index]];
+					if(item!=null){
+						ids.push(t.showList[index][currentsIndexs[index]].id)
+						getlist(index+1)
+					}
+					
+				}
+				getlist(0)
+				return ids;
+			},
+			// 通过选中的id值，取得索引值。
+			getDefaultIndexsByIds(ids:string[]):number[]{
+				if(ids.length==0) return [] as number[];
+				let indexs = [] as number[]
+				
+				function getlist(list:X_PICKER_X_ITEM[],sellectedsIds:string[]){
+					let id = sellectedsIds.shift();
+					if(id==null||list.length==0) return;
+					let index = list.findIndex((el:X_PICKER_X_ITEM):boolean=>el.id==id)
+					if(index>-1){
+						indexs.push(index)
+						let children = list[index].children;
+						if(children.length>0){
+							getlist(children,sellectedsIds)
+						}
+					}else{
+						indexs.push(0)
+					}
+				}
+				
+				getlist(this._list,ids.slice(0))
+				
+				return indexs;
+			},
+		
+			mchange(){
+				
+				let ids = this.getDefaultIdsByindexs(this.nowValueIndex);
+				
+				this.nowValue = ids;
+				
+				/**
+				 * 等同v-model
+				 */
+				this.$emit('update:modelValue',ids.slice(0))
+				
+				/**
+				 * 选项变化时触发
+				 * @param {string[]} ids 当前选中项的id
+				 * @param {number[]} indexs 当前选中项的index项
+				 */
+				this.$emit('change',ids.slice(0),this.nowValueIndex.slice(0))
+				
+			},
+			onChange(event: UniPickerViewChangeEvent){
+				if(event.detail.value.length==0) return;
+				let indexs = event.detail.value!;
+				
+				
+				this.showList =  this.getListByIndexs(indexs.slice(0))
+				
+				let checkIndexs = this.isDisabledIndex(indexs.slice(0),this.showList)
+				if(checkIndexs.join('')!=indexs.join('')){
+					indexs = checkIndexs;
+					
+				}
+				this.showList =  this.getListByIndexs(indexs.slice(0))
+				this.$nextTick(function(){
+					this.nowValueIndex = indexs
+					this.mchange()
+				})
+				
+				
+			},
+			getNodeInfo():Promise<boolean> {
+				let t = this;
+				return new Promise((res,rej)=>{
+					uni.createSelectorQuery().in(this)
+					.select(".xPickerView")
+					.boundingClientRect().exec((ret) => {
+						let nodeinfo = ret[0] as NodeInfo
+						t.wrapTotalWidth = nodeinfo.width!
+						t.okNodeInfo = true;
+						res(true)
+					})
+				})
+			},
+		},
+	}
+</script>
+<template>
+	
+	<view class="xPickerView" >
+		<view v-if="cellUnits.length>0" >
+			<view v-for="(item,index) in cellUnits" :key="index" :style="{width:(_deepWidth-2)+'px',margin: '0px'}" >
+				<text class="xPickerViewUnitText">{{item}}</text>
+			</view>
+		</view>
+		<view style="display: flex ; flex-direction: row;" v-if="showList.length>0">
+			<picker-view
+			v-if="showView"
+			:value="nowValueIndex"
+			@change="onChange"
+			:style="{height:(50*5)+'px',width:(this.wrapTotalWidth-2*showList.length)+'px'}"
+			indicator-style="height:'50px;backgroundColor:rgba(0,0,0,0.05);border-radius:10px">
+				<picker-view-column :style="{width:(_deepWidth-5)+'px',margin: '0px 2px'}" v-for="(children,parentindex) in showList" :key="parentindex">
+					<view v-for="(item,index) in children"
+						:key="index" class="xPickerViewWrapCoumn">
+						<text class="xPickerViewWrapCoumnText"
+							:style="{fontSize:_fontSize,fontWeight:nowValueIndex[parentindex]==index?'bold':'inherit',opacity: item.disabled?'0.4':'1'}">
+							{{item.title}}
+						</text>
+					</view>
+				</picker-view-column>
+			</picker-view>
+		</view>
+		
+	</view>
+</template>
+<style scoped>
+	.xPickerView{
+		display: flex;
+		flex-direction: column;
+	}
+	
+	/* #ifdef WEB */
+	.uni-picker-view-indicator:after, .uni-picker-view-indicator:before{
+		border:none;
+	}
+	
+	/* #endif */
+	.xPickerViewUnit {
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		padding: 16rpx;
+	}
+	
+	.xPickerViewUnitText {
+		font-size: 24rpx;
+		color: #888;
+		font-weight: bold;
+		text-align: center;
+	}
+	
+	.xPickerViewWrapCoumnText {
+		padding: 0 12rpx;
+		line-height: 50px;
+	}
+	
+
+	
+	.xPickerViewWrap {
+		position: relative;
+	}
+	
+	.xPickerContent {
+		position: absolute;
+		left: 0;
+		top: 0;
+		width: 100%;
+		z-index: 5;
+	}
+	
+	.xPickerMasker {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		pointer-events: none;
+		height: 100%;
+		width: 100%;
+		top: 0px;
+		left: 0px;
+		position: absolute;
+	}
+	
+	.xPickErBar {
+		background-color: #f5f5f5;
+		border-radius: 20rpx;
+		margin: 0 6rpx;
+		flex: 1;
+	
+	}
+	
+	.xPickerContent {
+		transition-duration: 350ms;
+		transition-property: left, right, top, bottom;
+		transition-timing-function: cubic-bezier(0, 0.55, 0.45, 1);
+	}
+	
+	.xPickerViewWrapCoumn {
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+		height:50px;
+		/* background-color: #f5f5f5; */
+	}
+	
+</style>

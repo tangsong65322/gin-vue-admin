@@ -1,0 +1,156 @@
+<script lang="ts">
+	import { checkIsCssUnit, getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor, colorAddDeepen } from "../../core/util/xCoreColorUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { SNACKBAR_INFO, SNACKBAR_ITEM } from '../../interface.uts';
+	import { PropType } from "vue";
+
+	/**
+	 * @name 消息条子节点 xSnackbarItem
+	 * @description xSnackbar内部子组件，不可引用。
+	 * @page /pages/index/snackbar
+	 * @category 反馈组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				tid: 0,
+				itemid: "xSnackbarItem-" + getUid(),
+				isOver: false,
+				isOpen: true
+			}
+		},
+		emits: ["close"],
+		props: {
+			/**
+			 * 消息数据
+			 * 注意，id一定要提供且是数字，可以随意，只要相对上一次变更下，就会触发
+			 * 显示新的消息条。这种显示的方式就是避免你们引用ref方式来调用方法，相对更简单。
+			 */
+			content: {
+				type: Object as PropType<SNACKBAR_ITEM>,
+				default: () : SNACKBAR_ITEM => {
+					return {
+						background: "black",
+						color: "white",
+						fontSize: "14px",
+						content: "",
+						id: -1,
+						icon: ""
+					} as SNACKBAR_ITEM
+				},
+				required: true
+			},
+			keyIndex: {
+				type: Number,
+				default: -1,
+				required: true
+			},
+			/**
+			 * 多少毫秒后销毁
+			 */
+			duration: {
+				type: Number,
+				default: 2500,
+			}
+		},
+		computed: {
+			_animationFun() : string {
+				return `cubic-bezier(0.075, 0.820, 0.165, 1.000)`
+			}
+		},
+		mounted() {
+			let t = this;
+			this.$nextTick(() => {
+				let ele = t.$refs['xSnackbarItem'] as UniElement
+				ele.style.setProperty("transition-duration", "350ms")
+				this.$nextTick(()=>{
+					
+				})
+				// #ifdef WEB
+				setTimeout(function() {
+					ele.style.setProperty("transform", "scale(1) translateY(0%)")
+					ele.style.setProperty("opacity", "1")
+				}, 20);
+				// #endif
+				// #ifndef WEB
+				ele.style.setProperty("transform", "scale(1) translateY(0%)")
+				ele.style.setProperty("opacity", "1")
+				// #endif
+			})
+			clearTimeout(this.tid)
+			this.tid = setTimeout(function () {
+				t.close();
+			}, t.duration);
+			
+		},
+		beforeUnmount() {
+			clearTimeout(this.tid)
+		},
+		methods: {
+			close() {
+				let t = this;
+				try {
+					let ele = this.$refs['xSnackbarItem'] as UniElement
+					ele.style.setProperty("transform", "scale(0) translateY(0%)")
+					ele.style.setProperty("opacity", "0")
+				} catch (e) {
+					//TODO handle the exception
+				}
+				
+				this.tid = setTimeout(function () {
+					t.isOpen = false
+					t.isOver = true;
+					t.$emit("close")
+				}, 300);
+			},
+			onEnd() {
+				
+				// if (this.isOpen) {
+				// 	this.isOpen = false
+				// } else {
+				// 	this.isOver = true;
+				// 	this.$emit("close")
+				// }
+
+			}
+		}
+	}
+</script>
+<template>
+	<view @transitionend="onEnd" ref="xSnackbarItem" :id="itemid" class="xSnackbarItem"
+		:style="{backgroundColor:content.background,'transition-timing-function':_animationFun}">
+		<x-icon v-if="content.icon!=''" :name="content.icon" :font-size="content.fontSize" :color="content.color"
+			style="margin-right: 6px;"></x-icon>
+		<x-text class="xSnackbarItemText" :font-size="content.fontSize"
+			:color="content.color">{{content.content}}</x-text>
+	</view>
+</template>
+<style>
+	.xSnackbarItem {
+		pointer-events: auto;
+		padding: 5px 12px;
+		border-radius: 6px;
+		background-color: black;
+		margin-bottom: 12px;
+		transition-property: transform, opacity;
+		transition-duration: 350ms;
+		/* transition-timing-function:cubic-bezier(.18,.89,.32,1.06); */
+		opacity: 0;
+		transform: scale(0) translateY(100%);
+		flex-direction: row;
+		display: flex;
+		justify-content: flex-start;
+		align-items: center;
+
+	}
+
+	.xSnackbarItemText {
+		font-size: 14px;
+		color: white;
+	}
+</style>

@@ -1,0 +1,237 @@
+<script lang="ts">
+	import { type PropType } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { codabar } from "./utsbarcode/codabar.uts"
+	import { ean13 } from "./utsbarcode/ean13.uts"
+
+	/**
+	 * @name 条码 xBarcode
+	 * @page /pages/index/barcode
+	 * @category 其它组件
+	 * @description 本条码暂只开发了cdoebar,ean13两种。ean13是国际通用码，也是国内商品的码，
+	 * 我严格按照编码规则进行开发，所以提供商品码时，一定要准确。
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | x | ☑️ | 4.14+ | 1.0.0 |
+	 */
+	export default {
+		data() {
+			return {
+				id: ('xCircleProgeress-' + getUid()) as string,
+				boxWidth: 0,
+				boxHeight: 0,
+			}
+		},
+		props: {
+			/**
+			 * 窗口宽
+			 */
+			width: {
+				type: String,
+				default: 'auto'
+			},
+			/**
+			 * 宽器高，这将影响条码的高度
+			 */
+			height: {
+				type: String,
+				default: '140px'
+			},
+			/**
+			 * 上下间隙，单位是px
+			 */
+			pading: {
+				type: Number,
+				default: 20
+			},
+			/**
+			 * 条码颜色
+			 */
+			color: {
+				type: String,
+				default: "black"
+			},
+			/**
+			 * 目前我仅开发两种常见的国内格式
+			 * codebar正常的数字字符条码
+			 * ean13国际通用物品编码，也是国内的商品码以69开头。
+			 */
+			encode: {
+				type: String as PropType<"codebar" | "ean13">,
+				default: "ean13"
+			},
+			/**
+			 * 条码内容
+			 */
+			text: {
+				type: String,
+				default: ""
+			},
+		},
+		computed: {
+
+			_width() : string {
+				return checkIsCssUnit(this.width, 'rpx')
+			},
+			_height() : string {
+
+				return checkIsCssUnit(this.height, 'rpx')
+			},
+			_color() : string {
+				return getDefaultColor(this.color);
+			},
+			_text() : string {
+				return this.text;
+			},
+
+		},
+		watch: {
+			text(newValue : string) {
+				if (newValue == "") return;
+				this.getNodeInfo();
+			}
+		},
+		mounted() {
+			if (this.text == "") return;
+			this.getNodeInfo();
+		},
+		methods: {
+			getNodeInfo() {
+				let _this = this;
+				uni.createSelectorQuery().in(this)
+					.select(".xBarcode")
+					.boundingClientRect().exec((ret) => {
+						let nodeinfo = ret[0] as NodeInfo
+						this.boxWidth = nodeinfo.width!
+						this.boxHeight = nodeinfo.height!
+						// #ifdef APP-IOS || WEB
+						_this.dreawer()
+						// #endif
+						// #ifdef APP-ANDROID
+						setTimeout(function() {
+							_this.dreawer()
+						}, 50);
+						// #endif
+					})
+			},
+			dreawer() {
+				this.clear()
+				
+				let canvas = this.$refs['xBarcode'] as UniCanvasElement
+				let ctx = canvas.getContext('2d')!
+				// 处理高清屏逻辑
+				const dpr = uni.getDeviceInfo().devicePixelRatio ?? 1;
+				canvas.width = canvas.offsetWidth * dpr;
+				canvas.height = canvas.offsetHeight * dpr;
+				ctx.scale(dpr, dpr);
+				let ratio = 1;
+				let code = ""
+				let eanCode = [] as string[]
+				if (this.encode == "codebar") {
+					code = new codabar(this._text).encode()
+				} else if (this.encode == "ean13") {
+					eanCode = new ean13(this._text).encode()
+					code = eanCode.join("")
+				}
+				let strCode = code.split("");
+				let linewidth = 2;
+				let totalWidth = strCode.length * (linewidth);
+				let barheight = this.boxHeight - this.pading * 2;
+				let start_x = (this.boxWidth - totalWidth) / 2
+				let start_y = this.pading
+				ctx!.beginPath()
+				ctx!.fillStyle = this._color
+
+				if (this.encode == "codebar") {
+					ctx.font = `${16 * ratio}px   Arial`;
+					let texts = this._text.split("")
+					let textwidth = ctx.measureText(this._text).width;
+					let space = (totalWidth - textwidth)/(texts.length-1)
+					// let textwidth = ctx.measureText(this._text).width + (texts.length-1) * 6
+					// 绘制数字。
+					let sx = (this.boxWidth-totalWidth)/2;
+					for (let a0 = 0; a0 < texts.length; a0++) {
+						let sxx = (ctx.measureText(texts[a0]).width+space) * a0 + sx
+						ctx!.fillText(texts[a0], sxx * ratio, (start_y + barheight) * ratio)
+					}
+
+					for (let i = 0; i < strCode.length; i++) {
+						if (strCode[i] == "1") {
+							ctx!.fillRect((i * linewidth + start_x + linewidth) * ratio, start_y * ratio, linewidth * ratio, (barheight - 24) * ratio)
+						}
+					}
+				} else if (this.encode == "ean13") {
+					let k = 0;
+					ctx.font = `${13 * ratio}px   Arial`;
+					ctx!.fillText(this._text.substring(0, 1), (start_x - 10) * ratio, (start_y + barheight) * ratio)
+					for (let j = 0; j < eanCode.length; j++) {
+						let item = eanCode[j];
+						let itemcodeas = item.split("")
+						let offsetHeigt = (j == 0 || j == 2 || j == 4) ? 0 : 12
+						// 绘制数字。
+						if (j == 0) {
+							let ncsr = this._text.substring(1, 7).split("")
+							for (let a0 = 0; a0 < ncsr.length; a0++) {
+								ctx!.fillText(ncsr[a0], (start_x + 10 + (a0 * 13) + linewidth) * ratio, (start_y + barheight) * ratio)
+							}
+						}
+						if (j == 3) {
+							let ncsr = this._text.substring(7).split("")
+							for (let a0 = 0; a0 < ncsr.length; a0++) {
+								ctx!.fillText(ncsr[a0], ((this.boxWidth / 2) + 10 + (a0 * 13) + linewidth) * ratio, (start_y + barheight) * ratio)
+							}
+						}
+
+						for (let i = 0; i < itemcodeas.length; i++) {
+							if (itemcodeas[i] == "1") {
+								ctx!.fillRect(
+									(k * linewidth + start_x + linewidth) * ratio,
+									start_y * ratio,
+									linewidth * ratio,
+									(barheight - offsetHeigt) * ratio)
+							}
+							++k;
+						}
+					}
+
+				}
+
+
+
+				ctx.fill()
+		
+			},
+			clear() {
+				let canvas = this.$refs['xBarcode'] as UniCanvasElement
+				let ctx = canvas.getContext('2d')!
+				// 处理高清屏逻辑
+				const dpr = uni.getDeviceInfo().devicePixelRatio ?? 1;
+				canvas.width = canvas.offsetWidth * dpr;
+				canvas.height = canvas.offsetHeight * dpr;
+				ctx.scale(dpr, dpr);
+				let ratio = 1;
+						
+				try{
+					ctx?.reset()
+				}catch(e){
+					//TODO handle the exception
+				}
+				ctx.fillStyle = 'transparent'
+				ctx.fillRect(0, 0, this.boxWidth, this.boxHeight)
+				ctx.fill()
+					  
+				
+			
+			}
+		},
+	}
+</script>
+<template>
+	<canvas class="xBarcode" ref="xBarcode" :id="id" :style="{width:_width,height:_height}"></canvas>
+</template>
+<style scoped>
+</style>

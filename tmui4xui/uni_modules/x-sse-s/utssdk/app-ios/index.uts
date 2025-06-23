@@ -1,0 +1,117 @@
+import { URL } from 'Foundation';
+import { Dictionary } from "Swift";
+import {xSSEOptions} from "../interface.uts"
+
+
+export class SSEClientApp {
+	private sseClient : SSEClient
+	public url : string = ''
+	private closed:boolean = true;
+	private onOpenEvt = () => { }
+	private onErrorEvt = () => { }
+	private onClosedEvt = () => { }
+	private onMessageEvt = (data : string) => { }
+
+
+	constructor(options:xSSEOptions) {
+		this.url = options.url;
+		let _headers = new Map<string, string>()
+		const headersOpts = (options.header!=null?(options.header as UTSJSONObject):({} as UTSJSONObject))
+		for(const key in headersOpts){
+			_headers.set(key,headersOpts.getString(key)!)
+		}
+	
+		this.sseClient = new SSEClient(url = new URL(string = this.url)!, headers = _headers)
+		
+	}
+	@UTSJS.keepAlive
+	onOpen(callback:()=>void){
+		this.onOpenEvt = callback
+	}
+	@UTSJS.keepAlive
+	onError(callback:()=>void){
+		this.onErrorEvt = callback
+	}
+	@UTSJS.keepAlive
+	onClosed(callback:()=>void){
+		this.onClosedEvt = callback
+	}
+	@UTSJS.keepAlive
+	onMessage(callback:(data:string)=>void){
+		this.onMessageEvt = callback
+	}
+	
+	connect(headers:UTSJSONObject = {}) {
+		let _headers = new Map<string, string>()
+		for(const key in headers){
+			_headers.set(key,headers.getString(key)!)
+		}
+		console.log(_headers.size)
+		if(!this.closed) return;
+		this.sseClient = new SSEClient(url = new URL(string = this.url)!, headers = _headers)
+		this.closed = true;
+		this.sseClient.start()
+		let _this = this;
+		this.sseClient.onMessage((data:string)=>{
+			_this.onMessageEvt(data)
+		})
+		this.sseClient.onOpen(()=>{
+			_this.onOpenEvt()
+			_this.closed = false;
+		})
+		this.sseClient.onError((error:any|null)=>{
+			_this.onErrorEvt()
+			console.error(error)
+			_this.closed = true;
+		})
+	}
+	disconnect() {
+		this.sseClient.stop()
+		this.closed = true;
+		this.onClosedEvt()
+	}
+	isConnected() : boolean {
+		return !this.closed;
+	}
+}
+/**
+// 在 ViewController 中使用
+class ViewController: UIViewController {
+	private var sseClient: SSEClient?
+    
+	override func viewDidLoad() {
+		super.viewDidLoad()
+	    
+		// 初始化 SSE 客户端
+		if let url = URL(string: "https://your-sse-server.com/events") {
+			sseClient = SSEClient(url: url)
+			sseClient?.delegate = self
+			sseClient?.connect()
+		}
+	}
+    
+	override func viewWillDisappear(_ animated: Bool) {
+		super.viewWillDisappear(animated)
+		sseClient?.disconnect()
+	}
+}
+
+// 实现代理方法
+extension ViewController: SSEClient.EventSourceDelegate {
+	func eventSourceDidOpen() {
+		print("SSE 连接已打开")
+	}
+    
+	func eventSourceDidReceiveMessage(event: String?, data: String) {
+		print("收到消息: event=\(event ?? ""), data=\(data)")
+	}
+    
+	func eventSourceDidError(_ error: Error) {
+		print("发生错误: \(error.localizedDescription)")
+	}
+    
+	func eventSourceDidClose() {
+		print("连接已关闭")
+	}
+}
+*/

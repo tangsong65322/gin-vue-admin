@@ -1,0 +1,109 @@
+import { XTREEFLAT_NODES } from '@/uni_modules/tmx-ui/interface';
+export default [
+	{
+		title: "DeepSeek",
+		bgColor: "rgb(196,179,244)",
+		children: [
+			{
+				title: "父1-1",
+				bgColor: "#FF965A",
+				children: [
+					{
+						title: "父1-1-1",
+						bgColor: "#FF965A",
+					},
+					{
+						title: "父1-1-2",
+						bgColor: "#FF965A",
+					},
+					{
+						title: "父1-1-3",
+						bgColor: "#FF965A",
+					},
+				]
+			}
+		]
+	},
+	{
+		title: "Calude",
+		bgColor: "rgb(196,179,244)",
+		
+		children: [
+			{
+				title: "父2-1",
+				bgColor: "rgb(164,69,193)",
+				fontColor:'#ffffff',
+				children: [
+					{
+						title: "父2-1-1",
+						bgColor: "#F5B5E0",
+						children: [
+							{
+								title: "父2-1-1-1",
+								bgColor: "#F5B5E0",
+							},
+							{
+								title: "父2-1-1-2",
+								bgColor: "#F5B5E0",
+							},
+							{
+								title: "父2-1-1-3",
+								bgColor: "#F5B5E0",
+							},
+						]
+					}
+				]
+			},
+			{
+				title: "父2-需要",
+				bgColor: "rgb(196,179,244)",
+				children: [
+					{
+						title: "父2-1-1需要",
+						bgColor: "rgb(196,179,244)",
+						children: [
+							{
+								title: "清华大学和北京大学中国顶尖学府",
+								bgColor: "rgb(196,179,244)"
+							},
+							{
+								title: "父2-1-1-2",
+								bgColor: "rgb(196,179,244)"
+							},
+							{
+								title: "父2-1-1-3",
+								bgColor: "rgb(196,179,244)"
+							},
+						]
+					}
+				]
+			}
+		]
+	},
+	{
+		title: "OpenAi点我",
+		bgColor: "rgb(196,179,244)",
+		disabled:false,
+		children: [
+			{
+				title: "父3-1-1",
+				bgColor: "rgb(196,179,244)"
+			},
+			{
+				title: "首都师范大学",
+				bgColor: "rgb(12,189,150)",
+				fontColor:"#ffffff"
+			},
+			{
+				title: "父3-1-3",
+				bgColor: "#64C8CD"
+			},
+			{
+				title: "父3-1-4",
+				bgColor: "#64C8CD"
+			}
+		]
+	}
+] as XTREEFLAT_NODES[]
+
+

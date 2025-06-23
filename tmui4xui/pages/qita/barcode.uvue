@@ -1,0 +1,55 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">条码 xBarcode</x-text>
+			<x-text color="#999999" >
+				本条码暂支持：codebar,ean13 两种
+			</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">ean13国内，国际商品码</x-text>
+			<x-text color="#999999" class="mb-12">
+				可使用淘宝等软件扫描识别
+			</x-text>
+			<x-sheet dark-color="#dcdcdc" :padding="['0']" :margin="['0']">
+				<x-barcode encode="ean13" text="6970980210024"></x-barcode>
+			</x-sheet>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">codebar，常规条码</x-text>
+			<x-text color="#999999" class="mb-12">
+				需要专用的识别软件或者条码器识别，见：https://products.aspose.app/barcode/zh-hans/recognize#
+			</x-text>
+			
+			<x-sheet dark-color="#dcdcdc" :padding="['0']" :margin="['0']">
+				<x-barcode encode="codebar" text="6970980210024"></x-barcode>
+			</x-sheet>
+		</x-sheet>
+		
+		<view style="height:50px"></view>
+		
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+
+			};
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

@@ -1,0 +1,59 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">也可变量控制</x-text>
+			<view class="flex flex-row flex-row-center-between">
+				<x-button width="48%" @click="onClick(true)">打开底部消息条</x-button>
+				<x-button width="48%" @click="onClick(false)" color="error">关闭询问消息条</x-button>
+			</view>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">消息通知 xMsgNotice</x-text>
+			<x-text color="#999999" >
+				本组件可以通过左右,上下拖拉关闭消息，往向不同方向拉手势,会向指定方向关闭，有阻尼回弹效果，可单独设置。
+			</x-text>
+		</x-sheet>
+		<x-msg-notice :model-value="true" position="top">
+			<x-sheet color='primary' :margin="['0']">
+				<x-text color="white" class="text-size-g text-weight-b">左右或者向上拉可关闭</x-text>
+				<x-text color="white" class="text-size-m text-grey mt-10  line-8">本组件可以通过左右,上下拖拉关闭消息，往向不同方向拉手势,会向指定方向关闭，有阻尼回弹效果，可单独设置。</x-text>
+			</x-sheet>
+		</x-msg-notice>
+		<x-msg-notice v-model="show">
+			<x-sheet>
+				<x-text class="text-size-g text-weight-b">消息通知 xMsgNotice</x-text>
+				<x-text class="text-size-m text-grey mt-10  line-8">本组件可以通过左右,上下拖拉关闭消息，往向不同方向拉手势,会向指定方向关闭，有阻尼回弹效果，可单独设置。</x-text>
+			</x-sheet>
+		</x-msg-notice>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+				show: false
+			};
+		},
+		methods: {
+			onClick(isshow : boolean) {
+				this.show = isshow;
+
+			}
+		},
+	}
+</script>
+
+<style lang="scss">
+
+</style>

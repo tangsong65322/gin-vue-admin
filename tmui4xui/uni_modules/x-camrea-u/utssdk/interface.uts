@@ -1,0 +1,7 @@
+
+export type AUTH_CALL_BACK_TYPE = (auth : boolean) => void;
+
+export type CAMERA_PHOTO_SIZE = {
+	width : number,
+	height : number
+}

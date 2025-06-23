@@ -1,0 +1,46 @@
+<script lang="uts">
+	export default {
+		data() {
+			return {
+			}
+		},
+		emits:['change','destory'],
+		props:{
+			id:{
+				type:String,
+				default:''
+			}
+		},
+		methods: {
+			
+		},
+		mounted() {
+			this.$nextTick(()=>{
+				uni.createSelectorQuery()
+				.in(this)
+				.select('.xTabsItemChildren')
+				.boundingClientRect((rect:any)=>{
+					this.$emit('change',rect as NodeInfo,this.id)
+				}).exec()
+			})
+		},
+		beforeUnmount() {
+			this.$emit('destory',this.id)
+		}
+	}
+</script>
+<template>
+	<view class="xTabsItemChildren">
+		<slot></slot>
+	</view>
+</template>
+<style>
+.xTabsItemChildren{
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+	justify-content: center;
+	align-items: center;
+	flex: 1;
+}
+</style>

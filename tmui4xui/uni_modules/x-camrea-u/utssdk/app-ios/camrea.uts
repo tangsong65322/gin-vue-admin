@@ -1,0 +1,498 @@
+import { AVCaptureSession, AVAssetExportPresetHighestQuality, AVCaptureDevice, AVMediaType, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureDeviceInput, AVCaptureInput, AVCaptureVideoDataOutput, AVCaptureConnection, AVCaptureVideoPreviewLayer, AVLayerVideoGravity, AVCaptureVideoOrientation, AVCaptureMovieFileOutput, AVCaptureFileOutputRecordingDelegate, AVCaptureOutput, AVCaptureFileOutput, AVAsset, AVAssetExportSession, AVFileType } from 'AVFoundation';
+import { PHPhotoLibrary, PHAuthorizationStatus } from 'Photos';
+import { CMSampleBuffer, CMSampleBufferGetFormatDescription, CMFormatDescription, CMVideoFormatDescriptionGetDimensions, CMSampleBufferGetImageBuffer } from 'CoreMedia';
+import { DispatchQueue } from "Dispatch"
+import { UIView, UIImage, UISaveVideoAtPathToSavedPhotosAlbum, UIImageWriteToSavedPhotosAlbum, UIApplication, UIImageView, UILabel, UIViewController, UIFontDescriptor, UIFont, NSTextAlignment, UITapGestureRecognizer, UIAlertController, UIGraphicsImageRenderer, UIGraphicsRendererContext, UIBezierPath, CameraDevice } from 'UIKit';
+import { CGRect, CGFloat, CGPoint, CGAffineTransform, CGSize } from 'CoreFoundation';
+import { AUTH_CALL_BACK_TYPE } from '../interface.uts';
+
+import { NotificationCenter, NSNotification, Notification, FileManager, Data, URL, NSError } from 'Foundation';
+import { Selector } from 'ObjectiveC';
+import { Alignment } from 'ARKit';
+import { CIImage, CIContext } from 'CoreImage';
+import { CGPath } from 'CoreGraphics';
+
+type TAKE_CALL_BACK = (path : CMSampleBuffer) => void;
+
+
+let captureSession : null | AVCaptureSession = null;
+// 图像捕捉事件代理。
+let captureOutDelegate : CaptureOutSessionBuffer | null = null;
+let recorderingDelegate : recorderingDelegateObj | null = null;
+let isOpeing : boolean = false;
+let taking : boolean = false;
+let takingTaron = false
+let takePhotoCall = (path : string) => { }
+let takvideoRecoderCall = (path : string) => { }
+class CaptureOutSessionBuffer implements AVCaptureVideoDataOutputSampleBufferDelegate {
+	callback : TAKE_CALL_BACK = (imgBuffer : CMSampleBuffer) => { }
+	camrea : xCamrea;
+	camreaDevsBuilder : AVCaptureDevice
+	constructor(dv : TAKE_CALL_BACK, ca : xCamrea, cdv : AVCaptureDevice) {
+		this.callback = dv;
+		this.camrea = ca;
+		this.camreaDevsBuilder = cdv;
+		super()
+	}
+	captureOutput(output : AVCaptureOutput, @argumentLabel("didOutput") sampleBuffer : CMSampleBuffer, @argumentLabel("from") connection : AVCaptureConnection) {
+
+		if (taking) {
+
+			taking = false
+			// this.camrea.pasue()
+
+			takingTaron = false;
+			let islock = UTSiOS.try(this.camreaDevsBuilder.lockForConfiguration(), "?")
+			if (islock != null) {
+				if (this.camreaDevsBuilder.isTorchActive) {
+					this.camreaDevsBuilder.torchMode = AVCaptureDevice.TorchMode.off
+				}
+				this.camreaDevsBuilder.unlockForConfiguration()
+			}
+
+
+			this.callback(sampleBuffer)
+		}
+	}
+}
+
+class recorderingDelegateObj implements AVCaptureFileOutputRecordingDelegate {
+	callback : TAKE_CALL_BACK = (imgBuffer : CMSampleBuffer) => { }
+	// 保存到相册的回调方法
+	@objc video(videoPath : String,
+		@argumentLabel("didFinishSavingWithError") error ?: NSError,
+		contextInfo ?: UnsafeMutableRawPointer) {
+		if (error != null) {
+			console.error("tmui4x:Error recording movie: ", error)
+			return
+		}
+		console.log("Video saved successfully")
+	}
+
+	fileOutput(
+		output : AVCaptureFileOutput,
+		@argumentLabel("didStartRecordingTo") fileURL : URL,
+		@argumentLabel("from") connections : AVCaptureConnection[]) {
+		// console.log("开始录制")
+	}
+	fileOutput(
+		output : AVCaptureFileOutput,
+		@argumentLabel("didFinishRecordingTo") outputFileURL : URL,
+		@argumentLabel("from") connections : AVCaptureConnection[],
+		@argumentLabel("error") error ?: NSError) {
+		if (error != null) {
+			console.error("tmui4x:Error recording movie: ", error)
+			return
+		}
+		// UISaveVideoAtPathToSavedPhotosAlbum(
+		// 	outputFileURL.path,
+		// 	nil,
+		// 	#selector(this.video),
+		// 	nil
+		// )
+		// recorderingDelegate = null;
+		let mp4FileURL = outputFileURL.deletingPathExtension().appendingPathExtension("mp4") // 转换后的文件路径
+		let _this = this;
+		convertMovToMp4(outputFileURL,mp4FileURL,(okmp4str:string)=>{
+			// console.log('end...recodervideo', okmp4str)
+			takvideoRecoderCall(okmp4str)
+			// 保存到相册
+			// UISaveVideoAtPathToSavedPhotosAlbum(
+			// 	mp4FileURL.path,
+			// 	nil,
+			// 	#selector(_this.video),
+			// 	nil
+			// )
+			recorderingDelegate = null;
+		})
+		
+	}
+}
+
+function getUid(rdix = 1, length = 12) : string {
+	let ix = "";
+	// #ifdef APP
+	ix = Math.floor(Math.random() * rdix * Math.floor(Math.random() * Date.now())).toString().substring(0, length as Int);
+	// #endif
+	return ix;
+}
+
+// 检查权限
+export function isCheckPermissions(callFun : null | AUTH_CALL_BACK_TYPE) {
+	let realcall : AUTH_CALL_BACK_TYPE = (_ : boolean) => { };
+	if (callFun != null) {
+		let cllfunFun = callFun!;
+		realcall = cllfunFun
+	}
+	PHPhotoLibrary.requestAuthorization((isok : PHAuthorizationStatus) => {
+		// 拒绝了相册选取权限。
+		if (isok != PHAuthorizationStatus.authorized) {
+			realcall(false)
+			return;
+		}
+		AVCaptureDevice.requestAccess(for = AVMediaType.video, completionHandler = (isok2 : boolean) => {
+			if (!isok2) {
+				realcall(false)
+				return;
+			}
+
+			AVCaptureDevice.requestAccess(for = AVMediaType.audio, completionHandler = (isok3 : boolean) => {
+				if (!isok3) {
+					realcall(false)
+					return;
+				}
+				realcall(true)
+			})
+		})
+	})
+
+}
+
+
+function convertMovToMp4(movFileURL : URL, mp4FileURL : URL, ok : (str : string) => void) {
+	// 加载 AVAsset
+	let asset = new AVAsset(url = movFileURL)
+	let exportSession = new AVAssetExportSession(asset = asset, presetName = AVAssetExportPresetHighestQuality)
+	// 创建 AVAssetExportSession
+	if (exportSession == null) {
+		ok('')
+		return;
+	}
+
+	// 配置导出设置
+	exportSession!.outputURL = mp4FileURL
+	exportSession!.outputFileType = AVFileType.mp4
+	exportSession!.shouldOptimizeForNetworkUse = true
+	exportSession!.exportAsynchronously(completionHandler = () => {
+		switch(exportSession!.status) {
+			case AVAssetExportSession.Status.completed:
+				// console.log("导出成功", mp4FileURL.path)
+				ok(mp4FileURL.path)
+				break
+			case AVAssetExportSession.Status.failed:
+				if (exportSession!.error != null) {
+					// console.error("导出失败", mp4FileURL.path)
+					ok('')
+				}
+				break
+			case AVAssetExportSession.Status.cancelled:
+				// console.error("导出被取消")
+				ok('')
+				break
+			default:
+				ok('')
+				break
+		}
+	})
+
+}
+
+export class xCamrea {
+	parentView : UIView | null = null;
+	camreaViewLayer : UIView | null = null;
+	imageUiView : UIImageView | null = null;
+	isSaveToPhoto : boolean = false;
+	//摄像头朝向,默认是向后置摄像头.
+	CamerDeviceDir = AVCaptureDevice.Position.back
+	//摄像头的是否开
+	flashMode = false
+	// 是否拍照 中 
+	isTakePhoto = false
+	// AVCaptureMovieFileOutput
+	movieFileOutput : AVCaptureMovieFileOutput | null = null;
+	takeModelType = 'photo'; //photo,video
+	isPaused = false
+	constructor() {
+		super();
+	}
+	setView(view : UIView) {
+		this.parentView = view;
+	}
+	open() {
+		isCheckPermissions((ty : boolean) => {
+			if (ty) {
+				this.close();
+				if (captureSession == null) {
+					this.openCamrea()
+				}
+				// this.close();
+				// this.openCamrea()
+			}
+		})
+
+	}
+
+	startRecoderVideo(call : (path : string) => void) {
+		takvideoRecoderCall = call;
+		let _this = this;
+		if (_this.movieFileOutput?.isRecording == true && _this.isPaused) {
+			// if (UTSiOS.available("iOS 18.0, *")) {
+			// 	_this.movieFileOutput?.resumeRecording()
+			// 	_this.isPaused = false;
+			// }
+		} else {
+			if (isOpeing || _this.movieFileOutput != null) {
+				this.stopRecoderVideo()
+				this.close()
+			}
+			_this.takeModelType = 'video'
+			_this.openCamrea();
+		}
+	}
+	pauseRecoderVideo() {
+		let _this = this;
+		// if (UTSiOS.available("iOS 18.0, *")) {
+		// 	_this.movieFileOutput?.pauseRecording()
+		// 	_this.isPaused = true;
+		// }
+
+	}
+	stopRecoderVideo() {
+		let _this = this;
+		_this.takeModelType = 'photo'
+		_this.movieFileOutput?.stopRecording()
+		_this.isPaused = false;
+		_this.movieFileOutput = null;
+		
+	}
+
+	recoderVideoCan() {
+		if (this.movieFileOutput == null || isOpeing == false) {
+			// console.error('no recoder video by tmui4x,')
+			return;
+		}
+		let userDir = FileManager.default.urls(for = FileManager.SearchPathDirectory.cachesDirectory, in = FileManager.SearchPathDomainMask.userDomainMask).first!
+		let filename = 'tmui4xCamreaVido' + getUid(1, 12) + '.mov';
+		let outputURL = userDir.appendingPathComponent(filename) as URL
+		// AVCaptureFileOutputRecordingDelegate
+		recorderingDelegate = new recorderingDelegateObj()
+		// 开始录制
+		this.movieFileOutput!.startRecording(to = outputURL, recordingDelegate = recorderingDelegate!)
+		
+		this.isPaused = false
+	}
+	takePhoto(call : (path : string) => void, savetophoto : boolean) {
+
+		this.isSaveToPhoto = savetophoto
+		// isOpeing = false;
+		taking = true;
+		takePhotoCall = call;
+
+	}
+	savePhoto(imageData : UIImage) {
+		DispatchQueue.main.asyncAfter(deadline = (DispatchTime.now() + 1) as DispatchTime, execute = () => {
+			new UIImageWriteToSavedPhotosAlbum(imageData, nil, nil, nil)
+			let alertController = new UIAlertController(title = "提醒", message = "保存成功", preferredStyle = UIAlertController.Style.alert);
+			UTSiOS.getCurrentViewController().present(alertController, animated = true, completion = () => {
+				alertController.dismiss(animated = true, completion = nil)
+			})
+
+		})
+
+
+	}
+	setCameraDir(type : string) {
+		this.CamerDeviceDir = type == 'back' ? AVCaptureDevice.Position.back : AVCaptureDevice.Position.front
+	}
+	setFlash(type : boolean) {
+		this.flashMode = type;
+	}
+	saveCacheDir(img : UIImage) {
+		if (this.isSaveToPhoto) {
+			this.savePhoto(img)
+		}
+		// 获得当前用户的缓存目录路径主目录。
+		let userDir = FileManager.default.urls(for = FileManager.SearchPathDirectory.cachesDirectory, in = FileManager.SearchPathDomainMask.userDomainMask).first!
+		let filename = 'tmui4xCamrea' + getUid(1, 12) + '.jpg';
+		let destinationURL = userDir.appendingPathComponent(filename)
+		let imageData = img.jpegData(compressionQuality = 1);
+		if (imageData == null) {
+			return;
+		}
+
+		let real = UTSiOS.try(imageData!.write(to = destinationURL), "?");
+
+		if (real != null) {
+			takePhotoCall(destinationURL.path)
+		}
+
+	}
+	close() {
+		this.pasue()
+		if (this.camreaViewLayer != null) {
+			this.camreaViewLayer!.removeFromSuperview()
+		}
+		if (this.imageUiView != null) {
+			this.imageUiView!.removeFromSuperview()
+		}
+		this.camreaViewLayer = null
+		this.imageUiView = null
+		// this.movieFileOutput?.stopRecording()
+		this.movieFileOutput = null;
+		recorderingDelegate = null;
+	}
+	pasue() {
+		if (captureSession != null) {
+			if (captureSession!.isRunning) {
+				captureSession!.stopRunning()
+			}
+			for (input in captureSession!.inputs) {
+				captureSession!.removeInput(input)
+			}
+			for (output in captureSession!.outputs) {
+				captureSession!.removeOutput(output)
+			}
+		}
+		captureSession = null;
+		captureOutDelegate = null;
+		isOpeing = false;
+		taking = false
+
+	}
+	private openCamrea() {
+		let t = this;
+		isOpeing = true;
+		captureSession = new AVCaptureSession();
+		if (this.flashMode) {
+			takingTaron = true;
+		} else {
+			takingTaron = false
+		}
+		let captureDevice = AVCaptureDevice.default(AVCaptureDevice.DeviceType.builtInWideAngleCamera, for = AVMediaType.video, position = this.CamerDeviceDir)
+
+		let captureOut = new AVCaptureVideoDataOutput();
+		captureSession!.sessionPreset = AVCaptureSession.Preset.photo
+		captureOutDelegate = new CaptureOutSessionBuffer((result : CMSampleBuffer) => {
+
+			let pixelBuffer = CMSampleBufferGetImageBuffer(result)
+			if (pixelBuffer == null) return;
+			let ciImage = new CIImage(cvPixelBuffer = pixelBuffer!)
+			let context = new CIContext(options = nil)
+			if (context != null) {
+				let cgImage = context.createCGImage(ciImage, from = ciImage.extent)
+				let image = new UIImage(cgImage = cgImage!)
+				// t.rotateImage(image, Math.PI/2)
+				t.saveCacheDir(image)
+			}
+
+		}, this, captureDevice!)
+
+		// 新建设备的输入设备
+		let inputDevice = UTSiOS.try(new AVCaptureDeviceInput(device = captureDevice!), "?")
+		if (inputDevice != null) {
+			// 添加输入到会话中。
+			captureSession!.addInput(inputDevice!)
+		}
+
+		captureOut.alwaysDiscardsLateVideoFrames = true;
+		// 设置输出会话
+		captureOut.setSampleBufferDelegate(captureOutDelegate!, queue = DispatchQueue.global())
+		if (captureSession!.canAddOutput(captureOut)) {
+			captureSession!.addOutput(captureOut)
+			console.log("绑定输出层正确！")
+		}
+
+		this.xCamreaInit(captureDevice!);
+	}
+
+	private rotateImage(img : UIImage, angle : number) : UIImage {
+
+
+		let rander = new UIGraphicsImageRenderer(size = img.size)
+		return rander.image(actions = (context : UIGraphicsRendererContext) => {
+			context.cgContext.setAllowsAntialiasing(true)
+
+			context.cgContext.setAllowsAntialiasing(true)
+			context.cgContext.setShouldAntialias(true)
+			context.cgContext.clear(new CGRect(origin = CGPoint.zero, size = img.size))
+			context.cgContext.translateBy(x = img.size.width / 2, y = img.size.height / 2)
+			context.cgContext.rotate(by = new CGFloat(angle))
+			let drawRect = new CGRect(x = -img.size.height / 2, y = -img.size.width / 2, width = img.size.height, height = img.size.width)
+
+			img.draw(in = drawRect)
+		})
+	}
+	xCamreaInit(cdv : AVCaptureDevice) {
+		let camreaDevsBuilder : AVCaptureDevice = cdv
+
+
+		let t = this;
+
+		let parentView = this.parentView!
+
+
+		// 绘制界面
+		// 创建一张图片预览层。
+
+		// 	imageUiView!.frame = this.parentView!.frame
+		// 	imageUiView!.alpha = new CGFloat(0)
+
+		// 	parentView!.addSubview(imageUiView!);
+
+		// 创建视频预览层。
+		let camelayer = new UIView()
+		let parentCGrect = parentView.layer.bounds
+		let width = Int(parentCGrect.width)
+		let height = Int(parentCGrect.height)
+		camelayer.frame = new CGRect(x = 0, y = 0, width = width, height = height)
+		this.camreaViewLayer = camelayer;
+
+		let isopenRecoderVideo  = true;
+
+		if (this.takeModelType == 'video') {
+			console.log('开始录制视频')
+			this.movieFileOutput = new AVCaptureMovieFileOutput();
+			let audioDevice = AVCaptureDevice.default(for = AVMediaType.audio)
+			let audioInput = UTSiOS.try(new AVCaptureDeviceInput(device = audioDevice!), '?')
+			console.log('配置声音', audioInput)
+			if (audioInput != null && captureSession!.canAddInput(audioInput!)) {
+				captureSession!.addInput(audioInput!)
+			}
+			console.log('配置输出视频文件', this.movieFileOutput)
+			if (captureSession!.canAddOutput(this.movieFileOutput!)) {
+				captureSession!.addOutput(this.movieFileOutput!)
+			}else{
+				isopenRecoderVideo = false
+			}
+			
+			
+
+		}
+
+		let cameraView = new AVCaptureVideoPreviewLayer(session = captureSession!)
+
+		cameraView.videoGravity = AVLayerVideoGravity.resizeAspectFill
+		cameraView.connection!.videoOrientation = AVCaptureVideoOrientation.portrait
+		cameraView.frame = new CGRect(x = 0, y = 0, width = width, height = height)
+
+
+		DispatchQueue.main.async(execute = () : void => {
+			parentView.addSubview(camelayer);
+			// 绑定渲染层。
+			camelayer.layer.addSublayer(cameraView)
+			captureSession!.startRunning()
+			
+			t.isPaused = false
+			
+			if (t.takeModelType == 'video') {
+				if(isopenRecoderVideo){
+					setTimeout(function() {
+						t.recoderVideoCan()
+					}, 500);
+				}else{
+					takvideoRecoderCall('')
+				}
+			}
+			
+			if (takingTaron && !camreaDevsBuilder.isTorchActive) {
+				let islock = UTSiOS.try(camreaDevsBuilder.lockForConfiguration(), "?")
+				if (islock != null) {
+					camreaDevsBuilder.torchMode = AVCaptureDevice.TorchMode.on
+					camreaDevsBuilder.unlockForConfiguration()
+				}
+
+			}
+		})
+
+	}
+}

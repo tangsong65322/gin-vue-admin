@@ -1,0 +1,35 @@
+import { FORM_RULE_TYPE } from "../../interface.uts"
+export type FORM_ITEM = {
+	id : string,
+	ele : XFormItemComponentPublicInstance,
+	top : number,
+	name : string
+}
+export type FORM_VAILD_FUN = (val : any | null) => boolean
+export type FORM_RULE_SELF = {
+	/**
+	 * 字段类型,空值为自动判断 ,不填写默认为空,自动判断.
+	 */
+	type : FORM_RULE_TYPE,
+	/**
+	 * 校验函数。默认根据泛型判断字段值,如果不填写默认为自带的校验函数校验.
+	 */
+	valid : FORM_VAILD_FUN|null,
+	/**
+	 * 错误信息,默认为自动根据类型编写提示
+	 */
+	errorMessage : string,
+	/** 最大值,如果为空值或者为-1表示不限制大小,(数组和字符串是长度,数字是值,utsjson是key字段数量) */
+	max : number,
+	/** 最小值,如果为空默认为1,(数组,字符,utsjson为1,长不能小于1) */
+	min : number,
+	/**
+	 * 触发校验时机,只针对input有效.
+	 */
+	trigger : string
+}
+
+export type FORM_SUBMIT_SELF_OBJECT = {
+	errorMessage : string,
+	valid : boolean
+}

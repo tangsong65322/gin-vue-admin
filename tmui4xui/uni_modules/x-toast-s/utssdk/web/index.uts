@@ -1,0 +1,142 @@
+export { XTOAST_TYPE, XTOAST_TYPE_PRIVATE } from "../interface.uts"
+import { defaultConfig, configCover } from "../libs/config.uts"
+import { LoadFontFace } from "./loadFont.uts"
+let maskerDom : null | HTMLDivElement = null;
+let tid:number|null = 0
+let globalOpts:XTOAST_TYPE | null = null;
+export const hideToast = () => {
+	if (maskerDom != null) {
+		maskerDom.remove()
+	}
+	if(tid!=null){
+		clearTimeout(tid!)
+	}
+	globalOpts?.close()
+}
+
+export const showToast = (opts : XTOAST_TYPE | null) => {
+	globalOpts = opts;
+	LoadFontFace()
+	if(tid!=null){
+		clearTimeout(tid!)
+		tid=null;
+	}
+	if (maskerDom != null) {
+		maskerDom.remove()
+	}
+	let realopts = opts == null ? ({} as XTOAST_TYPE) : (opts!)
+	let config = configCover(realopts)
+
+	maskerDom = document.createElement("div")
+	if (maskerDom == null) return;
+	maskerDom.style.setProperty("background-color", config.maskBgColor)
+	maskerDom.style.setProperty("position", "fixed")
+	maskerDom.style.setProperty("left", "0px")
+	maskerDom.style.setProperty("top", "0px")
+	maskerDom.style.setProperty("width", "100%")
+	maskerDom.style.setProperty("height", "100%")
+	maskerDom.style.display = "flex"
+	maskerDom.style.flexDirection = "row"
+	maskerDom.style.justifyContent = "center"
+	maskerDom.style.alignItems = "center"
+	maskerDom.style.zIndex = "10000"
+	maskerDom.style.pointerEvents = config.maskDisableClik?'auto':"none"
+
+	let contentWrapDiv = document.createElement("div")
+	contentWrapDiv.style.padding = "16px"
+	contentWrapDiv.style.minWidth = config.size+"px"
+	let maxwidth = window.innerWidth;
+	contentWrapDiv.style.maxWidth = Math.min((maxwidth-40),320)+'px'
+	// contentWrapDiv.style.height = "100px"
+	if((config.iconCode!=''&&config.title!='')||(config.iconCode!=''&&config.title=='')){
+		contentWrapDiv.style.minHeight = config.size+"px"
+	}
+	contentWrapDiv.style.backgroundColor = config.contentBgColor
+	contentWrapDiv.style.borderRadius = "16px"
+	contentWrapDiv.style.boxSizing = "border-box"
+	contentWrapDiv.style.display = "flex"
+	contentWrapDiv.style.flexDirection = "column"
+	contentWrapDiv.style.justifyContent = "center"
+	contentWrapDiv.style.alignItems = "center"
+	contentWrapDiv.className = 'xShowToasScaleAnimation'
+	let textDiv = document.createElement("span")
+	if(config.iconCode!=''){
+		textDiv.innerText = String.fromCharCode(parseInt(config.iconCode, 16));
+		textDiv.style.fontFamily = "remixicon"
+		textDiv.style.fontSize = config.iconSize + "px"
+		textDiv.style.color = config.iconColor
+		textDiv.className = 'xShowToasAnimation'
+	}
+	
+	
+	var anistr = `
+	.xShowToasAnimation{
+		animation-name: xUiToastIconAni;
+		animation-duration: 1s;
+		animation-timing-function: cubic-bezier(.42,.38,.15,.93);
+	}
+	.xShowToasScaleAnimation{
+		animation-name: xUiToastIconAniScale;
+		animation-duration: 0.3s;
+		animation-timing-function: cubic-bezier(.42,.38,.15,.93);
+	}
+	@keyframes xUiToastIconAni {
+		0% {
+			transform: scale(0);
+		}
+	
+		50% {
+			transform: scale(1.2);
+		}
+		100% {
+			transform: scale(1);
+		}
+	}
+	@keyframes xUiToastIconAniScale {
+		0% {
+			transform: scale(0);
+			opacity:0;
+		}
+	
+		100% {
+			transform: scale(1);
+			opacity:1;
+		}
+	}
+	`
+	var styleDIv = document.getElementById('xUiToastIcon');
+	if (!styleDIv) {
+		let style = document.createElement("style");
+		style.id = 'xUiLoadWeingIcon'
+		document.head.appendChild(style)
+		styleDIv = style;
+	}
+	let sheet = styleDIv.sheet;
+	if (sheet.cssRules.length == 0) {
+		styleDIv.append(anistr)
+	}
+
+	contentWrapDiv.appendChild(textDiv)
+
+
+	if (config.title != '') {
+		let titleDiv = document.createElement("span")
+		titleDiv.innerText = config.title;
+		titleDiv.style.fontSize = config.titleSize + "px"
+		titleDiv.style.color = config.titleColor
+		contentWrapDiv.appendChild(titleDiv)
+		titleDiv.style.textAlign = "center"
+		titleDiv.style.wordBreak = "break-all"
+		
+	}
+
+	maskerDom!.appendChild(contentWrapDiv)
+	window.document.body.appendChild(maskerDom!)
+	
+	if(config.duration==0) return;
+	tid = setTimeout(function() {
+		tid = null;
+		hideToast()
+	}, (config.duration));
+}
+

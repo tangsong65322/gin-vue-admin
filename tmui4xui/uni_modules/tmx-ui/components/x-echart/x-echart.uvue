@@ -1,0 +1,556 @@
+<script lang="ts">
+import { type PropType } from "vue"
+import { getUid } from "../../core/util/xCoreUtil.uts"
+import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+import { xConfig } from "../../config/xConfig.uts"
+// #ifdef MP-WEIXIN
+import WxCanvas from './canvasinit.uts';
+// const echarts = require("@/pages/qita/echarts.min.js")
+// import * as echarts from "@/pages/qita/echarts.min.js"
+//bindtouchstart="{{ echartCanvasObj.disableTouch ? '' : 'touchStart' }}" bindtouchmove="{{ echartCanvasObj.disableTouch ? '' : 'touchMove' }}" bindtouchend="{{ echartCanvasObj.disableTouch ? '' : 'touchEnd' }}"
+let echarts = null
+// #endif
+type DATATYP = {
+	action: string
+}
+type eventsType = (data: any) => void;
+
+/**
+ * @name 图表 xEchart
+ * @description 是百度图表5.4.1,全量版本
+ * 传递正常的百度对象数据且需要将数据JSON.stringify化
+ * 图表文档：https://echarts.apache.org/zh/index.html
+ * 编译微信版本：https://echarts.apache.org/zh/builder.html
+ * 注意的是：如果你的配置中函数函数，需要自己转换为字符串【如果是微信端建议直接传对象，不要转为字符串这样兼容性更好。】
+ * 比如：函数对象请参考我demo页面的示例规则分平台写否则无法实现函数对象。
+ * @page /pages/index/echart
+ * @category 其它组件
+ * @constant 平台兼容
+ *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+	| --- | --- | --- | --- | --- | --- | --- |
+	| ☑ | ☑️ | ☑️ | x | ☑️ | 4.14+ | 1.0.0 |
+ */
+export default {
+	data() {
+		return {
+			id: ("xEchart-" + getUid()) as string,
+			webviewContext: null as WebviewContext | null,
+			isLoaded: false,
+			boxWidth: 10,
+			boxHeight: 10,
+			tid: 0,
+			tid2: 0,
+			realLoaded: false,
+			// 图表相关事件回调
+			dipcatchEvents: new Map<string, eventsType>(),
+			// #ifdef MP-WEIXIN
+			chart: null as echarts.ECharts | null,
+			echartCanvasObj: {},
+			// #endif
+		}
+	},
+	emits: [
+		/**
+		 * 是否初始化成功。没成功后，改变opts数据或者
+		 * 调用使用ref函数setOptions。
+		 */
+		'init'
+	],
+	props: {
+
+		/**
+		 * 窗口宽
+		 */
+		width: {
+			type: String,
+			default: 'auto'
+		},
+		/**
+		 * 窗口高
+		 */
+		height: {
+			type: String,
+			default: '250px'
+		},
+		/**
+		 * 图表数据，你需要把对象数据转换为string
+		 * 数据变动会触发更新。
+		 */
+		opts: {
+			type: String,
+			default: ""
+		}
+	},
+	computed: {
+
+		_width(): string {
+			return checkIsCssUnit(this.width, xConfig.unit)
+		},
+		_height(): string {
+			return checkIsCssUnit(this.height, xConfig.unit)
+		},
+		_options(): string {
+			return this.opts
+		}
+
+
+
+	},
+	watch: {
+		opts() {
+			this.drawer();
+		}
+	},
+	mounted() {
+
+		// #ifdef WEB||APP
+		this.getNodeInfo();
+		this.onAddlisentMesage();
+		uni.$on('onResize', this.onResizeChart)
+		// #endif
+	},
+	beforeMount() {
+		clearTimeout(this.tid)
+	},
+	beforeUnmount() {
+		uni.$off('onResize', this.onResizeChart)
+	},
+	methods: {
+		onResizeChart() {
+			if (this.realLoaded) {
+				this.cahrtActions('resize', '', null)
+			}
+		},
+		getNodeInfo() {
+			let t = this;
+			uni.createSelectorQuery().in(this)
+				.select(".xEchart")
+				.boundingClientRect().exec((ret) => {
+					let nodeinfo = ret[0] as NodeInfo
+					this.boxWidth = nodeinfo.width!
+					this.boxHeight = nodeinfo.height!
+					if (t.webviewContext != null) return;
+					t.isLoaded = true;
+					this.tid = setTimeout(function () {
+						// #ifdef APP
+						t.webviewContext = uni.createWebviewContext(t.id, t);
+						// #endif
+						// #ifdef WEB
+						t.webviewContext = document.getElementById(t.id) as HTMLElement;
+						// #endif
+						// #ifdef MP-WEIXIN
+
+						uni.createCanvasContextAsync({
+							id: t.id,
+							component: t,
+							success(canvascontext) {
+								const pixelRatio = uni.getWindowInfo().pixelRatio
+								const context = canvascontext.getContext('2d')
+								const canvas = context?.canvas;
+								canvas.width = canvas?.offsetWidth * pixelRatio
+								canvas.height = canvas?.offsetHeight * pixelRatio
+								context.scale(pixelRatio, pixelRatio)
+								let echartCanvas = {}
+
+								echartCanvas = new WxCanvas(context, t.id, true, canvas)
+								echarts.setPlatformAPI({
+									// Same with the old setCanvasCreator
+									createCanvas() {
+										return canvas;
+									}
+								});
+
+								t.chart = echarts.init(echartCanvas, null, {
+									width: t.boxWidth,
+									height: t.boxHeight,
+									devicePixelRatio: pixelRatio
+								});
+								echartCanvas.setChart(t.chart);
+
+
+								t.chart.on('mousedown', (e) => {
+									// t.$emit('click', e)
+									t.dipcatchEvents.forEach(fun => {
+										const datas = e;
+										delete datas.event;
+										delete datas.encode;
+										delete datas.encode;
+										fun(datas)
+									})
+								})
+								t.echartCanvasObj = echartCanvas
+								t.realLoaded = true;
+								t.drawer()
+								t.$emit("init", t.chart)
+
+
+							}
+						})
+
+						// #endif
+					}, 50);
+				})
+		},
+
+		// h5端
+		onAddlisentMesage() {
+			// #ifdef WEB
+			let t = this;
+			window.addEventListener('message', function (event) {
+				if (event.data.iframeId == t.id && event.data.action == 'onJSBridgeReady') {
+					clearTimeout(t.tid2)
+					t.tid2 = setTimeout(function () {
+						t.realLoaded = true;
+						t.drawer()
+						t.$emit("init")
+					}, 50);
+				}
+				if (event.data.iframeId == t.id && event.data.action == 'click') {
+					let eventId = event.data.eventId
+					let filterEvents = t.dipcatchEvents.get(eventId)
+					if (filterEvents != null) {
+						let evt = filterEvents!;
+						evt(JSON.parse(event.data.data))
+					}
+
+				}
+
+
+			});
+			// #endif
+		},
+
+
+		onMessage(event: WebViewMessageEvent) {
+			let msgdatas = event.detail.data
+			// #ifdef APP-ANDROID
+			if (msgdatas.length > 0) {
+				let msg = msgdatas[0]! as UTSJSONObject
+
+				let ac = msg!.getString("action") as string;
+				if (ac == 'img') {
+					let imgbase64 = msg!.getString("url") as string;
+					console.log(imgbase64)
+				} else if (ac == "onJSBridgeReady") {
+
+
+				} else if (ac == 'click') {
+
+					let eventId = msg!.getString("eventId") as string
+					let filterEvents = this.dipcatchEvents.get(eventId)
+					if (filterEvents != null) {
+						let handler = filterEvents! as eventsType;
+						let datas = msg!.getString("data")
+
+						if (datas == null || datas == '') {
+							handler({} as UTSJSONObject)
+						} else {
+							let eventData = JSON.parse(datas!)! as UTSJSONObject
+							handler(eventData)
+						}
+
+					}
+
+				}
+			}
+
+			// #endif
+
+			// #ifdef APP-IOS
+			if (msgdatas.length > 0) {
+				let msg = msgdatas[0]
+				let ac = msg["action"] as string;
+				if (ac == 'img') {
+					let imgbase64 = msg['url'] as string;
+					console.log(imgbase64)
+				} else if (ac == "onJSBridgeReady") {
+
+				} else if (ac == 'click') {
+
+					let eventId = msg['eventId'] as string
+					let filterEvents = this.dipcatchEvents.get(eventId)
+					if (filterEvents != null) {
+						let handler = filterEvents! as eventsType;
+						let datas = msg['data']
+
+						if (datas == null || datas == '') {
+							handler({} as UTSJSONObject)
+						} else {
+							let eventData = JSON.parse(datas!)! as UTSJSONObject
+							handler(eventData)
+						}
+
+					}
+
+				}
+			}
+			// #endif
+		},
+
+		drawer() {
+			if (!this.realLoaded) {
+				uni.showToast({ title: "未初始化完成", icon: 'none' })
+				return;
+			}
+			// #ifdef WEB
+			this.eventJsCall('chart_setOption', `${this._options}`)
+			// #endif
+			// #ifdef APP
+			this.eventJsCall('chart_setOption', `'${this._options}'`)
+			// #endif
+
+			// #ifdef MP-WEIXIN
+			this.setoptsByWx(this._options)
+			// #endif
+		},
+		// #ifdef MP-WEIXIN
+		wrapTouch(event) {
+			for (let i = 0; i < event.touches.length; ++i) {
+				const touch = event.touches[i];
+				touch.offsetX = touch.x;
+				touch.offsetY = touch.y;
+			}
+			return event;
+		},
+		touchStart(e) {
+			if (this.chart && e.touches.length > 0) {
+				var touch = e.touches[0];
+				var handler = this.chart.getZr().handler;
+				handler.dispatch('mousedown', {
+					zrX: touch.x,
+					zrY: touch.y,
+					preventDefault: () => { },
+					stopImmediatePropagation: () => { },
+					stopPropagation: () => { }
+				});
+				handler.dispatch('mousemove', {
+					zrX: touch.x,
+					zrY: touch.y,
+					preventDefault: () => { },
+					stopImmediatePropagation: () => { },
+					stopPropagation: () => { }
+				});
+				handler.processGesture(this.wrapTouch(e), 'start');
+			}
+		},
+
+		touchMove(e) {
+			if (this.chart && e.touches.length > 0) {
+				var touch = e.touches[0];
+				var handler = this.chart.getZr().handler;
+				handler.dispatch('mousemove', {
+					zrX: touch.x,
+					zrY: touch.y,
+					preventDefault: () => { },
+					stopImmediatePropagation: () => { },
+					stopPropagation: () => { }
+				});
+				handler.processGesture(this.wrapTouch(e), 'change');
+			}
+		},
+
+		touchEnd(e) {
+			if (this.chart) {
+				const touch = e.changedTouches ? e.changedTouches[0] : {};
+				var handler = this.chart.getZr().handler;
+				handler.dispatch('mouseup', {
+					zrX: touch.x,
+					zrY: touch.y,
+					preventDefault: () => { },
+					stopImmediatePropagation: () => { },
+					stopPropagation: () => { }
+				});
+				handler.dispatch('click', {
+					zrX: touch.x,
+					zrY: touch.y,
+					preventDefault: () => { },
+					stopImmediatePropagation: () => { },
+					stopPropagation: () => { }
+				});
+				handler.processGesture(this.wrapTouch(e), 'end');
+			}
+		},
+		/**
+		 * 将百度对象绑定到组件内,微信小程序必需要实现.
+		 * @public
+		 */
+		setEcharts(e: any) {
+			echarts = e;
+			echarts.registerPreprocessor(option => {
+
+				if (option && option.series) {
+					if (option.series.length > 0) {
+						option.series.forEach(series => {
+							series.progressive = 0;
+						});
+					}
+					else if (typeof option.series === 'object') {
+						option.series.progressive = 0;
+					}
+				}
+			});
+
+			// t.chart.on('click', (e) => {
+			// 	console.log(e)
+			// 	t.$emit('click', e)
+			// })
+			this.getNodeInfo()
+		},
+		
+		parseJsonWithFunction(jsonString) {
+		    // 如果输入不是字符串，直接返回
+		    if (typeof jsonString !== 'string') {
+		        return jsonString;
+		    }
+			
+			const obj = JSON.parse(jsonString,function(k,v){
+				// 处理常规函数定义，包括多行函数 "key": function(params) { ... }
+				var isFunctionStr =
+					// 常规函数
+					/^\s*function\s*\([^)]*\)\s*\{[\s\S]*\}\s*$/.test(v) ||
+					// 箭头函数 - 带花括号
+					/^\s*\([^)]*\)\s*=>\s*\{[\s\S]*\}\s*$/.test(v) ||
+					// 箭头函数 - 简写形式
+					/^\s*\([^)]*\)\s*=>\s*[^{\s][\s\S]*$/.test(v) ||
+					// 单参数箭头函数 - 无括号
+					/^\s*[a-zA-Z0-9_$]+\s*=>\s*[^{\s][\s\S]*$/.test(v) ||
+					// 单参数箭头函数 - 带花括号
+					/^\s*[a-zA-Z0-9_$]+\s*=>\s*\{[\s\S]*\}\s*$/.test(v);
+				
+				
+				if(typeof v === 'string' && isFunctionStr){
+					
+					
+					const funcMatch = v.match(/function\s*\(([^)]*)\)\s*\{([\s\S]*)\}\s*$/);
+					if (funcMatch) {
+						const params = funcMatch[1].split(',').map(p => p.trim());
+						const body = funcMatch[2].trim();
+						v = new Function(...params, body);
+					}
+					console.log(v)
+				}
+			
+				return v;
+			});
+		
+			return obj;
+		},
+		setoptsByWx(opts: any) {
+			if (!opts) return;
+			if (typeof opts == 'string') {
+				const dataopts = this.parseJsonWithFunction(opts);
+				if (dataopts && dataopts != null && typeof dataopts == 'object') {
+					this.chart.setOption(dataopts)
+				}
+			} else {
+				this.chart.setOption(opts)
+			}
+
+		},
+
+		// #endif
+		/**
+		 * 设置图表数据
+		 * @public
+		 * @param {string} opts - app端你格式化的json数据后要这样写：`'jsonstr'`,web端：`jsonstr`
+		 */
+		setOptions(opts: any) {
+			if (!this.realLoaded) {
+				uni.showToast({ title: "未初始化完成", icon: 'none' })
+				return;
+			}
+			// #ifdef WEB
+			this.eventJsCall('chart_setOption', `${opts}`)
+			// #endif
+			// #ifdef APP
+			
+			this.eventJsCall('chart_setOption', `'${opts as string}'`)
+			// #endif
+			// #ifdef MP-WEIXIN
+
+			this.setoptsByWx(opts)
+			// #endif
+		},
+		/**
+		 * 获取图片数据
+		 * @public
+		 * @returns {string} 目前仅支持web平台，输入base64图片数据
+		 */
+		getImg() {
+			this.eventJsCall('EchartImg', '')
+		},
+		/**
+		 * echart对象执行的函数,比如:cahrtCall('clear','')执行清空动作，web的json string后的参数需要自己加‘’号app不用。
+		 * @public
+		 * @param {string} funName - 函数名称
+		 * @param {string} opts - 函数所需参数
+		 * @param {Function} fun - 期望的回调函数,比如funName是图表的click，fun的类型为(data:any)=>{},data就是事件中的数据.不是所有你执行的函数都有回调
+		 * 目前仅funName为click才会执行fun函数回调。并且如果funName=click时opts失效,fun起效。如果是非click，fun失效
+		 * 重复执行click可以叠加函数并执行多次。
+		 * @returns {string} 目前仅支持web平台，输入base64图片数据
+		 */
+		cahrtActions(fun: string, opts: string, evt: eventsType | null) {
+			let filterevents = ["click"]
+			let eventsid = ('x-' + getUid()) as string;
+			if (evt != null && filterevents.includes(fun)) {
+				this.dipcatchEvents.set(eventsid, evt!)
+			}
+
+			// #ifdef WEB
+			var iframe = document.getElementById(this.id);
+			if (!iframe) return;
+			iframe.contentWindow['chart_call'](fun, opts, eventsid);
+			// #endif
+			// #ifdef APP
+			this.webviewContext?.evalJS(`chart_call('${fun}','${opts}','${eventsid}')`)
+			// #endif
+
+			// #ifdef MP-WEIXIN
+			// this.chart[fun](opts)
+			// #endif
+
+		},
+
+		eventJsCall(callfun: string, str: string) {
+			// #ifdef WEB
+			var iframe = document.getElementById(this.id);
+			if (!iframe) return;
+			iframe.contentWindow[callfun](str);
+			// #endif
+			// #ifdef APP
+			this.webviewContext?.evalJS(`${callfun}(${str})`)
+			// #endif
+			// #ifdef MP-WEIXIN
+			this.chart[callfun](str)
+			// #endif
+		},
+		appWebViewLoaded() {
+			this.realLoaded = true;
+			this.drawer()
+			/**
+			 * 图表加载初始化完成后触发此事件。
+			 */
+			this.$emit("init")
+			
+		}
+	}
+}
+</script>
+<template>
+	<view class="xEchart" :style="{ width: _width, height: _height }">
+		<view v-if="!isLoaded"
+			style="width:100%;height:100%;display: flex;justify-content: center;align-items: center;flex-direction: row;">
+			<x-icon color="primary" :spin="true" name="loader-4-line"></x-icon>
+		</view>
+		<!-- #ifdef APP||WEB -->
+		<web-view @load="appWebViewLoaded" v-else :id="id" src="/hybrid/html/local.html"
+			:style="{ width: '100%', height: '100%', opacity: isLoaded ? 1 : 0 }" @message="onMessage"></web-view>
+		<!-- #endif -->
+		<!-- #ifdef MP-WEIXIN -->
+		<canvas v-else :id="id" @touchstart="touchStart" @touchmove="touchmove" @touchend="touchend"
+			:style="{ width: boxWidth + 'px', height: boxHeight + 'px' }"></canvas>
+		<!-- #endif -->
+	</view>
+</template>
+<style scoped></style>

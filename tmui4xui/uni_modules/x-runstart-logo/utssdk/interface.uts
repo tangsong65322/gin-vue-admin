@@ -1,0 +1,23 @@
+export type RGBA = { r : number, g : number, b : number, a : number }
+export type XRUN_START_LOGO_OPTS = {
+	/** 启动界面背景色,不能使用颜色名称 */
+	bgColor:string,
+	/** logo图片,放到static目录,也可以是网络图片地址 */
+	logo:string,
+	/** logo宽 */
+	width:number,
+	/** logo高 */
+	height:number,
+	/** logo容器圆角 */
+	round:number,
+	/** logo容器背景,不能使用颜色名称 */
+	logoBgColor:string,
+	/** logo下方文字 */
+	rightText:string,
+	/** 文字字号 */
+	fontSize:number,
+	/** 文字颜色,不能使用颜色名称 */
+	fontColor:string,
+	/** logo容器的padding */
+	logoPadding:number
+}

@@ -1,0 +1,408 @@
+<script lang="ts">
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { getUid } from '../../core/util/xCoreUtil.uts';
+	/**
+	 * 从未触发过，拉动中，刷新，重置，中止
+	 */
+	type XPULL_STATUS = "none" | "puling" | "refresh" | "reset" | "abort"
+	type XSTATUS_OBJ_INFO = {
+		text : string,
+		icon : string,
+		textColor : string,
+		color : string
+	}
+
+	/**
+	 * @name 下拉刷新 xPullRefresh
+	 * @description 请注意内容下拉内置了mode模式即可以是listview,也可以是scrollview组件进行渲染,请了解各自功能.
+	 * @page /pages/index/pull-refresh
+	 * @category 反馈组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				status: 'none' as XPULL_STATUS,
+				isRefresh: false,//是否在刷新 中，
+				refresherTriggered: false,
+				pullDy: 0,
+				tid: 0,
+				bootomIsRefresh: false,
+				statusbarHeight:0,
+				dirtid:12,
+				scrollTop:0,
+				scrollIntoView:''
+			}
+		},
+		emits: [
+			/**
+			 * 下拉触发了刷新。请在事件refresh中设置本状态modelValue为false来结束刷新。
+			 */
+			'refresh',
+			/**
+			 * 触底刷新，请在事件中来结束当前的刷新状态。
+			 */
+			'bottomRefresh',
+			/**
+			 * 等同v-model:model-bottom-status=""
+			 */
+			'update:modelBottomStatus',
+			/**
+			 * 滚动的时候触发
+			 * @param {UniScrollEvent}  evt - 滚动事件参数
+			 */
+			'scroll',
+			/**
+			 * 滚动的时候触发
+			 * @param {string:up,down}  type - 当前的滚动方向up表示往下拉，内容向上滚动，down表示往上拉，内容向下滚动
+			 */
+			'scrollDirection',
+			'update:modelValue'],
+		props: {
+			/**
+			 * 高，可以是百分比，px,rpx等单位数字或者字符串。
+			 */
+			height: {
+				type: String,
+				default: '100%'
+			},
+			/**
+			 * 下拉区域触发刷新的高度
+			 */
+			pullHeight: {
+				type: Number,
+				default: 60
+			},
+			/**
+			 * 图标颜色,空值时，取全局主题色。
+			 */
+			color: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 文字颜色,空值时，取全局主题色。
+			 */
+			textColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 当前是否在刷新中,如果默认是true，表示一进入就触发刷新，然后你需要手动复位完成这个刷新状态。
+			 * 请在事件refresh中设置本状态为false来结束刷新。
+			 */
+			modelValue: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 底部的刷新状态，true刷新中，false结束刷新，不在刷新中。
+			 */
+			modelBottomStatus: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 内部使用哪种组件来渲染列表
+			 * 可用值:listview,scrollview
+			 */
+			mode:{
+				type:String,
+				default:"scrollview"
+			},
+			/**
+			 * 是否显示滚动条
+			 */
+			showScrollbar:{
+				type:Boolean,
+				default:true
+			},
+			/**
+			 * 是否禁用下拉刷新
+			 */
+			disabledPull:{
+				type:Boolean,
+				default:false
+			},
+			/**
+			 * 是否禁用触底刷新
+			 */
+			disabledBottom:{
+				type:Boolean,
+				default:false
+			}
+		},
+		computed: {
+			_disabledPull():boolean{
+				return this.disabledPull
+			},
+			_disabledBottom():boolean{
+				return this.disabledBottom
+			},
+			_showScrollbar():boolean{
+				return this.showScrollbar
+			},
+			_height() : string {
+				return checkIsCssUnit(this.height, xConfig.unit);
+			},
+			_color() : string {
+				if (this.color == "") {
+					return getDefaultColor(xConfig.color)
+				}
+				return getDefaultColor(this.color)
+			},
+			_textColor() : string {
+				if (this.textColor == "") {
+					return getDefaultColor(xConfig.color)
+				}
+				return getDefaultColor(this.textColor)
+			},
+			_status() : number {
+				// 刷新中.
+				if (this.isRefresh) return 1;
+
+				// 未达到触发刷新条件。
+				if (this.pullDy < this.pullHeight) return 2
+				// 达到了触发条件。
+				if (this.pullDy >= this.pullHeight) return 3
+
+				return 0
+			},
+			_status_obj() : XSTATUS_OBJ_INFO {
+				if (this._status == 1) return { icon: 'loader-line', text: '刷新中..', color: this._color, textColor: this._textColor } as XSTATUS_OBJ_INFO
+				if (this._status == 2) return { icon: 'arrow-down-line', text: '继续下拉', color: this._color, textColor: this._textColor } as XSTATUS_OBJ_INFO
+				if (this._status == 3) return { icon: 'arrow-up-line', text: '松开刷新', color: this._color, textColor: this._textColor } as XSTATUS_OBJ_INFO
+				return { icon: 'checkbox-circle-line', text: '刷新完成', color: this._color, textColor: this._textColor } as XSTATUS_OBJ_INFO
+			},
+			_pullDiffHeight() : string {
+
+				let strNumber = this.pullDy > (this.pullHeight * 2) ? this.pullDy : this.pullDy
+			
+				// #ifdef APP
+				strNumber = Math.min(this.pullHeight, strNumber)
+				// #endif
+				// #ifdef APP-ANDROID
+				strNumber = strNumber/2
+				// #endif
+				// #ifdef MP-WEIXIN || WEB
+				strNumber = Math.min(this.pullHeight, strNumber)/4
+				// #endif
+				return strNumber.toString() + 'px'
+			}
+		},
+		mounted() {
+			let t = this;
+			t.isRefresh = this.modelValue;
+			t.refresherTriggered = t.isRefresh;
+			// #ifdef APP-IOS || WEB
+			t.statusbarHeight = uni.getWindowInfo().windowTop
+			// #endif
+			if (t.isRefresh) {
+				/**
+				 * 下拉触发了刷新。请在事件refresh中设置本状态modelValue为false来结束刷新。
+				 */
+				t.$emit("refresh")
+			}
+		},
+		beforeUnmount() {
+			clearTimeout(this.tid)
+		},
+		watch: {
+			modelValue(newValue : boolean) {
+				if (newValue == this.isRefresh) return;
+				this.isRefresh = false;
+				this.refresherTriggered = false;
+				this.status = 'reset'
+			},
+			modelBottomStatus(newValue : boolean) {
+				this.bootomIsRefresh = newValue
+			}
+		},
+		methods: {
+			rPulling(evt : UniRefresherEvent) {
+				let py = evt.detail.dy;
+
+				this.pullDy = py
+				// 还在刷新中，但又被复位了，需要取消执行刷新的函数。
+				if (this.pullDy <= 0 && this.isRefresh) {
+					clearTimeout(this.tid)
+					this.isRefresh = false;
+					this.refresherTriggered = false;
+					this.status = 'none'
+					this.$emit('update:modelValue', false)
+				}
+				if (this.pullDy <= 0 && !this.isRefresh) {
+					this.status = 'none'
+				}
+			},
+			rPullEnd() {
+
+				if (this.isRefresh) return;
+			
+				let t = this;
+				if (!t.isRefresh) {
+					/**
+					 * 下拉触发了刷新。
+					 */
+					t.$emit("refresh")
+				}
+				t.refresherTriggered = true;
+				t.isRefresh = true;
+				t.$emit('update:modelValue', true)
+
+			},
+			rPullReset() {
+				// this.refresherTriggered = false;
+			},
+			rPullingAbort() {
+
+				// this.refresherTriggered = false;
+				// this.status = 'none'
+			},
+			scrollingEvt(evt:UniScrollEvent) {
+				this.$emit('scroll',evt)
+				let dir = evt.detail.deltaY <0?'up':'down'
+				this.$emit('scrollDirection',dir)
+			},
+			scrollEndBottom() {
+				if (this.bootomIsRefresh||this._disabledBottom) return;
+				this.bootomIsRefresh = true
+				/**
+				 * 等同v-model:model-bottom-status=""
+				 */
+				this.$emit("update:modelBottomStatus", true)
+
+				/**
+				 * 触底刷新，请在事件中来结束当前的刷新状态。
+				 */
+				this.$emit('bottomRefresh')
+			},
+			/**
+			 * 设置滚动距离
+			 * @public
+			 */
+			setScrollTop(top:number){
+				this.scrollTop = top;
+			},
+			/**
+			 * 设置滚动距离
+			 * @public
+			 */
+			setScrollIntoView(id:string){
+				this.scrollIntoView = id;
+			}
+			
+		},
+	}
+</script>
+<template>
+	
+	<view :style="{height:_height}">
+		
+		<list-view :show-scrollbar="_showScrollbar" 
+		v-if="mode=='listview'" 
+		refresher-background='transparent' 
+		:scroll-top="scrollTop"
+		:scroll-into-view="scrollIntoView"
+		@refresherpulling="rPulling" @refresherrefresh="rPullEnd"
+			@refresherrestore="rPullReset" @refresherabort="rPullingAbort" @scrolltolower="scrollEndBottom"
+			@scroll="scrollingEvt" :refresher-triggered="refresherTriggered" 
+			direction="vertical" :refresher-enabled="!_disabledPull" :refresher-threshold="pullHeight" refresher-default-style='none'
+			:style="{height:'100%'}"
+			>
+			<!-- 
+			 @slot 默认插槽
+			 -->
+			<slot></slot>
+			<list-item class="xRefreshPullContentWrap" slot="refresher"  :style="{height: (pullHeight*2.5).toString()+'px',overflay:'hidden'}">
+				<view class="xRefreshPullContent" :style="{paddingBottom: _pullDiffHeight}">
+					<!-- 
+					 下拉刷新的顶部插槽，可自定义样式结构
+					 @prop {number} status - 1:刷新中，2：继续下拉,还未达到触发刷新条件，3：松开下拉，已经达到了刷新条件，4刷新完成，触发刷新并刷新完成。
+					 @prop {number} dy - 当前下拉的高度值。
+					 -->
+					<slot :status="_status" :dy="pullDy" name="pull">
+						<x-icon v-if="_status!=1"  :name="_status_obj.icon" font-size="30" :color="_status_obj.color"></x-icon>
+						<x-icon v-if="_status==1" :name="_status_obj.icon" :spin="true" font-size="30" :color="_status_obj.color"></x-icon>
+						<text class="xRefreshText" :style="{color:_status_obj.textColor}">{{_status_obj.text}}</text>
+					</slot>
+					
+				</view>
+			</list-item>
+			
+			<list-item>
+				<view v-if="bootomIsRefresh" class="xRefreshPullContentBottom">
+					<slot name="bottom">
+						<x-loading></x-loading>
+					</slot>
+				</view>
+			</list-item>
+			
+		</list-view>
+		<scroll-view 
+		:scroll-top="scrollTop"
+		:scroll-into-view="scrollIntoView"
+		:show-scrollbar="_showScrollbar" v-if="mode=='scrollview'" refresher-background='transparent' @refresherpulling="rPulling" @refresherrefresh="rPullEnd"
+			@refresherrestore="rPullReset" @refresherabort="rPullingAbort" @scrolltolower="scrollEndBottom"
+			@scroll="scrollingEvt" :refresher-triggered="refresherTriggered" 
+			direction="vertical" :refresher-enabled="!_disabledPull" :refresher-threshold="pullHeight" refresher-default-style='none'
+			:style="{height:'100%'}">
+			<view class="xRefreshPullContentWrap" slot="refresher" :style="{height: (pullHeight*2.5).toString()+'px'}">
+				<view class="xRefreshPullContent" :style="{paddingBottom: _pullDiffHeight}">
+					<!-- 
+					 下拉刷新的顶部插槽，可自定义样式结构
+					 @prop {number} status - 1:刷新中，2：继续下拉,还未达到触发刷新条件，3：松开下拉，已经达到了刷新条件，4刷新完成，触发刷新并刷新完成。
+					 @prop {number} dy - 当前下拉的高度值。
+					 -->
+					<slot :status="_status" :dy="pullDy" name="pull">
+		
+						<x-icon :name="_status_obj.icon" :spin="_status==1" font-size="30" :color="_status_obj.color"></x-icon>
+						<!-- <x-icon v-if="_status==1" :name="_status_obj.icon"  font-size="30" :color="_status_obj.color"></x-icon> -->
+						<text class="xRefreshText" :style="{color:_status_obj.textColor}">{{_status_obj.text}}</text>
+		
+					</slot>
+		
+				</view>
+			</view>
+			<slot></slot>
+			<view v-if="bootomIsRefresh" class="xRefreshPullContentBottom">
+				<slot name="bottom">
+					<x-loading></x-loading>
+				</slot>
+			</view>
+			
+			
+		</scroll-view>
+	</view>
+</template>
+<style scoped>
+	.xRefreshPullContentBottom {
+		padding: 16px 0;
+	}
+
+	.xRefreshPullContentWrap {
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		align-items: flex-end;
+		width: 100%;
+	}
+
+	.xRefreshPullContent {
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+		flex: 1
+	}
+
+	.xRefreshText {
+		font-size: 16px;
+		margin-left: 8px;
+	}
+</style>

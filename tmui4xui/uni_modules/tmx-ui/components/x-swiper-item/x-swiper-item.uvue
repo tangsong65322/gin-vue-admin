@@ -1,0 +1,580 @@
+<script lang="ts">
+	import { PropType } from "vue"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit, getUid } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { SWIPER_ITEM, POSITON, SIZE } from "../x-swiper/interface.uts"
+	type itemstyletype = {
+		width : string,
+		height : string,
+		left : string,
+		top : string
+	}
+	/**
+	 * @name 轮播子组件 xSwiperItem
+	 * @description 注意：本组件非官方的swiper轮播的封装，而是作者设计并开发的轮播，因此有些使用上的区别，请仔细看文档。
+	 * 之所以要重新设计轮播，是为了后期的功能扩展。当前的一些功能已经比官方的还更好。
+	 * 比如支持阻尼动效的设计，动效函数的设置。临界位置回弹的设置。指示点位置的偏移设置（这点非常有用，然官方不支持，而我的由于是自行开发的可以随意设置）
+	 * 如果你有更多需求，你只需要阅读源码后自行扩展更多的功能。
+	 * 只能放置在父组件x-swiper中，不可单独使用。
+	 * click 事件请绑定在 swiper 上
+	 * @page /pages/index/swiper
+	 * @category 展示组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				id: ("xSwiperItem-" + getUid()) as string,
+				containerSize: {
+					width: 0,
+					height: 0
+				} as SIZE,
+				list: [] as string[],
+				currentId: "",
+				currentId_next: "",
+				currentId_prev: "",
+				moveShowCurrentIdByPrev: "",
+				moveShowCurrentIdByNext: "",
+				dateIdff:0,
+				_pos_x:0,
+				_pos_y:0,
+				isMoving:false
+			}
+		},
+		emits: [
+			/**
+			 * 组件被点击
+			 */
+			'click'],
+		mounted() {
+			this.pushDataToParent();
+		},
+
+		beforeUnmount() {
+			this.removeSelf();
+		},
+		inject: {
+			xSwiperRadius: { default: "0px", type: String },
+			xSwipershowScalAni: { default: false, type: Boolean },
+			xSwiperSpace: { default: 0, type: Number },
+			xSwiperSpaceOffset: { default: 0, type: Number },
+			xSwiperModel: { default: '', type: String },
+			xSwiperViews: { default: 1, type: Number }
+		},
+		props: {
+			/**
+			 * 请务必正确填写轮播顺序
+			 * 这将影响播放模式的正确性
+			 * 循环时直接填写 index 顺序就可以了。
+			 */
+			order: {
+				type: Number,
+				default: -1,
+				required: true
+			},
+			round:{
+				type:String,
+				default:""
+			}
+		},
+		computed: {
+			isActive() : boolean {
+				// let index = this.list.findIndex((el:string):boolean => el==this.id);
+				return this.currentId == this.id
+			},
+			isActiveNextOrPrev() : boolean {
+				// let index = this.list.findIndex((el:string):boolean => el==this.id);
+
+				return this.moveShowCurrentIdByNext == this.id || this.moveShowCurrentIdByPrev == this.id
+			},
+			isLastCildren() : boolean {
+				if (this.list.length == 0) return true
+				let lstid = this.list[this.list.length - 1]
+				return lstid == this.id;
+			},
+			isFirstCildren() : boolean {
+				if (this.list.length == 0) return true
+				let lstid = this.list[0]
+				return lstid == this.id;
+			},
+			_xSwiperItemAlign() : string {
+				let nowindex = this.list.findIndex((el : string) : boolean => el == this.currentId)
+				let selftindex = this.list.findIndex((el : string) : boolean => el == this.id)
+				if (this.xSwiperModel == 'spaceOnly') {
+					if (this.isActive && this.isLastCildren) {
+						return ''
+					} else if (this.list[this.list.length - 2] == this.id && this.list[this.list.length - 1] == this.currentId) {
+						return 'xSwiperItemAlign'
+					}
+				} else if (this.xSwiperModel == 'space') {
+					// 在左边
+					if (selftindex < nowindex || (selftindex == this.list.length - 1 && this.isActive)) {
+						return 'xSwiperItemAlign'
+					}
+				}
+
+				return ''
+			},
+			_itemLeft() : number {
+				if ((this.xSwiperModel != 'space' && this.xSwiperModel != 'spaceOnly') || this.list.length <= 1) return 0
+				let nowindex = this.list.findIndex((el : string) : boolean => el == this.currentId)
+				let selftindex = this.list.findIndex((el : string) : boolean => el == this.id)
+				if (this.xSwiperModel == 'spaceOnly') {
+					if (this.isActive && this.isLastCildren) {
+						return this.xSwiperSpaceOffset + this.xSwiperSpace
+					} else if (this.list[this.list.length - 2] == this.id && this.list[this.list.length - 1] == this.currentId) {
+						return this.xSwiperSpaceOffset
+					} else if (this.isActive) {
+						return 0
+					}
+				} else if (this.xSwiperModel == 'space') {
+					// 第一个
+					if ((selftindex == 0 && this.isActive) || (selftindex == this.list.length - 1 && this.isActive)) {
+						return 0;
+						// 当前
+					} else if (this.isActive) {
+						return this.xSwiperSpace + this.xSwiperSpaceOffset;
+						// 在左边
+					} else if (selftindex < nowindex) {
+						return this.xSwiperSpaceOffset;
+						// 在右边
+					} else if (selftindex > nowindex) {
+						return this.xSwiperSpaceOffset * -1;
+					}
+				}
+
+				return this.xSwiperSpaceOffset * -1
+			},
+			_itemRight() : number {
+				if ((this.xSwiperModel != 'space' && this.xSwiperModel != 'spaceOnly') || this.isFirstCildren || this.list.length <= 1) return 0
+				if (this.isActive) {
+
+				}
+				return this.xSwiperSpaceOffset * -1
+			},
+			itemwidth() : number {
+				let nowindex = this.list.findIndex((el : string) : boolean => el == this.currentId)
+				let selftindex = this.list.findIndex((el : string) : boolean => el == this.id)
+				if ((this.xSwiperModel != 'space' && this.xSwiperModel != 'spaceOnly') || this.xSwiperSpace <= 1 || this.xSwiperSpaceOffset == 0) return this.containerSize.width;
+				if (this.isFirstCildren || this.isLastCildren) {
+					return this.containerSize.width - this.xSwiperSpace - this.xSwiperSpaceOffset;
+				}
+
+				if (this.xSwiperModel == 'space') {
+					// 第一个或者最后一个。
+					if (selftindex == 0 || selftindex == this.list.length - 1) {
+						return this.containerSize.width - this.xSwiperSpace - this.xSwiperSpaceOffset;
+					} else if (this.isActive) {
+						return this.containerSize.width - this.xSwiperSpace * 2 - this.xSwiperSpaceOffset * 2;
+					}
+				}
+				return this.containerSize.width - this.xSwiperSpace - this.xSwiperSpaceOffset;
+			},
+			_styleOpts() : itemstyletype {
+				let nowindex = this.list.findIndex((el : string) : boolean => el == this.currentId)
+				let selftindex = this.list.findIndex((el : string) : boolean => el == this.id)
+				let space = this.xSwiperSpace + this.xSwiperSpaceOffset;
+				if (this.list.length <= 1 || (this.xSwiperModel != 'space' && this.xSwiperModel != 'spaceOnly' && this.xSwiperModel != 'spaceIn' && this.xSwiperModel != 'card')) {
+					return {
+						left: '0px',
+						width: this.containerSize.width + 'px',
+						height: this.containerSize.height + 'px',
+						top: '0px'
+					} as itemstyletype
+				}
+				let opts = {
+					left: '0px',
+					width: this.containerSize.width + 'px',
+					height: this.containerSize.height + 'px',
+					top: '0px'
+				} as itemstyletype
+
+				if (this.xSwiperModel == 'space') {
+
+					//  自己是当前位置时
+					if (selftindex == nowindex) {
+						if (selftindex == 0) {
+							opts.left = '0px'
+							opts.width = (this.containerSize.width - space) + 'px'
+						} else if (selftindex == this.list.length - 1) {
+							opts.left = space + 'px'
+							opts.width = (this.containerSize.width - space) + 'px'
+						} else {
+							opts.left = space + 'px'
+							opts.width = (this.containerSize.width - space*2) + 'px'
+						}
+
+					} else {
+						// 左边
+						if (selftindex < nowindex) {
+							opts.left =  (this.xSwiperSpaceOffset) + 'px'
+							//右边
+						} else if(selftindex == 1){
+							opts.left =  this.xSwiperSpace + 'px'
+						} else {
+							opts.left =  space + this.xSwiperSpace + 'px'
+						}
+					}
+				} else if (this.xSwiperModel == 'spaceOnly') {
+
+					//  自己是当前位置时
+					if (selftindex == nowindex) {
+						
+						if (selftindex == 0) {
+							opts.width = (this.containerSize.width - space) + 'px'
+							opts.left = '0px'
+						} else if (selftindex == this.list.length - 1) {
+							opts.width = (this.containerSize.width - space) + 'px'
+							opts.left = space + 'px'
+						} else {
+							opts.width = (this.containerSize.width - space) + 'px'
+							opts.left = 0 + 'px'
+						}
+
+					} else {
+						// opts.width = (this.containerSize.width - this.xSwiperSpace) + 'px'
+						// 左边
+						if (selftindex < nowindex && selftindex == this.list.length - 2) {
+							opts.left =  (this.xSwiperSpaceOffset) + 'px'
+							//右边
+						} else {
+							opts.left =  this.xSwiperSpace + 'px'
+
+						}
+					}
+				} else if (this.xSwiperModel == 'spaceIn') {
+
+					//  自己是当前位置时
+					if (selftindex == nowindex) {
+						if (selftindex == 0) {
+							opts.left = '0px'
+							opts.width = (this.containerSize.width - space) + 'px'
+						} else if (selftindex == this.list.length - 1) {
+							opts.left = space + 'px'
+							opts.width = (this.containerSize.width - space) + 'px'
+						} else {
+							opts.left = space + 'px'
+							opts.width = (this.containerSize.width - space * 2) + 'px'
+						}
+
+					} else {
+						// 左边
+						if (selftindex < nowindex) {
+							opts.left = this.xSwiperSpaceOffset * 2 + 'px'
+							opts.width = (this.containerSize.width) + 'px'
+							opts.height = (this.containerSize.height - this.xSwiperSpace * 2) + 'px'
+							opts.top = (this.xSwiperSpace) + 'px'
+							//右边
+						} else {
+							opts.left = this.xSwiperSpaceOffset * -2 + 'px'
+							opts.width = (this.containerSize.width) + 'px'
+							opts.height = (this.containerSize.height - this.xSwiperSpace * 2) + 'px'
+							opts.top = (this.xSwiperSpace) + 'px'
+						}
+					}
+
+				} else if (this.xSwiperModel == 'card') {
+
+					//  自己是当前位置时
+					if (selftindex == nowindex) {
+						if (selftindex == 0) {
+							opts.left = '0px'
+							opts.width = (this.containerSize.width - space) + 'px'
+						} else if (selftindex == this.list.length - 1) {
+							opts.left = space + 'px'
+							opts.width = (this.containerSize.width - space) + 'px'
+						} else {
+							opts.left = '0px'
+							opts.width = (this.containerSize.width - space) + 'px'
+						}
+
+					} else {
+						// 左边
+						if (selftindex < nowindex && selftindex == this.list.length - 2) {
+							opts.left = this.xSwiperSpaceOffset + 'px'
+
+							//右边
+						} else {
+							opts.left = this.xSwiperSpaceOffset * -1 + 'px'
+
+						}
+					}
+				}
+
+				return opts
+			},
+			_itemheight() : string {
+				return this._styleOpts.height
+			},
+			_round():string{
+				if(this.round == '') return this.xSwiperRadius
+				return checkIsCssUnit(this.round,xConfig.unit)
+			}
+
+		},
+		methods: {
+			pushDataToParent() {
+				let pelement = this.findParent(this);
+			
+				if (pelement == null) return;
+				// @ts-ignore
+				let parent : XSwiperComponentPublicInstance  = pelement as XSwiperComponentPublicInstance;
+				// #ifndef APP-ANDROID
+				if (typeof parent?.pushAdd != 'function') return
+				// #endif
+				parent.pushAdd({
+					id: this.id,
+					order: this.order,
+					ele: this
+				} as SWIPER_ITEM)
+			},
+			findParent(parent:VueComponent|null):VueComponent|null{
+				
+				if(parent == null) return null;
+				// #ifdef WEB||APP-IOS|| MP-WEIXIN
+				if(parent.$parent?.parentId?.indexOf('xSwiperParent-')>-1) return parent.$parent;
+				// #endif
+				// #ifdef APP-ANDROID
+				// @ts-ignore
+				if(parent.$parent instanceof XSwiperComponentPublicInstance) return parent.$parent;
+				// #endif
+				
+				let parents = this.findParent(parent.$parent)
+				
+				// #ifdef WEB||APP-IOS || MP-WEIXIN
+				// @ts-ignore
+				if(parents?.parentId?.indexOf('xSwiperParent-')>-1) return parents;
+				// #endif
+				// #ifdef APP-ANDROID
+				// @ts-ignore
+				if(parents instanceof XSwiperComponentPublicInstance) return parents;
+				// #endif
+				return null;
+			},
+			removeSelf() {
+				let pelement = this.findParent(this);
+				if (pelement == null) return;
+				// @ts-ignore
+				let parent : XSwiperComponentPublicInstance  = pelement as XSwiperComponentPublicInstance;
+				// #ifndef APP
+				if (typeof parent?.delItem != 'function') return
+				// #endif
+				parent.delItem(this.id)
+				
+			},
+			setConfig(size : SIZE) {
+				this.containerSize = size;
+				
+			},
+			setList(ids : string[], currentId : string) {
+				this.list = ids;
+				this.currentId = currentId;
+
+			},
+			setNextOrNext(id : string) {
+				this.moveShowCurrentIdByNext = id;
+			},
+			setNextOrPrev(id : string) {
+				this.moveShowCurrentIdByPrev = id;
+			},
+			setCureentIdPrevAndNext(prevId : string, nextId : string) {
+				this.currentId_next = nextId
+				this.currentId_prev = prevId
+			},
+			
+			mStart(evt : UniTouchEvent) {
+				this.dateIdff = Date.now()
+				let pelement = this.findParent(this);
+				if (pelement == null) return;
+				// @ts-ignore
+				let parent : XSwiperComponentPublicInstance  = pelement as XSwiperComponentPublicInstance;
+				this._pos_x = evt.touches[0].clientX
+				this._pos_y = evt.touches[0].clientY
+				parent.mStart(evt,this.order)
+			},
+			mMove(evt : UniTouchEvent) {
+				let pelement = this.findParent(this);
+				if (pelement == null) return;
+				// @ts-ignore
+				let parent : XSwiperComponentPublicInstance  = pelement as XSwiperComponentPublicInstance;
+				parent.mMove(evt,this.order)
+				
+			},
+			mEnd(evt : UniTouchEvent) {
+				let pelement = this.findParent(this);
+				if (pelement == null) return;
+				// @ts-ignore
+				let parent : XSwiperComponentPublicInstance  = pelement as XSwiperComponentPublicInstance;
+				let diffdate = Date.now() -this.dateIdff
+				let diffx = evt.changedTouches[0].clientX - this._pos_x
+				let diffy = evt.changedTouches[0].clientY - this._pos_y
+				if(Math.floor(Math.abs(diffx)) == Math.floor(Math.abs(diffy)) && diffx==0 && diffdate>50&&diffdate<=250){
+					parent.swiperClick(this.order)
+					/**
+					 * 组件被点击时触发。
+					 */
+					this.$emit("click")
+				}
+				if(Math.floor(Math.abs(diffx)) != Math.floor(Math.abs(diffy))){
+					parent.mEnd(evt,this.order)
+				}
+				
+			},
+			// #ifdef WEB
+			mmStart(evt:UniMouseEvent){
+				this.dateIdff = Date.now()
+				let pelement = this.findParent(this);
+				if (pelement == null) return;
+				// @ts-ignore
+				let parent : XSwiperComponentPublicInstance  = pelement as XSwiperComponentPublicInstance;
+				this._pos_x = evt.clientX
+				this._pos_y = evt.clientY
+				this.isMoving = true;
+				window.xSwiperId = this.id;
+				parent.mmStart(evt,this.order)
+			},
+			mmMove(evt:UniMouseEvent){
+			
+				if(!this.isMoving||window.xSwiperId != this.id) return;
+				let pelement = this.findParent(this);
+				if (pelement == null) return;
+				// @ts-ignore
+				let parent : XSwiperComponentPublicInstance  = pelement as XSwiperComponentPublicInstance;
+				parent.mmMove(evt,this.order)
+			},
+			mmEnd(evt:UniMouseEvent){
+				
+				if(!this.isMoving||window.xSwiperId != this.id){
+					return;
+				}
+				this.isMoving = false;
+				window.xSwiperId = "";
+				let pelement = this.findParent(this);
+				if (pelement == null) return;
+				// @ts-ignore
+				let parent : XSwiperComponentPublicInstance  = pelement as XSwiperComponentPublicInstance;
+				
+				let diffdate = Date.now() -this.dateIdff
+				let diffx = evt.clientX - this._pos_x
+				let diffy = evt.clientY - this._pos_y
+				if(Math.floor(Math.abs(diffx)) == Math.floor(Math.abs(diffy)) && diffx==0 && diffdate>50&&diffdate<=250){
+					parent.swiperClick(this.order)
+					/**
+					 * 组件被点击时触发。
+					 */
+					this.$emit("click")
+				}
+				if(Math.floor(Math.abs(diffx)) != Math.floor(Math.abs(diffy))){
+					parent.mmEnd(evt,this.order)
+				}
+				
+				
+			},
+			// #endif
+		}
+	}
+</script>
+<template>
+
+	<view class="xSwiperItem" 
+	@touchstart="mStart"
+	@touchmove="mMove" 
+	@touchend="mEnd" 
+	@touchcancel="mEnd" 
+
+	<!-- #ifdef WEB -->
+	@mousedown="mmStart"
+	@mousemove="mmMove" 
+	@mouseup="mmEnd" 
+	@mouseleave="mmEnd" 
+	<!-- #endif -->
+	
+	
+	:style="{
+			height:_itemheight,
+			borderRadius:_round,
+			width:_styleOpts.width,
+			top:`${_styleOpts.top}`,
+			left:`${_styleOpts.left}`,
+			zIndex:isActive?'8':'1',
+			position:xSwiperModel=='card'?'absolute':'relative'
+			}">
+		<view class="xSwiperItembox" :style="{
+			width:_styleOpts.width,
+			borderRadius:_round
+		}">
+			<view :class="[
+				xSwipershowScalAni?((isActive||isActiveNextOrPrev)?'xSwiperItemWrapSaniOn':'xSwiperItemWrapSaniOff'):''
+				]" class="xSwiperItemWrap" :style="{
+				borderRadius:_round
+			}">
+				<!--
+				 @slot 只允许放其父节点x-swiper里面。
+				 -->
+				<slot></slot>
+			</view>
+		</view>
+	</view>
+</template>
+<style scoped>
+	.xSwiperItem {
+		display: flex;
+		flex-direction: row;
+		transition-duration: 350ms;
+		transition-property: opacity, transform, left, margin, top,width;
+		transition-timing-function: cubic-bezier(.42, .38, .15, .93);
+	}
+
+	.xSwiperItemAlign {
+		justify-content: flex-end;
+	}
+
+	.xSwiperItembox {
+
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		height: 100%;
+		transition-duration: 350ms;
+		transition-property: width;
+		transition-timing-function: cubic-bezier(.42, .38, .15, .93);
+		overflow: hidden;
+	}
+
+	.xSwiperItemWrapSaniOn {
+		transform: scale(1);
+		opacity: 1;
+	}
+
+	.xSwiperItemWrapSaniOff {
+		transform: scale(0);
+		opacity: 0;
+	}
+
+	.xSwiperItemOn {
+		z-index: 6;
+	}
+
+	.xSwiperItemWrapSaniDiffOff_left {
+		z-index: 2;
+	}
+
+	.xSwiperItemWrapSaniDiffOff_right {
+		z-index: 2;
+	}
+
+	.xSwiperItemWrap {
+		flex: 1;
+		height: 100%;
+		width: 100%;
+		transition-duration: 600ms;
+		transition-property: opacity, transform, left, margin;
+		transition-timing-function: cubic-bezier(.42, .38, .15, .93);
+
+	}
+</style>

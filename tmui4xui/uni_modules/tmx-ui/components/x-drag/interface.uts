@@ -1,0 +1,12 @@
+export type CHILDREN_INFO = {
+	id:string,
+	index:number,
+	oldindex:number,
+	node:DOMRect,
+	disabled:boolean,
+	ele:XDragItemComponentPublicInstance
+}
+export type CHILDREN_SIZE = {
+	width:number,
+	height:number,
+}

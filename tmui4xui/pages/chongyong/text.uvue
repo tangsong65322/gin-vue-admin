@@ -1,0 +1,62 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-navbar bg-color="#f5f5f5" active-bg-color="white" title="文本 Text"></x-navbar>
+		
+		<x-sheet>
+		
+			<x-text font-size="18" class="text-weight-b mb-8 ">文本 Text</x-text>
+			
+			<x-text >使用时一定要注意:尽量标签内容写文本,不要用label属性,label属性是用来高亮和正则的尽量标签内容写文本,不要用label属性,label属性是用来高亮和尽量标签内容写文本,不要用label属性,label属性是用来高亮和</x-text>
+			
+			<x-text class="line-10 " :heightLight="['高亮显示','正则','邮箱']"
+				label="支持多文本高亮显示，比如根据正则高亮电话号码，邮箱等，点击后打电话，发邮件。**"></x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class="text-weight-b mb-8">高亮文本,可自定样式</x-text>
+			<x-text>正则电话，邮箱高亮</x-text>
+			<x-text @item-click="testClick" height-light-color="red"
+				:height-light-reg="['1[3456789]\\d{9}','[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}','《(.*?)》']"
+				label="邮箱等，点击后打电话:17970689633，发邮件:qq@qq.com。高文本可以被点击触《服务隐私协议》发事件,高亮事件触发目《隐私协议》前uniappx 3.99有bug待官方修复.">
+			</x-text>
+		</x-sheet>
+
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">使用插槽功能丢失</x-text>
+			<x-text :lines="2">
+				使用插槽，当作普通text标签使用，高亮功能和后续的拓展将会失效。
+				使用插槽，当作普通text标签使用，高亮功能和后续的拓展将会失效。
+			</x-text>
+		</x-sheet>
+
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+				lines:0
+			};
+		},
+		onLoad() {
+		},
+		methods: {
+			testClick(str : string) {
+				uni.showToast({ title: str, icon: 'none' })
+			}
+		},
+	}
+</script>
+
+<style lang="scss">
+
+</style>

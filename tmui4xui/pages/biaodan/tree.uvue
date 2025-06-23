@@ -1,0 +1,296 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">树 xTree</x-text>
+			<x-text color="#999999" class="mb-20">可允许父是否选中，子禁用状态，全局禁用，指定打开的id层级,打开子父关联后会半选状态及子父状态联动</x-text>
+			
+		</x-sheet>
+		
+		<x-sheet>
+			<x-sheet color="info" dark-color="#333" :margin="['0','16']" >
+				<x-text color="#999999">打开的id：{{folderids.join(',')}}</x-text>
+				<x-text color="#999999">选中的id：{{nowValue.join(',')}}</x-text>
+			</x-sheet>
+			<view class="flex flex-row flex-row-top-start">
+				<x-button width="32%" class="mr-5 mb-5" @click="openFolder('2-1')">展开2-2</x-button>
+				<x-button width="32%" class="mr-5 mb-5" @click="closeAll">关闭所有</x-button>
+				<x-button width="32%" class="mr-5 mb-5" @click="setListData">添加数据</x-button>
+			</view>
+			<view class="flex flex-row flex-row-top-start">
+				<x-button width="32%" class="mr-5 mb-5" @click="clearALl">清空数据</x-button>
+				<x-button color="success" width="32%" :icon="disabledParentBox?'indeterminate-circle-fill':'checkbox-blank-circle-line'" class="mr-5 mb-5" @click="disabledParentBox=!disabledParentBox">禁父框</x-button>
+				<x-button color="warn" width="32%" :icon="parentSelectedFullChildren?'checkbox-circle-fill':'checkbox-blank-circle-line'" class="mr-5 mb-5" @click="parentSelectedFullChildren=!parentSelectedFullChildren">子父关联</x-button>
+			</view>
+			<x-loading v-if="loading"></x-loading>
+			<x-tree @change="change" :before-open-floder="asyncFun" v-else :parentSelectedFullChildren="parentSelectedFullChildren" :disabledParentBox="disabledParentBox" v-model="nowValue" v-model:folder-id="folderids" :list="list"></x-tree>
+		</x-sheet>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+				loading:true,
+				folderids:['2-1','1-3'] as string[],
+				nowValue:['1','3','2-1-1'],
+				disabledParentBox:false,
+				parentSelectedFullChildren:true,
+				id:4,
+				
+				list: [
+					{
+						id: "1",
+						text: "节点1",
+						disabled: false,
+						children: [
+							{
+								id: "1-1",
+								text: "节点1-1",
+								disabled: true,
+								
+								children: [
+									{
+										id: "1-1-1",
+										text: "异步加载",
+										disabled: false,
+										children:[] as UTSJSONObject[]
+									} as UTSJSONObject,
+									{
+										id: "1-1-2",
+										text: "节点1-1-2",
+										disabled: false,
+									} as UTSJSONObject,
+									{
+										id: "1-1-3",
+										text: "节点1-1-3",
+										
+										disabled: false,
+									} as UTSJSONObject,
+								]  as UTSJSONObject[],
+							} as UTSJSONObject,
+							{
+								id: "1-2",
+								text: "节点1-2",
+								disabled: false,
+								showEdite:true,
+								showAdd:true,
+								children: [
+									{
+										id: "1-2-1",
+										text: "节点1-2-1",
+										disabled: false,
+									} as UTSJSONObject,
+									{
+										id: "1-2-2",
+										text: "节点1-2-2",
+										disabled: false,
+									} as UTSJSONObject,
+									{
+										id: "1-2-3",
+										text: "节点1-2-3",
+										disabled: false,
+									} as UTSJSONObject,
+								] as UTSJSONObject[],
+							} as UTSJSONObject,
+							{
+								id: "1-3",
+								text: "节点1-3",
+								disabled: false,
+								showRemove:true,
+								children: [
+									{
+										id: "1-3-1",
+										text: "节点1-3-1",
+										disabled: false,
+									} as UTSJSONObject,
+									{
+										id: "1-3-2",
+										text: "节点1-3-2",
+										disabled: false,
+									} as UTSJSONObject,
+									{
+										id: "1-3-3",
+										text: "节点1-3-3",
+										disabled: false,
+									} as UTSJSONObject,
+								] as UTSJSONObject[],
+							} as UTSJSONObject,
+						] as UTSJSONObject[],
+					}  as UTSJSONObject,
+					{
+						id: "2",
+						text: "节点2",
+						disabled: false,
+						showEdite:true,
+						children: [
+							{
+								id: "2-1",
+								text: "节点2-1",
+								disabled: false,
+								children: [
+									{
+										id: "2-1-1",
+										text: "节点2-1-1",
+										disabled: false,
+									} as UTSJSONObject,
+									{
+										id: "2-1-2",
+										text: "节点2-1-2",
+										disabled: false,
+									} as UTSJSONObject,
+									{
+										id: "2-1-3",
+										text: "节点2-1-3",
+										disabled: false,
+									} as UTSJSONObject,
+								]  as UTSJSONObject[],
+							} as UTSJSONObject,
+							{
+								id: "2-2",
+								text: "节点2-2",
+								disabled: false,
+								children: [
+									{
+										id: "2-2-1",
+										text: "节点2-2-1",
+										disabled: false,
+									} as UTSJSONObject,
+									{
+										id: "2-2-2",
+										text: "节点2-2-2",
+										disabled: false,
+									} as UTSJSONObject,
+									{
+										id: "2-2-3",
+										text: "节点2-2-3",
+										disabled: false,
+									} as UTSJSONObject,
+								] as UTSJSONObject[],
+							} as UTSJSONObject,
+							{
+								id: "2-3",
+								text: "节点2-3",
+								disabled: false,
+								children: [
+									{
+										id: "2-3-1",
+										text: "节点2-3-1",
+										disabled: false,
+									} as UTSJSONObject,
+									{
+										id: "2-3-2",
+										text: "节点2-3-2",
+										disabled: false,
+									} as UTSJSONObject,
+									{
+										id: "2-3-3",
+										text: "节点2-3-3",
+										disabled: false,
+									} as UTSJSONObject,
+								] as UTSJSONObject[],
+							} as UTSJSONObject,
+						] as UTSJSONObject[],
+					}  as UTSJSONObject,
+					{
+						id: "3",
+						text: "异步加载",
+						disabled: false,
+						children:[] as UTSJSONObject[]
+					} as UTSJSONObject
+				] as UTSJSONObject[]
+			};
+		},
+		onLoad() {
+			let _this = this;
+			setTimeout(function() {
+				_this.loading = false;
+			}, 500);
+		},
+		methods:{
+			change(ids:string[],allParent:string[],allChildrenId:string[],allIdsAndInd:string[]){
+				console.log("所有节点,不含半选",ids)
+				console.log("所有父节点,不含半选",allParent)
+				console.log("所有子节点,不含半选",allChildrenId)
+				console.log("所有节点+半选状态节点",allIdsAndInd)
+			},
+			closeAll(){
+				this.folderids = [] as string[]
+			},
+			openFolder(id:string){
+				this.folderids = [id] as string[]
+			},
+			clearALl(){
+				this.nowValue = [] as string[]
+			},
+			asyncFun(id:string):Promise<UTSJSONObject[]>{
+				let _this = this;
+				uni.showLoading({title:'加载中',mask:true})
+				return new Promise((res,rej)=>{
+					setTimeout(function() {
+						_this.id+=1;
+						let idtest= _this.id+'-'+Math.random().toString(16).substring(2,6)
+						res([
+							{
+								id: idtest,
+								text: "节点1"+idtest,
+								disabled: false,
+							} as UTSJSONObject
+						] as UTSJSONObject[])
+						uni.hideLoading()
+					}, 800);
+				})
+				
+			},
+			setListData(){
+				
+				this.id+=1;
+				let ids = this.id.toString()
+				this.list = this.list.concat([{
+						id: ids,
+						text: "节点"+ids,
+						disabled: false,
+						children: [
+							{
+								id: ids+"-4-1",
+								text: ids+"节点4-1",
+								disabled: false,
+								children: [
+									{
+										id: ids+"-4-1-1",
+										text: ids+"节点4-1-1",
+										disabled: false,
+									} as UTSJSONObject,
+									{
+										id: ids+"-4-1-2",
+										text: ids+"节点4-1-2",
+										disabled: false,
+									} as UTSJSONObject,
+									{
+										id: ids+"-4-1-3",
+										text: ids+"节点4-1-3",
+										disabled: false,
+									} as UTSJSONObject,
+								]  as UTSJSONObject[],
+							} as UTSJSONObject,
+							
+							
+						] as UTSJSONObject[],
+					}  as UTSJSONObject] as UTSJSONObject[])
+			}
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

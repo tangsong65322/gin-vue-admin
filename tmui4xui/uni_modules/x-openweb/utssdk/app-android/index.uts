@@ -1,0 +1,8 @@
+import Intent from 'android.content.Intent';
+import Uri from 'android.net.Uri';
+import Activity from 'android.app.Activity';
+export function openWeb(url : string) {
+	let intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url))
+	let ac = UTSAndroid.getUniActivity() as Activity
+	ac.startActivity(intent)
+}

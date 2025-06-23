@@ -1,0 +1,131 @@
+import { Shape } from './shape.uts';
+import { CanvasRotateCenter, IShapeBoundRect, IShapeOptional } from '../interface.uts';
+import { ICanvas } from '@/uni_modules/tmx-ui/core/canvas/ICanvas.uts';
+
+export class ICircle extends Shape {
+	override type = 'ICircle'
+	constructor(config : IShapeOptional,canvas:ICanvas) {
+		super(config,canvas);
+		this.radius = config?.radius ?? 30;
+	}
+
+	setRadius(value : number) : ICircle {
+		this.radius = value;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	override getBoundRect() : IShapeBoundRect {
+		const w = this.radius * 2;
+		return {
+			x: this.x,
+			y: this.y,
+			width: w,
+			height: w
+		} as IShapeBoundRect;
+	}
+
+	override setWidth(value : number) : ICircle {
+		this.height = value;
+		this.width = value;
+		this.radius = value / 2
+		this.needsUpdate = true;
+		return this;
+	}
+
+	override setHeight(value : number) : ICircle {
+		this.height = value;
+		this.width = value;
+		this.radius = value / 2
+		this.needsUpdate = true;
+		return this;
+	}
+
+	override draw(ctx : CanvasRenderingContext2D) {
+		if (this.visible == false) return;
+		super.draw(ctx);
+		ctx.beginPath();
+		ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+		ctx.closePath();
+		if (this.fill != ""||this.fillGradient.length>0) {
+			ctx.fill();
+		}
+		if (this.stroke != "") {
+			ctx.stroke();
+		}
+		
+		ctx.restore();
+	}
+
+	override isPointInPath(x: number, y: number, shapeId: string): boolean {
+		if (!this.visible || (shapeId != "" && shapeId != this.id)) return false;
+		
+		// 计算点击位置相对于圆心的实际坐标
+		let realX = x - this.offsetX - this.x;
+		let realY = y - this.offsetY - this.y;
+		
+		// 如果有旋转，需要将坐标转换回未旋转状态
+		if (this.rotation != 0) {
+			const angle = -this.rotation * Math.PI / 180;
+			const cos = Math.cos(angle);
+			const sin = Math.sin(angle);
+			let centerX = 0;
+			let centerY = 0;
+			
+			// 根据不同的旋转中心点设置centerX和centerY
+			switch(this.rotateCenter) {
+				case 'topLeft':
+					centerX = 0;
+					centerY = 0;
+					break;
+				case 'topRight':
+					centerX = this.width;
+					centerY = 0;
+					break;
+				case 'bottomLeft':
+					centerX = 0;
+					centerY = this.height;
+					break;
+				case 'bottomRight':
+					centerX = this.width;
+					centerY = this.height;
+					break;
+				case 'center':
+				default:
+					centerX = this.width/2;
+					centerY = this.height/2;
+					break;
+			}
+			
+			const dx = realX - centerX;
+			const dy = realY - centerY;
+			realX = centerX + dx * cos - dy * sin;
+			realY = centerY + dx * sin + dy * cos;
+		}
+		
+		// 计算点到圆心的距离
+		const distance = Math.sqrt(realX * realX + realY * realY);
+		
+		// 考虑缩放因素
+		const scaledRadius = this.radius * Math.min(this.scaleX, this.scaleY);
+		
+		// 如果只有描边模式，检查点是否在圆形线条附近
+		if (this.stroke != "" && this.fill == ""&&this.fillGradient.length==0) {
+			const strokeWidth = this.strokeWidth / 2;
+			return Math.abs(distance - scaledRadius) <= strokeWidth;
+		}
+		
+		// 如果同时有描边和填充，或者只有填充
+		if (this.fill != ""||this.fillGradient.length>0) {
+			// 如果有描边，扩大检测范围到描边外缘
+			if (this.stroke != "") {
+				return distance <= (scaledRadius + this.strokeWidth / 2);
+			}
+			
+			// 只有填充时，检查点是否在圆内
+			return distance <= scaledRadius;
+		}
+		
+		return false;
+	}
+}

@@ -1,0 +1,310 @@
+<script lang="ts" setup>
+	
+
+	import { PropType, computed, ref, provide, nextTick, onMounted, getCurrentInstance } from "vue"
+	import { getUid, getUnit } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { xWaterfallDataItemType } from "../../interface.uts"
+	import { xConfig, xProvitae } from "../../config/xConfig.uts"
+	type callType = () => Promise<boolean>
+	
+	/**
+	* @name 瀑布流 xWaterfall
+	* @description 可以通过columnu来控制排版列数，默认是2列排版。可以无限加载不卡,全异步流加载.使用时请参考demo布局,已精心为你规划如何提高性能.
+	* @page /pages/index/waterfall
+	* @category 展示组件
+	* @constant 平台兼容
+	* | H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+	  | --- | --- | --- | --- | --- | --- | --- |
+	  | ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	*/
+	defineOptions({name:"xWaterfall"})
+	
+	const proxy = getCurrentInstance()?.proxy
+	const xWaterFallWrap = ref<UniElement|null>(null)
+	let resizeObserver = null as UniResizeObserver | null
+	const props = defineProps({
+		/**
+		 * 瀑布流的列数
+		 * 不可动态动态更改。
+		 */
+		column: {
+			type: Number,
+			default: 2
+		},
+		/**
+		 * 用来刷新数据的，你可以通过你的外面list.length来传递进来
+		 * 比如为0时，自动清空瀑布流数据。
+		 */
+		listCount: {
+			type: Number,
+			default: 0
+		},
+		/**
+		 * 间距,单位不能为%比，可以是数字字符，带rpx,px等单位
+		 * 默认的数字符单位是全局的unit单位。
+		 */
+		gutter: {
+			type: String,
+			default: '8'
+		},
+		/**
+		 * 是否响应尺寸监测。设置为false可以关闭
+		 * 关闭后能增加性能。
+		 */
+		isResize:{
+			type:Boolean,
+			default:false
+		}
+	})
+	const firstRender = ref(false)
+	const domList = ref<xWaterfallDataItemType[]>([])
+	const parentWidth = ref(0)
+	// 视图的顶点.
+	const parentTop = ref(0)
+	const parentPositonTop = ref(0)
+	// 可视范围高
+	const parentShowViewHeight = ref(uni.getWindowInfo().windowHeight)
+
+	const tidkey = ref(true)
+	const isResize = computed(():boolean=>props.isResize)
+	let timeid = 0
+	const cols = ref<number[]>([])
+	const totalHeight = computed(() : number => {
+		let sort = cols.value.slice(0).sort((a : number, b : number) : number => b - a);
+		if (sort.length == 0) return 0;
+		return sort[0]
+	})
+	let tid = 0
+	const currentId = ref("")
+
+	/**
+	 * 添加元素。
+	 * @hidden
+	 */
+	const pushChild = (item : xWaterfallDataItemType) : Map<string, number> => {
+		let index = domList.value.findIndex((el : xWaterfallDataItemType) : boolean => el.id == item.id);
+		let col = -1;
+		let minHeight = 0;
+		if (item.col == -1 && item.height > 0) {
+			let minAr = cols.value.slice(0).sort((a : number, b : number) : number => a - b);
+			let minnumber = minAr[0]
+			let minindex = cols.value.findIndex((el : number) : boolean => el == minnumber);
+			col = minindex;
+			minHeight = minnumber;
+			cols.value[minindex] = cols.value[minindex] + item.height
+			item.col = col;
+		}
+		if (index == -1) {
+			domList.value.push(item)
+		} else {
+			domList.value[index] = item;
+		}
+		if (currentId.value == "" && firstRender.value == false) {
+			firstRender.value = true;
+			nextTick(() => {
+				currentId.value = item.id;
+			})
+		}
+		let maps = new Map<string, number>();
+
+		maps.set('col', col)
+		maps.set('top', minHeight)
+		return maps;
+	}
+	/**
+	 * @hidden
+	 */
+	const refreshCallTop = () => {
+		let cid = currentId.value;
+		if (cid == "" && domList.value.length > 0) {
+			cid = domList.value[0].id
+		}
+		if (cid == "") return;
+
+		clearTimeout(tid)
+		function updateAsync(){
+			tid = setTimeout(function () {
+				let index = domList.value.findIndex((el : xWaterfallDataItemType) : boolean => el.id == cid);
+				if (index == -1) return;
+				index = index + 1;
+				if (index >= domList.value.length) return;
+				currentId.value = domList.value[index].id;
+			}, 20);
+		}
+		
+		// #ifdef APP-ANDROID
+		class IntentRunable extends Runnable {
+			override run() {
+				updateAsync()
+			}
+		}
+		UTSAndroid.getUniActivity()!.runOnUiThread(new IntentRunable())
+		// #endif
+		// #ifdef WEB || APP-IOS || MP-WEIXIN
+		updateAsync()
+		// #endif
+
+	}
+	const getColunm = () : number[] => {
+		// #ifdef APP-ANDROID
+		return Array.fromNative(new IntArray((props.column).toInt()))
+		// #endif
+
+		return new Array(props.column).fill(0)
+	}
+	/**
+	 * 移除元素。
+	 * @hidden
+	 */
+	const removeChild = (id : string, height : number, mycol : number) => {
+		let index = domList.value.findIndex((el : xWaterfallDataItemType) : boolean => el.id == id);
+
+		if (index > -1 && mycol > -1) {
+			domList.value.splice(index, 1)
+			cols.value[mycol] = cols.value[mycol] - height
+		}
+	}
+	provide("xWaterFallColumn", computed(() : number => props.column))
+	provide("xWaterGutter", computed(() : number => {
+		let p = checkIsCssUnit(props.gutter, xConfig.unit)
+		let unit = getUnit(p)
+		let n = parseInt(p)
+		if (unit == 'rpx') {
+			n = uni.rpx2px(n)
+		}
+		return n;
+	}))
+	provide("xWaterWidthParent", computed(() : number => parentWidth.value))
+	provide("xWaterTopParent", computed(() : number => parentTop.value))
+	provide("xWaterPositionTopParent", computed(() : number => parentPositonTop.value))
+	provide("xWaterFallCurrentId", computed(() : string => currentId.value))
+	provide("xWaterParentShowViewHeight", computed(() : number => parentShowViewHeight.value))
+	watch(() : number => props.listCount, () => {
+		if (props.listCount == 0) {
+			cols.value = getColunm()
+			domList.value = [] as xWaterfallDataItemType[];
+			currentId.value = ''
+			firstRender.value = false
+		} else {
+			nextTick(() => {
+				refreshCallTop()
+			})
+		}
+
+	})
+	const resize = ()=>{
+		
+		let ele = xWaterFallWrap.value
+		if (ele == null) return;
+		// #ifdef APP||WEB
+		resizeObserver = new UniResizeObserver((entries : Array<UniResizeObserverEntry>) => {
+			entries.forEach(entry => {
+				if(!isResize.value) return;
+				if (entry.target == ele) {
+					let bound = ele.getBoundingClientRect();
+					if(bound.width==parentWidth.value) return;
+					clearTimeout(timeid)
+					timeid = setTimeout(function() {
+						tidkey.value = false
+						domList.value = [] as xWaterfallDataItemType[];
+						cols.value = getColunm()
+						parentWidth.value = bound.width!;
+						currentId.value = ''
+						firstRender.value = false
+						timeid = setTimeout(function() {
+							tidkey.value = true
+						}, 50);
+						
+					}, 250);
+				}
+			})
+		})
+		resizeObserver?.observe(ele!)
+		// #endif
+		
+		// #ifdef MP-WEIXIN
+		ele.getBoundingClientRectAsync().then(bound=>{
+		
+			if(bound.width==parentWidth.value) return;
+			tidkey.value = false
+			domList.value = [] as xWaterfallDataItemType[];
+			cols.value = getColunm()
+			parentWidth.value = bound.width!;
+			currentId.value = ''
+			firstRender.value = false
+			timeid = setTimeout(function() {
+				tidkey.value = true
+			}, 50);
+		})
+		
+		
+		// #endif
+		
+		
+	}
+	
+	const getParentNodeinfo = () => {
+		uni.createSelectorQuery()
+			.in(proxy)
+			.select(".xWaterFallWrap")
+			.boundingClientRect()
+			.exec((res) => {
+				let node = res[0] as NodeInfo;
+				parentWidth.value = node.width!;
+				parentPositonTop.value = node.top!;
+				// parentShowViewHeight.value = node.bottom!
+				resize();
+			})
+	}
+	
+	onMounted(() => {
+		cols.value = getColunm()
+		getParentNodeinfo()
+		
+		
+		
+	})
+
+	onBeforeUnmount(() => {
+		// uni.$off("onResize",resize)
+		resizeObserver?.disconnect()
+		clearTimeout(timeid)
+	})
+
+	onPageScroll((opts:OnPageScrollOptions)=>{
+		let ele = xWaterFallWrap.value
+		if (ele == null) return;
+		// let bounds = ele.getBoundingClientRect()
+		// parentPositonTop.value = bounds.top;
+		
+		
+		parentTop.value = opts.scrollTop;
+	})
+
+	defineExpose({
+		pushChild,
+		nextRender: refreshCallTop,
+		removeChild
+	})
+</script>
+<template>
+	<view ref="xWaterFallWrap" >
+		<view v-if="tidkey"  class="xWaterFallWrap" :style="{height:totalHeight+'px'}">
+			<!-- 
+			 @slot 只能放置直接子节点x-waterfall-item
+			 -->
+			<slot></slot>
+		</view>
+	</view>
+</template>
+<style scoped>
+	.xWaterFallWrap {
+		display: flex;
+		flex-direction: row;
+		flex-wrap: wrap;
+		align-items: flex-start;
+		justify-content: flex-start;
+	}
+</style>

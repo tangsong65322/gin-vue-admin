@@ -1,0 +1,107 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor"
+			:front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">对话框 xShwoModal</x-text>
+			<x-text  color="#999999" >这是全局方法,可以在任意位置调用,会覆盖整个屏幕的内容包括系统界面.可以修改图标,背景,内容背景色用于代替官方的 uni.showModal</x-text>
+		</x-sheet>
+		<x-sheet >
+			<x-button :block="true" @click="loadAlert1">打开</x-button>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-24">重新配置个性主题，并为按钮添加图标</x-text>
+			<x-button :block="true" @click="loadAlert2">打开</x-button>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-24">按钮钮不分离，无分割线样式</x-text>
+			<x-button :block="true" @click="loadAlert3">打开</x-button>
+			<x-text font-size="18" class=" text-weight-b my-24">按钮钮不分离+分割线样式</x-text>
+			<x-button :block="true" @click="loadAlert5">打开</x-button>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-24">只显示确认按钮</x-text>
+			<x-button :block="true" @click="loadAlert4">打开</x-button>
+		</x-sheet>
+		
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	import { showModal,X_MODAL_TYPE} from "@/uni_modules/x-modal-s"
+	import { xStore } from "@/uni_modules/tmx-ui/index.uts"
+	export default {
+		data() {
+			return {
+				
+			};
+		},
+		computed:{
+			msgBGcolor():string{
+				return xStore.xConfig.dark=='dark'?'#333333':"#ffffff"
+			},
+			maskBGcolor():string{
+				return xStore.xConfig.dark=='dark'?'#000':"#f5f5f5"
+			}
+		},
+		onLoad() {
+			
+		},
+		methods:{
+			loadAlert1(){
+				showModal({title:"提醒框",contentColor:"#ff0000",content:"这是一条测试消息对话框，默认是按钮分离哦。",contentAlign:'center'} as X_MODAL_TYPE)
+				
+			},
+			loadAlert2(){
+				showModal({title:"提醒框",
+				content:"这是一条测试消息对话框，默认是按钮分离哦。",
+				contentBgColor:'#333',
+				titleColor:"#fff",
+				contentColor:"#ffffff",
+				confirmBgColor:"#fc2760",
+				cancelBgColor:"#6c5861",
+				cancelColor:"#fff",
+				confirmIcon:"EB79",
+				cancelIcon:"EB97",
+				contentAlign:'center'
+				} as X_MODAL_TYPE)
+				
+			},
+			loadAlert3(){
+				showModal({
+					title:"提醒框",
+					content:"这是一条测试消息对话框。",
+					isSplitBtn:false,
+				} as X_MODAL_TYPE)
+			},
+			loadAlert5(){
+				showModal({
+					title:"提醒框",
+					content:"我是白底+按钮分割线样式，应对不同设计师偏好。",
+					isSplitBtn:false,
+					// 添加分线线颜色，实际分割样式。
+					lineColor:"#f5f5f5",
+					cancelBgColor:"#ffffff",
+					cancelColor:"#888888",
+					confirmBgColor:"#ffffff",
+					confirmColor:"#0579FF"
+				} as X_MODAL_TYPE)
+			},
+			loadAlert4(){
+				showModal({title:"提醒框",content:"这是一条测试消息对话框.",showCancel:false} as X_MODAL_TYPE)
+			}
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

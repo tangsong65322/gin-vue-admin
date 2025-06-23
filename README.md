@@ -1,9 +1,5 @@
 
 <div align=center>
-<img src="http://qmplusimg.henrongyi.top/gvalogo.jpg" width="300" height="300" />
-</div>
-
-<div align=center>
 <img src="https://img.shields.io/badge/golang-1.20-blue"/>
 <img src="https://img.shields.io/badge/gin-1.9.1-lightBlue"/>
 <img src="https://img.shields.io/badge/vue-3.3.4-brightgreen"/>
@@ -39,31 +35,8 @@
 # 项目文档
 [在线文档](https://www.gin-vue-admin.com) : https://www.gin-vue-admin.com
 
-[初始化](https://www.gin-vue-admin.com/guide/start-quickly/initialization.html)
-						       
-[从环境到部署教学视频](https://www.bilibili.com/video/BV1Rg411u7xH)
-
-[开发教学](https://www.gin-vue-admin.com/guide/start-quickly/env.html) (贡献者:  <a href="https://github.com/LLemonGreen">LLemonGreen</a> And <a href="https://github.com/fkk0509">Fann</a>)
-
-[交流社区](https://support.qq.com/products/371961)
-
-[插件市场](https://plugin.gin-vue-admin.com/)
-
-[软件著作权证书](https://www.gin-vue-admin.com/copyright.pdf)
-
 # 重要提示
 
-1.本项目从起步到开发到部署均有文档和详细视频教程
-
-2.本项目需要您有一定的golang和vue基础
-
-3.您完全可以通过我们的教程和文档完成一切操作，因此我们不再提供免费的技术服务，如需服务请进行[付费支持](https://www.gin-vue-admin.com/coffee/payment.html)
-
-4.如果您将此项目用于商业用途，请遵守Apache2.0协议并保留作者技术支持声明。您需保留如下版权声明信息，以及日志和代码中所包含的版权声明信息。所需保留信息均为文案性质，不会影响任何业务内容，如决定商用【产生收益的商业行为均在商用行列】或者必须剔除请[购买授权](https://www.gin-vue-admin.com/empower/index.html)
-\
-<img src="https://qmplusimg.henrongyi.top/openSource/login.jpg" width="1000">
-
-<img src="https://qmplusimg.henrongyi.top/openSource/dashboard.jpg" width="1000">
 
 ## 1. 基本介绍
 
@@ -77,27 +50,15 @@
 
 测试密码：123456
 
-### 1.2 贡献指南
-Hi! 首先感谢你使用 gin-vue-admin。
+8107927288:AAFROeRuOh6YS7Avr1Q0orPYJEAwHvhqP0Y
+-4687328321
 
-Gin-vue-admin 是一套为快速研发准备的一整套前后端分离架构式的开源框架，旨在快速搭建中小型项目。
-
-Gin-vue-admin 的成长离不开大家的支持，如果你愿意为 gin-vue-admin 贡献代码或提供建议，请阅读以下内容。
-
-#### 1.2.1 Issue 规范
-- issue 仅用于提交 Bug 或 Feature 以及设计相关的内容，其它内容可能会被直接关闭。
-									      
-- 在提交 issue 之前，请搜索相关内容是否已被提出。
-
-#### 1.2.2 Pull Request 规范
-- 请先 fork 一份到自己的项目下，不要直接在仓库下建分支。
-
-- commit 信息要以`[文件名]: 描述信息` 的形式填写，例如 `README.md: fix xxx bug`。
-
-- 如果是修复 bug，请在 PR 中给出描述信息。
-
-- 合并代码需要两名维护人员参与：一人进行 review 后 approve，另一人再次 review，通过后即可合并。
-
+BT-Panel default info!
+==================================================================
+外网面板地址: https://203.86.235.27:30210/2244a86c
+内网面板地址: https://203.86.235.27:30210/2244a86c
+username: 6hm4askt
+password: gva_lol
 ## 2. 使用说明
 
 ```

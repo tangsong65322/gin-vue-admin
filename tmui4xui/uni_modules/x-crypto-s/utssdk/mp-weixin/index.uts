@@ -1,0 +1,232 @@
+import CryptoJS from "./lib/index.js"
+import { JSEncrypt } from "./src/JSEncrypt"
+export { RSARANDOMKEY } from "../interface.uts"
+
+function adjustIV(ivStr, requiredLength = 16) {
+	// 将字符串转换为字节
+	let ivBytes = CryptoJS.enc.Utf8.parse(ivStr);
+	// 创建一个新的WordArray来存储处理后的IV
+	let adjustedIV = CryptoJS.lib.WordArray.create();
+
+	if (ivBytes.sigBytes >= requiredLength) {
+		// 如果IV长度足够或过长，进行截取
+		adjustedIV = CryptoJS.lib.WordArray.create(ivBytes.words.slice(0, requiredLength / 4));
+	} else {
+		// 如果IV长度不足，进行补足0
+		adjustedIV = CryptoJS.lib.WordArray.create(ivBytes.words);
+		for (let i = ivBytes.sigBytes / 4; i < requiredLength / 4; i++) {
+			adjustedIV.words[i] = 0;
+		}
+		adjustedIV.sigBytes = requiredLength;
+	}
+
+	return adjustedIV;
+}
+
+
+function adjustIV2(ivStr:Uint8Array, requiredLength = 16) {
+	// 确保密钥长度为requiredLength字节，不足时用0填充，过长时截断
+	const paddedKey = new Uint8Array(requiredLength);
+	if (ivStr.length < requiredLength) {
+		paddedKey.set(ivStr, 0);
+	} else {
+		paddedKey.set(ivStr.slice(0, requiredLength), 0);
+	}
+	
+	// 将Uint8Array转换为WordArray
+	const words:number[] = [];
+	for (let i = 0; i < paddedKey.length; i += 4) {
+		let word = 0;
+		for (let j = 0; j < 4 && i + j < paddedKey.length; j++) {
+			word |= paddedKey[i + j] << (24 - j * 8);
+		}
+		words.push(word);
+	}
+	return CryptoJS.lib.WordArray.create(words, paddedKey.length);
+}
+
+export function base64Encode(input : string) : string {
+	return CryptoJS.enc.Utf8.parse(input).toString(CryptoJS.enc.Base64)
+}
+export function base64Decode(input : string) : string {
+	return CryptoJS.enc.Base64.parse(input).toString(CryptoJS.enc.Utf8)
+}
+export function md5(input : string) : string {
+	return CryptoJS.MD5(input).toString()
+}
+
+export function sha256(str : string) : string {
+	return CryptoJS.SHA256(str).toString()
+}
+export function sha512(str : string) : string {
+	return CryptoJS.SHA512(str).toString()
+}
+export function hmacSha256(key : string, data : string) : string {
+	return CryptoJS.HmacSHA256(data, key).toString()
+}
+
+export function hmacSha512(key : string, data : string) : string {
+	return CryptoJS.HmacSHA512(data, key).toString()
+}
+
+export function sha1(str : string) : string {
+	return CryptoJS.SHA1(str).toString()
+}
+/**
+ * Aes
+ * @param {string} key utf8字符串它会根据keySize来截取和补足0
+ * @param {string} data 待加密的字符
+ * @param {string} mode ECB,CBC
+ * @param {string} iv 固定是16位,不足会补齐0
+ * @param {string} keySize 对key的加密补位,也就是加密位数16为128,24为192,32为256
+ */
+export function aesEncrypt(key : string, data : string, mode : string = "ECB", iv : string | null = null, keySize : number | null = 16) : string {
+	const keyData = adjustIV(key, keySize || 16);
+	const ivValue = adjustIV(iv || "");
+	let word = CryptoJS.AES.encrypt(data, keyData, {
+		iv: ivValue,
+		mode: CryptoJS.mode[mode],
+		padding: CryptoJS.pad.Pkcs7
+	});
+	return word.toString()
+}
+/**
+ * DAes
+ * @param {string} key utf8字符串它会根据keySize来截取和补足0
+ * @param {string} data 加密后的base64的字符
+ * @param {string} mode ECB,CBC
+ * @param {string} iv 固定是16位,不足会补齐0
+ * @param {string} keySize 对key的加密补位,也就是加密位数16为128,24为192,32为256
+ */
+export function aesDecrypt(key : string, data : string, mode : string = "ECB", iv : string | null = null, keySize : number | null = 16) : string {
+	const keyData = adjustIV(key, keySize || 16);
+	const ivValue = adjustIV(iv || "");
+
+	let word = CryptoJS.AES.decrypt(data, keyData, { iv: ivValue, mode: CryptoJS.mode[mode], padding: CryptoJS.pad.Pkcs7 });
+	return word.toString(CryptoJS.enc.Utf8)
+}
+
+export function aesEncrypt2(key : Uint8Array, data : Uint8Array, mode : string = "ECB", iv : Uint8Array | null = null, keySize : number | null = 16) : Uint8Array {
+	const keyData = adjustIV2(key, keySize || 16);
+	
+	// 将数据转换为WordArray
+	const words:number[] = [];
+	for (let i = 0; i < data.length; i += 4) {
+		let word = 0;
+		for (let j = 0; j < 4 && i + j < data.length; j++) {
+			word |= data[i + j] << (24 - j * 8);
+		}
+		words.push(word);
+	}
+	const dataU8 = CryptoJS.lib.WordArray.create(words, data.length);
+	
+	// 处理IV
+	let ivValue:any;
+	if (mode === "ECB") {
+		ivValue = CryptoJS.lib.WordArray.create([]);
+	} else {
+		const ivData = iv || new Uint8Array(16);
+		ivValue = adjustIV2(ivData, 16);
+	}
+	
+	let word = CryptoJS.AES.encrypt(dataU8, keyData, {
+		iv: ivValue,
+		mode: CryptoJS.mode[mode],
+		padding: CryptoJS.pad.Pkcs7
+	});
+	
+	// 正确地将WordArray转换为Uint8Array
+	// @ts-ignore
+	const resultWords = word.ciphertext.words;
+	// @ts-ignore
+	const sigBytes = word.ciphertext.sigBytes;
+	const result = new Uint8Array(sigBytes);
+	
+	for (let i = 0; i < sigBytes; i++) {
+		const wordIndex = Math.floor(i / 4);
+		const byteIndex = i % 4;
+		result[i] = (resultWords[wordIndex] >>> (24 - byteIndex * 8)) & 0xff;
+	}
+	
+	return result;
+}
+
+export function aesDecrypt2(key : Uint8Array, data : Uint8Array, mode : string = "ECB", iv : Uint8Array | null = null, keySize : number | null = 16) : Uint8Array {
+	const keyData = adjustIV2(key, keySize || 16);
+	
+	// 处理IV
+	let ivValue:any;
+	if (mode === "ECB") {
+		ivValue = CryptoJS.lib.WordArray.create([]);
+	} else {
+		const ivData = iv || new Uint8Array(16);
+		ivValue = adjustIV2(ivData, 16);
+	}
+	
+	// 将加密数据转换为WordArray
+	const words:number[] = [];
+	for (let i = 0; i < data.length; i += 4) {
+		let word = 0;
+		for (let j = 0; j < 4 && i + j < data.length; j++) {
+			word |= data[i + j] << (24 - j * 8);
+		}
+		words.push(word);
+	}
+	const cipherParams = CryptoJS.lib.CipherParams.create({
+		ciphertext: CryptoJS.lib.WordArray.create(words, data.length)
+	});
+	
+	let word = CryptoJS.AES.decrypt(cipherParams, keyData, { iv: ivValue, mode: CryptoJS.mode[mode], padding: CryptoJS.pad.Pkcs7 });
+	
+	// 正确地将WordArray转换为Uint8Array
+	const resultWords = word.words;
+	const sigBytes = word.sigBytes;
+	const result = new Uint8Array(sigBytes);
+	
+	for (let i = 0; i < sigBytes; i++) {
+		const wordIndex = Math.floor(i / 4);
+		const byteIndex = i % 4;
+		result[i] = (resultWords[wordIndex] >>> (24 - byteIndex * 8)) & 0xff;
+	}
+	
+	return result;
+}
+
+
+export function desEncrypt(key : string, data : string, mode : string = "ECB", iv : string | null = null) : string {
+	let word = CryptoJS.DES.encrypt(data, key, { iv: CryptoJS.enc.Utf8.parse(iv || ""), mode: CryptoJS.mode[mode] });
+	return word.toString()
+}
+export function desDecrypt(key : string, data : string, mode : string = "ECB", iv : string | null = null) : string {
+	let word = CryptoJS.DES.decrypt(data, key, { iv: CryptoJS.enc.Utf8.parse(iv || ""), mode: CryptoJS.mode[mode] });
+	return word.toString(CryptoJS.enc.Utf8)
+}
+
+export function generateRSAKeyPair(keySize : number = 2048) : RSARANDOMKEY {
+	const crypt = new JSEncrypt({ default_key_size: keySize.toString() })
+	crypt.getKey()
+	return {
+		publicKey: crypt.getPublicKey(),
+		privateKey: crypt.getPrivateKey()
+	} as RSARANDOMKEY
+}
+
+export function rsaEncrypt(publicKey : string, data : string) : string {
+	JSEncrypt.prototype.setPublicKey(publicKey)
+	return JSEncrypt.prototype.encrypt(data) || ""
+}
+export function rsaDecrypt(privateKey : string, data : string) : string {
+	JSEncrypt.prototype.setPrivateKey(privateKey)
+	return JSEncrypt.prototype.decrypt(data) || ""
+}
+//返回的是hex字符串
+export function rc4Encrypt(key : string, data : string) : string {
+	return CryptoJS.RC4.encrypt(data, CryptoJS.enc.Utf8.parse(key)).toString(CryptoJS.format.Hex)
+}
+
+// key是hex字符
+export function rc4Decrypt(key : string, data : string) : string {
+	const ciphertext = CryptoJS.enc.Hex.parse(data);
+	let dec = CryptoJS.RC4.decrypt({ ciphertext: ciphertext }, CryptoJS.enc.Utf8.parse(key))
+	return dec.toString(CryptoJS.enc.Utf8);
+}

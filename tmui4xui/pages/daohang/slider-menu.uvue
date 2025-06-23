@@ -1,0 +1,77 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-slider-menu :showToggleMenu="true" :list="list" layout-mode="scroll"  v-model="modelvalue" :item-selected-style="itemStyle">
+			<!-- <template v-slot:menu="{item}">
+				<view :style="{
+					width:'100%',height:'100%',
+					backgroundColor:modelvalue==(item.id)?'red':'white',
+					borderLeft:modelvalue==(item.id)?'2px solid yellow':'none'
+				}">
+					<text :style="{color:modelvalue==(item.id)?'white':'#333333'}">{{item.title}}</text>
+				</view>
+			</template> -->
+			<template v-slot:item="{item}">
+				<view style="height: 220px;" >
+					<view style="height: 20px;"></view>
+					<x-sheet height="200" color="info">
+						<x-text >{{item.title}}</x-text>
+					</x-sheet>
+				</view>
+			</template>
+		</x-slider-menu>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	import { SLIDER_TREE_ITEM_INFO } from "@/uni_modules/tmx-ui/interface.uts"
+	import { xStore,xDate } from "@/uni_modules/tmx-ui/index.uts"
+	export default {
+		data() {
+			return {
+				modelvalue:'1-3-1',
+				itemStyle:xStore.xConfig.dark=='dark'? ({backgroundColor:'#181a1b',border:'none'} as UTSJSONObject) : ({backgroundColor:'#ccd8e6',border:'none'} as UTSJSONObject),
+				list: [
+					{ title: '江西省', id: "1-2-1",icon:'cloud-fill' } as SLIDER_TREE_ITEM_INFO,
+					{ title: '安徽', id: "1-3-1",icon:'archive-2-fill' } as SLIDER_TREE_ITEM_INFO,
+					{ title: '福建', id: "1-4-9",icon:'verified-badge-fill' } as SLIDER_TREE_ITEM_INFO,
+					{ title: '北京', id: "1-5-2",icon:'attachment-fill' } as SLIDER_TREE_ITEM_INFO,
+					{ title: '山东', id: "1-5-3",icon:'bar-chart-2-fill' } as SLIDER_TREE_ITEM_INFO,
+					{ title: '广东', id: "1-5-4",icon:'mail-unread-fill' } as SLIDER_TREE_ITEM_INFO,
+					{ title: '深圳', id: "1-5-5",icon:'home-4-fill' } as SLIDER_TREE_ITEM_INFO,
+					{ title: '广西', id: "1-5-6",icon:'global-fill' } as SLIDER_TREE_ITEM_INFO,
+					
+					{ title: '江西省', id: "2-2-1" } as SLIDER_TREE_ITEM_INFO,
+					{ title: '安徽', id: "2-3-1" } as SLIDER_TREE_ITEM_INFO,
+					{ title: '福建', id: "2-4-9" } as SLIDER_TREE_ITEM_INFO,
+					{ title: '北京', id: "2-5-2" } as SLIDER_TREE_ITEM_INFO,
+					{ title: '山东', id: "2-5-3" } as SLIDER_TREE_ITEM_INFO,
+					{ title: '广东', id: "2-5-4" } as SLIDER_TREE_ITEM_INFO,
+					{ title: '深圳', id: "2-5-5" } as SLIDER_TREE_ITEM_INFO,
+					{ title: '广西', id: "2-5-6" } as SLIDER_TREE_ITEM_INFO,
+					
+					{ title: '江西省', id: "3-2-1" } as SLIDER_TREE_ITEM_INFO,
+					{ title: '安徽', id: "3-3-1" } as SLIDER_TREE_ITEM_INFO,
+					{ title: '福建', id: "3-4-9" } as SLIDER_TREE_ITEM_INFO,
+					{ title: '北京', id: "3-5-2" } as SLIDER_TREE_ITEM_INFO,
+					{ title: '山东', id: "3-5-3" } as SLIDER_TREE_ITEM_INFO,
+					{ title: '广东', id: "3-5-4" } as SLIDER_TREE_ITEM_INFO,
+					{ title: '深圳', id: "3-5-5" } as SLIDER_TREE_ITEM_INFO,
+					{ title: '广西', id: "3-5-6" } as SLIDER_TREE_ITEM_INFO
+				] as SLIDER_TREE_ITEM_INFO[]
+			};
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

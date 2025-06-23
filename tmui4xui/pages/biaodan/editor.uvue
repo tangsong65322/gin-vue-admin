@@ -1,0 +1,79 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+	
+	<x-sheet>
+		<x-editor @getValue="myVale" ref="edite" @tagClick="ontagclick" :value="str" height="450px" ></x-editor>
+		<x-button class="mt-20" @click="appendText" :block="true">追加内容</x-button>
+		<x-button class="mt-20" @click="getHtml" :block="true">获取Html内容</x-button>
+		
+		
+	</x-sheet>
+	<x-sheet>
+		<x-text font-size="18" class=" text-weight-b mb-8">富文本编辑器 xEdite</x-text>
+		<x-text  color="#999999">
+			它允许传入markdown内容和html内容，然后进行编辑，再导出html内容，不支持导出markdown格式。
+			另外由于需要全端兼容，请以微信的编辑器所支持的html标签为准。markdown时，也同样只支持基本的格式，不支持复杂的代码，公式等。
+		</x-text>
+	</x-sheet>
+	
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+
+
+	export default {
+		data() {
+			return {
+				ids:0,
+				str:'# 全局配置\n## 介绍\n *本配置参数会影响整个app风格，请慎重配置，或者根据你的UI/UX设计师指示配置*\n',
+			}
+		},
+		onLoad() {
+			
+		},
+		onUnload(){
+			
+		},
+		methods: {
+			ontagclick(detail:UTSJSONObject){
+				let text = detail.getString('attr')
+				text = text == null?'':(text!)
+				uni.showToast({
+					title:text,
+					icon:'none'
+				})
+			},
+	
+			getHtml(){
+				let el = this.$refs["edite"] as XEditorComponentPublicInstance
+				el.getHtml()
+			},
+			myVale(str:string){
+				uni.showModal({
+					title:"内容",
+					content:str,
+					showCancel:false
+				})
+			},
+			appendText(){
+				this.str += '\n辣椒炒肉的热量和营养成分会因配料的比例和烹饪方式有所不同。以下是一个大致的估算，以100克辣椒炒肉为例： \n - **热量**: 约 150-250 千卡 \n - **碳水化合物**: 约 5-10 克 \n - **脂肪**: 约 10-15 克 \n - **蛋白质**: 约 8-12 克 \n 具体数值会根据所使用的肉类（如猪肉、牛肉等）的脂肪含量、辣椒的量、油的使用量以及是否添加其他调料（如酱油、糖）等因素而有所不同。如果你有具体的食材比例，可以更精确地计算这些数值。'
+				
+			}
+		}
+	}
+</script>
+
+<style>
+
+</style>

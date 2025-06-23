@@ -1,0 +1,648 @@
+import ListView from 'android.widget.ListView';
+import FrameLayout from 'android.widget.FrameLayout';
+import CameraManager from 'android.hardware.camera2.CameraManager'
+import CameraDevice from 'android.hardware.camera2.CameraDevice'
+import StateCallback from 'android.hardware.camera2.CameraDevice.StateCallback'
+import CameraCaptureSession from 'android.hardware.camera2.CameraCaptureSession'
+
+import CaptureRequest from 'android.hardware.camera2.CaptureRequest'
+import TotalCaptureResult from 'android.hardware.camera2.TotalCaptureResult'
+import StreamConfigurationMap from 'android.hardware.camera2.params.StreamConfigurationMap'
+import MeteringRectangle from 'android.hardware.camera2.params.MeteringRectangle'
+import OutputConfiguration from 'android.hardware.camera2.params.OutputConfiguration'
+import SessionConfiguration from 'android.hardware.camera2.params.SessionConfiguration'
+import CameraCharacteristics from 'android.hardware.camera2.CameraCharacteristics'
+import CameraMetadata from 'android.hardware.camera2.CameraMetadata'
+import Range from 'android.util.Range';
+
+import Executor from 'java.util.concurrent.Executor'
+import Looper from 'android.os.Looper'
+import ImageFormat from 'android.graphics.ImageFormat'
+import Size from 'android.util.Size'
+import SurfaceTexture from 'android.graphics.SurfaceTexture'
+import Handler from 'android.os.Handler'
+import Surface from 'android.view.Surface'
+import Image from 'android.media.Image'
+import LinearLayout from 'android.widget.LinearLayout';
+import Intent from 'android.content.Intent';
+import Integer from 'java.lang.Integer';
+import ByteOrder from 'java.nio.ByteOrder';
+
+import SurfaceHolder from 'android.view.SurfaceHolder'
+import SurfaceView from 'android.view.SurfaceView'
+import TextureView from 'android.view.TextureView'
+import View from 'android.view.View'
+import Context from 'android.content.Context'
+import Manifest from "android.Manifest";
+import Uri from 'android.net.Uri';
+import File from 'java.io.File'
+import System from 'java.lang.System'
+import Activity from 'android.app.Activity';
+import Bundle from 'android.os.Bundle';
+import Intent from 'android.content.Intent';
+import IntentFilter from 'android.content.IntentFilter';
+
+import Rect from 'android.graphics.Rect';
+import Matrix from 'android.graphics.Matrix'
+import ImageReader from 'android.media.ImageReader'
+import OnImageAvailableListener from 'android.media.ImageReader.OnImageAvailableListener'
+
+
+import ByteBuffer from 'java.nio.ByteBuffer'
+import MediaStore from 'android.provider.MediaStore'
+import Plane from 'android.media.Image.Plane'
+import Bitmap from "android.graphics.Bitmap"
+import BitmapFactory from "android.graphics.BitmapFactory"
+import Vibrator from "android.os.Vibrator"
+import Animation from "android.view.animation.Animation"
+import ScaleAnimation from "android.view.animation.ScaleAnimation"
+import AnimationUtils from "android.view.animation.AnimationUtils"
+
+
+import Color from "android.graphics.Color"
+import Window from "android.view.Window"
+import WindowManager from "android.view.WindowManager"
+import TextView from "android.widget.TextView"
+import RelativeLayout from "android.widget.RelativeLayout"
+import ImageView from "android.widget.ImageView"
+import HandlerThread from 'android.os.HandlerThread'
+import YuvImage from 'android.graphics.YuvImage'
+import ByteArrayOutputStream from 'java.io.ByteArrayOutputStream'
+import GradientDrawable from 'android.graphics.drawable.GradientDrawable'
+import MotionEvent from 'android.view.MotionEvent';
+import ViewGroup from 'android.view.ViewGroup';
+
+
+import IOException from 'java.io.IOException'
+import InputStream from 'java.io.InputStream'
+import BarcodeScanner from "com.google.mlkit.vision.barcode.BarcodeScanner"
+import BarcodeScannerOptions from "com.google.mlkit.vision.barcode.BarcodeScannerOptions"
+import BarcodeScanning from "com.google.mlkit.vision.barcode.BarcodeScanning"
+import ZoomSuggestionOptions from "com.google.mlkit.vision.barcode.ZoomSuggestionOptions"
+import ZoomCallback from "com.google.mlkit.vision.barcode.ZoomSuggestionOptions.ZoomCallback"
+import Barcode from "com.google.mlkit.vision.barcode.common.Barcode"
+import InputImage from "com.google.mlkit.vision.common.InputImage"
+import xView from "./libview/view.uts"
+import Task from "com.google.android.gms.tasks.Task"
+import List from "java.util.List"
+
+// x
+import ProcessCameraProvider from "androidx.camera.lifecycle.ProcessCameraProvider"
+import PreviewView from "androidx.camera.view.PreviewView"
+import CameraController from "androidx.camera.view.CameraController"
+import CameraSelector from "androidx.camera.core.CameraSelector"
+import Preview from 'androidx.camera.core.Preview'
+import Camera from 'androidx.camera.core.Camera'
+import LifecycleObserver from "androidx.lifecycle.LifecycleObserver"
+import LifecycleOwner from "androidx.lifecycle.LifecycleOwner"
+import OnLifecycleEvent from "androidx.lifecycle.OnLifecycleEvent"
+import ImageAnalysis from 'androidx.camera.core.ImageAnalysis'
+import ImageProxy from 'androidx.camera.core.ImageProxy'
+import NonNull from 'androidx.annotation.NonNull'
+import ExecutorService from 'java.util.concurrent.ExecutorService'
+import Executors from 'java.util.concurrent.Executors'
+// import TargetResolution from 'androidx.camera.core.ImageAnalysis.TargetResolution'
+
+type buffoptsPlanesType = {
+	data : ByteBuffer,
+	getRowStride : number,
+	getPixelStride : number,
+}
+type buffoptsType = {
+	width : number,
+	height : number,
+	format : number,
+	rect : Rect,
+	planes : buffoptsPlanesType[],
+}
+
+import { SCANNING_OPTIONS, CAMERA_PHOTO_SIZE, CallFunType, SCANNING_PHOTO_RESULT, SCANNING_PHOTO_RESULT_BOUND } from "../interface.uts"
+import { decoderUriPathToQr, decoderBuffToQr } from "./index.uts"
+import ContextCompat from 'androidx.core.content.ContextCompat';
+
+type cameraListNameType = { id : string, device : CameraCharacteristics }
+
+function px2dp(n : number) : number {
+	const mets = UTSAndroid.getAppContext()!.resources!.getDisplayMetrics()
+	return mets.density * n
+}
+
+export class xCamera {
+	parentView : FrameLayout;
+
+	// 识别点的区域
+	resultView : RelativeLayout | null = null;
+
+
+	viewBox_width = 0
+	viewBox_height = 0
+
+	imgPointsBycanmarea = [] as RelativeLayout[]
+
+	options = {
+		width: 800,
+		height: 800,
+		cameraDevice: 'BACK',
+		scanSpeedduration: 450,
+		scanningQrCode: true,
+		isSavePhoto: false,
+		qrCodeType: null,
+		vibatar: true,
+		zoom: 3,
+		continuousScan: false
+	} as SCANNING_OPTIONS
+
+	/** 手动震动服务 */
+	vibrator = null as null | Vibrator
+	context : Context;
+	// 相机旋转的角度。
+	cameraRate = new Map<Number, Number>([
+		[Surface.ROTATION_0, 0],
+		[Surface.ROTATION_90, 0],
+		[Surface.ROTATION_180, 0],
+		[Surface.ROTATION_270, 0]
+	])
+	// 相机服务
+	cameraService : CameraManager
+	// 相机列表,name,id
+	cameraListName = new Map<string, cameraListNameType>();
+	// 
+	cameraPreviewSize = { width: 800, height: 800 } as CAMERA_PHOTO_SIZE
+	// 当前预览的什么是设备
+	cameraDevice : CameraDevice | null = null
+	cameraDeviceCaptureSession : CameraCaptureSession | null = null
+	sufaceHolderView : Surface | null = null
+
+	// 相机区域视图
+	cameraView : PreviewView | null = null;
+	cameraProvider : ProcessCameraProvider | null = null
+	camera : Camera | null = null;
+	cameraPreview : Preview | null = null;
+
+
+	// 当前是否在解析码制中。
+	isDecoderQring = false
+	// 当前相机是否正在预览中。
+	isOpeningCameraing = false;
+
+	callFunEvent : CallFunType = (str : string[], type : 'auto' | 'click') => { }
+
+	// 临时存放的识别成功的结果，防止重复扫码。
+	tempresultList = [] as string[];
+
+	isAppPause = false
+	
+	flashMode = false;
+
+	constructor(GroupView : FrameLayout, options : SCANNING_OPTIONS | null = null) {
+		this.context = UTSAndroid.getAppContext()! as Context;
+		this.parentView = GroupView;
+		if (options != null) {
+			this.options = {
+				width: options.width,
+				height: options.height,
+				cameraDevice: options.cameraDevice,
+				scanSpeedduration: options.scanSpeedduration == null ? this.options.scanSpeedduration : options.scanSpeedduration,
+				scanningQrCode: options.scanningQrCode == null ? this.options.scanningQrCode : options.scanningQrCode,
+				isSavePhoto: options.isSavePhoto == null ? this.options.isSavePhoto : options.isSavePhoto,
+				qrCodeType: options.qrCodeType == null ? this.options.qrCodeType : options.qrCodeType,
+				vibatar: options.vibatar == null ? this.options.vibatar : options.vibatar,
+				zoom: options.zoom == null ? this.options.zoom : options.zoom,
+				continuousScan: options.continuousScan == null ? this.options.continuousScan : options.continuousScan
+			} as SCANNING_OPTIONS;
+			this.flashMode = options.flashMode
+		}
+		this.cameraService = this.context!.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+		this.vibrator = this.context!.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator;
+		this._createCameraView()
+		this._creatCameraResultView()
+	}
+	//震动手机
+	setVibatar() {
+		if (this.vibrator == null) return
+		// 检查设备是否支持震动
+		if (this.vibrator!.hasVibrator()) {
+			// 触发短暂的震动，持续时间为200毫秒
+			this.vibrator!.vibrate(80);
+		}
+	}
+	/** 创建相机预览区域 */
+	private _createCameraView() {
+
+		let sv = new PreviewView(UTSAndroid.getAppContext()!)
+		sv.scaleType = PreviewView.ScaleType.FILL_CENTER
+		// 让相机的高和宽与组件对齐。
+		let layaout = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+		sv.setLayoutParams(layaout)
+		this.cameraView = sv;
+
+		this.parentView.addView(this.cameraView!)
+	}
+	// 创建一个动画层容器
+	private _creatCameraResultView() {
+		let t = this;
+		let resultView = new RelativeLayout(this.context)
+		let layaout = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+		resultView.setLayoutParams(layaout)
+		// resultView.setBackgroundColor(Color.argb(30,255,0,0))
+		this.resultView = resultView;
+		this.parentView.addView(this.resultView!)
+
+		//监听尺寸变化。
+		class previewChangeRectadd extends View.OnLayoutChangeListener {
+			override onLayoutChange(v : View, left : Int, top : Int, right : Int, bottom : Int,
+				oldLeft : Int, oldTop : Int, oldRight : Int, oldBottom : Int
+			) {
+				t.viewBox_width = right - left;
+				t.viewBox_height = bottom - top;
+			}
+		}
+		this.parentView!.addOnLayoutChangeListener(new previewChangeRectadd())
+
+
+	}
+	openCamera() : Promise<boolean> {
+		let _this = this;
+		if (this.isOpeningCameraing) {
+			this.closeCamera()
+		}
+
+		return new Promise((res, rej) => {
+			_this.checkPermissions()
+				.then((res : boolean) => {
+					if (!res) {
+						uni.showToast({ title: "未授权相机使用权", icon: "none" })
+						return;
+					}
+					try {
+						_this._openCamera();
+
+					} catch (e) {
+						console.log(e)
+						//TODO handle the exception
+					}
+					res(true)
+				})
+				.catch(() => {
+					uni.showToast({ title: "未授权相机使用权", icon: "none" })
+					rej(false)
+				})
+		})
+
+	}
+	// 设置识别成功的回调函数
+	setCallEvent(call : CallFunType) {
+		this.callFunEvent = call;
+	}
+	getCamraRotation() : Number {
+		return 0
+	}
+	setFlashModel(flash:boolean){
+		
+		if(this.camera!=null&&this.isOpeningCameraing){
+			let cameraControl = this.camera!.cameraControl!
+			cameraControl.enableTorch(flash)
+		}
+	}
+
+	closeCamera() {
+		this.setFlashModel(false);
+		this.cameraProvider?.unbindAll()
+		this.cameraPreview?.setSurfaceProvider(null)
+		this.isOpeningCameraing = false;
+
+		for (let i = 0; i < this.imgPointsBycanmarea.length; i++) {
+			this.resultView?.removeView(this.imgPointsBycanmarea[i])
+		}
+
+
+	}
+	private _openCamera() {
+		let _this = this;
+		let cameraProviderFuture = ProcessCameraProvider.getInstance(this.context)
+
+		class IntentRunable extends Runnable {
+			override run() {
+				let cameraProvider : ProcessCameraProvider = cameraProviderFuture.get()
+				let previewView = _this.cameraView! as PreviewView
+				let cameraSelector : CameraSelector = new CameraSelector.Builder()
+					.requireLensFacing(CameraSelector.LENS_FACING_BACK)
+					.build();
+				let preview : Preview = new Preview.Builder().build();
+
+				preview.setSurfaceProvider(previewView.getSurfaceProvider())
+
+				let imageAnalysis = new ImageAnalysis.Builder()
+					// .setTargetResolution(new Size(_this.viewBox_width.toInt(), _this.viewBox_height.toInt()))
+					.setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+					.build();
+				class MyImageAnalyzer implements ImageAnalysis.Analyzer {
+					constructor() {
+						super()
+					}
+					override analyze(image : ImageProxy) {
+						_this.qrDecoder(image)
+					}
+					override getDefaultTargetResolution() : Size {
+						return new Size(_this.viewBox_width.toInt(), _this.viewBox_height.toInt());
+					}
+
+				}
+				let cameraExecutor = Executors.newSingleThreadExecutor();
+				imageAnalysis.setAnalyzer(cameraExecutor, new MyImageAnalyzer());
+				let camera : Camera = cameraProvider.bindToLifecycle(
+					UTSAndroid.getUniActivity()! as LifecycleOwner, cameraSelector, preview, imageAnalysis);
+				_this.camera = camera
+				_this.cameraPreview = preview
+				
+				_this.cameraProvider = cameraProvider
+				_this.isDecoderQring = false
+				_this.isOpeningCameraing = true
+				_this.setFlashModel(_this.flashMode)
+
+			}
+		}
+
+		cameraProviderFuture.addListener(new IntentRunable(), ContextCompat.getMainExecutor(this.context))
+	}
+
+	/**
+	 * 检查相机权限
+	 */
+	checkPermissions() : Promise<boolean> {
+		let permissionCheck = ["android.permission.CAMERA"]
+		let _this = this;
+		// 请求拍照权限
+		return new Promise(res => {
+			if (UTSAndroid.checkSystemPermissionGranted(UTSAndroid.getUniActivity()!, permissionCheck)) {
+				// _this.cameraPermissioPass = true
+				res(true)
+			} else {
+				console.log("当前不具备指定权限")
+				// 请求拍照权限
+				UTSAndroid.requestSystemPermission(UTSAndroid.getUniActivity()!, permissionCheck, function (allRight : boolean, _ : string[]) {
+					// _this.cameraPermissioPass = allRight
+					res(true)
+				}, function (_ : boolean, _ : string[]) {
+					//用户拒绝了部分权限
+					// _this.cameraPermissioPass = false
+					res(false)
+				})
+			}
+		})
+	}
+
+
+	// 设置图片上的小圆的识别位置。
+	setImageViewRusletBox(width : number, height : number, realWidth : number, realHeight : number, jieguo : SCANNING_PHOTO_RESULT) {
+		let t = this;
+		let btnwidth = 100;
+		let btnwidth2 = 50;
+
+		for (let i = 0; i < jieguo.bounds.length; i++) {
+			let item = jieguo.bounds[i];
+			let layoutParams = new LinearLayout.LayoutParams(
+				LinearLayout.LayoutParams.WRAP_CONTENT,
+				LinearLayout.LayoutParams.WRAP_CONTENT
+			)
+
+			let x = item.centerX
+			let y = item.centerY
+
+			layoutParams.topMargin = (y - btnwidth2).toInt() // 设置顶部边距
+			layoutParams.leftMargin = (x - btnwidth2).toInt() // 设置左边距
+			let relativeLayout = new RelativeLayout(t.context)
+			relativeLayout.layoutParams = layoutParams
+
+			const rtxt = jieguo.text[i]
+			let v = new xView(t.context)
+			v.setSize(btnwidth, btnwidth)
+				.setRadius(100)
+				.setBackgroundColor('#21d429')
+				.setBorder(12, "#ffffff", false)
+				.setClick((event : MotionEvent) => {
+					try {
+						t.callFunEvent([rtxt], 'click')
+					} catch (e) {
+						//TODO handle the exception
+					}
+				})
+			let ov = v.getView();
+
+
+			// 创建缩放动画
+			let scaleAnimation = new ScaleAnimation(1.0.toFloat(), 0.7.toFloat(), 1.0.toFloat(), 0.7.toFloat(), Animation.RELATIVE_TO_SELF, 0.7.toFloat(), Animation.RELATIVE_TO_SELF, 0.7.toFloat());
+			scaleAnimation.setDuration(600); // 设置动画持续时间
+			scaleAnimation.setRepeatMode(Animation.REVERSE); // 设置重复模式为反向
+			scaleAnimation.setRepeatCount(Animation.INFINITE); // 设置重复次数为无限
+			// 启动动画
+			ov.startAnimation(scaleAnimation);
+			relativeLayout.addView(ov)
+			this.imgPointsBycanmarea.push(relativeLayout)
+			this.resultView!.addView(relativeLayout)
+		}
+
+
+	}
+	private YUV_420_888toNV21(opts : buffoptsType) : ByteArray {
+
+		let crop = opts.rect;
+		let format = opts.format;
+		let width = crop.width();
+		let height = crop.height();
+		let planes = opts.planes!;
+		let data = new ByteArray((width * height * ImageFormat.getBitsPerPixel(format.toInt()) / 8).toInt());
+		let rowData = new ByteArray((planes[0].getRowStride).toInt());
+		let channelOffset = 0;
+		let outputStride = 1;
+		for (let i = 0; i < planes.length; i++) {
+			switch (i) {
+				case 0:
+					channelOffset = 0;
+					outputStride = 1;
+					break;
+				case 1:
+					channelOffset = width * height;
+					outputStride = 1;
+					break;
+				case 2:
+					channelOffset = width * height * 1.25;
+					outputStride = 1;
+					break;
+			}
+			let buffer = planes[i.toInt()].data!;
+			let rowStride = planes[i.toInt()].getRowStride;
+			let pixelStride = planes[i.toInt()].getPixelStride;
+
+			let shift = (i == 0) ? 0 : 1;
+			let w = width >> shift;
+			let h = height >> shift;
+			buffer.position((rowStride * (crop.top >> shift) + pixelStride * (crop.left >> shift)).toInt());
+			for (let row = 0; row < h; row++) {
+				let length = 0;
+				if (pixelStride == 1 && outputStride == 1) {
+					length = w;
+					buffer.get(data, channelOffset.toInt(), length.toInt());
+					channelOffset += length;
+				} else {
+					length = (w - 1) * pixelStride + 1;
+					buffer.get(rowData, 0, length.toInt());
+					for (let col = 0; col < w; col++) {
+						data[channelOffset.toInt()] = rowData[(col * pixelStride).toInt()];
+						channelOffset += outputStride;
+					}
+				}
+				if (row < h - 1) {
+					buffer.position((buffer.position() + rowStride - length).toInt());
+				}
+			}
+		}
+		return data;
+	}
+
+	getCorrectionMatrix(imageProxy : ImageProxy, previewView : PreviewView) : Matrix {
+		let cropRect = imageProxy.cropRect
+		let rotationDegrees = imageProxy.imageInfo.rotationDegrees
+		let matrix = new Matrix()
+
+		// A float array of the source vertices (crop rect) in clockwise order.
+	
+		let source = floatArrayOf(cropRect.left.toFloat(),
+			cropRect.top.toFloat(),
+			cropRect.right.toFloat(),
+			cropRect.top.toFloat(),
+			cropRect.right.toFloat(),
+			cropRect.bottom.toFloat(),
+			cropRect.left.toFloat(),
+			cropRect.bottom.toFloat())
+		
+		let d0 = (0).toFloat()
+		// A float array of the destination vertices in clockwise order.
+		let destination = floatArrayOf(d0,
+			d0,
+			previewView.width.toFloat(),
+			d0,
+			previewView.width.toFloat(),
+			previewView.height.toFloat(),
+			d0,
+			previewView.height.toFloat())
+
+		// The destination vertexes need to be shifted based on rotation degrees. The
+		// rotation degree represents the clockwise rotation needed to correct the image.
+
+		// Each vertex is represented by 2 float numbers in the vertices array.
+		let vertexSize = 2
+		// The destination needs to be shifted 1 vertex for every 90° rotation.
+		let shiftOffset = rotationDegrees / 90 * vertexSize;
+		let tempArray = destination.clone()
+		for (toIndex in source.indices) {
+			let fromIndex = (toIndex + shiftOffset) % source.size
+			destination[toIndex] = tempArray[fromIndex.toInt()]
+		}
+		let success = matrix.setPolyToPoly(source, 0, destination, 0, 4)
+
+		return matrix
+	}
+	private qrDecoder(img : ImageProxy) {
+		let t = this;
+		let image = img.getImage();
+
+		if (!this.isDecoderQring && image != null) {
+			this.isDecoderQring = true;
+
+			let width = image.getWidth();
+			let height = image.getHeight();
+			let frameSize = width * height;
+			let qFrameSize = frameSize / 4;
+			// 获取各平面的数据与信息
+			let planes = image.getPlanes();
+
+			let yBufferCopy = [] as ByteArray[]
+			let yrurvrNumber = [] as number[]
+
+			let yr = planes[0]
+			let ur = planes[1]
+			let vr = planes[2]
+			let oraingMax = yr.getBuffer().limit()
+
+			for (let i = 0; i < 3; i++) {
+				let buffer = planes[i.toInt()].getBuffer();
+				yBufferCopy.push(new ByteArray(buffer.remaining().toInt()))
+				buffer.get(yBufferCopy[i.toInt()]);
+			}
+			let y = ByteBuffer.wrap(yBufferCopy[0]!)
+			let u = ByteBuffer.wrap(yBufferCopy[1]!)
+			let v = ByteBuffer.wrap(yBufferCopy[2]!)
+
+			let opts = {
+				width,
+				height,
+				format: image.getFormat(),
+				rect: image.getCropRect(),
+				planes: [
+					{
+						data: y,
+						getRowStride: yr.getRowStride(),
+						getPixelStride: yr.getPixelStride(),
+					},
+					{
+						data: u,
+						getRowStride: ur.getRowStride(),
+						getPixelStride: ur.getPixelStride(),
+					},
+					{
+						data: v,
+						getRowStride: vr.getRowStride(),
+						getPixelStride: vr.getPixelStride(),
+					}
+				] as buffoptsPlanesType[]
+			} as buffoptsType
+			
+			decoderBuffToQr(this.YUV_420_888toNV21(opts), width, height,0)
+				.then((res) => {
+
+					if (res != null && t.isOpeningCameraing) {
+						let matrix = t.getCorrectionMatrix(img, this.cameraView!)
+						let texts = res.text as string[]
+						if (texts.length > 0) {
+							// texts.some((el:string):boolean=>t.tempresultList.includes(el))
+
+							if (t.options.vibatar == true) {
+								t.setVibatar()
+							}
+							if (t.options.continuousScan == false) {
+								t.closeCamera()
+							}
+							let ruslt = res as SCANNING_PHOTO_RESULT;
+							for (let i = 0; i < ruslt.bounds.length; i++) {
+								let item = ruslt.bounds[i]
+								let ponit = floatArrayOf(item.centerX.toFloat(), item.centerY.toFloat())
+
+								matrix.mapPoints(ponit)
+
+								item.centerX = ponit[0]
+								item.centerY = ponit[1]
+
+							}
+							t.callFunEvent(texts, 'auto')
+							t.setImageViewRusletBox(t.options.width, t.options.height, width, height, ruslt)
+						}
+						t.isDecoderQring = false
+					} else {
+						t.isDecoderQring = false
+					}
+					// image.close();
+				})
+				.catch(() => {
+					// this.imageUrl = null
+				})
+			// setTimeout(function () {
+			// 	t.isDecoderQring = false
+			// }, t.options!.scanSpeedduration!);
+			// image.close();
+		}
+		img.close();
+	}
+
+
+}

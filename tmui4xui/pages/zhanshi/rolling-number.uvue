@@ -1,0 +1,50 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">数字翻滚 xRollingNumber</x-text>
+			<x-text color="#999999" >
+				是否小数点，取决与你的的endVal目标值，如果它带小数点，那动画也是相应带小数点。
+			</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">小数</x-text>
+			<x-rolling-number :endVal="endVal"></x-rolling-number>
+			<x-button class="mt-32" :block="true" @click="endVal=endVal+12">增加+12</x-button>
+		</x-sheet>
+		
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">整数,让动画时间加长点{{endVal2}}</x-text>
+			<x-rolling-number :endVal="endVal2" :duration="1100"></x-rolling-number>
+			<x-button class="mt-32" :block="true" @click="endVal2=endVal2+122">增加+122</x-button>
+		</x-sheet>
+
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+
+		data() {
+			return {
+				endVal:2023.2,
+				endVal2:1998,
+			};
+		},
+		onLoad() {
+			
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

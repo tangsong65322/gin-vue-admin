@@ -3,6 +3,8 @@ package initialize
 import (
 	"github.com/flipped-aurora/gin-vue-admin/server/global"
 	"github.com/gin-gonic/gin"
+
+	"github.com/flipped-aurora/gin-vue-admin/server/plugin/telegram_bot"
 )
 
 func InstallPlugin(PrivateGroup *gin.RouterGroup, PublicRouter *gin.RouterGroup, engine *gin.Engine) {
@@ -12,4 +14,5 @@ func InstallPlugin(PrivateGroup *gin.RouterGroup, PublicRouter *gin.RouterGroup,
 	}
 	bizPluginV1(PrivateGroup, PublicRouter)
 	bizPluginV2(engine)
+	PluginInit(PrivateGroup, telegram_bot.CreateTelegram_botPlug())
 }

@@ -1,0 +1,63 @@
+// import UniversalBlurHelper from 'uts.sdk.modules.utsXdBlur.UniversalBlurHelper';
+import Color from 'android.graphics.Color';
+import { hexToRgb } from '../libs/color.uts'
+import View from 'android.view.View';
+
+import xdAnimation from 'uts.sdk.modules.utsXdxdAnimation.xdAnimation';
+import {XDANIMATION_FLIP3D_OPTIONS,XDANIMATION_TRANSLATE_OPTIONS,XDANIMATION_ROTATE_OPTIONS,XDANIMATION_SCALE_OPTIONS} from "../interface.uts"
+
+
+export class xAnimationS {
+	public static translate(opts:XDANIMATION_TRANSLATE_OPTIONS){
+		if(opts.ele == null) return
+		let view = (opts.ele as UniElement).getAndroidView()! as View
+		let duration_s = (opts?.duration??1000).toLong()
+		let delay_s = (opts?.delay??0).toLong()
+		let translation_s = (opts?.translation??0).toInt()
+		let fromlen_s = (opts?.from??360).toFloat()
+		let len_s = (opts?.len??360).toFloat()
+		let loop_s = (opts?.loop??0).toInt()
+		xdAnimation.translate(view,duration_s,delay_s,translation_s,fromlen_s,len_s,loop_s,opts?.start,opts?.end)
+	}
+	public static rotate(opts:XDANIMATION_ROTATE_OPTIONS){
+		if(opts.ele == null) return
+		let view = (opts.ele as UniElement).getAndroidView()! as View
+		let duration_s = (opts?.duration??1000).toLong()
+		let delay_s = (opts?.delay??0).toLong()
+		let from_s = (opts?.from??0).toFloat()
+		let deg_s = (opts?.deg??360).toFloat()
+		let loop_s = (opts?.loop??0).toInt()
+		xdAnimation.rotate(view,duration_s,delay_s,from_s,deg_s,loop_s,opts?.start,opts?.end)
+	}
+	public static scale(opts:XDANIMATION_SCALE_OPTIONS){
+		if(opts.ele == null) return
+		let view = (opts.ele as UniElement).getAndroidView()! as View
+		let duration_s = (opts?.duration??1000).toLong()
+		let delay_s = (opts?.delay??0).toLong()
+		let direction_s = (opts?.direction??2).toInt()
+		let scale_s = (opts?.scale??1).toFloat()
+		let from_s = (opts?.from??0).toFloat()
+		
+		let loop_s = (opts?.loop??0).toInt()
+		xdAnimation.scale(view,duration_s,delay_s,direction_s,from_s,scale_s,loop_s,opts?.start,opts?.end)
+	}
+	public static flip3D(opts:XDANIMATION_FLIP3D_OPTIONS){
+		if(opts.ele == null) return
+		let view = (opts.ele as UniElement).getAndroidView()! as View
+		let duration_s = (opts?.duration??1000).toLong()
+		let delay_s = (opts?.delay??0).toLong()
+		let axis_s = (opts?.axis??1).toInt()
+		let from_s = (opts?.from??0).toFloat()
+		let deg_s = (opts?.deg??360).toFloat()
+		let loop_s = (opts?.loop??0).toInt()
+		let cameraDistance_s = (opts?.cameraDistance??12).toFloat()
+		let scaleZ_s = (opts?.scaleZ??0.5).toFloat()
+		xdAnimation.flip3D(view,duration_s,delay_s,axis_s,from_s,deg_s,loop_s,cameraDistance_s,scaleZ_s,opts?.start,opts?.end)
+	}
+	public static clearAnimations(ele:UniElement|null,reset:boolean = true){
+		if(ele == null) return
+		let view = (ele as UniElement).getAndroidView()! as View
+		xdAnimation.clearAnimations(view,reset)
+	}
+	
+}

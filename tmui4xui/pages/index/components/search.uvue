@@ -1,0 +1,109 @@
+<template>
+	<view style="flex:1;display: flex;flex-direction: column;">
+
+		<x-input class="mx-14 mb-12" @input="searchWordList" dark-bg-color="" v-model="word" color="white" left-icon="search-2-line" placeholder="输入关联组件名或者英文名"></x-input>
+		
+		<view v-if="list.length>0" style="flex:1;margin: 0 14px 0px 14px;">
+			<x-virtual-list
+			style="flex: 1;" 
+			itemHeight="60" 
+			:list="list"
+			>
+				<template v-slot:default="{data,startIndex,endIndex}">
+					<navigator v-for="(item,index) in (data as INDEXITEMINFO[])" :key="index" 
+					style="padding-bottom: 1px;"
+					:url="(item as INDEXITEMINFO).url">
+						<view  class="lsitCell flex flex-row flex-row-center-between round-8"
+						:style="{backgroundColor: listBgcColor}">
+							<text :style="{color:textcColor,fontSize:'15px'}">{{(item as INDEXITEMINFO).title}}</text>
+							<x-icon name="arrow-right-line" fontSize="12" color="#888888"></x-icon>
+						</view>
+					</navigator>
+				</template>
+				
+				<template v-slot:bottom>
+					<view :style="{height:90+'px'}"></view>
+				</template>
+			</x-virtual-list>
+		</view>
+		<x-empty v-if="list.length==0" title="没组件,换个词" :showBtn="false" :empty="true" :loading="false" :error="false" ></x-empty>
+	</view>
+
+</template>
+
+<script setup lang="uts">
+	import { listdata, type INDEXITEMINFO_AR,INDEXITEMINFO } from "../index.uts"
+	import { checkIsCssUnit } from "@/uni_modules/tmx-ui//core/util/xCoreUtil.uts"
+	import { xStore, xDate } from "@/uni_modules/tmx-ui/index.uts"
+	const word = ref('')
+	const list = ref<INDEXITEMINFO[]>([])
+	let tid = 2232
+	const listBgcColor = computed(():string=>{
+		return xStore.xConfig.dark == 'dark'?xStore.xConfig.sheetDarkColor:'#ffffff'
+	})
+	const textcColor = computed(():string=>{
+		return xStore.xConfig.dark == 'dark'?'#fff':'#333'
+	})
+	
+	const searchWordList = (value:string)=>{
+		
+		clearTimeout(tid)
+		let temvalue = value.toLowerCase()
+		tid = setTimeout(function() {
+			if(value.trim()==''){
+				let listtem = [] as INDEXITEMINFO[];
+				for(let i=0;i<listdata.length;i++){
+					let children = listdata[i].children;
+					for(let j=0;j<children.length;j++){
+						let item = children[j];
+						listtem.push(item)
+					}
+				}
+				list.value = [...listtem]
+				return
+			}
+			
+			let listtem = [] as INDEXITEMINFO[];
+			for(let i=0;i<listdata.length;i++){
+				let children = listdata[i].children;
+				for(let j=0;j<children.length;j++){
+					let item = children[j];
+					let title = item.title.toLowerCase();
+					let pagename = item.url.split('/').pop()!.toLowerCase()
+					if(title.indexOf(temvalue)>-1||pagename.indexOf(temvalue)>-1){
+						listtem.push(item)
+					}
+				}
+			}
+			list.value = [...listtem]
+		}, 350);
+	}
+	function calcUnit(k:string):string{
+		return  checkIsCssUnit(k, xStore.xConfig.unit)
+	}
+	onBeforeUnmount(()=>{
+		clearTimeout(tid)
+	})
+	onMounted(()=>{
+		let listtem = [] as INDEXITEMINFO[];
+		for(let i=0;i<listdata.length;i++){
+			let children = listdata[i].children;
+			for(let j=0;j<children.length;j++){
+				let item = children[j];
+				listtem.push(item)
+			}
+		}
+		list.value = [...listtem]
+	})
+</script>
+
+<style >
+
+	.lsitCell{
+		padding: 0 16px;
+		height: 59px;
+		/* #ifndef APP */
+		box-szing:border-box;
+		/* #endif */
+	}
+</style>

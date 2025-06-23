@@ -1,0 +1,74 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">圆形进度环 xCircleProgress</x-text>
+			<x-text  color="#999999" >样式灵活多变。性能好。</x-text>
+		</x-sheet>
+		<x-sheet>
+			<view class="flex flex-row flex-row-center-center">
+				<x-circle-progress :model-value="testValue"></x-circle-progress>
+				<x-circle-progress lineWidth="6" activeColor="success" class="mx-16"
+					:model-value="testValue"></x-circle-progress>
+				<x-circle-progress class="mr-32" lineWidth="10" color="error" activeColor="danger"
+					:model-value="testValue"></x-circle-progress>
+					<x-circle-progress activeColor="warn" :model-value="testValue"></x-circle-progress>
+			</view>
+			<view class="flex flex-row mt-32  flex-row-center-center">
+				<x-button @click="add">增加</x-button>
+				<x-button color="error" class="mx-16" @click="sur">减少</x-button>
+			</view>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b ">尺寸，显示文本</x-text>
+		</x-sheet>
+		<x-sheet>
+			<view class="flex flex-row flex-row-center-center">
+				<x-circle-progress lineWidth="20" size="100" :show-label="true"
+					:model-value="testValue"></x-circle-progress>
+				<x-circle-progress lineWidth="20" class="ml-32" size="100" :show-label="true" color="error"
+					activeColor="danger" :model-value="testValue"></x-circle-progress>
+			</view>
+
+		</x-sheet>
+
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+				testValue: 64
+			};
+		},
+		methods: {
+			add() {
+				let abs = this.testValue + 10;
+				if (abs > 100) {
+					abs = 100
+				}
+				this.testValue = abs
+			},
+			sur() {
+				let abs = this.testValue - 10;
+				if (abs < 0) {
+					abs = 0
+				}
+				this.testValue = abs
+			}
+		},
+	}
+</script>
+
+<style lang="scss">
+
+</style>

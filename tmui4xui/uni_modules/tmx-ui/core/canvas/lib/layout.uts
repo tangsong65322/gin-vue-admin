@@ -1,0 +1,11 @@
+import { Shape } from '@/uni_modules/tmx-ui/core/canvas/lib/shape.uts';
+import { ICanvas } from '@/uni_modules/tmx-ui/core/canvas/ICanvas.uts';
+export class ILayout {
+	width:number = 0;
+	height:number = 0;
+	setSize(w:number,h:number){
+		this.width = w;
+		this.height = h;
+	}
+	
+}

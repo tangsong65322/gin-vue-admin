@@ -1,0 +1,116 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor"
+			:front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<view ref="bodyEle">
+			<!-- <view :style="{height:`${wintop+100}px`}"></view> -->
+			<x-sheet>
+				<x-text font-size="18" class=" text-weight-b mb-8">拨打电话</x-text>
+				<x-button :block="true" @click="callPhone">拨打10086</x-button>
+			</x-sheet>
+			<!-- <xd-picker-view style="height:200px"></xd-picker-view> -->
+			<x-sheet>
+				<x-text font-size="18" class=" text-weight-b ">网络状态</x-text>
+				<x-text font-size="12" class=" text-weight-b mb-8">网络状态变化,可关闭/打开网络观察</x-text>
+				<x-text :color="netstatus?'success':'error'">当前网络状态:{{netstatus?'网络已连接':"网络已断开"}}</x-text>
+			</x-sheet>
+			
+			<x-sheet>
+				<x-text font-size="18" class=" text-weight-b mb-8">设置窗口灰</x-text>
+				<x-text font-size="12"
+					class=" text-weight-b mb-5">变灰只针对当前窗口所有内容,如果你想任何页面,自动变灰,你可能需要自行封装通过Minx到每个页面执行灰度操作.</x-text>
+				<view class=" flex flex-row flex-row-center-between mb-20">
+					<x-image width="45%" height="50px"
+						src="https://store.tmui.design/api_v2/public/random_picture?random=39"></x-image>
+					<x-image width="45%" height="50px"
+						src="https://store.tmui.design/api_v2/public/random_picture?random=322"></x-image>
+				</view>
+				<view class=" flex flex-row flex-row-center-between">
+					<x-button class="mr-20 flex-1" @click="setPageGrey">变灰</x-button>
+					<x-button class="flex-1" @click="delPageGrey">恢复</x-button>
+				</view>
+			</x-sheet>
+			<x-sheet>
+				<x-text font-size="18" class=" text-weight-b mb-8">震动</x-text>
+				<x-text font-size="12" class=" text-weight-b mb-5">无效果说明设备不支持</x-text>
+				<view class=" my-16">
+					<x-input v-model="sortPer" type="number" placeholder="输入震动频率"></x-input>
+				</view>
+				<x-button :block="true" @click="runSortPer">执行震动</x-button>
+			</x-sheet>
+			<x-sheet>
+				<x-text font-size="18" class=" text-weight-b mb-8">显示SVG</x-text>
+				<view class=" flex flex-row flex-row-center-center ">
+					<x-svg-u src="/static/tmui4xLibs/static/undraw_farming_ni77.svg" :width="100" :height="50"
+						:style="{width:200+'px',height:50+'px'}"></x-svg-u>
+				</view>
+			</x-sheet>
+			
+			<view style="position: fixed;left:0px;width:100%;height:50px;z-index:10">
+				<xd-blur style="width:100%;height:50px;"></xd-blur>
+				<view style="position: absolute;width:100%;height:100%;" class="flex flex-row-center-center flex-row">
+					<x-text class="opacity-7" >背景模糊</x-text>
+				</view>
+			</view>
+		</view>
+
+		
+		<view style="height: 200px;"></view>
+
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script setup>
+	import { makePhone } from "@/uni_modules/x-call-phone"
+	import { xNetChange, xUnNetChange,isNetworkAvailable,getNetworkType } from "@/uni_modules/x-network-change"
+	import { setWindowGrey, removeWindowGrey } from "@/uni_modules/x-window-grey";
+	import { vibrator } from "@/uni_modules/x-vibrate-s";
+	const netstatus = ref(true)
+	const bodyEle = ref<UniElement|null>(null)
+	const wintop = uni.getWindowInfo().windowTop
+	const sortPer = ref('300')
+	
+	const callPhone = () => {
+		makePhone("10086")
+	}
+
+	xNetChange((netcon : boolean) => {
+		netstatus.value = netcon
+	})
+
+	const setPageGrey = () => setWindowGrey(bodyEle.value!)
+	const delPageGrey = () => removeWindowGrey(bodyEle.value!)
+	// const buildForFunResult = ref(-1)
+	
+	const runSortPer = ()=>{
+		vibrator(parseInt(sortPer.value))
+	}
+
+	onUnload(() => {
+		xUnNetChange()
+	})
+	
+	onLoad(()=>{
+		isNetworkAvailable().then((isNetConecting:boolean)=>{
+			console.log("当前网络状态：",isNetConecting)
+		})
+		getNetworkType().then((netType)=>{
+			console.log("当前网络类型：",netType)
+		})
+		
+	})
+	
+	
+</script>
+
+<style>
+
+</style>

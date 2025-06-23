@@ -1,0 +1,997 @@
+<!-- #ifdef MP-WEIXIN -->
+<!-- @vue-docgen-ignore-next-line -->
+<script module="xfs" lang="wxs" src="./xfs.wxs"></script>
+<!-- #endif -->
+<script lang="ts">
+	import { checkIsCssUnit, rpx2px, getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor, colorAddDeepen } from "../../core/util/xCoreColorUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	type POSITION_TYPE = "bottom" | "top" | "left" | "right"
+	type POSITION_EVENT = {
+		x : number,
+		y : number,
+		classList : Array<string>
+	}
+
+	/**
+	 * @name 浮动面板 FloatDrawer
+	 * @description 提供流畅的拖拉阻尼效果，回弹丝滑。右滑关闭逻辑已经实现,但在app体验不好,主要是scoll与事件冲突需要官方优化.
+	 * @page /pages/index/float-drawer
+	 * @category 反馈组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				_width: 0,
+				_height: 0,
+				elementWrap: null as UniElement | null,
+				//是否动画中
+				actioning: false,
+				status: "",
+				wrapId: "xFloatDrawerWrap" + getUid(),
+				_y: 0,
+				_realY: 0,
+				_realYDiff: 0,
+				isHover: false,
+				disabledMove: true,
+				netId: 'xFloatDrawerScrollIds-' + getUid(),
+				tid: 0,
+				startMoveWEB: false,
+				first: true,
+				_test_x: 0,
+				_test_y: 0,
+				_scrollDetail_y: 0,
+				moveDy: 0,
+				endtid: 12,
+				isClicking: false,
+				_heade_x: 0,
+				_heade_y: 0,
+				_scrollDetail_y_start: 0,
+				disabledScolly: false,
+				isMoving:false,
+				touchmoevIsOver:false,
+				tid2:11,
+				nowTouchType:'body',
+				
+				moveDir:"none",
+				_reeal_x:0,
+				_reeal_y:0,
+				scrollTopDiff:0
+				
+			}
+		},
+		emits: [
+			/**
+			 * 关闭时执行
+			 */
+			'close',
+			/**
+			 * 打开执行的事件
+			 */
+			'open',
+			/**
+			 * 打开前执行
+			 */
+			'beforeOpen',
+			/**
+			 * 关闭前执行
+			 */
+			'beforeClose',
+			/**
+			 * 高度位置变化时触发这个差值.返回参数evt是个百分比,0%是最低下,100%代表是在最顶部.
+			 */
+			'heightChange',
+			/**
+			 * 开始拖动
+			 */
+			'movestart',
+			/**
+			 * 结束拖动
+			 */
+			'moveend',
+			/**
+			 * 等同v-model:show
+			 */
+			'update:show'],
+		props: {
+
+			/**
+			 * 显示可v-model:show双向绑定
+			 * 默认是打开还是放置在底部。
+			 */
+			show: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 是否仅允许通过标题栏拖动。
+			 */
+			onlyHeader: {
+				type: Boolean,
+				default: false
+			},
+
+			/**
+			 * 动画时间
+			 */
+			duration: {
+				type: Number,
+				default: 350
+			},
+			/**
+			 * 向上的圆角
+			 * 空值时，取全局配置的圆角。
+			 */
+			round: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 百分比，数字字符或者带单位,
+			 * 默认露出的内容高度
+			 */
+			size: {
+				type: String,
+				default: "15%"
+			},
+			/**
+			 * 弹层最大的高度值，默认为屏幕的可视高
+			 * 提供值时不能为百分比，可以是px,rpx单位数字。如果你不带单位，默认转换为rpx单位。
+			 */
+			maxHeight: {
+				type: String,
+				default: "80%"
+			},
+			/**
+			 * 当拖动时，触发打开和关闭时的临界值，单位是px
+			 * 如果没有达到此临界值时，将会回弹至原始位置。
+			 */
+			triggerDy: {
+				type: Number,
+				default: 180
+			},
+			/**
+			 * 当拖动时，如果已经达到了关闭和打开时的临界值时
+			 * 可以继续拖拉时缓动阻尼值
+			 */
+			threshold: {
+				type: Number,
+				default: 0.045
+			},
+			/**
+			 * 内容层的背景色
+			 */
+			bgColor: {
+				type: String,
+				default: "white"
+			},
+			/**
+			 * 暗黑的背景色,空时，取全局的sheetDarkColor
+			 */
+			darkBgColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 拖动标题栏的横线背景色
+			 */
+			actionColor: {
+				type: String,
+				default: "#888888"
+			},
+			/**
+			 * 禁用内部的容器并采用view容器
+			 */
+			disabledScroll: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 没有禁用disabledScroll生效
+			 * 容器内部使用的类型
+			 * scroll :scroll-view
+			 * list : list-view
+			 */
+			containerType: {
+				type: String,
+				default: 'scroll'
+			},
+			/**
+			 * 是否禁用用户滚动等来触发关闭或者打开。
+			 */
+			disabled: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 层级
+			 */
+			zIndex: {
+				type: Number,
+				default: 100
+			},
+			/**
+			 * 控制内容的边跑,有时需要自定布局时非常有用.
+			 * 请直接使用style css规则写margin,
+			 */
+			contentMargin: {
+				type: String,
+				default: "0 16px 16px 16px"
+			}
+		},
+		watch: {
+			show(_newval : boolean) {
+				
+				if (_newval&&this.status == 'close') {
+					this.actioning = false;
+					this.showAlert()
+					this.onEnd()
+				} else if(!_newval&&this.status == 'open') {
+					this.actioning = false;
+					this.closeAlert()
+					this.onEnd()
+				}
+				
+				
+			},
+			
+		},
+		computed: {
+			_contentMargin() : string {
+				return this.contentMargin
+			},
+			_show() : boolean {
+				return this.show
+			},
+			_disabled() : boolean {
+				return this.disabled
+			},
+
+			_onlyHeader() : boolean {
+				return this.onlyHeader
+			},
+			_duration() : number {
+				return this.duration
+			},
+
+			_round() : string {
+				let round = this.round;
+				if (round == "") {
+					round = xConfig.drawerRadius
+				}
+				let radius = checkIsCssUnit(round, 'rpx');
+
+				let _r = `${radius} ${radius} 0px 0px`
+				return _r
+			},
+			_size() : number {
+
+				if (this.size == "") {
+					return this._height * 0.8
+				}
+				if (this.size.lastIndexOf('rpx') > -1) {
+					let sz = rpx2px(parseFloat(this.size))
+					return this._height - sz
+				}
+				if (this.size.lastIndexOf('px') > -1) {
+					let sz = parseFloat(this.size)
+
+					return this._height - sz
+				}
+				if (this.size.lastIndexOf('%') > -1) {
+					let sz = parseFloat(this.size) / 100 * this._height
+
+					return this._height - sz
+				}
+
+				let sz = uni.rpx2px(parseFloat(this.size))
+
+				return this._height - sz
+			},
+
+			_maxHeight() : number {
+				if (this.size == "") {
+					return this._height * 0.2
+				}
+				if (this.maxHeight.lastIndexOf('rpx') > -1) {
+					let sz = rpx2px(parseFloat(this.maxHeight))
+					return this._height - sz
+				}
+				if (this.maxHeight.lastIndexOf('px') > -1) {
+					let sz = parseFloat(this.maxHeight)
+					return this._height - sz
+				}
+				if (this.maxHeight.lastIndexOf('%') > -1) {
+					let sz = parseFloat(this.maxHeight) / 100 * this._height
+
+					return this._height - sz
+				}
+
+				let sz = rpx2px(parseFloat(this.maxHeight))
+				return this._height - sz
+			},
+			_bgColor() : string {
+				if (xConfig.dark == 'dark') {
+					if (this.darkBgColor != '') return getDefaultColor(this.darkBgColor)
+					return getDefaultColor(xConfig.sheetDarkColor)
+				}
+				return getDefaultColor(this.bgColor)
+			},
+			_actionColor() : string {
+				return getDefaultColor(this.actionColor)
+			},
+			_animationFun() : string {
+				return xConfig.animationFun
+			}
+
+
+		},
+
+		mounted() {
+			let t = this;
+			let yachi = 250
+			let sys = uni.getWindowInfo()
+			// #ifndef APP
+			this._width = sys.windowWidth
+			this._height = sys.windowHeight;
+			yachi = 0
+
+			// #endif
+			// #ifdef APP
+			this._width = sys.windowWidth
+			this._height = sys.windowHeight + 44;
+
+			// #endif
+			
+
+			this.tid = setTimeout(function () {
+				if (t._show) {
+					t.showAlert();
+					this.actioning = false;
+					this.status = 'open'
+				} else {
+					t.closeAlert()
+					this.actioning = false;
+					this.status = 'close'
+				}
+			}, yachi);
+
+		},
+		beforeUnmount() {
+			clearTimeout(this.tid)
+			clearTimeout(this.tid2)
+		},
+		methods: {
+			// #ifdef MP-WEIXIN
+			setOpts(opts){
+				this.status = opts.status;
+			},
+			callEmits(args){
+				if(!args.name) return;
+				if(args.args!=null&&args.args!=undefined){
+					this.$emit(args.name,args.args)
+				}else{
+					this.$emit(args.name)
+				}
+			},
+			setDisabledScolly(opts){
+				this.disabledScolly = opts.disabledScolly
+				this.isMoving = opts.isMoving
+			},
+			// #endif
+			scrollTopChange() {
+				
+			},
+			scollChange(evt : UniScrollEvent) {
+				const stop =  Math.max(0,Math.floor(evt.detail.scrollTop));
+				this.scrollTopDiff = stop
+				// this.moveDir = 'v'
+				// #ifdef APP-ANDROID||WEB
+				if(!this.isMoving){
+					this._scrollDetail_y = stop
+				}
+				this.disabledScolly = this._scrollDetail_y<=0;
+				// #endif
+				// #ifdef APP-IOS
+				this._scrollDetail_y = stop
+				//当手指已经离开了屏幕，再置顶不需要再禁用滚动了。如果手指一直在划动则需要禁用。
+				if(!this.touchmoevIsOver){
+					this.disabledScolly = this._scrollDetail_y<=0;
+				}else{
+					this.disabledScolly = false
+					// console.log('手指已经离开',false)
+				}
+				
+				// #endif
+			},
+			closeAlert() {
+				if (this.actioning || this.status == 'close') return
+
+				this.actioning = true;
+				this.status = 'close'
+				/**
+				 * 关闭前执行
+				 */
+				this.$emit('beforeClose')
+				this.$emit('heightChange', 0)
+				// #ifndef MP-WEIXIN
+				this.setStyleAni();
+				// #endif
+				
+				
+			},
+			showAlert() {
+
+				if (this.actioning) return;
+				
+				if (this.status == 'open') return;
+				this.actioning = true;
+				this.status = 'open'
+				/**
+				 * 打开前执行
+				 */
+				this.$emit('beforeOpen')
+				this.$emit('heightChange', 100)
+				// #ifndef MP-WEIXIN
+				this.setStyleAni();
+				
+				// #endif
+				
+			},
+			setStyleAni() {
+				let t = this;
+
+				try {
+					// this.elementWrap = uni.getElementById(this.wrapId as string) as UniElement;
+					this.elementWrap = this.$refs[this.wrapId] as UniElement
+					let duration = t._duration;
+					if (t.first == true) {
+						duration = 0
+					}
+					if (this.status == 'open') {
+						clearTimeout(this.tid)
+						this.tid = setTimeout(function () {
+							t.elementWrap!.style.setProperty("transition-duration", duration.toString() + 'ms')
+							t.elementWrap!.style.setProperty('transform', `translate(0%,${t._maxHeight}px)`)
+						}, 50);
+					} else if (this.status == 'close') {
+						clearTimeout(this.tid)
+						this.tid = setTimeout(function () {
+							t.elementWrap!.style.setProperty("transition-duration", duration.toString() + 'ms')
+							t.elementWrap!.style.setProperty('transform', `translate(0%,${t._size}px)`)
+							
+						}, 50);
+
+					}
+				} catch (e) {
+					//TODO handle the exception
+				}
+				t.first = false;
+			},
+			openDrawer() {
+				this.showAlert();
+			},
+			headerClickClose() {
+
+				if (this._disabled) return;
+				if (this.moveDy != 0) return;
+				this.actioning = false;
+				if (this.status == 'open') {
+					this.closeAlert();
+				} else {
+					this.showAlert();
+				}
+				this.onEnd()
+
+			},
+			onEnd() {
+				
+				if (this.status == 'close') {
+					/**
+					 * 关闭时执行
+					 */
+					this.$emit('close')
+					
+					/**
+					 * 等同v-model:show
+					 */
+					this.$emit('update:show', false)
+					this.$emit('heightChange', 0)
+				} else {
+					/**
+					 * 打开执行的事件
+					 */
+					this.$emit('open')
+					this.$emit('update:show', true)
+					this.$emit('heightChange', 100)
+				}
+				this.actioning = false;
+				this._realYDiff = 0
+			},
+			eventTransform_start(evt : POSITION_EVENT) {
+
+				try {
+					// if (this._onlyHeader) {
+					// 	let cls = evt.classList;
+					// 	if (!cls.includes('xFloatDrawerBarLine') && !cls.includes('xFloatDrawerBar')) {
+					// 		this.disabledMove = false;
+					// 		return;
+					// 	}
+					// 	this.disabledMove = true;
+					// }
+					
+					let ele = this.$refs[this.wrapId as string] as UniElement
+					if (this.status == 'open') {
+						this._y = evt.y - (this._maxHeight)
+					} else if (this.status == 'close') {
+						this._y = evt.y - (this._size)
+					}
+					this._realY = evt.y
+					ele.style.setProperty("transition-duration", '0ms')
+				} catch (e) {
+					//TODO handle the exception
+				}
+			},
+			eventTransform_move(evt : POSITION_EVENT) {
+				
+				
+				try {
+
+					if (!this.disabledMove) return;
+					
+					let ele = this.$refs[this.wrapId as string] as UniElement
+				
+					if(this.moveDir == 'v'||this.status=='close'){
+						let movey = evt.y - this._y - (this.nowTouchType == 'header'?0:this._scrollDetail_y_start )
+						if (movey <= this._maxHeight) {
+							movey = this._maxHeight - (this._maxHeight - movey) * this.threshold
+						} else if (movey >= this._size) {
+							movey = this._size + (movey - this._size) * this.threshold
+						}
+						ele.style.setProperty("transform", `translate(0%, ${movey.toString()}px)`)
+						this._realYDiff = evt.y - this._realY
+						let ratioValue = (movey - this._size) / (this._maxHeight - this._size) * 100;
+						// console.log("触发HeightChange事件日志",ratioValue)
+						this.$emit('heightChange',ratioValue )
+					}else if(this.moveDir == 'h'&&this.status=='open'){
+						
+						this.disabledScolly = true;
+						let traslateX = evt.x - this._test_x
+						traslateX = Math.max(0,Math.min(traslateX,this._width))
+						
+						ele.style.setProperty("transform", `translate(${traslateX.toString()}px,${this._maxHeight}px)`)
+						let ratioValue = (1-traslateX / this._width) * 100
+						this.$emit('heightChange',ratioValue )
+					}
+					
+					
+					
+					
+				} catch (e) {
+					console.error("floatDrawer出现意外错误:",e,"不用担心,这是兼容性错误,不会影响使用!!仅供参考.")
+				}
+			},
+			eventTransform_end(evt : POSITION_EVENT) {
+				const oldStatus = this.status
+				
+				try {
+					if (!this.disabledMove) return;
+					this.isHover = false;
+					let ele = this.$refs[this.wrapId as string] as UniElement
+					ele.style.setProperty("transition-duration", this._duration.toString() + 'ms');
+					if(this.moveDir == 'v'||this.status=='close'){
+						if (this._realYDiff >= this.triggerDy) {
+							ele.style.setProperty("transform", `translate(0%, ${this._size.toString()}px)`);
+							this.status = 'close';
+							this.$emit('beforeClose');
+							this.$emit('heightChange', 0);
+						} else if (this._realYDiff < (this.triggerDy * -1)) {
+							ele.style.setProperty("transform", `translate(0%, ${this._maxHeight.toString()}px)`);
+							this.status = 'open';
+							this.$emit('heightChange', 100);
+							
+						} else {
+							if (this.status === 'open') {
+								ele.style.setProperty("transform", `translate(0%, ${this._maxHeight.toString()}px)`);
+								this.$emit('heightChange', 100);
+								
+							} else {
+								ele.style.setProperty("transform", `translate(0%, ${this._size.toString()}px)`);
+								this.$emit('heightChange', 0);
+							}
+						}
+					}else if(this.moveDir == 'h'&&this.status=='open'){
+						let traslateX = evt.x - this._test_x
+						traslateX = Math.max(0,Math.min(traslateX,this._width))
+						if(traslateX>=50){
+							this.status = 'close';
+							this.$emit('heightChange',0 )
+							ele.style.setProperty("transform", `translate(0px,${this._size}px)`)
+						}else{
+							this.status = 'open';
+							this.$emit('heightChange',100 )
+							ele.style.setProperty("transform", `translate(0px,${this._maxHeight}px)`)
+							this.disabledScolly = true;
+						}
+					}
+					
+				} catch (e) {
+					// 处理异常
+					console.error(e)
+				}
+				
+				if(oldStatus != this.status){
+					
+					this.onEnd()
+				}
+			},
+			mStart(evt : UniTouchEvent, type : string) {
+				if (type == 'header'){
+					this.isHover = true;
+					
+					this.scrollTopDiff = -1
+					// 这里的意思，是让这个值引用界面的变化，这样可以避免可能的界面不渲染。
+					this.$nextTick((()=>{
+						this.scrollTopDiff = 0
+					}))
+					
+				}
+				this.$nextTick(()=>{
+					this.$emit('movestart');
+					this.nowTouchType = type
+					this.touchmoevIsOver = true;
+					if (this._disabled) return;
+					
+					if (this._onlyHeader && type == 'body') return;
+					this.moveDy = 0;
+					this._test_x = evt.changedTouches[0].clientX;
+					this._reeal_x = evt.changedTouches[0].clientX
+					this._reeal_y = evt.changedTouches[0].clientY
+					this._scrollDetail_y_start = this._scrollDetail_y; // 记录内部滚动的起始位置
+					this.disabledScolly = false
+					this.isMoving = false
+					// 按头拖时，不要记录起始的位置，否则body与头会出现heady的位移。
+					if (type == 'header'){
+						this.disabledScolly = true
+					}else{
+						this._test_y = evt.changedTouches[0].clientY;
+					}
+					this.eventTransform_start({
+						x: evt.changedTouches[0].clientX,
+						y: evt.changedTouches[0].clientY,
+						classList: [] as string[],
+					} as POSITION_EVENT);
+				})
+			},
+			mMove(evt : UniTouchEvent, type : string) {
+				
+				if (this._disabled) return;
+				if (this._onlyHeader && this.nowTouchType == 'body') return;
+				
+				const currentY = evt.changedTouches[0].clientY;
+				const currentX = evt.changedTouches[0].clientX;
+				const dy = currentY - this._test_y;
+				const dx_real = currentX - this._reeal_x
+				const dy_real = currentY - this._reeal_y
+			
+				this.moveDir = 'v'
+				// if(this.moveDir=='none'&&(Math.abs(dx_real) - Math.abs(dy_real))>0){
+				// 	this.moveDir = 'h'
+				// 	this.disabledScolly = true;
+					
+				// }else if(this.moveDir=='none'&&(Math.abs(dx_real) - Math.abs(dy_real))<=0){
+				// 	this.moveDir = 'v'
+				// }
+				
+				if (this._scrollDetail_y>0&& this.nowTouchType == 'body'&&this.moveDir=='v') return;
+				// #ifdef WEB
+				evt.preventDefault();
+				// #endif
+				
+				if(this.nowTouchType == 'body'){
+					
+					if(dy<0){
+						this.disabledScolly = false;
+						this.isMoving = false;
+					}else{
+						this._scrollDetail_y = 0
+					}
+				}
+				
+				let _scrollDetail_y_start = this.nowTouchType == 'header'?0:this._scrollDetail_y_start
+				if (_scrollDetail_y_start > 0 && dy < 0) {
+					// 如果内部可以向上滚动，并且拖动是向上的
+					// 计算需要滚动的内部距离
+					const internalScrollDelta = -dy;
+					if (this._scrollDetail_y - internalScrollDelta >= 0) {
+						// 内部可以滚动，更新内部滚动位置
+						this._scrollDetail_y -= internalScrollDelta;
+				
+					} else {
+						// 内部已经滚动到顶部，开始拖动整个弹层
+						const excess = internalScrollDelta - _scrollDetail_y_start;
+						this.isMoving = true;
+						this.eventTransform_move({
+							x: evt.changedTouches[0].clientX,
+							y: evt.changedTouches[0].clientY - excess,
+							classList: [] as string[],
+						} as POSITION_EVENT);
+					}
+				} else {
+					
+					this.isMoving = true;
+					// 其他情况，允许拖动整个弹层
+					this.eventTransform_move({
+						x: evt.changedTouches[0].clientX,
+						y: evt.changedTouches[0].clientY,
+						classList: [] as string[],
+					} as POSITION_EVENT);
+				}
+
+			},
+			mEnd(evt : UniTouchEvent, type : string) {
+				this.$emit('moveend');
+				this.isMoving = false;
+				this.touchmoevIsOver = false;
+				if (this._disabled){
+					return;
+				}
+				if (this.nowTouchType == 'header'||this._scrollDetail_y<0){
+					this.disabledScolly = false
+				}
+				
+				let dy = evt.changedTouches[0].clientY - this._test_y;
+				let dx = evt.changedTouches[0].clientX - this._test_x;
+				if (dy == dx) return;
+			
+				this.moveDy = dy;
+				this.eventTransform_end({
+					x: evt.changedTouches[0].clientX,
+					y: evt.changedTouches[0].clientY,
+					classList: [] as string[],
+				});
+				
+				this.disabledScolly = false;
+				this.moveDir = 'none'
+
+			},
+			// #ifdef WEB
+			mmStart(evt : UniMouseEvent, type : string) {
+				// @ts-ignore
+				window.FloatDrawerId = this.wrapId
+				this.$emit('movestart')
+				this._heade_x = evt.clientX
+				this._heade_y = evt.clientY
+				this._test_y = evt.clientY;
+				this._test_x = evt.clientX;
+				if (this._disabled) return;
+				if (type == 'header'){
+					this.isHover = true;
+				}
+				if (this._onlyHeader && type == 'body') return
+				this.startMoveWEB = true;
+				this.eventTransform_start({
+					x: evt.clientX,
+					y: evt.clientY,
+					classList: [] as string[],
+				} as POSITION_EVENT)
+			},
+			mmMove(evt : UniMouseEvent, type : string) {
+				// @ts-ignore
+				if(window.FloatDrawerId!=this.wrapId) return
+				if (this._onlyHeader && type == 'body') return
+				if (!this.startMoveWEB) return;
+			
+				const currentY = evt.clientY;
+				const currentX = evt.clientX;
+				const dy = currentY - this._test_y;
+				const dx = currentX - this._test_x
+				if(this.moveDir=='none'&&(Math.abs(dx) - Math.abs(dy))>0){
+					this.moveDir = 'h'
+				}else if(this.moveDir=='none'&&(Math.abs(dx) - Math.abs(dy))<=0){
+					this.moveDir = 'v'
+				}
+				
+				this.eventTransform_move({
+					x: evt.clientX,
+					y: evt.clientY,
+					classList: [] as string[],
+				} as POSITION_EVENT)
+			},
+			mmEnd(evt : UniMouseEvent, type : string) {
+				
+				this.$emit('moveend')
+				let diffx = evt.clientX - this._heade_x
+				let diffy = evt.clientY - this._heade_y
+				// @ts-ignore
+				window.FloatDrawerId = ''
+				if (diffx == diffy) return;
+
+				let _this = this;
+				if (this._disabled) return;
+
+				_this.startMoveWEB = false;
+				_this.eventTransform_end({
+					x: evt.clientX,
+					y: evt.clientY,
+					classList: [] as string[],
+				})
+				this.moveDir = 'none'
+			},
+			// #endif
+
+		},
+	}
+</script>
+<template>
+	<!-- @transitionend="onEnd" -->
+	<view @click.stop="" 
+		:ref="wrapId"
+		class="xFloatDrawerWrapContent" :id="wrapId"  :style="{
+		width:'100%',
+		height:_height+'px',
+		borderRadius:_round,
+		backgroundColor:_bgColor,
+		'transition-timing-function':_animationFun,
+		zIndex:zIndex
+		}"
+		<!-- #ifdef MP-WEIXIN -->
+		
+		@touchstart="xfs.mStart"
+		@touchend="xfs.mEnd"
+		@touchmove="xfs.mMove" 
+		:change:prop="xfs.propObserver"
+		:prop="status"
+		:data-opts="{
+			maxHeight:_maxHeight,size:_size,height:_height,
+			status:status,
+			threshold:threshold,
+			duration:_duration,
+			triggerDy:triggerDy,
+			_scrollDetail_y:_scrollDetail_y
+		}"
+
+		<!-- #endif -->
+		
+		>
+
+		
+		<view 
+			<!-- #ifdef APP||H5 -->
+			@touchstart="mStart($event as TouchEvent,'header')"
+			@touchend="mEnd($event as TouchEvent,'header')" 
+			@touchmove="mMove($event as TouchEvent,'header')"
+			<!-- #endif -->
+			
+		
+			
+			
+			<!-- #ifdef WEB -->
+			@mousedown="mmStart($event as MouseEvent,'header')"
+			@mousemove="mmMove($event as MouseEvent,'header')"
+			@mouseup="mmEnd($event as MouseEvent,'header')"
+			@mouseleave="mmEnd"
+			<!-- #endif -->
+			class="xFloatDrawerBar"
+			>
+			<view @click="headerClickClose" style="height:100%" class="xFloatDrawerBarSop">
+				<view class="xFloatDrawerBarLine" :style="{'background-color':_actionColor,opacity: isHover?1:0.5}">
+				</view>
+			</view>
+		</view>
+
+		<view class="xFLoatViewWrap"
+		style="flex:1"
+		<!-- #ifdef APP||H5 -->
+		@touchstart.stop="mStart($event as TouchEvent,'body')"
+		@touchend.stop="mEnd($event as TouchEvent,'body')"
+		@touchmove.stop="mMove($event as TouchEvent,'body')" 
+		<!-- #endif -->
+		
+		
+		
+		<!-- #ifdef WEB -->
+		@mousedown="mmStart($event as MouseEvent,'body')"
+		@mousemove="mmMove($event as MouseEvent,'body')"
+		@mouseup="mmEnd($event as MouseEvent,'body')"
+		@mouseleave="mmEnd"
+		@mousewheel="disabledScolly = false"
+		<!-- #endif -->
+		>
+			
+			<scroll-view
+				:scroll-top="scrollTopDiff"
+				v-if="!disabledScroll&&containerType=='scroll'"
+				:direction="status=='close'||disabledScolly?'none':'vertical'" 
+				:scroll-y="status=='close'||disabledScolly?false:true"
+				@scroll="scollChange"
+				@scrolltoupper="scrollTopChange" :style="{flex:'1',margin:_contentMargin,height:'100px'}" 
+				:bounces="false">
+			
+				<!--
+					@slot 默认插槽
+					@prop {Boolean} show - 当前是否已显示
+				-->
+				<slot name="default" :show="show"></slot>
+				<view :style="{height:_maxHeight+'px'}"></view>
+			</scroll-view>
+			
+			<list-view v-else-if="!disabledScroll&&containerType=='list'"
+				:scroll-top="scrollTopDiff"
+				:scroll-y="status=='close'||disabledScolly?'none':'vertical'"
+				:direction="status=='close'||disabledScolly?'none':'vertical'" @scroll="scollChange"
+				@scrolltoupper="scrollTopChange" :style="{flex:'1',margin:_contentMargin}" :bounces="false">
+			
+				<!--
+					@slot 默认插槽
+					@prop {Boolean} show - 当前是否已显示
+				-->
+				<slot name="default" :show="show"></slot>
+				<list-item>
+					<view :style="{height:_maxHeight+'px'}"></view>
+				</list-item>
+			</list-view>
+			
+			
+			<view v-else :style="{flex:'1',margin:_contentMargin}">
+				<!--
+					@slot 默认插槽
+					@prop {Boolean} show - 当前是否已显示
+					@prop {Number} height - 容器的高度
+				-->
+				<slot name="default" :show="show" :height="_maxHeight"></slot>
+			</view>
+				
+				
+		</view>
+	</view>
+</template>
+<style>
+	.xFloatDrawerBarSop {
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.xFloatDrawerBar {
+		height: 44px;
+
+		/* #ifdef WEB */
+		cursor: grab;
+		/* #endif */
+	}
+
+	/* #ifdef WEB */
+	.xFloatDrawerBar:active {
+		cursor: grabbing;
+	}
+
+	/* #endif */
+
+
+	.xFloatDrawerBarLine {
+		width: 60px;
+		height: 4px;
+		border-radius: 8px;
+	}
+
+	.xFloatDrawerWrapContent {
+		display: flex;
+		flex-direction: column;
+		transition-duration: 250ms;
+		/* transition-timing-function: cubic-bezier(.18,.89,.32,1); */
+		transition-property: transform;
+		display: flex;
+		flex-direction: column;
+		transform: translate(0%, 100%);
+		position: fixed;
+		/* z-index: 100; */
+		left: 0px;
+		bottom: 0px;
+	}
+</style>

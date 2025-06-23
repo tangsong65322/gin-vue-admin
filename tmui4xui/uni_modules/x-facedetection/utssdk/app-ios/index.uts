@@ -1,0 +1,185 @@
+import { AVCaptureSession, AVCaptureDevice, AVMediaType, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureDeviceInput, AVCaptureInput, AVCaptureVideoDataOutput, AVCaptureConnection, AVCaptureVideoPreviewLayer, AVLayerVideoGravity, AVCaptureVideoOrientation } from 'AVFoundation';
+import { PHPhotoLibrary, PHAuthorizationStatus } from 'Photos';
+import { CMSampleBuffer, CMSampleBufferGetFormatDescription, CMFormatDescription, CMVideoFormatDescriptionGetDimensions } from 'CoreMedia';
+import { DispatchQueue } from "Dispatch"
+import { UIView, UIImage, UIApplication, UIImageView, UILabel, UIViewController, UIFontDescriptor, UIFont, NSTextAlignment, UITapGestureRecognizer, UIImagePickerController, UIImagePickerControllerDelegate, UINavigationControllerDelegate } from 'UIKit';
+import { CGRect, CGFloat, CGPoint } from 'CoreFoundation';
+import { Face, FaceContour, FaceDetector, FaceDetectorOptions,FaceContourType,FaceLandmarkType, FaceLandmark,FaceDetectorPerformanceMode,FaceDetectorClassificationMode,FaceDetectorLandmarkMode } from "MLKitFaceDetection"
+import { VisionImage } from "MLKit"
+
+import { NotificationCenter, NSNotification, Notification } from 'Foundation';
+import { Selector } from 'ObjectiveC';
+import { Alignment } from 'ARKit';
+import { CABasicAnimation } from 'QuartzCore';
+import { Int,Float } from 'Swift';
+
+import { XFACE_CHECK_OPTS, XFACE_EVENT_SUCCESS, XFACE_TEST_EYE_TYPE, XFACE_FACE_Direction, XFACE_EVENT_CHECK_SUCCESS } from "../interface.uts"
+import { XFACE_CHECK_OPTS_REAL, getDefaultConfig } from "../libs/config.uts"
+
+
+const checkFaceResult = (orimg:UIImage, faces : Array<Face>, callBack : (result : XFACE_EVENT_SUCCESS[]) => void) => {
+	const cfaces = [] as XFACE_EVENT_SUCCESS[]
+	// @ts-ignore
+	for (item in faces) {
+		// @ts-ignore
+		const face = item as Face;
+		let rightEye = { openNum: 0, isOpen: false } as XFACE_TEST_EYE_TYPE;
+		let leftEye = { openNum: 0, isOpen: false } as XFACE_TEST_EYE_TYPE;
+		// 眼睛
+		let rightEyeMark = face.landmark(ofType =  FaceLandmarkType.rightEye)
+		let leftEyeMark = face.landmark(ofType =  FaceLandmarkType.leftEye)
+		
+		// 鼻子
+		let noseMark = face.landmark(ofType =  FaceLandmarkType.noseBase)
+		// 耳朵
+		let rightEarMark = face.landmark(ofType =  FaceLandmarkType.rightEar)
+		let leftEarMark = face.landmark(ofType =  FaceLandmarkType.leftEar)
+		
+		let rightEyeNum = face.rightEyeOpenProbability
+		let leftEyeNum = face.leftEyeOpenProbability
+		let isSmile = face.smilingProbability
+		
+		let faceId = face.trackingID
+		
+		
+		if (rightEyeNum != null) {
+			rightEye.openNum = new Number(rightEyeNum) + 0;
+			rightEye.isOpen = new Number(rightEyeNum) > 0.7
+		}
+		if (leftEyeNum != null) {
+			leftEye.openNum = new Number(leftEyeNum)+ 0;
+			leftEye.isOpen =  new Number(leftEyeNum) > 0.7
+		}
+		
+		// 检测当前左,右,下,上
+		let faceRightLeft : XFACE_FACE_Direction = "center"
+		let faceUpDown : XFACE_FACE_Direction = "center"
+		
+		
+		let eulerX = face.headEulerAngleX; // 获取头部左右旋转角度
+		let eulerY = face.headEulerAngleY; // 获取头部上下俯仰角度
+		let eulerZ = face.headEulerAngleZ; // 获取头部上下俯仰角度
+		
+		// 嘴巴
+		let leftMouth = face.landmark(ofType =  FaceLandmarkType.mouthLeft)
+		let rightMouth = face.landmark(ofType =  FaceLandmarkType.mouthRight)
+		let bottomMouth = face.landmark(ofType =  FaceLandmarkType.mouthBottom)
+		
+		let isMouthOpened = false
+		let ANGLE_THRESHOLD = 30; // 容差值
+		let ANGLE_HEAD_THRESHOLD = 0; // 容差值
+		let ANGLE_EYE_THRESHOLD = 6; // 眨眼的容差.
+		
+		let allHeadBody = false;
+		
+		if (Math.abs(Number(eulerY)) > ANGLE_THRESHOLD) { // 确保头部没有明显上下俯仰
+			faceRightLeft = eulerY > 0 ? 'left' : 'right';
+		}
+		
+		if (Math.abs(Number(eulerX)) >= ANGLE_HEAD_THRESHOLD) { // 确保头部没有明显上下俯仰
+			faceUpDown = eulerY > 0 ? 'down' : 'up';
+		}
+		
+		if (leftMouth != null && rightMouth != null && bottomMouth != null) {
+			let mouthWidth = rightMouth!.position.x - leftMouth!.position.x
+			let mouthHeight = bottomMouth!.position.y - ((leftMouth!.position.y + rightMouth!.position.y) / 2)
+		
+			if (mouthHeight / mouthWidth > 0.4 && faceRightLeft == 'center') {
+				isMouthOpened = true;
+			} else {
+				isMouthOpened = false;
+			}
+		}
+		
+		
+		
+		if(
+		 leftMouth != null &&
+		 rightMouth != null &&
+		 bottomMouth != null &&
+		 noseMark !=null&&
+		 rightEarMark !=null&&
+		 leftEarMark !=null&&
+		 rightEyeMark !=null&&
+		 leftEyeMark !=null
+		 ){
+			allHeadBody = true;
+		}
+		cfaces.push({
+			imgWidth: orimg.size.width,
+			imgHeight: orimg.size.height,
+			isSmile: isSmile == null ? false : (isSmile >= 0.8),
+			rightEye,
+			leftEye,
+			faceRightLeft,
+			faceUpDown,
+			isMouthOpened,
+			allHeadBody,
+			faceId:faceId!=null?(faceId+0):null
+		})
+		
+		
+		
+	}
+	
+	callBack(cfaces)
+}
+
+export function checkFaceByImage(config : XFACE_CHECK_OPTS | null = null){
+	const cfg = getDefaultConfig(config)
+	let options = FaceDetectorOptions()
+	options.performanceMode = FaceDetectorPerformanceMode.accurate
+	options.landmarkMode = FaceDetectorLandmarkMode.all
+	options.classificationMode = FaceDetectorClassificationMode.all
+	// @ts-ignore
+	uni.chooseImage({
+		count: 1,
+		// @ts-ignore
+		success(evt : ChooseImageSuccess) {
+			if (evt.tempFilePaths.length == 0)  return;
+			const imgs = evt.tempFilePaths[0] as string;
+			const decodedPath = UTSiOS.convert2AbsFullPath(imgs)
+			let img = new UIImage(contentsOfFile = decodedPath);
+			let image = new VisionImage(image = img!); 
+			let faceDetector = FaceDetector.faceDetector(options = options)
+			faceDetector.process(image as VisionImage,completion = (faces:Array<Face>|null,error:any|null)=>{
+				
+				if(error != null||faces==null||(faces?.length??0)==0){
+					cfg.success({
+						images:[],
+						videoPath:"",
+						isPass:false
+					})
+					return;
+				}
+				const _faces = faces!;
+				
+				checkFaceResult(img!, _faces, (result : XFACE_EVENT_SUCCESS[]) => {
+					
+					DispatchQueue.main.async(execute = () : void => {
+					
+						cfg.enter(result,JSON.stringify(result)!)
+						cfg.success({
+							isPass: true,
+							images: [decodedPath] as string[],
+							videoPath: ""
+						})
+					})
+				
+				})
+				// for(item in faces!){
+				// 	const face = item as Face
+				// 	let leftEye = face.landmark(ofType =  FaceLandmarkType.leftEye)
+				// 	if(leftEye!=null){
+				// 		let leftEyePosition = leftEye!.position
+				// 		console.log(leftEyePosition.x,'----',img!.size.width)
+				// 	}
+				// }
+			})
+		},
+		fail() {
+			cfg.fail("解析错误")
+		}
+	})
+}
+

@@ -1,0 +1,115 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">标签导航 Tabs</x-text>
+			<x-text color="#999999" >样式定义灵活，有效应对各种场景。</x-text>
+		</x-sheet>
+	
+		<x-sheet>
+			<x-tabs item-width="33.3%" :list="list"></x-tabs>
+		</x-sheet>
+		<x-sticky>
+			<template v-slot:default="{status}">
+				<x-tabs  :is-item-center="true" v-model="activeId" width="100%" :list="list3"></x-tabs>
+			</template>
+		</x-sticky>
+		<view style="height:20px"></view>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">动态插槽定制</x-text>
+			<x-tabs item-width="33.3%" :list="list" :showLine="false"
+			item-active-style="background-color:rgb(5, 121, 255)"
+			item-style="background-color:transparent"
+			>
+				<template v-slot:default="{item,active}">
+					<x-text :color="active?'white':'rgb(5, 121, 255)'" :style="active?'font-weight:bold;':''">{{item.title}}</x-text>
+				</template>
+			</x-tabs>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b">定义样式</x-text>
+		</x-sheet>
+		<x-sheet >
+			<x-tabs round="32" color="black" dark-color="black" title-color="rgba(255,255,255,0.6)" active-title-color="yellow"
+				item-width="33.3%" :list="list"></x-tabs>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b">定义线条，角标等</x-text>
+		</x-sheet>
+		<x-sheet :padding="['0']" :loading="loadingData">
+			<x-tabs :line-gradient="['right','#0579ff','#7a00c6']" height="44" v-model="activeId2"  :lineFull="true" itemWidth="33.3%" :list="list2"></x-tabs>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b">过多标签，自动排列，并位移项目</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-tabs v-model="activeId" :list="list3"></x-tabs>
+			<view style="height: 600px;" class="mt-24">
+				<x-button :block="true" @click="activeId='3'">变量控制切换{{activeId}}</x-button>
+			</view>
+		</x-sheet>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	import { TABS_ITEM_INFO,TABS_ITEM } from "@/uni_modules/tmx-ui/interface.uts"
+	export default {
+		data() {
+			return {
+				list: [
+					{ title: "全部" } as TABS_ITEM_INFO,
+					{ title: "已完成" } as TABS_ITEM_INFO,
+					{ title: "已删除" } as TABS_ITEM_INFO,
+				],
+				list2: [] as TABS_ITEM_INFO[],
+				list3: [
+					{ title: "全部" } as TABS_ITEM_INFO,
+					{ title: "被禁用", disabled: true } as TABS_ITEM_INFO,
+					{ title: "已删除" } as TABS_ITEM_INFO,
+					{ title: "审核中" } as TABS_ITEM_INFO,
+					{ title: "审核失败" } as TABS_ITEM_INFO,
+					{ title: "售后中" } as TABS_ITEM_INFO,
+					{ title: "已处理已处理" } as TABS_ITEM_INFO,
+					{ title: "已处理2" } as TABS_ITEM_INFO,
+					{ title: "已已处理处理3" } as TABS_ITEM_INFO,
+					{ title: "已已处理处理4" } as TABS_ITEM_INFO,
+					{ title: "已处理5" } as TABS_ITEM_INFO,
+					{ title: "已处理8" } as TABS_ITEM_INFO,
+				] as TABS_ITEM_INFO[],
+				activeId:"2",
+				activeId2:"-1",
+				loadingData:true,
+			};
+		},
+		onLoad() {
+			/** 下面是模拟数据异步加载。 */
+			let t = this;
+			t.activeId2 = "1"
+			setTimeout(function() {
+				t.list2=[
+					{ title: "全部" } as TABS_ITEM_INFO,
+					{ title: "已完成", dotType: 'dot' } as TABS_ITEM_INFO,
+					{ title: "已删除", dotType: 'label', dotText: '36' } as TABS_ITEM_INFO,
+				] as TABS_ITEM_INFO[]
+				t.loadingData = false
+			}, 1500);
+		},
+
+		methods:{
+			
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

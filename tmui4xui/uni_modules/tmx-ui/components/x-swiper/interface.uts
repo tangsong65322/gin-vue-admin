@@ -1,0 +1,13 @@
+export type SWIPER_ITEM = {
+	id : string,
+	order:number,
+	ele : XSwiperItemComponentPublicInstance
+}
+export type POSITON = {
+	x : number,
+	y : number
+}
+export type SIZE = {
+	width : number,
+	height : number
+}

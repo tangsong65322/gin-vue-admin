@@ -1,0 +1,501 @@
+<script lang="ts">
+	import { SlotsType, PropType } from "vue"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit, rpx2px, getUid, getUnit, splitArray } from "../../core/util/xCoreUtil.uts"
+	import { xConfig, xProvitae } from "../../config/xConfig.uts"
+	type indexbarTYPE = {
+		index : number,
+		title : string
+	}
+
+	/**
+	 * 
+	 * @name 索引 xIndexbar
+	 * @description 特别提醒：本组件在1.0.9重构不向下兼容，并且删除了子组件：x-indexbar-item，不再需要子组件。请使用对应的动态插槽来渲染
+	 * 数据，demo是526条数据的测试依赖右边索引滑动跟手流畅。
+	 * 虚拟列表有个缺点会在滚动时分页读取数据并复用布局，因此如果你想做带图片的索引，建议进入应用后启用后台缓存已有的头像或者图片数据类似微信那样缓存图片，这样虚拟加载的时候闪烁感就少了
+	 * @page /pages/index/indexbar
+	 * @category 导航组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | x | ☑️ | 4.14+ | 1.0.0 |
+	 */
+	export default {
+		data() {
+			return {
+				listIndexBar: [] as indexbarTYPE[],
+				nowIndex: 0,
+				currentIndexBYbar: 0,
+				// 视图内显示的条数。
+				viewConunt: 0,
+				windowTop: 0,
+				scrollTop: 0,
+				_y: 0,
+				tid: 0,
+				isMoveing: false,
+				isShowOldViewData: false,
+				dotParentOffsetTop: -1,
+				dotRight: 0,
+				tid2: 0,
+				showDot: false,
+				_tstVieSList: [] as UTSJSONObject[][],
+			}
+		},
+		slots: Object as SlotsType<{
+			header : { title : string, index : number },
+			default : {
+				current : UTSJSONObject,
+				currentIndex : number,
+				index : number
+			}
+		}>,
+		props: {
+			/**
+			 * 宽
+			 */
+			width: {
+				type: String,
+				default: "auto"
+			},
+			/**
+			 * 高，%,rpx,px单位均可。
+			 */
+			height: {
+				type: String,
+				default: "400"
+			},
+			/**
+			 * 侧边指示激活时的文字颜色
+			 * 空值是取全局主题值
+			 */
+			dotActiveColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 侧边指示未激活时的文字颜色
+			 */
+			dotColor: {
+				type: String,
+				default: "#c0c0c0"
+			},
+			/**
+			 * 侧边指示的背景颜色
+			 */
+			dotBgColor: {
+				type: String,
+				default: "white"
+			},
+			list: {
+				type: Array as PropType<UTSJSONObject[]>,
+				default: () : UTSJSONObject[] => [] as UTSJSONObject[]
+			},
+			/**
+			 * 项目的高
+			 * 只能是数字，或者带rpx,px单位
+			 */
+			cellHeight: {
+				type: String,
+				default: '50'
+			},
+			/**
+			 * 项目的标题高
+			 * 只能是数字，或者带rpx,px单位
+			 */
+			titleHeight: {
+				type: String,
+				default: '32'
+			},
+			/**
+			 * 可视范围内首次显示的个数
+			 * 请根据你的高自行调整，以铺满容器。
+			 */
+			viewCount:{
+				type:Number,
+				default:10
+			}
+		},
+		computed: {
+			_height() : string {
+				return checkIsCssUnit(this.height, xConfig.unit)
+			},
+			_width() : string {
+				return checkIsCssUnit(this.width, xConfig.unit)
+			},
+			_cellHeight() : number {
+				let height = checkIsCssUnit(this.cellHeight, xConfig.unit)
+				let unit = getUnit(height)
+				let realheight = parseInt(height)
+				if (unit == 'rpx') {
+					realheight = rpx2px(realheight)
+				}
+
+				return realheight;
+			},
+			_titleHeight() : number {
+				let height = checkIsCssUnit(this.titleHeight, xConfig.unit)
+				let unit = getUnit(height)
+				let realheight = parseInt(height)
+				if (unit == 'rpx') {
+					realheight = rpx2px(realheight)
+				}
+
+				return realheight;
+			},
+			_totalHeight() : number {
+				return this.list.length * this._cellHeight;
+			},
+	
+			_dotActiveColor() : string {
+				if (this.dotActiveColor == "") return getDefaultColor(xConfig.color);
+				return getDefaultColor(this.dotActiveColor)
+			},
+			_dotColor() : string {
+				return getDefaultColor(this.dotColor)
+			},
+			_dotBgColor() : string {
+				if (xConfig.dark == 'dark') return xConfig.inputDarkColor
+				return getDefaultColor(this.dotBgColor)
+			},
+
+			
+			_list() : UTSJSONObject[] {
+				return this.list;
+			}
+
+		},
+		watch: {
+			list() {
+				this.scrollTop = 0
+				this.nowIndex = 0
+				this.listIndexBar = [] as indexbarTYPE[]
+				this.currentIndexBYbar = 0
+				this.setInitData();
+			}
+		},
+		mounted() {
+			this.windowTop = uni.getWindowInfo().windowTop
+			
+			this.setInitData();
+
+		},
+		beforeUnmount() {
+			clearTimeout(this.tid)
+		},
+		methods: {
+
+			lazyPushData(list:UTSJSONObject[]) {
+				if ( list.length==0) return;
+
+				let yanchi = 50;
+				let i = 0
+				let t = this;
+				let viconunt = this.viewCount
+
+
+				function pushData() {
+					if (list.length <= i || list.length==0) return;
+
+					let ml = list.slice(i, i + viconunt);
+					t._tstVieSList.push(ml)
+				
+					setTimeout(function () {
+
+						i += viconunt;
+						pushData()
+					}, 50);
+				}
+				pushData()
+
+			},
+
+			setInitData() {
+				let lst = Date.now()
+				let list = this._list as UTSJSONObject[]
+				if (list.length == 0) return
+				let listbar = [] as indexbarTYPE[]
+				let listbarTitle = [] as string[];
+				for (let i = 0; i < list.length; i++) {
+					let current = list[i]
+					let keya = current.getString("index")!;
+					if (!listbarTitle.includes(keya!)) {
+						listbarTitle.push(keya)
+						listbar.push({ index: i, title: keya } as indexbarTYPE)
+						current.set("___a",keya)
+					}
+				}
+				this.listIndexBar = listbar;
+			
+				this.lazyPushData(list);
+				console.warn("索引数据处理时间(毫秒)：", Date.now() - lst, "如果此值过大，表示sdk有问题,正常在10ms内，安卓dev会在60ms内")
+
+			},
+			sliderOnclik(evt : UniPointerEvent, item : indexbarTYPE, index : number) {
+				this.nowIndex = this.listIndexBar[index].index;
+				this.scrollTop = this._cellHeight * this.nowIndex
+				this.currentIndexBYbar = index;
+
+				this.transxyByDotTop(evt.clientY)
+
+
+			},
+			onScrollEvent(evt : UniScrollEvent) {
+				if (this.isMoveing) return;
+				this.transxyend(evt.detail.scrollTop - this._titleHeight)
+			},
+			ONscrollend(evt : UniScrollEvent) {
+				// #ifdef APP-IOS||APP-ANDROID
+				this.scrollTop = evt.detail.scrollTop;
+				// #endif
+			},
+			transxyend(top : number) {
+
+
+				let index = Math.ceil((top) / this._cellHeight)
+				index = Math.max(0, index)
+				index = Math.min(this._list.length - 1, index)
+
+				if (index == this.nowIndex) return;
+
+				this.nowIndex = index;
+				let title = this._list[index].getString("index")!
+				if (title == this.listIndexBar[this.currentIndexBYbar].title) return;
+				let barindexItem = this.listIndexBar.findIndex((el : indexbarTYPE) : boolean => el.title == title)
+				if (barindexItem == this.currentIndexBYbar) return;
+				if (barindexItem > -1) {
+					this.currentIndexBYbar = barindexItem;
+				}
+
+
+			},
+		
+
+			hideDot() {
+				let t = this;
+				clearTimeout(this.tid2)
+				this.tid2 = setTimeout(function () {
+					t.showDot = false
+				}, 700);
+			},
+			itemMove(evt : UniTouchEvent) {
+
+				evt.stopPropagation();
+				evt.preventDefault();
+				let t = this;
+				let y = evt.changedTouches[0].clientY
+				let ele = this.$refs['xIndexBarRightSliderBg'] as UniElement;
+				let bounds = ele.getBoundingClientRect()
+				let diff = y - bounds.top!;
+
+				diff = Math.max(0, Math.min(diff, this.listIndexBar.length * 19))
+
+				let barIndex = Math.floor(diff / 19)
+				barIndex = Math.max(0, Math.min(barIndex, this.listIndexBar.length - 1))
+
+				if (barIndex != this.currentIndexBYbar) {
+					this.currentIndexBYbar = barIndex;
+				}
+				let index = this.listIndexBar[barIndex].index;
+				if (index == this.nowIndex) return
+				this.nowIndex = index;
+				clearTimeout(this.tid)
+				this.isShowOldViewData = true
+				t.transxyByDotTop(y)
+				t.scrollTop = index * t._cellHeight
+			},
+
+
+			itemStart(evt : UniTouchEvent) {
+				this.isMoveing = true
+				this._y = evt.changedTouches[0].clientY;
+
+
+			},
+			transxyByDotTop(top : number) {
+				let ele = this.$refs['xIndexBarRightSliderBg'] as UniElement;
+				let bounds = ele.getBoundingClientRect()
+				let diff = top - bounds.top!
+				diff = Math.max(0, Math.min(diff, this.listIndexBar.length * 19))
+
+				let barIndex = Math.floor(diff / 19)
+				barIndex = Math.max(0, Math.min(barIndex, this.listIndexBar.length - 1))
+
+				let parentele = this.$refs['xIndexBarRightSlider'] as UniElement;
+				let bounds2 = parentele.getBoundingClientRect()
+
+
+				let topdiff = barIndex * 19 + bounds.top! - bounds2.top - (50 - 19) / 2;
+				// #ifdef APP-ANDROID
+				topdiff = -25 + (bounds.top! - bounds2.top) + barIndex * 19 + 19 / 2
+
+				// #endif
+
+				let dotele = this.$refs['xIndexBarDot'] as UniElement;
+				if (topdiff == this.dotParentOffsetTop) return;
+				this.dotParentOffsetTop = topdiff
+				// dotele.style.setProperty('top',topdiff+'px')
+				dotele.style.setProperty('transform', `translateY(${topdiff}px) rotate(-45deg)`)
+				this.showDot = true
+				this.hideDot();
+			},
+			itemEnd() {
+				this.isMoveing = false
+				this.dotParentOffsetTop = -1
+			}
+		}
+	}
+</script>
+<template>
+<!-- 	<view :style="{height:_titleHeight+'px'}">
+		<slot name="header" :title="listIndexBar.length>0?listIndexBar[currentIndexBYbar].title:''"
+			:index="listIndexBar.length>0?listIndexBar[currentIndexBYbar].index:0">
+			<view style="display: flex;flex-direction: row;align-items: center;height: 100%;">
+				<x-text v-if="listIndexBar.length>0">{{listIndexBar[currentIndexBYbar].title}}</x-text>
+			</view>
+		</slot>
+	</view> -->
+	<view class="xIndexBarBox" :style="{height:_height,width:_width}">
+		<scroll-view @scrollend="ONscrollend" :show-scrollbar="false" @scroll="onScrollEvent" :scroll-top="scrollTop"
+			:bounces="false" :enable-back-to-top="true" class="xIndexBar" :style="{height:_height}">
+			<template v-for="(item,index) in _tstVieSList" :key="index">
+				<template v-for="(item2,index2) in item" :key="index2">
+					<view v-if="item2.getAny('___a')!= null">
+						<text>{{item2.getString("___a")}}</text>
+					</view>
+					<view  >
+						<!--
+						动态插槽
+						@prop {UTSJSONObject} current - 当前的项目信息，可通过此布局当前数据
+						@prop {number} currentIndex - 右边导航当前的索引
+						@prop {number} index - 当前索引
+						 -->
+						<slot :index="(index+index2)" :currentIndex="nowIndex" :current="(item2! as UTSJSONObject)">
+						</slot>
+						<!-- <text>{{item2.getAny("name")}}</text> -->
+					</view>
+				</template>
+			</template>
+		</scroll-view>
+
+		<view class="xIndexBarRightSlider" ref="xIndexBarRightSlider">
+			<view @touchmove="itemMove" @touchstart="itemStart" @touchend="itemEnd" ref="xIndexBarRightSliderBg"
+				class="xIndexBarRightSliderBg" :style="{background:_dotBgColor}">
+				<view @click.stop="sliderOnclik($event as UniPointerEvent,item,index)"
+					v-for="(item,index) in listIndexBar" :key="index" class="xIndexBarRightSliderItem"
+					:class="[currentIndexBYbar==index?'xIndexBarRightSliderItemHover':'']" :hover-start-time="50"
+					:hover-stay-time="100" hover-class="xIndexBarRightSliderItemHover" :style="{
+					backgroundColor:currentIndexBYbar==index?_dotActiveColor:_dotBgColor,
+				}">
+					<text :style="{color:currentIndexBYbar==index?'white':_dotColor}"
+						class="xIndexBarRightSliderItemText">{{item.title}}</text>
+				</view>
+
+			</view>
+		</view>
+		<!-- top:dotParentOffsetTop+'px', -->
+		<view ref="xIndexBarDot" class="xIndexBarDot"
+			:style="{opacity:!showDot?'0':'1',backgroundColor:_dotActiveColor}">
+			<text v-if="(_list.length>0)" class="xIndexBarDotText">{{_list[nowIndex]['index']}}</text>
+		</view>
+	</view>
+
+</template>
+<style scoped>
+	.xIndexBarBox {
+		position: relative;
+	}
+
+	.xIndexBarBoxItem {
+		/* position: absolute;
+		width: 100%;
+		top: 0px; */
+	}
+
+	.xIndexBarDot {
+		pointer-events: none;
+		position: absolute;
+		width: 50px;
+		height: 50px;
+		border-radius: 50px 50px 6px 50px;
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+		/* transform: rotate(-45deg); */
+		/* transition-duration: 100ms;
+		transition-property: opacity;
+		transition-timing-function: linear; */
+		right: 47px;
+		top: 0;
+		/* #ifdef WEB */
+		box-szing: border-box;
+		/* #endif */
+	}
+
+	.xIndexBarDotText {
+		transform: rotate(45deg);
+		font-size: 18px;
+		color: white;
+		font-weight: bold;
+	}
+
+	.xIndexBarRightSliderItemHover {
+		/* background-color: rgba(0, 0, 0, 0.05); */
+		/* background-color:red; */
+		border-radius: 30px;
+	}
+
+	.xIndexBarHeaderTitleBox {
+		pointer-events: none;
+	}
+
+	.xIndexBarHeaderTitle {
+		height: 32px;
+		padding-left: 16px;
+		display: flex;
+		justify-content: flex-start;
+		align-items: center;
+		flex-direction: row;
+		/* #ifdef H5 */
+		position: fixed;
+		z-index: 5;
+		font-size: bold;
+		/* #endif */
+	}
+
+	.xIndexBarRightSlider {
+		width: 32px;
+		height: 100%;
+		position: absolute;
+		z-index: 8;
+		right: 5px;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.xIndexBarRightSliderItem {
+		width: 19px;
+		height: 19px;
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+		border-radius: 21px;
+	}
+
+
+
+	.xIndexBarRightSliderItemText {
+		font-size: 11px;
+		/* font-weight: bold; */
+	}
+
+	.xIndexBarRightSliderBg {
+		border-radius: 21px;
+		/* box-shadow: 0 0px 10px rgba(0, 0, 0, 0.06); */
+		position: relative;
+	}
+</style>

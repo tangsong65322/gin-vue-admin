@@ -1,0 +1,20 @@
+import { SCANNING_PHOTO_RESULT, SCANNING_PHOTO_RESULT_BOUND, Call_BACK, AUTH_CALL_BACK_TYPE } from '../interface.uts';
+var qre;
+var resultQr = ""
+// https://www.npmjs.com/package/qr-scanner/v/1.4.2?activeTab=readme
+export function closeCamera() {
+
+}
+export function openCameraApi(callback : Call_BACK,onlyCameras:boolean) {
+	wx.scanCode({
+		onlyFromCamera:onlyCameras,
+		success(res){
+			if(res?.result){
+				callback(res?.result??"","auto")
+			}
+		},
+		fail(er){
+			console.error(er)
+		}
+	})
+}

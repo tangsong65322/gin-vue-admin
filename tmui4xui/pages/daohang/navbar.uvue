@@ -1,0 +1,80 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-navbar lrWidth='56'
+		:staticTransparent="staticTransparent"
+		:linear-gradient="linear"
+		 :linearActiveGradient="bgcolor"
+		 bg-color="primary"
+		 @fiexdChange="navPosChange" title-color="white" active-bg-color="#ff5416" title-active-color="yellow" :isPlace="false">
+			<template v-slot:title>
+				<view class="flex flex-row flex-row-center-center relative flex-1" style="height:100%">
+					<x-input placeholder="模仿下淘宝搜索吧" icon-color="#ff5416" round="20" v-if="ratio>0" left-icon="search-2-line" height="36" dark-bg-color="white" :style="{opacity:ratio,width:(ratio*100).toString()+'%'}">
+						<template v-slot:inputRight>
+							<x-button color="#ff5416" round="20" class="mr-2" height="32" width="60">搜索</x-button>
+						</template>
+					</x-input>
+					<x-text v-if="ratio<1" :style="{opacity:(1-ratio),pointerEvents:'none'}" color='white' dark-color="white" class="absolute">NAVBAR 标题栏</x-text>
+				</view>
+			</template>
+			<template v-slot:right="{isFiexd}">
+				<x-icon class="mr-16" name="account-circle-line" font-size="21" :color="(isFiexd as boolean)?'yellow':'white'"></x-icon>
+			</template>
+		</x-navbar>
+		<view>
+			<x-image  src="https://store.tmui.design/api_v2/public/random_picture?random=183"></x-image>
+		</view>
+	
+		<x-sheet :margin="['16']">
+			<x-text  font-size="18"  class=" text-weight-b">标题导航 xNavbar</x-text>
+			<x-text  class=" text-grey  line-8" >可静态悬浮在顶部，也可动态悬浮顶部下拉动态改变背景</x-text>
+		</x-sheet>
+		<x-sheet height="2000">
+			<x-text  font-size="18"  class=" text-weight-b ">滚动本页面，查看导航效果</x-text>
+			<x-text  class=" text-grey  my-20" >可静态和悬浮时出现不同的渐变背景</x-text>
+			<x-button :block="true" @click="setbgcolor">切换渐变导航</x-button>
+			<x-text  class=" text-grey  my-20" >可静态和悬浮时出现不同的纯色背景</x-text>
+			<x-button :block="true" @click="clearBgcolor">纯色背景</x-button>
+			<x-text  class=" text-grey  my-20" >可静态时不透明</x-text>
+			<x-button :block="true" @click="staticTransparent=!staticTransparent">{{!staticTransparent?'静态透明':'静态不透明'}}</x-button>
+		</x-sheet>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script lang="ts">
+	export default {
+		data() {
+			return {
+				ratio:0,
+				bgcolor:[] as string[],
+				linear:[] as string[],
+				staticTransparent:true
+			};
+		},
+		methods:{
+			setbgcolor(){
+				this.bgcolor = ['to right','#ff338f','#6b3eff'] ;
+				this.linear = ['to right','#02a7ff','#22e192'] ;
+			},
+			clearBgcolor(){
+				this.bgcolor = [] as string[]
+				this.linear  = [] as string[]
+			},
+			navPosChange(posratio:number){
+				this.ratio = posratio
+			}
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

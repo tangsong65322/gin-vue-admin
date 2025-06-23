@@ -1,0 +1,554 @@
+import { XTREEFLAT_CONFIG, XTREEFLAT_CHILDREN } from "./interface.uts"
+import { hexToRgb } from "../../core/util/xCoreColorUtil.uts"
+	import { XTREEFLAT_NODES } from "../../interface.uts"
+type XTREE_NODES_FLAT = {
+	node : XTREEFLAT_CHILDREN;
+	x : number;
+	y : number;
+	width : number;
+	height : number;
+	level : number;
+	parent ?: XTREEFLAT_CHILDREN;
+}
+
+type XTREEFLAT_CONFIG_REAL = {
+	width : number,
+	height : number,
+	bgColor : string,
+	nodeBgColor : string,
+	fontColor : string,
+	fontSize : number,
+	/** 统一连线颜色,不配置取节点的背景,如果节点背景也没设置取#333 */
+	lineColor : string,
+	/** 画板对象,必填写 **/
+	canvas : CanvasContext,
+	nodeInfo : NodeInfo,
+	/** 绘制文本时的内边跑 */
+	padding : number,
+	/** 绘制项目是连接线上下项目或者左右项目的间距 */
+	gutter : number,
+	/** 父级与子级之间的连续长度 */
+	parentLineGutter : number,
+	/** 连线宽 */
+	lineWidth : number,
+	enbleOpenChildren : boolean,
+	nodeRadius : number
+}
+type calculateNodeSize_return = { width : number, height : number }
+type xCalcListDataFun = (list : XTREEFLAT_NODES[]) => XTREEFLAT_CHILDREN[]
+type traverseFun = (node : XTREEFLAT_CHILDREN, level : number) => void
+type drawRealRect = { x : number, y : number, width : number, height : number }
+
+export class OrgChartRenderer {
+	private ctx : CanvasRenderingContext2D;
+	private nodes = [] as Array<XTREE_NODES_FLAT>;
+	private offsetX = 0;
+	private offsetY = 0;
+	private config : XTREEFLAT_CONFIG_REAL
+	private pixelRatio = 1;
+	private levelMaxWidth = {} as UTSJSONObject
+	private data = [] as XTREEFLAT_CHILDREN[]
+	public scaleXY = 1.0;
+	private nowSelectedNodes = null as null | XTREEFLAT_CHILDREN
+	private nodesClick = (item : XTREEFLAT_CHILDREN) => { }
+	constructor(xconfig : XTREEFLAT_CONFIG) {
+		this.config = {
+			width: xconfig?.width ?? 1000,
+			height: xconfig?.height ?? 1000,
+			bgColor: xconfig?.bgColor ?? 'transparent',
+			fontColor: xconfig?.fontColor ?? '#2f2943',
+			lineColor: xconfig?.lineColor ?? 'rgb(220, 215, 255)',
+			nodeBgColor: xconfig?.nodeBgColor ?? 'rgb(220, 215, 255)',
+			padding: xconfig?.padding ?? 10,
+			gutter: xconfig?.gutter ?? 12,
+			nodeRadius: xconfig?.nodeRadius ?? 8,
+			parentLineGutter: xconfig?.parentLineGutter ?? 30,
+			enbleOpenChildren: xconfig?.enbleOpenChildren ?? true,
+			lineWidth: xconfig?.lineWidth ?? 1.5,
+			canvas: xconfig.canvas,
+			nodeInfo: xconfig.nodeInfo,
+			fontSize: xconfig?.fontSize ?? 13,
+		} as XTREEFLAT_CONFIG_REAL
+
+		const canvasContext = this.config.canvas.getContext('2d')!;
+		const canvas = canvasContext.canvas;
+		// 处理高清屏逻辑
+		const dpr = uni.getWindowInfo().pixelRatio;
+		canvas.width = canvas.offsetWidth * dpr;
+		canvas.height = canvas.offsetHeight * dpr;
+		canvasContext.scale(dpr, dpr);
+		this.ctx = canvasContext;
+		this.pixelRatio = dpr;
+
+	}
+
+	public getDrawBounds() : drawRealRect {
+		if (this.nodes.length === 0) {
+			return {
+				x: 0,
+				y: 0,
+				width: 0,
+				height: 0
+			} as drawRealRect
+		}
+
+		let minX = Infinity, minY = Infinity;
+		let maxX = -Infinity, maxY = -Infinity;
+
+		this.nodes.forEach(({ x, y, width, height }) => {
+			// #ifndef APP-ANDROID
+			minX = Math.min(minX, x);
+			minY = Math.min(minY, y);
+			maxX = Math.max(maxX, (x + width));
+			maxY = Math.max(maxY, (y + height));
+			// #endif
+			// #ifdef APP-ANDROID
+			minX = Math.min(minX.toDouble(), x.toDouble()).toDouble();
+			minY = Math.min(minY.toDouble(), y.toDouble()).toDouble();
+			maxX = Math.max(maxX.toDouble(), (x + width).toDouble()).toDouble();
+			maxY = Math.max(maxY.toDouble(), (y + height).toDouble()).toDouble();
+			// #endif
+		});
+
+		// 加上偏移量得到实际绘制位置
+		return {
+			x: minX + this.offsetX,
+			y: minY + this.offsetY,
+			width: maxX - minX,
+			height: maxY - minY
+		} as drawRealRect
+	}
+
+	private wrapText(text : string, fontSize : number) : string[] {
+		this.ctx.font = `${fontSize}px Arial`;
+		const words = text.split('');
+		const lines : string[] = [];
+		let currentLine = '';
+		// 每行最多8个字符
+		const maxCharsPerLine = 8;
+		for (let i = 0; i < words.length; i++) {
+			if (currentLine.length >= maxCharsPerLine) {
+				lines.push(currentLine);
+				currentLine = '';
+			}
+			currentLine += words[i];
+		}
+		if (currentLine != '') {
+			lines.push(currentLine);
+		}
+		return lines;
+	}
+	private calculateNodeSize(node : XTREEFLAT_CHILDREN) : calculateNodeSize_return {
+		const lines = this.wrapText(node.title, node.fontSize);
+		this.ctx.font = `${node.fontSize}px Arial`;
+		// 计算最宽的行的宽度
+		let linesWidths : number[] = lines.map((line) : number => this.ctx.measureText(line).width);
+		const maxWidth = Math.max(...linesWidths);
+		// 高度需要考虑行数和行间距
+		const lineHeight = node.fontSize * 1.2; // 添加1.2倍行高
+		const textHeight = lineHeight * lines.length;
+		return {
+			width: maxWidth + node.padding * 2,  // 两侧添加padding
+			height: textHeight + node.padding * 2 // 上下添加padding
+		} as calculateNodeSize_return;
+	}
+	// 计算节点及其子树需要的总高度
+	private calculateSubtreeHeight(node : XTREEFLAT_CHILDREN) : number {
+		const nodeSize = this.calculateNodeSize(node);
+		if (!node.opened || node.children.length == 0) {
+			return nodeSize.height;
+		}
+		// 计算所有子节点的高度总和（包括间距）
+		const childrenHeight = node.children.reduce((total, child, index) => {
+			const childHeight = this.calculateSubtreeHeight(child);
+			return total + childHeight + (index < node.children.length - 1 ? node.gutter : 0);
+		}, 0);
+		// 返回较大的值：节点自身高度，或子节点总高度
+		return Math.max(nodeSize.height, childrenHeight);
+	}
+	// 收集各层级的最大宽度
+	private collectLevelMaxWidth() {
+		this.levelMaxWidth = {} as UTSJSONObject;
+		let traverse = null as traverseFun | null;
+		traverse = (node : XTREEFLAT_CHILDREN, level : number) => {
+			const size = this.calculateNodeSize(node);
+			const currentWidth = size.width;
+			if (this.levelMaxWidth.get(level.toString()) == null) {
+				this.levelMaxWidth.set(level.toString(), currentWidth)
+			}
+			let maxwidth = this.levelMaxWidth.get(level.toString())! as number;
+			if (currentWidth > maxwidth) {
+				this.levelMaxWidth.set(level.toString(), currentWidth)
+			}
+			if (node.opened && node.children.length > 0) {
+				node.children.forEach(child => traverse!(child, level + 1));
+			}
+		};
+		this.data.forEach(root => traverse!(root, 0));
+	}
+
+	private layoutNode(
+		node : XTREEFLAT_CHILDREN,
+		parentX : number,
+		parentY : number,
+		level : number,
+		parent : XTREEFLAT_CHILDREN | null = null
+	) {
+		const size = this.calculateNodeSize(node);
+		const nodeWidth = (this.levelMaxWidth.getNumber(level.toString()))!;
+		const subtreeHeight = this.calculateSubtreeHeight(node);
+		// 将节点添加到nodes数组，注意这里y坐标的计算
+		this.nodes.push({
+			node,
+			x: parentX,
+			y: parentY - size.height / 2, // 修改：直接使用节点自身高度居中
+			width: nodeWidth,
+			height: size.height,
+			level,
+			parent
+		} as XTREE_NODES_FLAT);
+		if (node.opened && node.children.length > 0) {
+			// 计算所有子节点的总高度
+			const totalChildrenHeight = node.children.reduce((total, child) => {
+				return total + this.calculateSubtreeHeight(child);
+			}, 0);
+			// 添加子节点之间的间距
+			const totalGutterHeight = (node.children.length - 1) * node.gutter;
+			const totalHeight = totalChildrenHeight + totalGutterHeight;
+			// 修改：计算子节点的起始y坐标，使其相对父节点居中
+			let childY = parentY - totalHeight / 2;
+			// 为每个子节点布局
+			node.children.forEach((child, index) => {
+				const childSubtreeHeight = this.calculateSubtreeHeight(child);
+				// 修改：将子节点放置在计算好的位置上
+				this.layoutNode(
+					child,
+					(parentX + nodeWidth + node.parentLineGutter),
+					(childY + childSubtreeHeight / 2), // 修改：确保子节点在其分配空间内居中
+					level + 1,
+					node
+				);
+				// 更新下一个子节点的y坐标
+				childY += childSubtreeHeight + node.gutter;
+			});
+		}
+	}
+
+
+	private calculateLayout() {
+		this.nodes = [];
+		this.collectLevelMaxWidth(); // 新增：在计算布局前收集各层宽度
+		// 计算所有根节点的总高度
+		const totalHeight = this.data.reduce((total, root, index) => {
+			const subtreeHeight = this.calculateSubtreeHeight(root);
+			return total + subtreeHeight + (index < this.data.length - 1 ? root.gutter : 0);
+		}, 0);
+
+		// 计算第一个根节点的起始y坐标
+		let startY = -totalHeight / 2;
+		// 为每个根节点布局
+		this.data.forEach((root, index) => {
+			const subtreeHeight = this.calculateSubtreeHeight(root);
+			this.layoutNode(
+				root,
+				0,
+				startY + subtreeHeight / 2,
+				0,
+				null
+			);
+			// 更新下一个根节点的y坐标
+
+			startY += subtreeHeight + root.gutter;
+		});
+
+		// 计算边界框并设置偏移
+
+		let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+		this.nodes.forEach(({ x, y, width, height }) => {
+			// #ifndef APP-ANDROID
+			minX = Math.min(minX, x);
+			minY = Math.min(minY, y);
+			maxX = Math.max(maxX, (x + width));
+			maxY = Math.max(maxY, (y + height));
+			// #endif
+			// #ifdef APP-ANDROID
+			minX = Math.min(minX.toDouble(), x.toDouble()).toDouble();
+			minY = Math.min(minY.toDouble(), y.toDouble()).toDouble();
+			maxX = Math.max(maxX.toDouble(), (x + width).toDouble()).toDouble();
+			maxY = Math.max(maxY.toDouble(), (y + height).toDouble()).toDouble();
+			// #endif
+		});
+
+		// 计算居中偏移
+		this.offsetX = (this.config.width - (maxX - minX)) / 2 - minX;
+		this.offsetY = (this.config.height - (maxY - minY)) / 2 - minY;
+	}
+
+	private drawConnections(nodeMeta : XTREE_NODES_FLAT) {
+		const node = nodeMeta.node
+		const x = nodeMeta.x
+		const y = nodeMeta.y
+		const width = nodeMeta.width
+		const height = nodeMeta.height
+		const level = nodeMeta.level
+		const parent = nodeMeta.parent
+		// 设置连接线样式
+		this.ctx.strokeStyle = nodeMeta.node.bgColor;
+		this.ctx.lineWidth = this.config.lineWidth;
+		// 如果有父节点，绘制到父节点的连接
+		if (parent != null) {
+			const parentMetas = this.nodes.find((n) : boolean => n.node.id == parent.id);
+
+			if (parentMetas != null) {
+				const parentMeta = parentMetas!
+				const startX = x;
+				const startY = y + height / 2;
+				const endX = parentMeta.x + parentMeta.width;
+				const endY = parentMeta.y + parentMeta.height / 2;
+
+				this.ctx.beginPath();
+				this.ctx.moveTo(startX, startY);
+				this.ctx.lineTo(startX - node.parentLineGutter / 2, startY);
+				this.ctx.lineTo(startX - node.parentLineGutter / 2, endY);
+				this.ctx.lineTo(endX, endY);
+
+				this.ctx.stroke();
+			}
+		}
+
+		// 绘制同级节点之间的连接线
+		if (level == 0) {
+			// 查找所有根节点
+			const rootNodes = this.nodes.filter(n => n.level === 0);
+			if (rootNodes.length > 1) {
+				const index = rootNodes.findIndex(n => n.node === node);
+				if (index > 0) {
+					const prevNode = rootNodes[index - 1]!;
+					const midY = (prevNode.y + prevNode.height / 2 + y + height / 2) / 2;
+
+					this.ctx.beginPath();
+
+					this.ctx.moveTo(prevNode.x + prevNode.width / 2, prevNode.y + prevNode.height / 2);
+					this.ctx.lineTo(prevNode.x + prevNode.width / 2, midY);
+					this.ctx.lineTo(x + width / 2, midY);
+					this.ctx.lineTo(x + width / 2, y + height / 2);
+					this.ctx.stroke();
+				}
+			}
+		}
+
+		// 如果节点展开且有子节点，绘制子节点连接线
+
+		if (node.opened && node.children.length > 0) {
+			const childNodes = this.nodes.filter(n => n.parent === node);
+			if (childNodes.length > 0) {
+				// 绘制垂直连接线
+				const firstChild = childNodes[0]!;
+				const lastChild = childNodes[childNodes.length - 1]!;
+				const lineX = x + width + node.parentLineGutter / 2;
+
+				this.ctx.beginPath();
+
+				this.ctx.moveTo(lineX, firstChild.y + firstChild.height / 2);
+				this.ctx.lineTo(lineX, lastChild.y + lastChild.height / 2);
+				this.ctx.stroke();
+
+				// 绘制到每个子节点的水平连接线
+
+				childNodes.forEach(child => {
+					this.ctx.beginPath();
+					this.ctx.moveTo(lineX, child.y + child.height / 2);
+					this.ctx.lineTo(child.x, child.y + child.height / 2);
+					this.ctx.stroke();
+				});
+			}
+		}
+	}
+	drawRoundedRect(x : number, y : number, width : number, height : number, radius : number) {
+		const ctx = this.ctx;
+		ctx.beginPath();
+		// 左上角开始
+		ctx.moveTo(x + radius, y);
+		// 上边 + 右上角圆弧
+		ctx.arcTo(x + width, y, x + width, y + height, radius);
+		// 右边 + 右下角圆弧
+		ctx.arcTo(x + width, y + height, x, y + height, radius);
+		// 下边 + 左下角圆弧
+		ctx.arcTo(x, y + height, x, y, radius);
+		// 左边 + 左上角圆弧
+		ctx.arcTo(x, y, x + width, y, radius);
+		ctx.closePath();
+		ctx.fill(); // 或使用 stroke() 绘制边框
+	}
+	private draw() {
+		this.ctx.clearRect(0, 0, this.config.width, this.config.height);
+		this.ctx.fillStyle = this.config.bgColor;
+		this.ctx.fillRect(0, 0, this.config.width, this.config.height);
+		this.ctx.save();
+
+		this.ctx.translate(this.offsetX, this.offsetY);
+		// 先绘制连接线
+		this.nodes.forEach(nodeMeta => this.drawConnections(nodeMeta));
+		// 再绘制节点（确保节点在连接线上层）
+		this.nodes.forEach(nodeMeta => {
+			const { node, x, y, width, height } = nodeMeta;
+
+			// 绘制选中状态
+			if (node.selected) {
+				this.ctx.fillStyle = node.lineColor;
+				this.drawRoundedRect(x - 5, y - 5, width + 10, height + 10, this.config.nodeRadius)
+			}
+
+			// 绘制背景
+			this.ctx.fillStyle = node.bgColor;
+			this.drawRoundedRect(x, y, width, height, this.config.nodeRadius)
+
+			// 绘制文本（使用换行）
+			const lines = this.wrapText(node.title, node.fontSize);
+			this.ctx.fillStyle = node.fontColor;
+			this.ctx.font = `${node.fontSize}px Arial`;
+			this.ctx.textBaseline = 'middle';
+
+			const lineHeight = node.fontSize * 1.2;
+
+			const totalTextHeight = lineHeight * lines.length;
+			const textStartY = y + (height - totalTextHeight) / 2;
+
+			lines.forEach((line, index) => {
+
+				const lineY = textStartY + lineHeight * index + lineHeight / 2;
+				const textWidth = this.ctx.measureText(line).width;
+				const textX = x + (width - textWidth) / 2;
+
+				this.ctx.fillText(line, textX, lineY);
+
+			});
+
+
+		});
+
+		this.ctx.restore();
+	}
+
+
+	// 处理数据
+	private updateData(list : XTREEFLAT_NODES[]) {
+		let calcListData = null as xCalcListDataFun | null;
+		let _this = this;
+		calcListData = (datas : XTREEFLAT_NODES[]) : XTREEFLAT_CHILDREN[] => {
+			if (datas.length == 0) return [] as XTREEFLAT_CHILDREN[];
+			let tem = [] as XTREEFLAT_CHILDREN[]
+			let calcfun = calcListData!
+			for (let i = 0; i < datas.length; i++) {
+				let item = datas[i];
+				let children = item?.children ?? ([] as XTREEFLAT_NODES[])
+
+				let bgcolor = item?.bgColor ?? _this.config.nodeBgColor
+				let rgba = hexToRgb(bgcolor)
+				let lineColor = `rgba(${rgba.getNumber('r')},${rgba.getNumber('g')},${rgba.getNumber('b')},0.4)`
+				tem.push({
+					title: item.title,
+					id: item?.id ?? ("xTreeFlatNodes-" + Math.random().toString(16).substring(4, 20)),
+					fontColor: item?.fontColor ?? _this.config.fontColor,
+					bgColor: bgcolor,
+					lineColor: lineColor,
+					padding: item?.padding ?? _this.config.padding,
+					gutter: item?.gutter ?? _this.config.gutter,
+					parentLineGutter: item?.parentLineGutter ?? _this.config.parentLineGutter,
+					opened: item?.opened ?? true,
+					disabled: item?.disabled ?? _this.config.enbleOpenChildren,
+					selected: item?.selected ?? false,
+					fontSize: item?.fontSize ?? _this.config.fontSize,
+					children: calcfun(children)
+				} as XTREEFLAT_CHILDREN)
+			}
+			return tem;
+		}
+		let calcfun = calcListData!
+		this.data = calcfun(list)
+	}
+
+	// 计算自动缩放比例
+	private calculateAutoScale() : number {
+		const bounds = this.getDrawBounds();
+		if (bounds.width === 0 || bounds.height === 0) return 1.0;
+
+		// 考虑边距，留出10%的空间
+		const padding = 0.1;
+		const containerWidth = this.config.nodeInfo.width! * (1 - padding);
+		const containerHeight = this.config.nodeInfo.height! * (1 - padding);
+
+		// 计算水平和垂直方向的缩放比例
+		const scaleX = containerWidth / bounds.width;
+		const scaleY = containerHeight / bounds.height;
+
+		// 取较小的缩放比例，确保完整显示
+		return Math.min(scaleX, scaleY);
+	}
+
+	// 设置缩放比例的公共方法
+	public setScale(scale : number | null = null) {
+		// 如果没有提供缩放比例，则自动计算
+		this.scaleXY = scale == null ? this.calculateAutoScale() : (scale!);
+		this.draw();
+	}
+	public addEventClick(e : UniPointerEvent, scrollTop : number, scrollLeft : number) {
+		if (this.nodes.length == 0) return;
+		let wintop = uni.getWindowInfo().windowTop;
+		const containerX = e.clientX - (this.config.nodeInfo.left ?? 0)
+		const containerY = e.clientY - (this.config.nodeInfo.top ?? 0) - wintop
+
+		const canvasX = (containerX) + scrollLeft - this.offsetX;
+		const canvasY = (containerY) + scrollTop - this.offsetY;
+		//是否命中了节点.0未操作,1命中,
+		let isHit = false
+		//检测点击的节点
+		for (let i = 0; i < this.nodes.length; i++) {
+			const meta = this.nodes[i];
+			if (canvasX >= meta.x && canvasX <= meta.x + meta.width &&
+				canvasY >= meta.y && canvasY <= meta.y + meta.height) {
+				if (!meta.node.disabled) {
+					meta.node.opened = !meta.node.opened;
+					this.calculateLayout();
+				}
+				// 更新选中状态
+				this.nodes.forEach(m => {
+					m.node.selected = false
+					if (m.node.id == meta.node.id) {
+						m.node.selected = true;
+					}
+				});
+				this.draw();
+				isHit = true;
+				this.nowSelectedNodes = meta.node
+				//命中的情况下触发选中事件.
+				this.nodesClick(meta.node)
+				break;
+			}
+		}
+		// 点击空白时,如果有选中的项目就清除所有选中,而且必须是未命中的情况
+		if (this.nowSelectedNodes != null && !isHit) {
+			this.nodes.forEach(m => {
+				m.node.selected = false
+			});
+
+			this.draw();
+		}
+
+		if (!isHit) {
+			this.nowSelectedNodes = null
+		}
+
+	}
+	public onListen(call : (item : XTREEFLAT_CHILDREN) => void) {
+		this.nodesClick = call;
+	}
+
+	public setData(newData : XTREEFLAT_NODES[]) {
+		this.updateData(newData)
+		this.calculateLayout();
+		this.draw();
+		// this.setScale()
+	}
+}

@@ -1,0 +1,65 @@
+<template>
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+	<view>
+		<x-sheet color="primary">
+			<x-barrage :list="list" layerHeight="160rpx">
+				<x-sheet :margin="['0']" >
+					<x-text font-size="18" class=" text-weight-b mb-8">弹幕 Barrage</x-text>
+					<x-text color="#999999" >
+						主要是营销使用，比如安蕾尔活动的滚动，互动等。
+						本弹幕是比较初级的，不支持暂停，重播，因为牵涉计算滚动位置（耗性能），因此初版本采用自然动画。如果要重设内容，只需要重新赋值即可，位置和内容会自动更新。
+						如果有需求，将使用绘制来重新改写模板。
+					</x-text>
+					<x-button class="mt-32" :block="true" @click="restart">重新播放</x-button>
+				</x-sheet>
+			</x-barrage>
+		</x-sheet>
+
+	</view>
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+				list:[
+					"老子6666",
+					"陈**已购买1万大礼包",
+					"李世民来了哦",
+					"哦豁~",
+					"那个甄姬太坏了，巴不得早点死！",
+					"我看Xui非常好用。推荐",
+					"TMUI.DESIGN",
+					"大家都是VIP8，躁起来！！！",
+					"不错。",
+					]
+			};
+		},
+		onLoad() {
+			
+		},
+		methods: {
+			restart() {
+				this.list = [
+					"老子6666",
+					"陈**已购买1万大礼包",
+					"李世民来了哦",
+					"哦豁~",
+					"那个甄姬太坏了，巴不得早点死！",
+					"我看Xui非常好用。推荐",
+					"TMUI.DESIGN",
+					"大家都是VIP8，躁起来！！！",
+					"不错。",
+					]
+			}
+		},
+	}
+</script>
+
+<style lang="scss">
+
+</style>

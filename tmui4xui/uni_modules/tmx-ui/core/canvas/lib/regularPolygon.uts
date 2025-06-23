@@ -1,0 +1,189 @@
+import { Shape } from './shape.uts';
+import { ICanvas } from '@/uni_modules/tmx-ui/core/canvas/ICanvas.uts';
+import { IShapeBoundRect, IShapeOptional, IShapeVector2d } from '../interface.uts';
+
+export class IRegularPolygon extends Shape {
+	override type = 'IRegularPolygon'
+	constructor(config : IShapeOptional, canvas : ICanvas) {
+		super(config, canvas);
+		this.radius = config?.radius ?? 30;
+		this.sides = config?.sides ?? 3;
+	}
+
+	setRadius(value : number) : IRegularPolygon {
+		this.radius = value;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	setSides(value : number) : IRegularPolygon {
+		this.sides = value;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	override getBoundRect() : IShapeBoundRect {
+		const points = this.getPointsVec();
+		let minX = points[0].x;
+		let maxX = points[0].x;
+		let minY = points[0].y;
+		let maxY = points[0].y;
+		points.forEach((point) => {
+			minX = Math.min(minX, point.x);
+			maxX = Math.max(maxX, point.x);
+			minY = Math.min(minY, point.y);
+			maxY = Math.max(maxY, point.y);
+		});
+		let borderWidth = this.strokeWidth/2
+		return {
+			x: minX-borderWidth,
+			y: minY-borderWidth,
+			width: maxX - minX+this.strokeWidth,
+			height: maxY - minY+this.strokeWidth,
+		} as IShapeBoundRect;
+
+	}
+
+	override setWidth(value : number) : IRegularPolygon {
+		this.height = value;
+		this.width = value;
+		this.radius = value / 2
+		this.needsUpdate = true;
+		return this;
+	}
+
+	override setHeight(value : number) : IRegularPolygon {
+		this.height = value;
+		this.width = value;
+		this.radius = value / 2
+		this.needsUpdate = true;
+		return this;
+	}
+
+	private getPointsVec() : IShapeVector2d[] {
+		const sides = this.sides as number;
+		const radius = this.radius;
+		const points : IShapeVector2d[] = [];
+		for (let n = 0; n < sides; n++) {
+			points.push({
+				x: this.x + radius * Math.sin((n * 2 * Math.PI) / sides),
+				y: this.y + (-1 * radius * Math.cos((n * 2 * Math.PI) / sides)),
+			});
+		}
+		return points;
+	}
+
+	override draw(ctx : CanvasRenderingContext2D) {
+		if (this.visible == false) return;
+		super.draw(ctx);
+		ctx.beginPath();
+		const points = this.getPointsVec();
+		ctx.moveTo(points[0].x, points[0].y);
+		for (let n = 1; n < points.length; n++) {
+			ctx.lineTo(points[n].x, points[n].y);
+		}
+		ctx.closePath();
+		if (this.fill != "") {
+			ctx.fill();
+		}
+		if (this.stroke != "") {
+			ctx.stroke();
+		}
+		ctx.restore();
+	}
+
+	override isPointInPath(x : number, y : number, shapeId : string) : boolean {
+		if (!this.visible || (shapeId != "" && shapeId != this.id)) return false;
+		
+		// 计算相对于图形原点的坐标
+		let realX = x - this.offsetX - this.x;
+		let realY = y - this.offsetY - this.y;
+		
+		// 处理旋转
+		if (this.rotation != 0) {
+			const angle = -this.rotation * Math.PI / 180;
+			const cos = Math.cos(angle);
+			const sin = Math.sin(angle);
+			let centerX = 0;
+			let centerY = 0;
+			
+			// 根据不同的旋转中心点设置centerX和centerY
+			switch(this.rotateCenter) {
+				case 'topLeft':
+					centerX = 0;
+					centerY = 0;
+					break;
+				case 'topRight':
+					centerX = this.width;
+					centerY = 0;
+					break;
+				case 'bottomLeft':
+					centerX = 0;
+					centerY = this.height;
+					break;
+				case 'bottomRight':
+					centerX = this.width;
+					centerY = this.height;
+					break;
+				case 'center':
+				default:
+					centerX = this.width/2;
+					centerY = this.height/2;
+					break;
+			}
+			
+			const dx = realX - centerX;
+			const dy = realY - centerY;
+			realX = centerX + dx * cos - dy * sin;
+			realY = centerY + dx * sin + dy * cos;
+		}
+		
+		// 获取多边形的顶点
+		const points = this.getPointsVec();
+		const n = points.length;
+		let inside = false;
+		
+		// 使用射线法判断点是否在多边形内部
+		for (let i = 0, j = n - 1; i < n; j = i++) {
+			const xi = points[i].x - this.x;
+			const yi = points[i].y - this.y;
+			const xj = points[j].x - this.x;
+			const yj = points[j].y - this.y;
+			
+			if (((yi > realY) != (yj > realY)) &&
+				(realX < (xj - xi) * (realY - yi) / (yj - yi) + xi)) {
+				inside = !inside;
+			}
+		}
+		
+		// 如果有描边，检查点是否在描边范围内
+		if (!inside && this.stroke != "") {
+			for (let i = 0, j = n - 1; i < n; j = i++) {
+				const xi = points[i].x - this.x;
+				const yi = points[i].y - this.y;
+				const xj = points[j].x - this.x;
+				const yj = points[j].y - this.y;
+				
+				// 计算点到线段的距离
+				const dx = xj - xi;
+				const dy = yj - yi;
+				const len = Math.sqrt(dx * dx + dy * dy);
+				if (len > 0) {
+					const t = ((realX - xi) * dx + (realY - yi) * dy) / (len * len);
+					if (t >= 0 && t <= 1) {
+						const px = xi + t * dx;
+						const py = yi + t * dy;
+						const distance = Math.sqrt((realX - px) * (realX - px) + (realY - py) * (realY - py));
+						if (distance <= this.strokeWidth / 2) {
+							return true;
+						}
+					}
+				}
+			}
+		}
+		
+		return inside;
+	}
+	
+	
+}

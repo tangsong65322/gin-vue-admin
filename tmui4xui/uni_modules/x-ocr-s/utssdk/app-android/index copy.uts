@@ -1,0 +1,260 @@
+import Text from "com.google.mlkit.vision.text.Text"
+import TextRecognition from "com.google.mlkit.vision.text.TextRecognition"
+import TextRecognizer from "com.google.mlkit.vision.text.TextRecognizer"
+import TextRecognizerOptionsInterface from "com.google.mlkit.vision.text.TextRecognizerOptionsInterface"
+import ChineseTextRecognizerOptions from "com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions"
+import JapaneseTextRecognizerOptions from "com.google.mlkit.vision.text.japanese.JapaneseTextRecognizerOptions"
+
+import Context from 'android.content.Context'
+import IOException from 'java.io.IOException'
+import InputStream from 'java.io.InputStream'
+import Uri from 'android.net.Uri';
+import File from 'java.io.File'
+import Bitmap from "android.graphics.Bitmap"
+import BarcodeScanner from "com.google.mlkit.vision.barcode.BarcodeScanner"
+import BarcodeScannerOptions from "com.google.mlkit.vision.barcode.BarcodeScannerOptions"
+import BarcodeScanning from "com.google.mlkit.vision.barcode.BarcodeScanning"
+import ZoomSuggestionOptions from "com.google.mlkit.vision.barcode.ZoomSuggestionOptions"
+import ZoomCallback from "com.google.mlkit.vision.barcode.ZoomSuggestionOptions.ZoomCallback"
+import Barcode from "com.google.mlkit.vision.barcode.common.Barcode"
+import InputImage from "com.google.mlkit.vision.common.InputImage"
+import Task from "com.google.android.gms.tasks.Task"
+import List from "java.util.List"
+import ByteBuffer from 'java.nio.ByteBuffer'
+import ImageFormat from 'android.graphics.ImageFormat'
+
+import Vibrator from "android.os.Vibrator"
+
+
+import ContentValues from "android.content.ContentValues"
+import ContentUris from "android.content.ContentUris"
+import JSONObject from "org.json.JSONObject"
+import TimeZone from "java.util.TimeZone"
+import Cursor from "android.database.Cursor"
+import MediaStore from "android.provider.MediaStore"
+import SimpleDateFormat from "java.text.SimpleDateFormat"
+import Locale from "java.util.Locale"
+import MediaScannerConnection from "android.media.MediaScannerConnection"
+
+
+type callType = (list:any)=> void;
+
+/**
+ * 震动
+ * @param {number} duriation 震动时间单位ms
+ */
+export function vibrator(duriation : number) : boolean {
+	try {
+		const context = UTSAndroid.getAppContext() as Context
+		let vb = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator;
+		if (vb!.hasVibrator()) {
+			vb!.vibrate(duriation.toLong());
+		} else {
+			return false
+		}
+	} catch (e) {
+		console.error(e)
+
+	}
+	return false
+}
+
+
+/**
+* 从相册/相机中选取图片进行识别
+*/
+export function chooseImageBuilder(language:string|null) : Promise<string[]> {
+	// 置信度
+	let zxd = 0.50
+	let local = language == null?'zh':language!
+	return new Promise((res, rej) => {
+		uni.chooseImage({
+			count: 1,
+			success(evt : ChooseImageSuccess) {
+				uni.showLoading({ title: '...', mask: true })
+				if (evt.tempFilePaths.length > 0) {
+					const imgs = evt.tempFilePaths[0] as string;
+					try {
+						const decodedPath = Uri.decode(imgs).substring(7)
+						const file = File(decodedPath)
+						let image = InputImage.fromFilePath(UTSAndroid.getAppContext() as Context, Uri.fromFile(file));
+						let opts = new ChineseTextRecognizerOptions().Builder()
+						// if(local == 'ja'){
+						// 	opts = new JapaneseTextRecognizerOptions().Builder()
+						// }
+						const recognizer = TextRecognition.getClient(opts.build()) as TextRecognizer;
+						recognizer.process(image!)
+								.addOnSuccessListener((TextList) => {
+									let str = [] as string[]
+									for (block in TextList.textBlocks) {
+										for (line in block.lines) {
+											// let lineText = line.text
+											// let lineCornerPoints = line.cornerPoints
+											// let lineFrame = line.boundingBox
+											for (element in line.elements) {
+												if (element.getConfidence() >= zxd) {
+													let elementText = element.text as string;
+													// let elementCornerPoints = element.cornerPoints
+													// let elementFrame = element.boundingBox
+													str.push(elementText as string)
+												}
+											}
+										}
+									}
+									uni.hideLoading()
+									vibrator(100)
+									res(str as string[])
+								})
+								.addOnFailureListener((e) => {
+									uni.hideLoading()
+									rej(["识别失败"] as string[])
+								})
+						
+
+					} catch (e : IOException) {
+						uni.hideLoading()
+						rej(["图片选取失败"] as string[])
+					}
+				}
+			},
+			fail() {
+				rej(["图片选择失败"] as string[])
+			}
+		})
+	})
+}
+
+/**
+ * 提供一个远程图片地址进行识别
+ */
+export function downloadUrlImageBuilder(url : string,language:string|null) : Promise<string[]> {
+	// 置信度
+	let zxd = 0.50
+	let local = language == null?'zh':language!
+	uni.showLoading({ title: '...', mask: true })
+	return new Promise((res, rej) => {
+		uni.downloadFile({
+			url,
+			success(evt) {
+				const contentResolver = UTSAndroid.getAppContext()!.contentResolver
+				let decodedPath = evt.tempFilePath
+				if (evt.tempFilePath.indexOf('file://') > -1) {
+					decodedPath = Uri.decode(evt.tempFilePath).substring(7)
+				}
+
+				try {
+					const file = File(decodedPath)
+					let image = InputImage.fromFilePath(UTSAndroid.getAppContext() as Context, Uri.fromFile(file));
+					console.log(typeof ChineseTextRecognizerOptions)
+					let opts = new ChineseTextRecognizerOptions().Builder()
+					// if(local == 'ja'){
+					// 	opts = new JapaneseTextRecognizerOptions().Builder()
+					// }
+					
+					const recognizer = TextRecognition.getClient(opts.build()) as TextRecognizer;
+					if (image != null) {
+						const result = recognizer.process(image!)
+							.addOnSuccessListener((TextList) => {
+								let str = [] as string[]
+								for (block in TextList.textBlocks) {
+									for (line in block.lines) {
+										// let lineText = line.text
+										// let lineCornerPoints = line.cornerPoints
+										// let lineFrame = line.boundingBox
+										for (element in line.elements) {
+											if (element.getConfidence() >= zxd) {
+												let elementText = element.text as string;
+												// let elementCornerPoints = element.cornerPoints
+												// let elementFrame = element.boundingBox
+												str.push(elementText as string)
+											}
+										}
+									}
+								}
+								uni.hideLoading()
+								vibrator(100)
+								res(str as string[])
+							})
+							.addOnFailureListener((e) => {
+								uni.hideLoading()
+								rej(["识别失败"] as string[])
+							})
+					} else {
+						uni.hideLoading()
+						rej(["图片下载失败"])
+					}
+				} catch (e : IOException) {
+					uni.hideLoading()
+					rej(["图片下载失败"])
+				}
+
+			},
+			fail() {
+				uni.hideLoading()
+				rej(["图片下载失败"])
+			}
+		})
+	})
+}
+
+/**
+* 给定图片路径进行识别
+*/
+export function localFilePathImageBuilder(pathfile : string,language:string|null) : Promise<string[]> {
+	// 置信度
+	let zxd = 0.50
+	let local = language == null?'zh':language!
+	uni.showLoading({ title: '...', mask: true })
+	return new Promise((res, rej) => {
+		try {
+			let decodedPath = pathfile
+			if (pathfile.indexOf('file://') > -1) {
+				decodedPath = Uri.decode(pathfile).substring(7)
+			}
+			const file = File(decodedPath)
+			let image = InputImage.fromFilePath(UTSAndroid.getAppContext() as Context, Uri.fromFile(file));
+			let opts = new ChineseTextRecognizerOptions().Builder()
+			// if(local == 'ja'){
+			// 	opts = new JapaneseTextRecognizerOptions().Builder()
+			// }
+			const recognizer = TextRecognition.getClient(opts.build()) as TextRecognizer;
+			if (image != null) {
+				const result = recognizer.process(image!)
+					.addOnSuccessListener((TextList) => {
+						let str = [] as string[]
+						for (block in TextList.textBlocks) {
+							for (line in block.lines) {
+								// let lineText = line.text
+								// let lineCornerPoints = line.cornerPoints
+								// let lineFrame = line.boundingBox
+								for (element in line.elements) {
+									if (element.getConfidence() >= zxd) {
+										let elementText = element.text as string;
+										// let elementCornerPoints = element.cornerPoints
+										// let elementFrame = element.boundingBox
+										str.push(elementText as string)
+									}
+								}
+							}
+						}
+						uni.hideLoading()
+						vibrator(100)
+						res(str as string[])
+					})
+					.addOnFailureListener((e) => {
+						uni.hideLoading()
+						rej(["识别失败"] as string[])
+					})
+			} else {
+				uni.hideLoading()
+				rej(["图片地址解析失败"])
+			}
+		} catch (e : IOException) {
+			uni.hideLoading()
+			rej(["图片地址解析失败"])
+		}
+
+
+	})
+}
+

@@ -1,0 +1,48 @@
+export type CONNECT_STATUS = "opening" | "open" | "dissconnect" | "error" | "wait";
+export type MQTT_EVENT_TYPE = "open" | "dissconnect" | "error" | "message";
+export type MQTT_EVENT_CALL = (type : MQTT_EVENT_TYPE, topic : string | null, str : string) => void;
+export type MQTT_EVENT_PUBLISH = (isSuccess : boolean) => void;
+export type MQTT_SUBSCRIBE = { topic : string, qos : number };
+export type MQTT_PUBLISH_TOPIC = {
+	// 订阅的主题
+	topic:string,
+	message:string,
+	// 优先级0，1，2 依此表示至少接收到的消息级别1至少要收到1次
+	qos:number,
+	// 消息是否持久化，就是指推送的消息是否保留在服务器上，供未来订阅者订阅时收到此前发送的消息。
+	retained:boolean
+};
+export type MQTT_CONNECT_OPTS = {
+	// web端不会起作用，由软件根据useSSL来判断是ws,wss,app需要指定是ws://,wss://,ssl://等
+	protocol : string,
+	// 连接的路径，如果没有就空值，有就填写比如:'/mqtt'
+	path : string,
+	// 客户端id
+	clientId : string,
+	// 服务器地址
+	server : string,
+	// 服务器端口
+	port : number,
+	// 用户名，没有为空
+	userName : string,
+	// 用户密码，没有为空
+	passWord : string,
+	// 是否使用加密连接，web端true时为wss,否则为ws协议
+	useSSL : boolean,
+	// 保持消息跳动的间隔
+	keepAliveInterval : number,
+	// 连接超时时间
+	timeout : number,
+	// 是否自动重连
+	reconnect : boolean,
+	// ios专用的p12证书密码,如果是ca证书则不需要
+	certPassword ?: string,
+	// ios下你放置在插件目录Resources内的证书名称,含后缀 如:ca.crt,ca.p12
+	certName ?: string
+};
+
+
+export type MQTT_EVENTS_CALL = {
+	type : MQTT_EVENT_TYPE,
+	value : MQTT_EVENT_CALL
+};

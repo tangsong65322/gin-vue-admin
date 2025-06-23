@@ -1,0 +1,68 @@
+import { TranslateLanguage, TranslatorOptions, Translator,ModelManager,ModelDownloadConditions} from "MLKitTranslate"
+function getTranslatorOpts(lang : string, target : string):TranslatorOptions{
+	let langopts = new Map<string,TranslateLanguage>([
+		['zh',TranslateLanguage.chinese],//中文
+		['en',TranslateLanguage.english],//英语
+		['ja',TranslateLanguage.japanese],//日本
+		['de',TranslateLanguage.german],//德国
+		['fr',TranslateLanguage.french],//法国
+		['ko',TranslateLanguage.korean],//韩国
+		['ru',TranslateLanguage.russian],//俄罗斯
+		['it',TranslateLanguage.italian],//意大利
+		['th',TranslateLanguage.thai],//泰国
+		['vi',TranslateLanguage.vietnamese],//越南语
+		['id',TranslateLanguage.indonesian],//印度尼西亚
+	])
+	let sou = langopts.get(lang)! as TranslateLanguage
+	let targ = langopts.get(target)! as TranslateLanguage
+	let options = TranslatorOptions(sourceLanguage = sou, targetLanguage = targ)
+
+	return options;
+}
+export function checkTranslateModeDonload(lang:string[],callback:(inlang:boolean)=>void){
+	let localModels = ModelManager.modelManager().downloadedTranslateModels
+	let langlist = [] as string[]
+	for(item in localModels){
+		let str = item.debugDescription.split(":") as string[];
+		let lg = str[str.length-1].trim()
+		langlist.push(lg)
+	}
+	if(langlist.length==0){
+		console.log('langauge:',langlist)
+		callback(false)
+	}
+	let isin = lang.some((el:string):boolean=>langlist.includes(el));
+	
+	callback(isin)
+}
+export function downloadTranslateMode(lang : string, target : string ,call:(ok:boolean)=>void) {
+	let options = getTranslatorOpts(lang,target)
+	let modoptions = ModelDownloadConditions(
+		allowsCellularAccess = false,
+		allowsBackgroundDownloading = true
+	)
+	let trator = Translator.translator(options= options)
+	trator.downloadModelIfNeeded(with= modoptions,completion=(error)=>{
+		console.log("tips:",error)
+		if(error!=null){
+			console.log("error:",error)
+			call(false)
+			return;
+		}
+		call(true)
+	})
+	ModelManager.modelManager().downloadedTranslateModels
+	call(true)
+}
+export function translate(text : string, lang : string, target : string,callback:(str:string)=>void) {
+	let options = getTranslatorOpts(lang,target)
+	let zhtoen = Translator.translator(options = options)
+	zhtoen.translate(text, completion = (translatedText, error) => {
+		if (error != null) {
+			console.log("error:", error)
+			callback("")
+			return;
+		}
+		callback(translatedText!)
+	})
+}

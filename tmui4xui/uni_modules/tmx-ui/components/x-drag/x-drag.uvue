@@ -1,0 +1,590 @@
+<script lang="ts">
+	import { type PropType, ref, computed } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { CHILDREN_INFO,CHILDREN_SIZE } from "../x-drag/interface.uts"
+	import {vibrator} from "@/uni_modules/x-vibrate-s"
+
+	
+	type POSITION = {
+		col : number,
+		row : number,
+		index : number
+	}
+	type POSITION_XY = {
+		x : number,
+		y : number
+	}
+	
+	type XDRAG_DOMRECT = {
+		width:number,
+		height:number,
+		left:number,
+		top:number,
+		right:number,
+		bottom:number,
+	}
+	/**
+	 * @name 拖拽排序 xDrag
+	 * @description 自由布局拖拽排序组件,列或者宫格都支持。使用时,需要将需要拖拽排序的子元素设置为x-drag-item。
+	 * 并且子元素和父元素不允许通过style来动态设置宽高,否则拖拽排序会失效。并且list及子元素中的order不允许动态设置,否则拖拽排序会失效。
+	 * 想要动态修改数据可以通过vif切换重新渲染下。web支持响应式屏幕。本插件：引用了原生插件x-vibrate-s
+	 * @page /pages/index/drag
+	 * @category 反馈组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */ 
+	export default {
+		data() {
+			return {
+				domlist: [] as CHILDREN_INFO[],
+				backckList: [] as string[],
+				oldList: [] as UTSJSONObject[],
+				activeIndex: -1,
+				targetIndex: -1,
+				
+				
+				
+				cellHeight: 0,
+				cellWidth: 0,
+				isMoveing: false,
+				
+				_x: 0,
+				_y: 0,
+				tid: 0,
+				oragie_x:0,
+				oragie_y:0,
+				scrollDiffTopJuli:0,
+				tid2:12,
+				oldStartXy:{col:0,row:0,index:0} as POSITION,
+				xdragRect:{
+					width:0,
+					height:0,
+					left:0,
+					top:0,
+					right:0,
+					bottom:0,
+				} as XDRAG_DOMRECT
+			}
+		},
+
+		emits: [
+			/**
+			 * 排序变动时触发
+			 * @param {UTSJSONObject[]} list - 当前变动后的数据列表
+			 */
+			"change",
+			/**
+			 * 拖动的时候触发,可以根据参数进行对你超出页面屏幕高时进行一个滚动.
+			 * @param {number} diff - 滚动的距离向上是-diff,向下是正
+			 */
+			"move",
+			"end",
+			"start",
+		],
+		props: {
+			/**
+			 * 项目的高度,不要动态更改。
+			 */
+			itemHeight: {
+				type: String,
+				default: "50"
+			},
+
+			/**
+			 * 列数，默认1即列表布局,不要动态更改。
+			 * 如果是1以上就是宫格布局了。
+			 */
+			col: {
+				type: Number,
+				default: 1
+			},
+
+			/**
+			 * 你的排序数据list，变动后，请通过change事件来取得
+			 * 主要是用来骗编译器用的。
+			 */
+			list: {
+				type: Array as PropType<UTSJSONObject[]>,
+				default: () : UTSJSONObject[] => [] as UTSJSONObject[],
+				required: true
+			},
+			/**
+			 * 当组件放置在scroll页面中,如果拖动时项目需要滚动时自动滚动的进步值
+			 * 比如组件在屏幕被底部或者顶部遮挡一部分,当拖动靠近底部时,会向下滚动的值.
+			 * 这个值是你外部自己通过设置滚动页面的scrollTop来达成的,具体见demo,已经为你写了示例.
+			 */
+			scrollDiff:{
+				type:Number,
+				default:25
+			}
+		},
+		computed: {
+			_rows() : number {
+				let row = Math.ceil(this.domlist.length / this.col)
+				return row
+			},
+			_cols() : number {
+				return this.col
+			},
+			_totalHeight() : number {
+				return this._rows * this.cellHeight
+			}
+		},
+		provide() {
+			return {
+				XDRAGE_HEIGHT: checkIsCssUnit(this.itemHeight, xConfig.unit),
+				XDRAGE_COL: this.col,
+				XDRAGE_MAX_LEN: this.list.length,
+			}
+		},
+		mounted() {
+			this.oldList = this.list.slice(0)
+			this.getXdrageDomRect();
+		},
+		updated() {
+			this.getXdrageDomRect()
+		},
+		methods: {
+			updataResize(resize:CHILDREN_SIZE){
+				this.cellHeight = resize.height
+				this.cellWidth = resize.width
+			},
+			addItem(item : CHILDREN_INFO) {
+				let index = this.domlist.findIndex((el : CHILDREN_INFO) : boolean => el.id == item.id)
+				if (index > -1) {
+					this.domlist.splice(index, 1, item)
+				} else {
+					this.domlist.push(item)
+				}
+
+				this.cellHeight = item.node.height!;
+				this.cellWidth = item.node.width!;
+
+			},
+			delItem(id : string) {
+				let index = this.domlist.findIndex((el : CHILDREN_INFO) : boolean => el.id == id)
+				if (index > -1) {
+					this.domlist.splice(index, 1)
+				}
+			},
+
+			indexTransformer(originalIndex : number) : number {
+				let detail = this.targetIndex - this.activeIndex;
+				if (detail > 0) {
+
+					return originalIndex - 1
+				}
+
+				return originalIndex + 1
+			},
+			getLastMaxCol():number{
+				// 计算总行数，虽然这里主要关注最后一行，但计算总行数是理解过程的一部分
+				const totalRows = Math.ceil(this.domlist.length / this.col);
+				
+				// 计算最后一行的列数，通过求余数得到
+				const lastRowColumns = this.domlist.length % this.col;
+				
+				// 如果最后一行是满列的（即余数为0），直接返回列数；否则返回实际的列数（余数）
+				return lastRowColumns === 0 ? this.col : lastRowColumns;
+			},
+			coverXy(x : number, y : number) : POSITION {
+				let maxRow = Math.floor((this.domlist.length - 1) / this.col);
+				let lastMacCol = this.getLastMaxCol();
+				let el = this.$refs["xDrag"] as UniElement;
+				let bounce = this.xdragRect;
+				// #ifdef APP||WEB
+				bounce = this.getByAppDomRect(el)
+				// #endif
+				let row = Math.floor((y - bounce.top!) / this.cellHeight)
+				let col = Math.floor((x - bounce.left!) / this.cellWidth)
+				
+				row = Math.min(Math.max(0, row), maxRow)
+				
+				col = Math.min(Math.max(0, col), this.col - 1)
+				
+				let index = (row + 1) * this.col - (this.col - col);
+			
+				col = maxRow == row ? Math.min(lastMacCol-1,col):col;
+				
+				index = Math.min(Math.max(0, index), this.domlist.length - 1)
+				
+				return {
+					row,
+					col,
+					index
+				} as POSITION
+			},
+
+			eventTransformer_start(evt : POSITION_XY) {
+				let t = this;
+				if(t.domlist.length==0) return;
+				this.backckList = this.domlist.map((el) : string => el.id)
+				
+				let x = evt.x;
+				let y = evt.y;
+				const startPos = this.coverXy(x, y);
+				this.activeIndex = startPos.index
+				this.targetIndex = this.activeIndex;
+				
+				
+				this.oldStartXy = startPos
+				let childrenIndex = this.domlist.findIndex((el) : boolean => el.id == this.backckList[this.activeIndex])
+				if (childrenIndex == -1) return;
+				let children = this.domlist[childrenIndex]!;
+				let childrenEle = children!.ele
+			
+				let childrenTop = parseFloat(childrenEle!.getStylSetProperty('top') as string);
+				let childrenLeft = parseFloat(childrenEle!.getStylSetProperty('left') as string);
+				childrenEle!.setStylSetProperty('transition-duration','0s')
+				childrenEle!.setStylSetProperty('z-index','5')
+			
+				this._x = x - childrenLeft;
+				this._y = y - childrenTop;
+				for (let i = 0; i < t.backckList.length; i++) {
+					let temdom = t.backckList[i]
+					let elIndex = t.domlist.findIndex((el) : boolean => el.id == temdom)
+					let el = t.domlist[elIndex];
+					el.ele!.setActivdId(children.id)
+				}
+				// #ifdef MP
+				t.domlist.forEach((el,index) : boolean => {
+					if(index != childrenIndex){
+						el!.ele.updatePos()
+					}
+				})
+				// #endif
+			},
+			eventTransformer_move(evt : POSITION_XY) {
+				let t = this;
+				if(t.domlist.length==0||t.backckList.length==0) return;
+				let x = evt.x;
+				let y = evt.y;
+				let el = this.$refs["xDrag"] as UniElement;
+				let childrenIndex = t.domlist.findIndex((el) : boolean => el.id == t.backckList[t.activeIndex])
+				if (childrenIndex == -1) return
+				let children = t.domlist[childrenIndex]!;
+				let childrenEle = children!.ele
+
+				let offsetY = y - t._y
+				let offsetX = x - t._x
+				
+				childrenEle!.setStylSetProperty('top', offsetY.toString() + 'px')
+				childrenEle!.setStylSetProperty('left', offsetX.toString() + 'px')
+				childrenEle!.setStylSetProperty('transition-duration','0s')
+				childrenEle!.setStylSetProperty('z-index','5')
+				
+				
+				
+				
+				let target = t.coverXy(x, y)
+				let targetIndex = target.index
+				let targetChildren = t.domlist[targetIndex]!;
+				// 如果目标位置是禁用项目，则不进行任何位置交换操作，直接返回
+				if(targetChildren.disabled){
+					return;
+				}
+				// 如果目标位置与当前位置相同，也不需要进行交换
+				if (targetIndex == t.activeIndex){
+					return;
+				}
+				this.oldStartXy = target
+				
+				let backChildrent = t.backckList.slice(0)[t.activeIndex];
+				let backTargChildren = t.backckList.slice(0)[targetIndex];
+				
+				t.targetIndex = targetIndex;
+				let backChildrent_model = t.oldList.slice(0)[t.activeIndex];
+				let backTargChildren_model = t.oldList.slice(0)[t.targetIndex];
+
+				t.backckList.splice(t.activeIndex, 1, backTargChildren)
+				t.backckList.splice(t.targetIndex, 1, backChildrent)
+
+				t.oldList.splice(t.activeIndex, 1, backTargChildren_model)
+				t.oldList.splice(t.targetIndex, 1, backChildrent_model)
+
+				for (let i = 0; i < t.backckList.length; i++) {
+					let temdom = t.backckList[i]
+					let elIndex = t.domlist.findIndex((el) : boolean => el.id == temdom)
+					let el = t.domlist[elIndex];
+					el.oldindex = el.index;
+					el.index = i;
+					el.ele!.setOrderIndex(i)
+				}
+				// #ifdef MP
+				t.domlist.forEach((el,index) : boolean => {
+					if(index != childrenIndex){
+						el!.ele.updatePos()
+					}
+				})
+				// #endif
+				t.activeIndex = t.targetIndex
+			},
+			eventTransformer_end(evt : POSITION_XY) {
+				let t = this;
+				
+				if(t.domlist.length==0||t.backckList.length==0) return;
+				
+				let x = evt.x;
+				let y = evt.y;
+				
+				let childrenIndex = t.domlist.findIndex((el) : boolean => el.id == t.backckList[t.activeIndex])
+				if (childrenIndex == -1) return
+				let children = t.domlist[childrenIndex]!;
+				let childrenEle = children!.ele
+				
+				let result = t.coverXy(x, y);
+				let targetChildren = t.domlist[result.index]!;
+				
+				
+				if(targetChildren.disabled){
+					result = this.oldStartXy 
+					
+				}
+				
+				
+				let col = result.col;
+				let row = result.row;
+				
+				
+				childrenEle!.setStylSetProperty('top', (this.cellHeight * row) + 'px')
+				childrenEle!.setStylSetProperty('left', (this.cellWidth * col) + 'px')
+
+				t.domlist.sort((ela, elb) : number => ela.index - elb.index)
+				for (let i = 0; i < t.domlist.length; i++) {
+					let temdom = t.domlist[i]
+					temdom.oldindex = temdom.index
+					temdom.index = i
+					temdom.ele!.setOrderIndex(i)
+					temdom.ele!.setActivdId("")
+					temdom.ele!.updateForce()
+					
+				}
+				// #ifdef MP
+				t.domlist.forEach((el,index) : boolean => {
+					if(index != childrenIndex){
+						el!.ele.updatePos()
+					}
+				})
+				// #endif
+
+				// this.activeIndex = -1;
+				// this.targetIndex = -1;
+				this.$emit('change', JSON.parseArray<UTSJSONObject>(JSON.stringify(this.oldList)!)!)
+			},
+
+			mStart(evt : UniTouchEvent) {
+				let x = evt.changedTouches[0].clientX;
+				let y = evt.changedTouches[0].clientY;
+				this.oragie_x = x
+				this.oragie_y = y
+				let tempActiveIndex = this.coverXy(x, y).index
+				if (tempActiveIndex == -1) return;
+				let children = this.domlist[tempActiveIndex]!;
+				if(children.disabled) return;
+				
+				this.getXdrageDomRect()
+				this.scrollDiffTopJuli = 0
+				clearTimeout(this.tid2)
+				this.isMoveing = true;
+				
+				vibrator(100)
+				this.eventTransformer_start({ x:x, y: y} as POSITION_XY)
+				this.$emit('start')
+				evt.preventDefault();
+				evt.stopPropagation();
+				
+			},
+			getXdrageDomRect(){
+				// #ifdef MP-WEIXIN
+				let t = this;
+				let el = this.$refs["xDrag"] as UniElement;
+				el.getBoundingClientRectAsync()
+				.then(res=>{
+					t.xdragRect = {
+						width:res.width,
+						height:res.height,
+						left:res.left,
+						right:res.right,
+						top:res.top,
+						bottom:res.bottom,
+					} as XDRAG_DOMRECT
+				})
+				// #endif
+			},
+			getByAppDomRect(ele:UniElement):XDRAG_DOMRECT{
+				
+				let rect = {
+					width:0,
+					height:0,
+					left:0,
+					right:0,
+					top:0,
+					bottom:0,
+				} as XDRAG_DOMRECT
+				// #ifdef APP || WEB
+				let res = ele.getBoundingClientRect();
+				rect = {
+					width:res.width,
+					height:res.height,
+					left:res.left,
+					right:res.right,
+					top:res.top,
+					bottom:res.bottom,
+				} as XDRAG_DOMRECT
+				// #endif
+				return rect
+			},
+			mMove(evt : UniTouchEvent) {
+				if (!this.isMoveing || this.activeIndex == -1) return;
+				let x = evt.changedTouches[0].clientX+this.scrollDiffTopJuli;
+				let y = evt.changedTouches[0].clientY;
+				
+				
+				
+				evt.preventDefault();
+				evt.stopPropagation();
+				this.eventTransformer_move({ x: x, y:y } as POSITION_XY)
+				let el = this.$refs["xDrag"] as UniElement;
+				let bounce = this.xdragRect ;
+				// #ifdef APP||WEB
+				bounce = this.getByAppDomRect(el)
+				// #endif
+				let maxheight = uni.getWindowInfo().windowHeight
+				let diffBottom = Math.abs(bounce.bottom - maxheight)
+				let _this = this;
+				// #ifdef APP||WEB
+				clearTimeout(_this.tid2)
+				_this.tid2 = setTimeout(()=>{
+					// 可见区域尾部在下面,向下滚动
+					if(bounce.bottom - maxheight>0&&diffBottom>25){
+						this.$emit('move',_this.scrollDiff)
+						_this.scrollDiffTopJuli+=_this.scrollDiff
+					}else if(bounce.top<0&&Math.abs(bounce.top)>25){
+						this.$emit('move',_this.scrollDiff*-1)
+						_this.scrollDiffTopJuli-=_this.scrollDiff
+					}
+				},200)
+				// #endif
+				
+				// #ifdef MP-WEIXIN
+				clearTimeout(_this.tid2)
+				_this.tid2 = setTimeout(async ()=>{
+					bounce = await el.getBoundingClientRectAsync();
+					diffBottom = Math.abs(bounce.bottom - maxheight)
+				
+					// 可见区域尾部在下面,向下滚动
+					if(bounce.bottom - maxheight>0&&diffBottom>25){
+						this.$emit('move',_this.scrollDiff)
+						_this.scrollDiffTopJuli+=_this.scrollDiff
+					}else if(bounce.top<0&&Math.abs(bounce.top)>25){
+						this.$emit('move',_this.scrollDiff*-1)
+						_this.scrollDiffTopJuli-=_this.scrollDiff
+					}
+				},200)
+				
+				// #endif
+				
+			},
+			mEnd(evt : UniTouchEvent) {
+				this.scrollDiffTopJuli = 0
+				clearTimeout(this.tid2)
+				this.$emit('end')
+				if (!this.isMoveing) return;
+				this.isMoveing = false;
+				let x = evt.changedTouches[0].clientX;
+				let y = evt.changedTouches[0].clientY;
+				// console.log(x,y)
+				// let offsetY = this.oragie_y-y
+				// let offsetX = this.oragie_x-x
+				
+				// if(offsetY==offsetX&&offsetY==0) {
+				// 	this.activeIndex = -1;
+				// 	this.targetIndex = -1;
+				// 	return;
+				// }
+				this.eventTransformer_end({ x: x, y: y } as POSITION_XY)
+			},
+			// #ifdef WEB
+			mmStart(evt : UniMouseEvent) {
+				let x = evt.clientX;
+				let y = evt.clientY;
+				let tempActiveIndex = this.coverXy(x, y).index
+				if (tempActiveIndex == -1) return;
+				let children = this.domlist[tempActiveIndex]!;
+				if(children.disabled) return;
+				
+				this.isMoveing = true;
+				this.eventTransformer_start({ x: x, y: y } as POSITION_XY)
+				this.$emit('start')
+			},
+			mmMove(evt : UniMouseEvent) {
+				if (!this.isMoveing || this.activeIndex == -1) return;
+				evt.preventDefault();
+				this.eventTransformer_move({ x: evt.clientX, y: evt.clientY } as POSITION_XY)
+				
+				let el = this.$refs["xDrag"] as UniElement;
+				let bounce = this.xdragRect;
+				// #ifdef APP||WEB
+				bounce = this.getByAppDomRect(el)
+				// #endif
+				let maxheight = uni.getWindowInfo().windowHeight
+				let diffBottom = Math.abs(bounce.bottom - maxheight)
+				let _this = this;
+				clearTimeout(_this.tid2)
+				_this.tid2 = setTimeout(()=>{
+					// 可见区域尾部在下面,向下滚动
+					if(bounce.bottom - maxheight>0&&diffBottom>25){
+						this.$emit('move',_this.scrollDiff)
+						_this.scrollDiffTopJuli+=_this.scrollDiff
+					}else if(bounce.top<0&&Math.abs(bounce.top)>25){
+						this.$emit('move',_this.scrollDiff*-1)
+						_this.scrollDiffTopJuli-=_this.scrollDiff
+					}
+				},200)
+				
+			},
+			mmEnd(evt : UniMouseEvent) {
+				this.$emit('end')
+				if (!this.isMoveing) return;
+				this.isMoveing = false;
+				this.eventTransformer_end({ x: evt.clientX, y: evt.clientY } as POSITION_XY)
+			}
+			// #endif
+		}
+	}
+</script>
+<template>
+	<view class="xDrag" ref="xDrag" 
+		<!-- #ifdef APP -->
+		@longpress="mStart"
+		<!-- #endif -->
+		<!-- #ifdef MP||H5 -->
+		@touchstart.stop="mStart"
+		<!-- #endif -->
+		@touchmove.stop="mMove" 
+		@touchend="mEnd" 
+		@touchcancel="mEnd" 
+		<!-- #ifdef WEB -->
+		@mousedown="mmStart"
+		@mousemove.stop="mmMove"
+		@mouseup="mmEnd"
+		@mouseleave="mmEnd"
+		<!-- #endif -->
+		:style="{height:_totalHeight+'px'}">
+		<!-- 
+		@slot 只可放置子组件x-drag-item 
+		 -->
+		<slot></slot>
+	</view>
+</template>
+<style scoped>
+	.xDrag {
+		position: relative;
+	}
+
+</style>

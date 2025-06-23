@@ -1,0 +1,936 @@
+import CameraManager from 'android.hardware.camera2.CameraManager'
+import CameraDevice from 'android.hardware.camera2.CameraDevice'
+import StateCallback from 'android.hardware.camera2.CameraDevice.StateCallback'
+import CameraCaptureSession from 'android.hardware.camera2.CameraCaptureSession'
+
+import CaptureRequest from 'android.hardware.camera2.CaptureRequest'
+import TotalCaptureResult from 'android.hardware.camera2.TotalCaptureResult'
+import StreamConfigurationMap from 'android.hardware.camera2.params.StreamConfigurationMap'
+import MeteringRectangle from 'android.hardware.camera2.params.MeteringRectangle'
+import OutputConfiguration from 'android.hardware.camera2.params.OutputConfiguration'
+import SessionConfiguration from 'android.hardware.camera2.params.SessionConfiguration'
+import CameraCharacteristics from 'android.hardware.camera2.CameraCharacteristics'
+import CameraMetadata from 'android.hardware.camera2.CameraMetadata'
+
+
+import ImageFormat from 'android.graphics.ImageFormat'
+import Size from 'android.util.Size'
+import SurfaceTexture from 'android.graphics.SurfaceTexture'
+import Handler from 'android.os.Handler'
+import Surface from 'android.view.Surface'
+import Image from 'android.media.Image'
+import LinearLayout from 'android.widget.LinearLayout';
+import Intent from 'android.content.Intent';
+import Integer from 'java.lang.Integer';
+import ByteOrder from 'java.nio.ByteOrder';
+
+import SurfaceHolder from 'android.view.SurfaceHolder'
+import SurfaceView from 'android.view.SurfaceView'
+import TextureView from 'android.view.TextureView'
+import View from 'android.view.View'
+import ViewGroup from 'android.view.ViewGroup'
+import Context from 'android.content.Context'
+import Manifest from "android.Manifest";
+import Uri from 'android.net.Uri';
+import File from 'java.io.File'
+import System from 'java.lang.System'
+import Activity from 'android.app.Activity';
+import Bundle from 'android.os.Bundle';
+import Intent from 'android.content.Intent';
+import IntentFilter from 'android.content.IntentFilter';
+import R from 'io.dcloud.uni_modules.xMlkitScannigS.R';
+import Rect from 'android.graphics.Rect';
+import Matrix from 'android.graphics.Matrix'
+import ImageReader from 'android.media.ImageReader'
+import ByteBuffer from 'java.nio.ByteBuffer'
+import MediaStore from 'android.provider.MediaStore'
+import Plane from 'android.media.Image.Plane'
+import Bitmap from "android.graphics.Bitmap"
+import BitmapFactory from "android.graphics.BitmapFactory"
+import Vibrator from "android.os.Vibrator"
+import Animation from "android.view.animation.Animation"
+import ScaleAnimation from "android.view.animation.ScaleAnimation"
+import AnimationUtils from "android.view.animation.AnimationUtils"
+
+
+import Color from "android.graphics.Color"
+import Window from "android.view.Window"
+import WindowManager from "android.view.WindowManager"
+import TextView from "android.widget.TextView"
+import RelativeLayout from "android.widget.RelativeLayout"
+import ImageView from "android.widget.ImageView"
+import Bundle from 'android.os.Bundle'
+import Handler from 'android.os.Handler'
+import HandlerThread from 'android.os.HandlerThread'
+import YuvImage from 'android.graphics.YuvImage'
+import ByteArrayOutputStream from 'java.io.ByteArrayOutputStream'
+import GradientDrawable from 'android.graphics.drawable.GradientDrawable'
+import MotionEvent from 'android.view.MotionEvent';
+import { decoderUriPathToQr, decoderBuffToQr,decoderUriPathToQrByUri } from "./index.uts"
+import { SCANNING_PHOTO_RESULT } from "../interface.uts"
+import xView from "./libview/view.uts"
+import Gravity from 'android.view.Gravity';
+
+// x
+import ProcessCameraProvider from "androidx.camera.lifecycle.ProcessCameraProvider"
+import PreviewView from "androidx.camera.view.PreviewView"
+import CameraController from "androidx.camera.view.CameraController"
+import CameraSelector from "androidx.camera.core.CameraSelector"
+import Preview from 'androidx.camera.core.Preview'
+import Camera from 'androidx.camera.core.Camera'
+import LifecycleObserver from "androidx.lifecycle.LifecycleObserver"
+import LifecycleOwner from "androidx.lifecycle.LifecycleOwner"
+import OnLifecycleEvent from "androidx.lifecycle.OnLifecycleEvent"
+import ImageAnalysis from 'androidx.camera.core.ImageAnalysis'
+import ImageProxy from 'androidx.camera.core.ImageProxy'
+import NonNull from 'androidx.annotation.NonNull'
+import ExecutorService from 'java.util.concurrent.ExecutorService'
+import Executors from 'java.util.concurrent.Executors'
+import ContextCompat from 'androidx.core.content.ContextCompat';
+import LifecycleRegistry from "androidx.lifecycle.LifecycleRegistry"
+import Lifecycle from "androidx.lifecycle.Lifecycle"
+
+
+type Dimension = number[];
+let textStr = null as null | string
+function findClosestRatio(dimensions : Dimension[], targetWidth : number, targetHeight : number) : Dimension | null {
+	let minDiff = Integer.MAX_VALUE;
+	let closestPair : Dimension | null = null;
+
+	for (let i = 0; i < dimensions.length; i++) {
+		const width = dimensions[i][0]!
+		const height = dimensions[i][1]!
+		const currentRatio = width / height;
+		const targetRatio = targetWidth / targetHeight;
+		
+		// const diff = Math.abs(currentRatio - targetRatio);
+		const diff = Math.abs(width - targetWidth) + Math.abs(height - targetHeight);
+		if (diff < minDiff) {
+			minDiff = diff.toInt();
+			closestPair = [width, height];
+		}
+	}
+	
+	return closestPair;
+}
+
+
+
+class DemoActivity extends Activity implements LifecycleOwner {
+	scanSpeed = 500 //识别速度单位ms
+	scanPrevwSize = 800 //预期识别的像素大小，这是预期，会根据这个值找到相机支持的相近的相机尺寸。
+	lifecycleRegistry:LifecycleRegistry|null = null
+	context : Context;
+	camera_service : CameraManager;
+	cameraPermissioPass = false;
+	camerManIds = null as string | null
+	cameraDevice = null as null | CameraDevice
+	preview = null as null | LinearLayout;
+	captureSession = null as null | CameraCaptureSession
+	
+	// 相机区域视图
+	cameraView : PreviewView | null = null;
+	cameraProvider : ProcessCameraProvider | null = null
+	camera : Camera | null = null;
+	cameraPreview : Preview | null = null;
+	
+	
+
+	previewWidth = 0 as Int;
+	previewHeight = 0 as Int;
+	prviewTop = 0
+	prviewLeft = 0
+	okScal = [0, 0] as Dimension
+	imageHandler = null as null | Handler;
+
+	isDecodreIng = false
+
+	scanBoxView = null as null | View
+	scanBoxViewDrawble = null as null | GradientDrawable
+	//选择相册按钮
+	xiangCeBtn = null as TextView | null
+	paiZhaoBtn = null as TextView | null
+	shaoyishaoBtn = null as TextView | null
+
+	//相册的标识点容器
+	xiangjiBox = null as RelativeLayout | null
+
+	//相册图片预览父viewout
+	imageYuranBox = null as RelativeLayout | null
+	imageYuranBox_width = 0 as Int;
+	imageYuranBox_height = 0 as Int;
+	imageView = null as null | ImageView
+	imageUrl = null as null | Uri
+	isSelectedImging = false;
+
+	// 结果集的标注点。
+	imgPoints = [] as RelativeLayout[]
+	imgPointsBycanmarea = [] as RelativeLayout[]
+
+	ORIENTATIONS = new Map<Number, Number>()
+	// 当前是否正在扫码中
+	isScannig = true
+
+	tid = 0;
+	
+	vibrator = null as null|Vibrator
+	
+	constructor() {
+		super();
+		this.context = UTSAndroid.getAppContext() as Context;
+		this.camera_service = this.context!.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+		this.ORIENTATIONS.set(Surface.ROTATION_0, 0)
+		this.ORIENTATIONS.set(Surface.ROTATION_90, 90)
+		this.ORIENTATIONS.set(Surface.ROTATION_180, 180)
+		this.ORIENTATIONS.set(Surface.ROTATION_270, 270)
+		
+		// 在你的Activity或者Fragment中
+		this.vibrator = this.context!.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator;
+		
+		
+	}
+
+
+	override onCreate(savedInstanceState ?: Bundle) : void {
+		super.onCreate(savedInstanceState)
+		this.lifecycleRegistry = new LifecycleRegistry(this);
+		this.lifecycleRegistry!.markState(Lifecycle.State.CREATED);
+				
+		this.hideTitleBar()
+		this.setContentView(R.layout.demo_activity);
+		
+		this.overridePendingTransition(R.anim.enter_anim, R.anim.exit_anim);
+		
+		this.preview = this.findViewById<LinearLayout>(R.id.surface_camera_box);
+		this.preview!.removeView(this.findViewById<SurfaceView>(R.id.surface_camera))
+		
+		this.xiangCeBtn = this.findViewById<TextView>(R.id.footer_asml);
+		this.paiZhaoBtn = this.findViewById<TextView>(R.id.footer_camre);
+		this.shaoyishaoBtn = this.findViewById<TextView>(R.id.footer_scanning);
+		//相机的图片预览
+		this.imageYuranBox = this.findViewById<RelativeLayout>(R.id.scan_box);
+		//相机的遮罩标记点的容器
+		
+		
+		this.xiangjiBox = this.findViewById<RelativeLayout>(R.id.camre_center_preview)
+		
+		let t = this;
+		
+
+		this.steBtnLisents()
+
+
+		// 创建图片预览的组件。
+		this.imageView = new ImageView(this.context);
+		this.imageView!.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+		this.imageYuranBox!.addView(this.imageView)
+
+
+		let layoutParams = new LinearLayout.LayoutParams(
+			LinearLayout.LayoutParams.MATCH_PARENT,
+			LinearLayout.LayoutParams.WRAP_CONTENT
+		)
+
+		
+		this._createCameraView()
+
+
+		//监听尺寸变化。
+		class previewChangeRectadd extends View.OnLayoutChangeListener {
+			override onLayoutChange(v : View, left : Int, top : Int, right : Int, bottom : Int,
+				oldLeft : Int, oldTop : Int, oldRight : Int, oldBottom : Int
+			) {
+				t.imageYuranBox_width = right - left;
+				t.imageYuranBox_height = bottom - top;
+				v.removeOnLayoutChangeListener(this);
+			}
+		}
+		this.imageYuranBox!.addOnLayoutChangeListener(new previewChangeRectadd())
+
+
+		// this.scanBoxView = this.findViewById<View>(R.id.scan_view_canvas);
+		// this.scanBoxViewDrawble = new GradientDrawable();
+		// this.scanBoxView.setOnDragListener
+		// this.customStyleSacnBox();
+
+	}
+	
+	/** 创建相机预览区域 */
+	private _createCameraView() {
+	
+		let sv = new PreviewView(this.context)
+		sv.scaleType = PreviewView.ScaleType.FILL_CENTER
+		// 让相机的高和宽与组件对齐。
+		let layaout = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+		sv.setLayoutParams(layaout)
+		this.cameraView = sv;
+	
+		this.preview!.addView(this.cameraView!)
+	}
+	
+	steBtnLisents() {
+		let t = this;
+		class xiangCheCallClick extends View.OnClickListener {
+			override  onClick(v ?: View) : void {
+				t.closeCamra()
+				t.isSelectedImging = true;
+			
+				let intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+				t.startActivityForResult(intent, 1)
+			}
+		}
+		// 相同选择时。
+		this.xiangCeBtn!.setOnClickListener(new xiangCheCallClick())
+
+
+		class shaoyishaoBtnCallClick extends View.OnClickListener {
+			override  onClick(v ?: View) : void {
+				t.isSelectedImging = false;
+				t.clearImageView()
+				t.openCamra();
+			}
+		}
+		//实时扫一扫时
+		this.shaoyishaoBtn!.setOnClickListener(new shaoyishaoBtnCallClick())
+
+		let backBtn = this.findViewById<TextView>(R.id.header_back);
+
+		class backCallClick extends View.OnClickListener {
+			override  onClick(v ?: View) : void {
+				t.finish()
+				t.overridePendingTransition(R.anim.enter_anim, R.anim.exit_anim);
+			}
+		}
+		//实时扫一扫时
+		backBtn!.setOnClickListener(new backCallClick())
+
+	}
+	// 设置扫码框的样式。
+	customStyleSacnBox() {
+		if (this.scanBoxView == null) return;
+		// this.scanBoxViewDrawble!.setShape(GradientDrawable.RECTANGLE)
+		// this.scanBoxViewDrawble!.setStroke((4).toInt(),Color.GREEN)
+		// this.scanBoxViewDrawble!.mutate()
+		// this.scanBoxView!.setBackground(this!.scanBoxViewDrawble)
+	}
+	//震动手机
+	vibatarLong(){
+		if(this.vibrator == null) return
+		// 检查设备是否支持震动
+		if (this.vibrator!.hasVibrator()) {
+		    // 触发短暂的震动，持续时间为200毫秒
+		    this.vibrator!.vibrate(80);
+		}
+	}
+
+	// 在需要隐藏标题栏的地方调用
+	hideTitleBar() : void {
+		requestWindowFeature(Window.FEATURE_NO_TITLE);
+		this.getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
+	}
+
+	// 在需要显示标题栏的地方调用
+	showTitleBar() : void {
+		this.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+	}
+
+	/**
+	 * 检查相机权限
+	 */
+	isCheckPermissions() : Promise<boolean> {
+		let permissionCheck = ["android.permission.CAMERA"]
+		// 请求拍照权限
+		return new Promise(res => {
+			if (UTSAndroid.checkSystemPermissionGranted(UTSAndroid.getUniActivity()!, permissionCheck)) {
+				console.log("当前已具备指定权限")
+				this.cameraPermissioPass = true
+				res(true)
+			} else {
+				console.log("当前不具备指定权限")
+				// 请求拍照权限
+				UTSAndroid.requestSystemPermission(UTSAndroid.getUniActivity()!, permissionCheck, function (allRight : boolean, _ : string[]) {
+					this.cameraPermissioPass = allRight
+					res(true)
+				}, function (_ : boolean, _ : string[]) {
+					//用户拒绝了部分权限
+					this.cameraPermissioPass = false
+					res(false)
+				})
+			}
+		})
+	}
+
+
+	
+	// 设置相机对焦模式
+	// setCamraFoucsAuto(){
+	// 	let cameraManager = this.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+	// 	let characteristics = cameraManager.getCameraCharacteristics(this.camerManIds!)
+	// 	// console.log(CaptureRequest.CONTROL_AF_MODE)
+	// 	captureRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CameraMetadata.CONTROL_AF_MODE_CONTINUOUS_VIDEO);
+	// }
+	// 获取当前相机的旋转角度。
+	getCamraRotation() : Int {
+		
+		return 0
+	}
+
+	YUV42088ToNV21(image : Image) : ByteArray {
+		// 获取图像的宽度、高度以及各平面的行间距
+		let width = image.getWidth();
+		let height = image.getHeight();
+		// 获取各平面的数据与信息
+		let planes = image.getPlanes();
+		let yBuffer = planes[0].getBuffer().duplicate();
+		let uBuffer = planes[1].getBuffer().duplicate();
+		let vBuffer = planes[2].getBuffer().duplicate();
+		
+		yBuffer.rewind();
+		uBuffer.rewind();
+		vBuffer.rewind();
+
+		
+		let yRowStride = planes[0].getRowStride();
+		let uvRowStride = planes[1].getRowStride();
+		let uvPixelStride = planes[1].getPixelStride(); // U 和 V 的像素间距通常是一样的
+
+		// 创建一个足够大的NV21输出数组
+		let nv21Data = new ByteArray(width * height * 3 / 2);
+
+		// 指针用于遍历输出数组
+		let yIndex = 0;
+		let uvIndex = width * height;
+		let bytesPerPixel = 1
+		try {
+			// 遍历Y平面
+			for (let row = 0; row < height; row++) {
+				for (let col = 0; col < width; col++) {
+					nv21Data[(yIndex++).toInt()] = yBuffer.get();
+				}
+				// 跳过未使用的行数据（如果有）
+				let rowRemainder = yRowStride - width * bytesPerPixel;
+
+				if (rowRemainder > 0) {
+					yBuffer.position((yBuffer.position() + rowRemainder).toInt());
+				} else {
+					yBuffer.position((yBuffer.position() + width * bytesPerPixel).toInt()); // 防止由于计算错误导致的负数
+				}
+
+			}
+		} catch (e) {
+			//TODO handle the exception
+		}
+		// // 处理UV平面
+		try {
+			for (let row = 0; row < height / 2; row++) {
+				for (let col = 0; col < width / 2; col++) {
+					// 先读取U分量
+					nv21Data[uvIndex++] = uBuffer.get();
+					// 如果UV像素不是交错存储，则跳过一个位置
+					if (uvPixelStride == 2) {
+						uBuffer.position(uBuffer.position() + 1);
+					}
+
+					// 再读取V分量
+					nv21Data[uvIndex++] = vBuffer.get();
+					// 如果UV像素是交错存储，这里也需要相应调整位置
+					if (uvPixelStride == 2) {
+						vBuffer.position(vBuffer.position() + 1);
+					}
+				}
+				// 跳过未使用的行数据（如果有）
+				let uvRowSkip = uvRowStride - (width / 2) * uvPixelStride;
+				if (uvRowSkip > 0) {
+					uBuffer.position(uBuffer.position() + uvRowSkip);
+					vBuffer.position(vBuffer.position() + uvRowSkip);
+				}
+			}
+		} catch (e) {
+			//TODO handle the exception
+		}
+		return nv21Data;
+	}
+	
+	YUV42088ToNV21Copy(a:ByteBuffer,b:ByteBuffer,c:ByteBuffer,widths:number,heights:number,yr:number,ur:number,vr:number) : ByteArray {
+		// 获取图像的宽度、高度以及各平面的行间距
+		let width = widths
+		let height = heights;
+		// 获取各平面的数据与信息
+	
+		let yBuffer = a;
+		let uBuffer = b;
+		let vBuffer = c;
+		
+		yBuffer.rewind();
+		uBuffer.rewind();
+		vBuffer.rewind();
+		
+		let yRowStride = yr;
+		let uvRowStride = ur;
+		let uvPixelStride = vr; // U 和 V 的像素间距通常是一样的
+	
+		// 创建一个足够大的NV21输出数组
+		let nv21Data = new ByteArray((width * height * 3 / 2).toInt());
+	
+		// 指针用于遍历输出数组
+		let yIndex = 0;
+		let uvIndex = width * height;
+		let bytesPerPixel = 1
+		try {
+			// 遍历Y平面
+			for (let row = 0; row < height; row++) {
+				for (let col = 0; col < width; col++) {
+					nv21Data[(yIndex++).toInt()] = yBuffer.get();
+				}
+				// 跳过未使用的行数据（如果有）
+				let rowRemainder = yRowStride - width * bytesPerPixel;
+	
+				if (rowRemainder > 0) {
+					yBuffer.position((yBuffer.position() + rowRemainder).toInt());
+				} else {
+					yBuffer.position((yBuffer.position() + width * bytesPerPixel).toInt()); // 防止由于计算错误导致的负数
+				}
+	
+			}
+		} catch (e) {
+			//TODO handle the exception
+		}
+		// // 处理UV平面
+		try {
+			for (let row = 0; row < height / 2; row++) {
+				for (let col = 0; col < width / 2; col++) {
+					// 先读取U分量
+					nv21Data[(uvIndex++).toInt()] = uBuffer.get();
+					// 如果UV像素不是交错存储，则跳过一个位置
+					if (uvPixelStride == 2) {
+						uBuffer.position((uBuffer.position() + 1).toInt());
+					}
+	
+					// 再读取V分量
+					nv21Data[(uvIndex++).toInt()] = vBuffer.get();
+					// 如果UV像素是交错存储，这里也需要相应调整位置
+					if (uvPixelStride == 2) {
+						vBuffer.position((vBuffer.position() + 1).toInt());
+					}
+				}
+				// 跳过未使用的行数据（如果有）
+				let uvRowSkip = uvRowStride - (width / 2) * uvPixelStride;
+				if (uvRowSkip > 0) {
+					uBuffer.position((uBuffer.position() + uvRowSkip).toInt());
+					vBuffer.position((vBuffer.position() + uvRowSkip).toInt());
+				}
+			}
+		} catch (e) {
+			//TODO handle the exception
+		}
+		return nv21Data;
+	}
+	
+	copyImagePlan(plane:Plane):ByteBuffer{
+		// 创建一个新的ByteBuffer来存储复制的数据
+		let copiedBuffer = ByteBuffer.allocateDirect(plane.getBuffer().capacity());
+		copiedBuffer.order(ByteOrder.nativeOrder()); // 确保字节顺序与原Buffer一致
+		
+		// 将原始Plane的ByteBuffer内容复制到新的ByteBuffer中
+		plane.getBuffer().rewind(); // 移动缓冲区指针到开始位置（可选，如果已经知道在开始处则无需此步）
+		copiedBuffer.put(plane.getBuffer());
+		
+		// 复制完成后，可以移动新ByteBuffer的指针回到起始位置以便读取
+		copiedBuffer.rewind();
+		
+		return copiedBuffer
+	}
+	getCorrectionMatrix(imageProxy : ImageProxy, previewView : PreviewView) : Matrix {
+		let cropRect = imageProxy.cropRect
+		let rotationDegrees = imageProxy.imageInfo.rotationDegrees
+		let matrix = new Matrix()
+	
+		// A float array of the source vertices (crop rect) in clockwise order.
+		new FloatArray(8)
+		let source = floatArrayOf(cropRect.left.toFloat(),
+			cropRect.top.toFloat(),
+			cropRect.right.toFloat(),
+			cropRect.top.toFloat(),
+			cropRect.right.toFloat(),
+			cropRect.bottom.toFloat(),
+			cropRect.left.toFloat(),
+			cropRect.bottom.toFloat())
+	
+		let d0 = (0).toFloat()
+		// A float array of the destination vertices in clockwise order.
+		let destination = floatArrayOf(d0,
+			d0,
+			previewView.width.toFloat(),
+			d0,
+			previewView.width.toFloat(),
+			previewView.height.toFloat(),
+			d0,
+			previewView.height.toFloat())
+	
+		// The destination vertexes need to be shifted based on rotation degrees. The
+		// rotation degree represents the clockwise rotation needed to correct the image.
+	
+		// Each vertex is represented by 2 float numbers in the vertices array.
+		let vertexSize = 2
+		// The destination needs to be shifted 1 vertex for every 90° rotation.
+		let shiftOffset = rotationDegrees / 90 * vertexSize;
+		let tempArray = destination.clone()
+		for (toIndex in source.indices) {
+			let fromIndex = (toIndex + shiftOffset) % source.size
+			destination[toIndex] = tempArray[fromIndex.toInt()]
+		}
+		let success = matrix.setPolyToPoly(source, 0, destination, 0, 4)
+	
+		return matrix
+	}
+	
+	qrDecoder(img : ImageProxy) {
+		let t = this;
+		let image = img.getImage();
+		if (!this.isDecodreIng&&image!=null) {
+			this.isDecodreIng = true;
+			let width = image.getWidth();
+			let height = image.getHeight();
+			
+			// 获取各平面的数据与信息
+			let planes = image.getPlanes();
+			
+			let a = this.copyImagePlan(planes[0]);
+			let b = this.copyImagePlan(planes[1]);
+			let c = this.copyImagePlan(planes[2]);
+			let yr = planes[0].getRowStride()
+			let ur = planes[1].getRowStride()
+			let vr = planes[1].getPixelStride()
+			
+			let starttime = new Date().getTime()
+			
+			let av = this.YUV42088ToNV21Copy(a,b,c,width,height,yr,ur,vr)
+			decoderBuffToQr(av, width, height, this.getCamraRotation())
+				.then((res) => {
+					if (res != null&&t.isScannig ) {
+						let matrix = t.getCorrectionMatrix(img, t.cameraView!)
+						if (res.text.length > 0) {
+							t.vibatarLong()
+						
+							
+							
+							let ruslt = res as SCANNING_PHOTO_RESULT;
+							for (let i = 0; i < ruslt.bounds.length; i++) {
+								let item = ruslt.bounds[i]
+								let ponit = floatArrayOf(item.centerX.toFloat(), item.centerY.toFloat())
+							
+								matrix.mapPoints(ponit)
+							
+								item.centerX = ponit[0]
+								item.centerY = ponit[1]
+							
+							}
+							
+							t.setImageViewRusletBox(t.previewWidth, t.previewWidth, width, height, ruslt)
+							uni.setStorageSync('xMlkitScannigUResult_time_start', 'end:'+(new Date().getTime() - starttime).toString()+'ms')
+							t.closeCamra()
+							
+							
+							if (ruslt.text.length == 1) {
+								uni.setStorageSync('xMlkitScannigUResult', ruslt.text[0])
+								t.finish();
+								t.overridePendingTransition(R.anim.enter_anim, R.anim.exit_anim);
+							}
+
+						}
+					}
+					// image.close();
+				})
+				.catch(() => {
+					// this.imageUrl = null
+				})
+			setTimeout(function () {
+				this.isDecodreIng = false
+			}, this.scanSpeed);
+	
+		}
+		img.close();
+	}
+	closeCamra() {
+		
+		
+		
+		this.cameraProvider?.unbindAll()
+		this.cameraPreview?.setSurfaceProvider(null)
+	
+		
+		
+		this.clearImageView()
+	
+	}
+
+	openCamra() {
+		let t = this;
+		if (this.captureSession != null) {
+			return;
+		}
+		
+		if (t.previewWidth == 0) {
+			//监听尺寸变化。
+			class previewChangeRectadd extends View.OnLayoutChangeListener {
+				override onLayoutChange(v : View, left : Int, top : Int, right : Int, bottom : Int,
+					oldLeft : Int, oldTop : Int, oldRight : Int, oldBottom : Int
+				) {
+					t.previewWidth = right - left;
+					t.previewHeight = bottom - top;
+					t.prviewTop = top
+					t.prviewLeft = left
+					v.removeOnLayoutChangeListener(this);
+					t.isCheckPermissions()
+						.then(() => {
+							let layoutParams = t.preview!.getLayoutParams() as ViewGroup.LayoutParams
+							layoutParams.height = t.previewWidth
+							t.preview!.layoutParams = layoutParams;
+
+
+
+							let layoutParamsbx = t.xiangjiBox!.getLayoutParams() as ViewGroup.LayoutParams
+							layoutParamsbx.height = t.previewWidth
+							t.xiangjiBox!.layoutParams = layoutParamsbx;
+
+
+							t.closeCamra();
+							t.openCamrae();
+						})
+				}
+			}
+
+			this.preview!.addOnLayoutChangeListener(new previewChangeRectadd())
+		} else {
+			t.isScannig = true
+			t.closeCamra();
+			t.openCamrae();
+		}
+	}
+
+	// 设置图片上的小圆的识别位置。
+	setImageViewRusletBox(width : number, height : number, realWidth : number, realHeight : number, jieguo : SCANNING_PHOTO_RESULT) {
+		let t = this;
+		let wRatio = width / realWidth;
+		let hRatio = height / realHeight;
+		let btnwidth = 100;
+		let btnwidth2 = 50;
+		
+		this.imageYuranBox!.setBackgroundColor(Color.argb(0,0,0,0))
+		this.xiangjiBox!.setBackgroundColor(Color.argb(0,0,0,0))
+		for (let i = 0; i < jieguo.bounds.length; i++) {
+			let item = jieguo.bounds[i];
+			let layoutParams = new LinearLayout.LayoutParams(
+				LinearLayout.LayoutParams.WRAP_CONTENT,
+				LinearLayout.LayoutParams.WRAP_CONTENT
+			)
+			
+			
+			if (this.isScannig) {
+				layoutParams.topMargin = (item.centerY- btnwidth2).toInt() // 设置顶部边距
+				layoutParams.leftMargin = (item.centerX- btnwidth2).toInt() // 设置左边距
+			} else {
+				layoutParams.topMargin = (hRatio * item.centerY-btnwidth2).toInt() // 设置顶部边距
+				layoutParams.leftMargin = (wRatio * item.centerX-btnwidth2).toInt() // 设置左边距
+			}
+			let relativeLayout = new RelativeLayout(t.context)
+			relativeLayout.layoutParams = layoutParams
+
+			const rtxt = jieguo.text[i]
+
+
+			let v = new xView(t.context)
+			v.setSize(btnwidth , btnwidth)
+			.setRadius(100)
+			.setBackgroundColor('#21d429')
+			.setBorder(12, "#ffffff", false)
+			.setClick((event : MotionEvent) => {
+				try {
+					uni.setStorageSync('xMlkitScannigUResult', rtxt)
+					t.finish()
+					t.overridePendingTransition(R.anim.enter_anim, R.anim.exit_anim);
+				} catch (e) {
+					//TODO handle the exception
+				}
+			})
+			let ov = v.getView();
+			
+			
+			// 创建缩放动画
+			let scaleAnimation = new ScaleAnimation(1.0.toFloat(), 0.7.toFloat(), 1.0.toFloat(), 0.7.toFloat(), Animation.RELATIVE_TO_SELF, 0.7.toFloat(), Animation.RELATIVE_TO_SELF, 0.7.toFloat());
+			scaleAnimation.setDuration(600); // 设置动画持续时间
+			scaleAnimation.setRepeatMode(Animation.REVERSE); // 设置重复模式为反向
+			scaleAnimation.setRepeatCount(Animation.INFINITE); // 设置重复次数为无限
+			// 启动动画
+			ov.startAnimation(scaleAnimation);
+			
+			
+			relativeLayout.addView(v.getView())
+			if (this.isScannig) {
+				this.xiangjiBox!.addView(relativeLayout)
+				this.imgPointsBycanmarea.push(relativeLayout)
+				this.xiangjiBox!.setBackgroundColor(Color.argb(100,0,0,0))
+				
+				
+			} else {
+				this.imageYuranBox!.addView(relativeLayout)
+				this.imgPoints.push(relativeLayout)
+				this.imageYuranBox!.setBackgroundColor(Color.argb(100,0,0,0))
+			}
+
+		}
+
+
+	}
+
+	clearImageView() {
+		for (let i = 0; i < this.imgPointsBycanmarea.length; i++) {
+			this.xiangjiBox!.removeView(this.imgPointsBycanmarea[i])
+		}
+		for (let i = 0; i < this.imgPoints.length; i++) {
+			this.imageYuranBox!.removeView(this.imgPoints[i])
+		}
+		if (!this.isScannig) {
+			this.imageView!.setImageDrawable(null)
+		}
+		
+	}
+	override onActivityResult(requestCode : Int, resultCode : Int, data ?: Intent) {
+		super.onActivityResult(requestCode, resultCode, data)
+		let t = this;
+		if (resultCode == Activity.RESULT_OK && data != null && data?.data != null) {
+			let selectedImageUri = data.data!
+			this.imageUrl = selectedImageUri
+			this.isSelectedImging = false
+			decoderUriPathToQrByUri(this.imageUrl!,(res:SCANNING_PHOTO_RESULT)=>{
+				t.isScannig = false
+				t.clearImageView();
+				t.imageView!.setImageURI(t.imageUrl!);
+				let reaLwidth = t.imageView!.drawable?.intrinsicWidth;
+				let reaLheight = t.imageView!.drawable?.intrinsicHeight;
+				
+				if (reaLwidth != null && reaLheight != null) {
+					t.vibatarLong()
+					t.setImageViewRusletBox(t.imageView!.width, t.imageView!.height, reaLwidth!, reaLheight!, res!)
+					if (res.text.length == 1) {
+						uni.setStorageSync('xMlkitScannigUResult', res.text[0])
+						t.finish()
+						t.overridePendingTransition(R.anim.enter_anim, R.anim.exit_anim);
+					}
+				}
+				
+			})
+
+		} else {
+			this.isSelectedImging = false
+
+		}
+	}
+	
+	override onStart() {
+		super.onStart();
+		lifecycleRegistry!.markState(Lifecycle.State.STARTED);
+	}
+
+	override onDestroy() : void {
+		super.onDestroy();
+		this.closeCamra()
+		this.showTitleBar();
+	}
+	
+	override  onStop() {
+		lifecycleRegistry!.markState(Lifecycle.State.CREATED);
+		super.onStop();
+	}
+		
+	
+	override onPause() : void {
+		super.onPause();
+		lifecycleRegistry!.markState(Lifecycle.State.CREATED);
+		console.log("暂停扫码")
+		this.closeCamra()
+	}
+
+	override onResume() : void {
+		super.onResume();
+		lifecycleRegistry!.markState(Lifecycle.State.RESUMED);
+		let t = this;
+		if (this.captureSession != null || t.imageUrl != null || t.isSelectedImging) {
+			return;
+		}
+		console.log("恢复扫码")
+		this.closeCamra()
+		this.openCamra();
+
+	}
+	override  getLifecycle(): Lifecycle {
+		return this.lifecycleRegistry!
+	}
+	openCamrae() {
+		let _this = this;
+		
+		let cameraProviderFuture = ProcessCameraProvider.getInstance(this.context)
+		
+		class IntentRunable extends Runnable {
+			override run() {
+				let cameraProvider : ProcessCameraProvider = cameraProviderFuture.get()
+				let previewView = _this.cameraView! as PreviewView
+				let cameraSelector : CameraSelector = new CameraSelector.Builder()
+					.requireLensFacing(CameraSelector.LENS_FACING_BACK)
+					.build();
+				let preview : Preview = new Preview.Builder().build();
+		
+				preview.setSurfaceProvider(previewView.getSurfaceProvider())
+		
+				let imageAnalysis = new ImageAnalysis.Builder()
+					// .setTargetResolution(new Size(_this.viewBox_width.toInt(), _this.viewBox_height.toInt()))
+					.setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+					.build();
+				class MyImageAnalyzer implements ImageAnalysis.Analyzer {
+					constructor() {
+						super()
+					}
+					override analyze(image : ImageProxy) {
+						_this.qrDecoder(image)
+					}
+					override getDefaultTargetResolution() : Size {
+						return new Size(_this.previewWidth.toInt(), _this.previewHeight.toInt());
+					}
+		
+				}
+				let cameraExecutor = Executors.newSingleThreadExecutor();
+				imageAnalysis.setAnalyzer(cameraExecutor, new MyImageAnalyzer());
+				let camera : Camera = cameraProvider.bindToLifecycle(
+					_this as LifecycleOwner, cameraSelector, preview, imageAnalysis);
+					
+				_this.camera = camera
+				_this.cameraPreview = preview
+		
+				_this.cameraProvider = cameraProvider
+				_this.isDecodreIng = false
+				_this.isScannig = true
+		
+		
+			}
+		}
+		
+		cameraProviderFuture.addListener(new IntentRunable(), ContextCompat.getMainExecutor(this.context))
+	}
+}
+
+
+@Suppress("DEPRECATION")
+class IntentRunable extends Runnable {
+	override run() {
+		let intent = new Intent(UTSAndroid.getUniActivity(), DemoActivity().javaClass);
+		UTSAndroid.getUniActivity()!.startActivityForResult(intent,1);
+	}
+}
+
+@Suppress("DEPRECATION")
+export function gotoDemoActivity() : boolean {
+	// 跳转到一个新的界面
+	UTSAndroid.getUniActivity()!.runOnUiThread(new IntentRunable())
+	return true;
+
+}

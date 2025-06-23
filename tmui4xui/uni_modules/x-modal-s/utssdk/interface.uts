@@ -1,0 +1,91 @@
+export type RGBA = { r : number, g : number, b : number, a : number }
+
+export type X_MODAL_TYPE = {
+	title?:string,
+	content?:string,
+	/**
+	 * 内容居中方式:
+	 * left:就是正常的顶左对齐.
+	 * center:就是左右上下居中.
+	 */
+	contentAlign?:string,
+	cancelText?:string,
+	cancelBgColor?:string,
+	cancelColor?:string,
+	confirmText?:string,
+	confirmBgColor?:string,
+	confirmColor?:string,
+	linkFontColor?:string,
+	radius?:number,
+	confirmIcon?:string,
+	cancelIcon?:string,
+	titleColor?:string,
+	contentColor?:string,
+	/**
+	 * 按钮是否分离
+	 * @default true
+	 */
+	isSplitBtn?:boolean,
+	/**
+	 * 当isSplitBtn为false时，如果按钮都为白时需要添加上边线和按钮中间分割线时可以启用分割线颜色
+	 * 默认为透明。
+	 */
+	lineColor?:string,
+	// 框体内容背景
+	contentBgColor?:string,
+	// 遮罩背景
+	maskBgColor?:string,
+	confirm?:()=>void,
+	cancel?:()=>void,
+	close?:()=>void,
+	clickLink?:(href:string)=>void,
+	/**
+	 * 背景模糊，目前仅web生效
+	 * @default true
+	 */
+	isBlurMask?:boolean,
+	height?:number,
+	width?:number,
+	/**
+	 * 是否允许点击遮罩关闭
+	 * @default true
+	 */
+	clickMaskClose?:boolean,
+	/**
+	 * 是否显示取消按钮
+	 * @default true
+	 */
+	showCancel?:boolean
+}
+export type X_MODAL_TYPE_PRIVATE = {
+	title:string,
+	content:string,
+	contentAlign:string,
+	cancelText:string,
+	cancelBgColor:string,
+	cancelColor:string,
+	titleColor:string,
+	contentColor:string,
+	confirmText:string,
+	confirmBgColor:string,
+	confirmColor:string,
+	linkFontColor:string,
+	lineColor:string,
+	radius:number,
+	confirmIcon:string,
+	cancelIcon:string,
+	isSplitBtn:boolean,
+	// 框体内容背景
+	contentBgColor:string,
+	// 遮罩背景
+	maskBgColor:string,
+	confirm:()=>void,
+	cancel:()=>void,
+	close:()=>void,
+	clickLink:(href:string)=>void,
+	isBlurMask:boolean,
+	height:number,
+	width:number,
+	clickMaskClose:boolean,
+	showCancel:boolean
+}

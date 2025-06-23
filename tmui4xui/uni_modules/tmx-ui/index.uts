@@ -1,0 +1,74 @@
+import * as xStorex from "./config/xConfig.uts"
+import * as uToll from "./core/util/xCoreUtil.uts"
+import * as xColor from "./core/util/xCoreColorUtil.uts"
+import * as xComponentsStore from "./core/util/config.uts"
+
+import { xTween } from "./core/util/xTween.uts"
+import { xDate, createDate } from "./core/util/xDate.uts"
+import { xRequest } from "./core/util/xRequest.uts"
+import { xRequestCall } from "./core/util/config.uts"
+import { xAnimate } from "./core/util/xAnimate.uts"
+import { xUploadMedia } from "./core/util/xUploadFileMedia.uts"
+import xui from "./config/xui.uts"
+export {
+	xRequest,
+	xRequestCall,
+	xDate,
+	createDate,
+	xColor,
+	xAnimate,
+	xUploadMedia,
+	xTween,
+	xui
+
+}
+export class xStore {
+	public static xConfig = xStorex.xConfig;
+	public static setConfig = xStorex.setConfig;
+	public static getDarkModel = xStorex.getDarkModel
+	public static setDarkModel = xStorex.setDarkModel
+	public static getThemePrimary = xStorex.getThemePrimary
+	public static setThemePrimary = xStorex.setThemePrimary
+	public static xProvitae = xStorex.xProvitae
+	public static xTabbarConfig = xStorex.xTabbarConfig
+}
+export class tool {
+	/**
+	 * 防抖
+	 * @description 使用方法 
+	 * let debounce = tool.debounce((args:any)=>{
+			console.log(args,'---')
+		},0,true)
+		debounce(88)
+	 */
+	public static debounce(func : (args : any) => void, wait : number, immediate ?: boolean) : (args : any) => number | null {
+		let timeout : number | null = null;
+		let callNow = immediate == null ? true : (immediate! as boolean);
+		// 返回的函数是实际被调用的防抖函数
+		return (args : any) : number | null => {
+			if (timeout != null && callNow == true) {
+				return timeout;
+			}
+			if (timeout != null) {
+				clearTimeout(timeout! as number);
+				timeout = null;
+			}
+
+			// 决定是否立即执行函数
+			if (callNow == true) {
+
+				func(args)
+				timeout = setTimeout(() => {
+					timeout = null;
+				}, wait);
+				return timeout;
+			}
+			// 否则，设置定时器以稍后执行函数
+			timeout = setTimeout(() => {
+				func(args)
+
+			}, wait);
+			return timeout
+		}
+	}
+}

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+		<link href="./css/qulliCore.css" type="text/css" rel="stylesheet" />
+		<style>
+			body,
+			html {
+				background: transparent;
+				margin: 0;
+				padding: 0;
+			}
+
+			* {
+				padding: 0;
+				margin: 0;
+			}
+
+			#layout,
+			#layout:focus,
+			.ql-editor,
+			.ql-editor:focus {
+				border: none;
+				outline: none;
+			}
+
+			.ql-align-right {
+				text-align: right;
+			}
+
+			.ql-align-left {
+				text-align: left;
+			}
+
+			.ql-align-center {
+				text-align: center;
+			}
+
+			.ql-editor {
+				padding: 0;
+			}
+
+			.ql-size-medium {
+				font-size: 14px;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="layout">
+
+		</div>
+		<script src="./js/uni.webview.1.5.5.js"></script>
+		<script src="./js/marked.min.js"></script>
+		<script src="./js/quill.js"></script>
+		<script type="text/javascript">
+			// 3. 注册自定义格式
+			const Inline = Quill.import('blots/inline');
+			
+			class FontSizeBlot extends Inline {
+			  static create(value) {
+			    let node = super.create();
+			    node.style.fontSize = value;
+			    return node;
+			  }
+			
+			  static formats(node) {
+			    return node.style.fontSize;
+			  }
+			}
+			
+			FontSizeBlot.blotName = 'size';
+		
+			Quill.register(FontSizeBlot);
+			
+			var quill = new Quill('#layout', {
+				 modules: {
+				    toolbar: false  // 不使用默认主题的工具栏
+				  },
+			});
+			
+
+			var testEditormdView;
+
+			function getBodyHeight() {
+				var targetDiv = document.body.querySelector("#layout")
+				var height = targetDiv.scrollHeight
+				// document.body.style.height = (height) + 'px'
+				window.parent.postMessage({
+					action: 'offsetHeight',
+					data: height + 5,
+					iframeId: iframeId
+				}, '*');
+				uni.postMessage({
+					data: {
+						action: 'offsetHeight',
+						data: height
+					}
+				})
+			}
+
+			var targetDiv = document.querySelector("#layout")
+			// 创建一个观察者对象并传入回调函数
+			var observer = new MutationObserver(function(mutations) {
+				mutations.forEach(function(mutation) {
+					if (mutation.type === 'childList' || mutation.type === 'attributes') {
+						getBodyHeight()
+					}
+				});
+			});
+
+			// 配置观察选项:
+			var config = {
+				attributes: true,
+				childList: true,
+				characterData: true,
+				subtree: true
+			};
+
+			// 选择需要观察变动的节点
+			observer.observe(targetDiv, config);
+
+			function getValueContentFormt(nr, isHtml) {
+				var content = ''
+
+				if (typeof nr == 'string') {
+					var cto = JSON.parse(nr);
+					if (cto.render == 'android') {
+						content = decodeURIComponent(atob(cto.value))
+					} else {
+						content = decodeURIComponent(cto.value)
+					}
+				} else {
+					if (nr.render == 'android') {
+						content = decodeURIComponent(atob(nr.value))
+					} else {
+						content = decodeURIComponent(nr.value)
+					}
+				}
+
+				if (!isHtml) {
+					try {
+						content = marked.parse(content)
+					} catch (e) {
+						alert(e)
+					}
+
+				}
+
+				return content
+			}
+
+			function markdown(nr, isHtml) {
+				 var length = this.quill.getLength();
+				    
+				// 删除所有现有内容并在位置0插入新内容
+				quill.deleteText(0, length);
+				quill.clipboard.dangerouslyPasteHTML(0, getValueContentFormt(nr, isHtml))
+				// quill.root.innerHTML = getValueContentFormt(nr, isHtml)
+			}
+
+			function setBodyStyle(stylenr, isHtml) {
+				targetDiv.style = stylenr;
+
+			}
+
+			function getHtml() {
+				window.parent.postMessage({
+					action: 'toValue',
+					data: quill.root.innerHTML,
+					iframeId: iframeId
+				}, '*');
+				uni.postMessage({
+					data: {
+						action: 'toValue',
+						data: quill.root.innerHTML
+					}
+				})
+			}
+
+			function setSelectedStyle(nr, isHtml) {
+
+				var data = JSON.parse(getValueContentFormt(nr, isHtml))
+				var key = data.key.toLowerCase()
+				var value = data.value;
+
+				var eobj = {
+					'b': 'bold', //true,false
+					'i': 'italic', //true,false
+					's': 'strike', //true,false
+					'u': 'underline', //true,false
+					'link': 'link',
+					'img': 'image',
+					'video': 'video',
+					'align': 'align', //left,right,center
+					/**
+					 * ordered：有序列表（编号列表）
+					 * bullet：无序列表（项目符号列表）
+					 * unchecked：未选中的复选框列表项
+					 * checked：选中的复选框列表项
+					 */
+					'list': 'list',
+					'blockquote': 'blockquote', //true,false
+					'indent': 'indent', //缩进值0-8
+					'color': 'color',
+					'background': 'background',
+					'size': 'size',
+					'script': 'script', //super,sub
+					'header': 'header', //1-6
+				}
+				var range = quill.getSelection();
+				if (range) {
+					var currentFormat = quill.getFormat(range.index, range.length);
+					var styleforamtvalue = value;
+					var foramtStyleName = eobj[key]
+					if (
+						(foramtStyleName == 'header' && styleforamtvalue == 0) ||
+						(foramtStyleName == 'size' && styleforamtvalue == '') ||
+						foramtStyleName == 'align' && (styleforamtvalue == '' || styleforamtvalue == 'left')
+					) {
+						styleforamtvalue = false;
+					}
+
+					console.log(foramtStyleName, styleforamtvalue)
+					quill.format(foramtStyleName, styleforamtvalue);
+
+				}
+			}
+
+			quill.on('selection-change', function() {
+				var range = quill.getSelection();
+				if (!range) return;
+				var format = quill.getFormat(range);
+
+				var fontStyleOpts = {
+					img: format['image'] ? format['image'] : '',
+					link: format['link'] ? format['link'] : '',
+					b: format['bold'] === true,
+					i: format['italic'] === true,
+					s: format['strike'] === true,
+					u: format['underline'] === true,
+					align: format['align'] ? format['align'] : 'left',
+					list: format['list'] ? format['list'] : '',
+					indent: format['indent'] ? format['indent'] : 0,
+					header: format['header'] ? format['header'] : 0,
+					size: format['size'] ? format['size'] : 0,
+					color: format['color'] ? format['color'] : '',
+					background: format['background'] ? format['background'] : '',
+				}
+
+				window.parent.postMessage({
+					action: 'fontStyleOpts',
+					data: fontStyleOpts,
+					iframeId: iframeId
+				}, '*');
+				uni.postMessage({
+					data: {
+						action: 'fontStyleOpts',
+						data: fontStyleOpts
+					}
+				})
+
+			});
+			// 在iframe内部执行以下代码
+			var frameElement = window.frameElement;
+			var iframeId = frameElement == null ? "" : frameElement.getAttribute('id');
+			// 等待初始化完毕
+			document.addEventListener('UniAppJSBridgeReady', () => {
+				window.parent.postMessage({
+					action: 'onJSBridgeReady',
+					data: '',
+					iframeId: iframeId
+				}, '*');
+				uni.postMessage({
+					data: {
+						action: 'onJSBridgeReady'
+					}
+				})
+
+			})
+		</script>
+	</body>
+</html>

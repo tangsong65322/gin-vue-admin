@@ -1,0 +1,53 @@
+import { NotificationCenter, OperationQueue, Notification } from "Foundation";
+import { UIResponder } from "UIKit";
+import { CGRect } from "CoreFoundation";
+
+// 监听键盘高度变化
+@UTSJS.keepAlive
+export function keyboardHeightChange(callback : (h : number) => void):()=>void {
+	let lastHeight = 0
+	const showObserver = NotificationCenter.default.addObserver(
+	forName = UIResponder.keyboardWillShowNotification,
+	object= null,
+	queue= OperationQueue.main,
+	using = (notification:Notification)=>{
+			if(notification==null) return;
+			let keyboardFrame = notification.userInfo?.get(UIResponder.keyboardFrameEndUserInfoKey) as CGRect|null
+			if(keyboardFrame==null) return;
+			const keyGrect = keyboardFrame! as CGRect;
+			let keyboardheight = keyGrect.height
+			
+			// 计算实际键盘高度（减去安全区域）
+			let actualKeyboardHeight = Math.max(0, Number(keyboardheight) - uni.getWindowInfo().safeAreaInsets.bottom)
+			// 只有当高度变化时才回调
+			if(actualKeyboardHeight != lastHeight) {
+			    lastHeight = actualKeyboardHeight
+				DispatchQueue.main.async(execute = () : void => {
+					callback(actualKeyboardHeight)
+				})
+			}
+
+
+		}
+	)
+	
+	const hideObserver = NotificationCenter.default.addObserver(
+	forName = UIResponder.keyboardWillHideNotification,
+	object= null,
+	queue= OperationQueue.main,
+	using = (_:Foundation.Notification)=>{
+			if(lastHeight != 0) {
+			    lastHeight = 0
+				DispatchQueue.main.async(execute = () : void => {
+					callback(0)
+				})
+			}
+		}
+	)
+	const cancel = ()=>{
+		NotificationCenter.default.removeObserver(showObserver)
+		NotificationCenter.default.removeObserver(hideObserver)
+	};
+	return cancel
+
+}

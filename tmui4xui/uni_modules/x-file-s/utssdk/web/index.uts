@@ -1,0 +1,130 @@
+
+
+export { xFileSListType } from "../interface"
+
+export type fileListType = xFileSListType;
+
+
+type xFileSNameTYpe = {
+	name:string,
+	type:string,
+	uri:string,
+	id:string,
+	file:any,
+	size:number,
+	status:number
+}
+// type callReadBackFun = (byte:ByteArray)=>void
+
+
+
+/**
+ * 由于安卓隐私的问题。实际得到的所有文件 其实 都不是真实地址。因此你想要得到真实的地址，你就得复制到你的应用沙盒中。
+ */
+export class xFileSystem {
+	mimeTypeFilter = [] as string[];
+	filelist = [] as xFileSNameTYpe[]
+	inputDom:null|HTMLInputElement = null;
+	multiple:boolean = true;
+	maxFileSize:number = 30*1024*1024
+	constructor(typeFilter:string|null,tempmultiple:boolean|null,maxSize:number|null){
+		if(typeFilter!=null){
+			
+			let filter : string[] = [] as string[];
+			let tms = typeFilter! as string[]
+			for (let i = 0; i < tms.length; i++) {
+				filter.push("."+tms[i])
+			}
+			if(filter.length==0){
+				filter.push("*/*")
+			}
+			
+			this.mimeTypeFilter = filter
+		}
+		if(tempmultiple!=null){
+			this.multiple = tempmultiple!
+		}
+		if(maxSize!=null){
+			this.maxFileSize = maxSize!
+		}
+	}
+	isInfilelist(file:xFileSNameTYpe):boolean{
+		return this.filelist.some((el):boolean=>{
+			return el.name==file.name&&el.type==file.type
+		})
+	}
+	destory(){
+		
+	}
+	openDocument(call:(list:fileListType[])=>void){
+		if(this.inputDom!=null){
+			this.inputDom!.remove()
+		}
+		let _this = this;
+		let inputdom = document.createElement("input")
+		inputdom.type = 'file';
+		inputdom.accept = this.mimeTypeFilter.join(", ");
+		inputdom.style.setProperty('position','absolute')
+		inputdom.style.setProperty('left','-200%')
+		inputdom.style.setProperty('top','-200%')
+		inputdom.style.setProperty('opacity','0')
+		if(this.multiple){
+			inputdom.multiple = "multiple"
+		}
+		inputdom.onchange = function(evt){
+			let filelist = inputdom.files||[] as File[];
+			for(let i=0;i<filelist.length;i++){
+				let item = filelist[i];
+				
+				let fileitem = {
+					name:item.name,
+					type:item.type.substring(item.type.lastIndexOf("/")+1),
+					uri:"",
+					id:Math.floor(Math.random() * 1 * Math.floor(Math.random() * Date.now())).toString().substring(0, 10),
+					file:item
+					size:item.size,
+					status:item.size>_this.maxFileSize?4:0
+				} as xFileSNameTYpe
+				if(!_this.isInfilelist(fileitem)){
+					_this.filelist.push(fileitem)
+				}
+				
+			}
+			
+			call(_this.filelist.map((el)=>{
+				return {
+					name:el.name,
+					type:el.type,
+					file:el.file,
+					id:el.id,
+					request:null,
+					realFilePath:"",
+					cacheFilePath:"",
+					size:el.size,
+					status:el.size>_this.maxFileSize?4:0
+				}
+			}))
+		}
+		inputdom.click()
+	}
+	/**
+	 * 删除一个文件条目
+	 * @param {string} id - 文件id
+	 * @returns {fileListType[]} 最新的文件列表
+	 */
+	remove(id:string):fileListType[]{
+		return [] as fileListType[]
+	}
+	/**
+	 * 返回一个空文件列表数组
+	 */
+	clear():fileListType[]{
+		this.filelist = [] as xFileSNameTYpe[];
+		return [] as fileListType[]
+	}
+	copyFileToPath(item:fileListType,path:string):Promise<fileListType|null>{
+		return Promise.resolve(item)
+	}
+	
+	
+}

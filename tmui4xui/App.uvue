@@ -1,0 +1,87 @@
+<script lang="uts">
+	// #ifndef MP
+	import { showAgree } from './libs/appRunLaunch'
+	// #endif
+	export default {
+		onLaunch: function () {
+			// #ifndef MP
+			showAgree()
+			// #endif
+
+			// #ifdef APP||WEB
+			uni.loadFontFace({
+				global: true,
+				family: 'remixicon',
+				source: "url('/static/tmui4xLibs/static/remixicon.ttf')",
+				success() {
+					uni.setStorageSync("loadedFontBytmx", "true")
+					console.log('global loadFontFace uni.ttf success===')
+				},
+				fail(error) {
+					uni.setStorageSync("loadedFontBytmx", "")
+					console.warn('global loadFontFace uni.ttf fail--', error.errMsg)
+				},
+			})
+			// #endif
+
+		},
+		onShow: function () { },
+		onHide: function () { },
+		onLastPageBackPress: function () { },
+		onExit: function () { },
+	}
+</script>
+
+<style>
+	/* rpx单位 */
+	/* @import url(./uni_modules/tmx-ui/scss/uvue.min.css); */
+	/* px单位84kb */
+	@import url(./uni_modules/tmx-ui/scss/uvuePx.min.css);
+	/* 字体图标，仅小程序端引用，而且字体图标控制在104kb */
+	/* #ifdef MP-WEIXIN */
+	@import url(./uni_modules/tmx-ui/scss/remixicon.min.css);
+	/* #endif */
+	/* 下面是我生成demo在web上用的css，你实际项目不需要下面的东西 */
+	/* #ifdef WEB */
+
+	body::-webkit-scrollbar {
+		display: none;
+	}
+
+	/* 宽度 */
+	div::-webkit-scrollbar {
+		width: 5px;
+		/* 设置滚动条宽度 */
+		height: 5px;
+		border-radius: 10px;
+		transition: all 0.3s linear;
+	}
+
+	/* 颜色 */
+	div::-webkit-scrollbar-thumb {
+		background-color: rgba(0, 0, 0, 0.2);
+		/* 设置滚动条滑块颜色 */
+		border-radius: 10px;
+		transition: all 0.3s linear;
+	}
+
+	div::-webkit-scrollbar-track {
+		background-color: rgba(0, 0, 0, 0.06);
+		/* 设置滚动条轨道颜色 */
+	}
+
+	div::-webkit-scrollbar-thumb:hover {
+		background-color: rgb(5, 121, 255);
+		/* 设置鼠标悬停时的滚动条滑块颜色 */
+	}
+
+	/* #endif */
+
+	/* #ifdef MP-WEIXIN */
+	page,
+	body {
+		/* background-color: #f5f5f5; */
+	}
+
+	/* #endif */
+</style>

@@ -1,0 +1,19 @@
+import { Data } from 'Foundation';
+import { UIImage } from 'UIKit';
+export function toPngFile(data : string):Promise<string> {
+	let fileName = Math.random().toString(16).substring(2,16)
+	let baesestrAr = data.split(',') as string[]
+	let base64Data = baesestrAr[1]
+	let imageData = new Data(base64Encoded = base64Data)
+	if(imageData==null) return Promise.reject('') as Promise<string>
+	let image = new UIImage(data = imageData!)
+	if(image==null) return Promise.reject('') as Promise<string>
+	let userDir = FileManager.default.urls(for = FileManager.SearchPathDirectory.cachesDirectory, in = FileManager.SearchPathDomainMask.userDomainMask).first!
+	let destinationFileName = fileName + ".png" 
+	let fileURL = userDir.appendingPathComponent(destinationFileName)
+	
+	let isSuccess = UTSiOS.try(imageData!.write(to =fileURL),"?")
+	if(isSuccess==null) return Promise.reject('') as Promise<string>
+	
+	return Promise.resolve(fileURL.path)
+}

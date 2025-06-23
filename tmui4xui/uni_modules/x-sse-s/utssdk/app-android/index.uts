@@ -1,0 +1,66 @@
+import SSEClient from 'uts.sdk.modules.xSseUtsModule.SSEClient';
+import {xSSEOptions} from "../interface.uts"
+export class SSEClientApp {
+	private sseClient : SSEClient
+	url : string = ''
+	private onOpenEvt = () => { }
+	private onErrorEvt = () => { }
+	private onClosedEvt = () => { }
+	private onMessageEvt = (data : string) => { }
+
+	constructor(options:xSSEOptions) {
+		this.url = options.url;
+		let _headers = new Map<string, string>()
+		const headersOpts = options?.header??({} as UTSJSONObject)
+		for(const key in headersOpts){
+			_headers.set(key,headersOpts.getString(key)!)
+		}
+		this.sseClient = SSEClient(this.url, _headers)
+
+	}
+	@UTSJS.keepAlive
+	onOpen(callback : () => void) {
+		this.onOpenEvt = callback
+	}
+	@UTSJS.keepAlive
+	onError(callback : () => void) {
+		this.onErrorEvt = callback
+	}
+	@UTSJS.keepAlive
+	onClosed(callback : () => void) {
+		this.onClosedEvt = callback
+	}
+	@UTSJS.keepAlive
+	onMessage(callback : (data : string) => void) {
+		this.onMessageEvt = callback
+	}
+	connect() {
+		if(this.isConnected()) return;
+		this.sseClient.connect()
+		let _this = this;
+		class sslins implements SSEClient.SSEListener {
+			override onOpen() {
+				// console.log("SSE", "连接已打开")
+				_this.onOpenEvt()
+			}
+			override onMessage(event : string | null, data : string) {
+				_this.onMessageEvt(data)
+			}
+			override onError(throwable : Throwable) {
+				console.log("SSE", "发生错误", throwable)
+				_this.onErrorEvt()
+			}
+			override onClosed() {
+				// console.log("SSE", "连接已关闭")
+				_this.onClosedEvt()
+			}
+		}
+		this.sseClient.setListener(new sslins())
+	}
+	disconnect() {
+		this.sseClient.disconnect()
+	}
+	isConnected() : boolean {
+		return this.sseClient.isConnected();
+	}
+}

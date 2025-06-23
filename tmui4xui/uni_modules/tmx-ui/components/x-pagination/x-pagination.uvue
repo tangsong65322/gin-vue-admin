@@ -1,0 +1,429 @@
+<template>
+	<view v-if="!_simple" class="xPagination">
+		<template v-for="(item,index) in btnsArray" :key="index">
+			<view @tap="btnClick(index,item)" hover-class="xPaginationBtnHover" :hover-stay-time="100"
+				:class="[_disabled?'xPaginationBtnHover':'']"
+				:style="(currentPageStr==item?_btnStyleMapActive:_btnStyleMap)" class="xPaginationBtn">
+				<text :style="(currentPageStr==item?_fontStyleMapActive:_fontStyleMap)"
+					class="xPaginationBtnText">{{item}}</text>
+			</view>
+		</template>
+	</view>
+	<view class="xPaginationSimple" v-if="_simple">
+		<view hover-class="xPaginationBtnHover" :hover-stay-time="100" @tap="prev"
+			:class="[(_disabled||currentPage==1)?'xPaginationBtnHover':'']" class="xPaginationSimpleBtn"
+			:style="_btnStyleMap">
+			<text :style="_fontStyleMap">上一页</text>
+		</view>
+		<text class="xPaginationSimpleText" :style="_fontStyleMap">
+			{{currentPage}}{{props.showTotal?('/'+_totalPages):""}}
+		</text>
+		<view hover-class="xPaginationBtnHover" :hover-stay-time="100" @tap="next"
+			:class="[(_disabled||currentPage==_totalPages)?'xPaginationBtnHover':'']" hov class="xPaginationSimpleBtn"
+			:style="_btnStyleMap">
+			<text :style="_fontStyleMap">下一页</text>
+		</view>
+	</view>
+
+</template>
+
+<script lang="ts" setup>
+	
+	import { ref, watch, computed } from "vue"
+	import { xConfig } from "../../config/xConfig";
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts";
+	import { getUnit, checkIsCssUnit } from "../../core/util/xCoreUtil.uts";
+	
+	/**
+	 * @name 翻页器 xPagination
+	 * @description 复杂和简便两种模式
+	 * @page /pages/index/pagination
+	 * @category 表单组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	defineOptions({name:"xPagination"})
+	const emits = defineEmits([
+		/**
+		 * 页码切换时触发
+		 * @@param {number} current 当前页码 
+		 */
+		"change",
+		"update:modelValue"
+	])
+	const props = defineProps({
+		/**
+		 * 当前页码
+		 */
+		modelValue: {
+			type: Number,
+			default: 1
+		},
+		/**
+		 * 是否彬
+		 */
+		disabled: {
+			type: Boolean,
+			default: false
+		},
+		/**
+		 * 每页的数量
+		 */
+		pageSize: {
+			type: Number,
+			default: 10
+		},
+		/**
+		 * 总条数
+		 */
+		total: {
+			type: Number,
+			default: 0
+		},
+		/**
+		 * 中间显示最多页码数量
+		 * 注意它不是只整体页码是指多的时候中间的数量
+		 * 如果不能理解请根据demo查看。
+		 */
+		maxButtons: {
+			type: Number,
+			default: 3
+		},
+		/**
+		 * 最小显示数量
+		 * 如果总页小于此值，直接输出所有页码，上方的maxButtons失效。
+		 */
+		minButtons: {
+			type: Number,
+			default: 5
+		},
+		/**
+		 * 是否显示总数（当simple开启时有效）
+		 */
+		showTotal: {
+			type: Boolean,
+			default: false
+		},
+		/**
+		 * 当前默认背景
+		 */
+		color: {
+			type: String,
+			default: "#f5f5f5"
+		},
+		/**
+		 * 暗黑时如果空值取sheet暗黑背景
+		 */
+		darkColor: {
+			type: String,
+			default: ""
+		},
+		/**
+		 * 选中时的按钮背景，如果空值取全局color
+		 */
+		activeColor: {
+			type: String,
+			default: ""
+		},
+		/**
+		 * 按钮宽，这里是最小宽
+		 */
+		btnWidth: {
+			type: String,
+			default: "38"
+		},
+		/**
+		 * 按钮高
+		 */
+		btnHeight: {
+			type: String,
+			default: "38"
+		},
+		/**
+		 * 字号
+		 */
+		fontSize: {
+			type: String,
+			default: "14"
+		},
+		/**
+		 * 字号颜色
+		 */
+		fontColor: {
+			type: String,
+			default: "#333333"
+		},
+		/**
+		 * 暗黑时的字号颜色
+		 */
+		fontDarkColor: {
+			type: String,
+			default: "#ffffff"
+		},
+		/**
+		 * 激活时字号颜色
+		 */
+		activeFontColor: {
+			type: String,
+			default: "#FFFFFF"
+		},
+		/**
+		 * 激活时暗黑的字号颜色
+		 */
+		activeFontDarkColor: {
+			type: String,
+			default: "#ffffff"
+		},
+		/**
+		 * 按钮圆角
+		 */
+		round: {
+			type: String,
+			default: "6"
+		},
+		/**
+		 * 是否开启简单型模式。
+		 */
+		simple: {
+			type: Boolean,
+			default: false
+		}
+	})
+	const _disabled = computed(() : boolean => props.disabled)
+	const _simple = computed(() : boolean => props.simple)
+	const currentPage = ref(props.modelValue);
+	const currentPageStr = computed(() : string => currentPage.value.toString())
+	const _totalPages = computed(() : number => Math.ceil(props.total / props.pageSize))
+	const pagination = (totalItems : number, itemsPerPage : number, maxButtons : number, currentPage : number) : string[] => {
+		const totalPages = Math.ceil(totalItems / itemsPerPage);
+		const pageNumbers : string[] = [];
+
+		if (totalPages <= maxButtons || totalPages <= props.minButtons) {
+			// 总页数小于等于最大按钮数，直接显示所有页码
+			for (let i = 1; i <= totalPages; i++) {
+				pageNumbers.push(i.toString());
+			}
+		} else {
+			// 总页数大于最大按钮数，需要计算显示的页码
+			let startPage = currentPage - Math.floor(maxButtons / 2);
+			let endPage = startPage + maxButtons - 1;
+
+			// 修正起始和结束页码，确保不会超出总页数范围
+			if (startPage < 1) {
+				startPage = 1;
+				endPage = Math.min(maxButtons, totalPages);
+			} else if (endPage > totalPages) {
+				endPage = totalPages;
+				startPage = Math.max(1, totalPages - maxButtons + 1);
+			}
+
+			// 在数组首尾添加省略号
+			if (startPage > 1) {
+				pageNumbers.push("1");
+				if (startPage > 2) {
+					pageNumbers.push('..');
+				}
+			}
+
+			for (let i = startPage; i <= endPage; i++) {
+				pageNumbers.push(i.toString());
+			}
+
+			if (endPage < totalPages) {
+				if (endPage < totalPages - 1) {
+					pageNumbers.push('..');
+				}
+				pageNumbers.push(totalPages.toString());
+			}
+		}
+
+		return pageNumbers;
+	}
+
+	const btnsArray = computed(() : string[] => pagination(props.total, props.pageSize, props.maxButtons, currentPage.value))
+	const btnClick = (index : number, currentValue : string) => {
+		if (_disabled.value) return;
+		let nowpage = currentValue
+		let _nowpage = parseInt(nowpage);
+		if (currentValue == '..') {
+			let nowindex = index - 1;
+			nowindex = Math.max(0, Math.min(btnsArray.value.length - 1, nowindex))
+			nowpage = btnsArray.value[nowindex]
+			_nowpage = parseInt(nowpage);
+			if (!isNaN(_nowpage)) {
+				_nowpage += 1;
+			}
+		}
+
+		if (isNaN(_nowpage) || currentPage.value == _nowpage) return
+
+		currentPage.value = _nowpage
+
+		/**
+		 * 等同v-model
+		 */
+		emits("update:modelValue", currentPage.value)
+		/**
+		 * 页面切换时触发，手动切换页码时不会触发
+		 * @param {number} current 当前变化的页码
+		 */
+		emits("change", currentPage.value)
+
+	}
+	watch(() : number => props.modelValue, () => {
+		if (currentPage.value != props.modelValue) {
+			currentPage.value = props.modelValue;
+		}
+	}, { immediate: true })
+
+	const _btnStyleMapActive = computed(() : Map<string, string> => {
+		let smap = new Map<string, string>();
+		let bgColor = props.activeColor == '' ? getDefaultColor(xConfig.color) : getDefaultColor(props.activeColor)
+		let radius = checkIsCssUnit(props.round, xConfig.unit)
+		let width = checkIsCssUnit(props.btnWidth, xConfig.unit)
+		let height = checkIsCssUnit(props.btnHeight, xConfig.unit)
+
+		smap.set('background-color', bgColor)
+		smap.set('border-radius', radius)
+		smap.set('min-width', width)
+		smap.set('height', height)
+
+		return smap;
+	})
+	const _btnStyleMap = computed(() : Map<string, string> => {
+		let smap = new Map<string, string>();
+		let bgColor = getDefaultColor(props.color)
+		let radius = checkIsCssUnit(props.round, xConfig.unit)
+		let width = checkIsCssUnit(props.btnWidth, xConfig.unit)
+		let height = checkIsCssUnit(props.btnHeight, xConfig.unit)
+		if (xConfig.dark == 'dark') {
+			let bgdarkcolor = props.darkColor;
+			if (bgdarkcolor == "") {
+				bgdarkcolor = xConfig.inputDarkColor
+			}
+			bgColor = getDefaultColor(bgdarkcolor)
+		}
+		smap.set('background-color', bgColor)
+		smap.set('border-radius', radius)
+		if (!_simple.value) {
+			smap.set('min-width', width)
+		}
+		smap.set('height', height)
+
+		return smap;
+	})
+	const _fontStyleMapActive = computed(() : Map<string, string> => {
+		let smap = new Map<string, string>();
+		let fontColor = getDefaultColor(props.activeFontColor)
+		let fontSize = checkIsCssUnit(props.fontSize, xConfig.unit)
+		if (xConfig.dark == 'dark') {
+			let bgdarkcolor = props.activeFontDarkColor;
+			if (bgdarkcolor == "") {
+				bgdarkcolor = "#ffffff"
+			}
+			fontColor = getDefaultColor(bgdarkcolor)
+		}
+		smap.set('color', fontColor)
+		smap.set('font-size', fontSize)
+		smap.set('line-height', checkIsCssUnit(props.btnHeight, xConfig.unit))
+		return smap;
+	})
+	const _fontStyleMap = computed(() : Map<string, string> => {
+		let smap = new Map<string, string>();
+		let fontColor = getDefaultColor(props.fontColor)
+		let fontSize = checkIsCssUnit(props.fontSize, xConfig.unit)
+		if (xConfig.dark == 'dark') {
+			let bgdarkcolor = props.fontDarkColor;
+			if (bgdarkcolor == "") {
+				bgdarkcolor = "#ffffff"
+			}
+			fontColor = getDefaultColor(bgdarkcolor)
+		}
+		smap.set('color', fontColor)
+		smap.set('font-size', fontSize)
+		smap.set('line-height', checkIsCssUnit(props.btnHeight, xConfig.unit))
+		return smap;
+	})
+	const prev = () => {
+		if (_disabled.value || currentPage.value == 1) return;
+		let page = currentPage.value - 1
+		page = Math.max(1, page)
+		currentPage.value = page;
+		/**
+		 * 等同v-model
+		 */
+		emits("update:modelValue", currentPage.value)
+		/**
+		 * 页面切换时触发，手动切换页码时不会触发
+		 * @param {number} current 当前变化的页码
+		 */
+		emits("change", currentPage.value)
+	}
+	const next = () => {
+		if (_disabled.value || currentPage.value == _totalPages.value) return;
+		let page = currentPage.value + 1
+		page = Math.min(_totalPages.value, page)
+		currentPage.value = page;
+		/**
+		 * 等同v-model
+		 */
+		emits("update:modelValue", currentPage.value)
+		/**
+		 * 页面切换时触发，手动切换页码时不会触发
+		 * @param {number} current 当前变化的页码
+		 */
+		emits("change", currentPage.value)
+	}
+</script>
+
+<style>
+	.xPaginationSimple {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+
+	}
+
+	.xPaginationSimpleBtn {
+		flex: 1;
+		max-width: 220px;
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.xPaginationSimpleText {
+		margin: 0 24px;
+	}
+
+	.xPagination {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.xPaginationBtn {
+		margin: 0 4px;
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		/* #ifdef WEB */
+		cursor: pointer;
+		/* #endif */
+	}
+
+	.xPaginationBtnHover {
+		opacity: 0.5;
+	}
+
+	.xPaginationBtnText {
+
+		/* line-height: 32px; */
+	}
+</style>

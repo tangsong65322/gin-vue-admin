@@ -1,0 +1,76 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">开关 Switch</x-text>
+			<x-text  color="#999999" >样式可全局配置，统一修改风格</x-text>
+		</x-sheet>
+		<x-sheet class="flex flex-row">
+			<x-switch size="small"></x-switch>
+			<x-switch class="mx-16"></x-switch>
+			<x-switch activeIcon="verified-badge-fill" icon="verified-badge-line" @change="onchange" v-model="switch" size="large"></x-switch>
+		</x-sheet>
+
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b">显示内文字</x-text>
+		</x-sheet>
+		<x-sheet class="flex flex-row">
+			<x-switch :label='["开","关"]'></x-switch>
+			<x-switch class="mx-16" :label='["ON","OFF"]'></x-switch>
+		</x-sheet>
+
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b">修改颜色</x-text>
+		</x-sheet>
+		<x-sheet class="flex flex-row">
+			<x-switch :modelValue="true" color="danger"></x-switch>
+			<x-switch :modelValue="true" class="mx-16" color="success"></x-switch>
+			<x-switch :modelValue="true" color="error"></x-switch>
+		</x-sheet>
+
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b">状态</x-text>
+		</x-sheet>
+		<x-sheet class="flex flex-row">
+			<x-switch :modelValue="true" :disabled="true"></x-switch>
+			<x-switch :modelValue="true" class="mx-16" :loading="true"></x-switch>
+		</x-sheet>
+
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b">圆角风格,及修改间隙</x-text>
+		</x-sheet>
+		<x-sheet class="flex flex-row">
+			<x-switch round="4" :space="3"></x-switch>
+			<x-switch round="20" class="mx-16"></x-switch>
+		</x-sheet>
+
+		<view class="py-20"></view>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+				switch: true
+			};
+		},
+		methods: {
+			onchange(val : boolean) {
+				console.log(val)
+			}
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

@@ -1,0 +1,23 @@
+import { UIPasteboard } from 'UIKit';
+
+export const setClipboardData = (data : string):Promise<boolean> => {
+	try {
+		let borad : UIPasteboard = UIPasteboard.general
+		borad.string = data;
+		return Promise.resolve(true) as Promise<boolean>
+	} catch (errors) {
+		return Promise.reject(false) as Promise<boolean> 
+	}
+}
+
+export const getClipboardData = ():Promise<string>  => {
+	try {
+		let borad : UIPasteboard = UIPasteboard.general
+		if(borad.string == null){
+			return Promise.reject('未知错误') as Promise<string> 
+		}
+		return Promise.resolve(borad.string!)
+	} catch (errors) {
+		return Promise.reject('未知错误') as Promise<string> 
+	}
+}

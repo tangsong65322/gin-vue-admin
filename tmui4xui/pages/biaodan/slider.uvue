@@ -1,0 +1,58 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">滑块 Slider</x-text>
+			<x-text color="#999999" >双向和单向滑块分属两个组件</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-16">单向</x-text>
+			<x-slider :model-value="64"></x-slider>
+			<x-text  font-size="18" class=" text-weight-b my-16">显示文本和颜色及刻度</x-text>
+			<x-slider :min="0" :max="100" :step="10"  :model-value="0" color="error" :show-label="true"></x-slider>
+			<x-text font-size="18" class=" text-weight-b mb-16">修改条及滑块按钮大小及,min,max</x-text>
+			<x-slider :min="50" :max="300"  v-model="nowValue" label-font-size="16" btn-size="32" size="10" color="success" :show-label="true"></x-slider>
+			
+			<view class="mt-20">
+				<x-button :block="true" @click="nowValue=200">动态赋值200</x-button>
+			</view>
+		</x-sheet>
+		
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-16">双向</x-text>
+			<x-slider-double :model-value="[10,30]"></x-slider-double>
+			<x-text font-size="18" class=" text-weight-b my-16">显示文本和颜色</x-text>
+			<x-slider-double :model-value="[30,80]" color="error" :show-label="true"></x-slider-double>
+			<x-text font-size="18" class=" text-weight-b my-16">修改条及滑块按钮大小及,min,max</x-text>
+			<x-slider-double :show-label="true" :stepCount="5" :step="50" :min="50" :max="300"  v-model="nowValueDouble" btn-size="30" size="20" color="success" ></x-slider-double>
+			
+			<view class="mt-20">
+				<x-button :block="true" @click="nowValueDouble=[50,200]">动态赋值[80,200]</x-button>
+			</view>
+		</x-sheet>
+		
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+				nowValue:80,
+				nowValueDouble:[100,150],
+			};
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

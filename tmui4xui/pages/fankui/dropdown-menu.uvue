@@ -1,0 +1,80 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">下拉菜单 dropdownMenu</x-text>
+			<x-text color="#999999" >
+				提供static和fiexd两种位置方式。内容完全通过插槽自由布局。x-dropdown-menu 中的render="true"后动画会消失
+			</x-text>
+		</x-sheet>
+		<x-dropdown-menu @change="onchange" v-model="activeIndex">
+			<x-dropdown-item  title="按销量" key-name="xiaoliang">
+				<x-text class="mb-32">因自由度非常高，你可以自由布局最大高度是否滚动内容。</x-text>
+				<!-- -1表示关闭 -->
+				<x-button @click="activeIndex=-1" :block="true">关闭</x-button>
+			</x-dropdown-item>
+			<x-dropdown-item :title="menus" key-name="wiff">
+				<x-text>自己添加scrollview等实现页脚功能.</x-text>
+			</x-dropdown-item>
+			<x-dropdown-item title="硬盘容量" key-name="yingpan">
+				<x-text>内容层的高度是自动高。不需要额外设置。</x-text>
+			</x-dropdown-item>
+			<x-dropdown-item title="综合" key-name="zhonghe" :isBtn="true" icon="sort-desc" active-icon="sort-asc">
+				<x-text>内容层的高度是自动高。不需要额外设置。</x-text>
+			</x-dropdown-item>
+		</x-dropdown-menu>
+
+
+		<x-sheet :margin="['0','24']">
+			<x-text font-size="18" class=" text-weight-b ">正文是静态，弹出时，菜单不会置顶在页面顶部。</x-text>
+		</x-sheet>
+
+		<x-dropdown-menu position="static">
+			<x-dropdown-item title="按距离">
+				<x-text>这里由用户自由布局内容，实现逻辑。</x-text>
+			</x-dropdown-item>
+			<x-dropdown-item title="综合条件">
+				<x-text>你还可以实现更多更复杂的功能.</x-text>
+			</x-dropdown-item>
+			<x-dropdown-item title="所有项目">
+				<x-text>完全插槽实现灵活度极高。</x-text>
+			</x-dropdown-item>
+		</x-dropdown-menu>
+
+	<view style="height:580px"></view>
+
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+				activeIndex: -1,
+				remove: true,
+				menus:"网络类型"
+			};
+		},
+		onLoad() {
+		
+		},
+		methods: {
+			onchange(index : number, keyName : string, status : boolean) {
+				console.log('当前索引：', index, ';当前项目标识：', keyName, ';当前开关状态：', status)
+			}
+		},
+	}
+</script>
+
+<style lang="scss">
+
+</style>

@@ -1,0 +1,86 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">通知栏 Notice</x-text>
+			<x-text color="#999999" >
+				速度可控，样式比较方便的调整。如果想要竖向的，请使用官方的轮播实现。
+			</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-notice
+			class="mb-24"
+			:label="['比马斯克脑机接口更精确微创，超声波读脑大法来了','后期狂喜，一张照片丝滑替换视频主角，动作幅度再大也OK']"
+			></x-notice>
+			
+			<x-notice
+			class="mb-24"
+			color="error"
+			dark-color="error"
+			font-color="white"
+			:label="['出门问问急切赴港IPO：与大众汽车“分道扬镳”，现金已不足2亿','后期狂喜，一张照片丝滑替换视频主角，动作幅度再大也OK']"
+			></x-notice>
+			
+			<x-notice
+			icon="router-fill"
+			color="warn"
+			dark-color="warn"
+			font-color="white"
+			:label="['现金流不足1.6亿元的出门问问，该如何在这场“烧钱”游戏中突围？','后期狂喜，一张照片丝滑替换视频主角，动作幅度再大也OK']"
+			></x-notice>
+			
+		</x-sheet>
+		
+		<x-sheet >
+			<x-text font-size="18" class=" text-weight-b mb-12">控制速度</x-text>
+			<x-notice
+			:speed="10"
+			:label="['比马斯克脑机接口更精确微创，超声波读脑大法来了','后期狂喜，一张照片丝滑替换视频主角，动作幅度再大也OK']"
+			></x-notice>
+		</x-sheet>
+		<x-sheet >
+			<x-text font-size="18" class=" text-weight-b mb-12">隐藏图标</x-text>
+			<x-notice
+			icon=""
+			:speed="10"
+			:label="['比马斯克脑机接口更精确微创，超声波读脑大法来了','后期狂喜，一张照片丝滑替换视频主角，动作幅度再大也OK']"
+			></x-notice>
+		</x-sheet>
+
+
+		<x-cell url="text" title="跳转页面"></x-cell>
+
+
+
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script lang="uts">
+	// import {xOverflay} from "../../uni_modules/x-core"
+	export default {
+		data() {
+			return {
+				label: [] as string[],
+			};
+		},
+		onLoad() {
+			
+		},
+		methods: {
+
+		}
+	}
+</script>
+
+<style lang="scss" scoped>
+
+</style>

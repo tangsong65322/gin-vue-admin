@@ -1,0 +1,67 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">日期选择器 PickerDate</x-text>
+			<x-text color="#999999">日期选择，可以控制显示精确到秒。默认的开始时间为当前时间的上一年，结束时间为默认当前时间</x-text>
+		</x-sheet>
+		
+	
+		<x-sheet>
+			<x-picker-date v-model="modelValue" :formatSyncValue="true" start="1925-1-1" end="2025-12-5" v-model:model-str="nowVal" type="minute"
+				format="YYYY-MM-DD hh:mm">
+				<x-button :block="true">打开时间</x-button>
+			</x-picker-date>
+
+			<x-sheet :margin="['0','24','0','0']" color="#f5f5f5" dark-color="#333">
+				<x-text color="#999999">选中的值：{{modelValue}}</x-text>
+				<x-text color="#999999">经format的值：{{nowVal}}</x-text>
+			</x-sheet>
+		</x-sheet>
+		<x-sheet>
+			<x-button skin='thin' :block="true" @click="modelValue = '2024-3-21'">赋值2024-3-21</x-button>
+		</x-sheet>
+		
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">内嵌日期选择器 xDateView</x-text>
+			<x-date-view  ></x-date-view>
+		</x-sheet>
+		
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b">精确到秒</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-picker-date type="second">
+				<x-button :block="true">打开时间</x-button>
+			</x-picker-date>
+		</x-sheet>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script lang="ts">
+	export default {
+		data() {
+
+			return {
+				nowVal: "",
+				modelValue: "2024-10-06 10:10:10",
+				
+			};
+		},
+		methods: {
+			
+		},
+	}
+</script>
+
+<style lang="scss">
+
+</style>

@@ -1,0 +1,143 @@
+import { XLOADINGS_TYPE, XLOADINGS_TYPE_PRIVATE } from "../interface.uts"
+import { defaultConfig, configCover } from "../libs/config.uts"
+import { UIView, UIViewController, NSLayoutConstraint, UITextView, UIFont, UILabel, NSTextAlignment, NSLineBreakMode } from 'UIKit';
+import { CGRect, CGPoint, CGFloat, CGSize, CFDictionary } from 'CoreFoundation';
+import { CGSizeMake } from 'CoreGraphics';
+import { Alignment } from 'SwiftUI';
+import { UInt32, KeyPath } from 'Swift';
+import { NSString } from 'Foundation';
+import { CABasicAnimation, CAMediaTimingFunction, CAMediaTimingFunctionName } from 'QuartzCore';
+
+let maskerDom : null | UIView = null;
+
+
+export function showLoading(opts : XLOADINGS_TYPE | null) {
+	DispatchQueue.main.async(execute = () : void => {
+		if (maskerDom != null) {
+			maskerDom!.removeFromSuperview()
+		}
+		let parent = UTSiOS.getCurrentViewController() as UIViewController;
+		let parentView = parent.view as UIView
+
+		let realopts = opts == null ? ({} as XLOADINGS_TYPE) : (opts!)
+		let config = configCover(realopts)
+
+		maskerDom = new UIView()
+
+		if (maskerDom == null) return;
+		let cg = parentView.frame as CGRect
+		maskerDom!.frame = cg
+		maskerDom!.backgroundColor = UTSiOS.colorWithString(config.maskBgColor)
+
+		let contetDiv = new UIView();
+		contetDiv.layer.cornerRadius = 16
+		contetDiv.layer.masksToBounds = true;
+		contetDiv.backgroundColor = UTSiOS.colorWithString(config.contentBgColor)
+
+		// contetDiv.frame = new CGRect(x = 0, y = 0, width = 100, height = 100)
+		// contetDiv.center = new CGPoint(x = (cg.size.width) / 2, y = (cg.size.height) / 2)
+
+		let textView = new UILabel()
+		textView.frame = new CGRect(x = 0, y = 0, width = config.iconSize.toInt(), height = config.iconSize.toInt())
+		textView.font = new UIFont(name = "remixicon", size = new CGFloat(config.iconSize))
+
+		let codePoint = new UInt32(config.iconCode, radix = 16)
+		let stricon = new NSString(format = "%C", codePoint!)
+
+		textView.text = new String(stricon);
+		textView.textColor = UTSiOS.colorWithString(config.iconColor)
+		textView.textAlignment = NSTextAlignment.center
+
+
+
+		// 添加动画图标旋转
+		let spinAni = new CABasicAnimation(keyPath = "transform.rotation")
+		spinAni.fromValue = 0
+		spinAni.toValue = 2 * CGFloat.pi
+		spinAni.duration = 1.1
+		spinAni.repeatCount = HUGE
+		textView.layer.add(spinAni, forKey = "rotationAnimation")
+		// 添加内容缩放动画
+		let scaleAni = new CABasicAnimation(keyPath = "transform.scale")
+		scaleAni.fromValue = 0
+		scaleAni.toValue = 1
+		scaleAni.duration = 0.3
+		scaleAni.timingFunction = new CAMediaTimingFunction(name = CAMediaTimingFunctionName.easeInEaseOut)
+		contetDiv.layer.add(scaleAni, forKey = "scaleAnimation")
+		
+		let opacityAni = new CABasicAnimation(keyPath = "opacity")
+		opacityAni.fromValue = 0
+		opacityAni.toValue = 1
+		opacityAni.duration = 0.3
+		opacityAni.timingFunction = new CAMediaTimingFunction(name = CAMediaTimingFunctionName.easeInEaseOut)
+		
+		maskerDom!.layer.add(opacityAni, forKey = "opacityAnimation")
+		
+		
+
+		if (config.title != "") {
+			textView.translatesAutoresizingMaskIntoConstraints = false
+			contetDiv.addSubview(textView)
+
+			NSLayoutConstraint.activate([
+				// 顶部约束
+				textView.topAnchor.constraint(equalTo = contetDiv.safeAreaLayoutGuide.topAnchor, constant = 16),
+				// textView.bottomAnchor.constraint(equalTo= contetDiv.safeAreaLayoutGuide.bottomAnchor,constant=-16),
+				// 左侧约束
+				textView.leadingAnchor.constraint(equalTo = contetDiv.safeAreaLayoutGuide.leadingAnchor, constant = 16),
+				// 右侧约束
+				textView.trailingAnchor.constraint(equalTo = contetDiv.safeAreaLayoutGuide.trailingAnchor, constant = -16)
+			])
+		} else {
+			textView.center = new CGPoint(x = 50, y = 50)
+			contetDiv.addSubview(textView)
+		}
+
+
+		// 设置标题
+		if (config.title != "") {
+			let titleView = new UILabel()
+			titleView.text = new String(config.title);
+			titleView.textAlignment = NSTextAlignment.center
+			titleView.lineBreakMode = NSLineBreakMode.byWordWrapping
+			titleView.numberOfLines = 0
+			titleView.font = UIFont.systemFont(ofSize = new CGFloat(config.titleSize))
+			titleView.textColor = UTSiOS.colorWithString(config.titleColor)
+			titleView.translatesAutoresizingMaskIntoConstraints = false
+			contetDiv.addSubview(titleView)
+			NSLayoutConstraint.activate([
+				// 顶部约束
+				titleView.topAnchor.constraint(equalTo = textView.safeAreaLayoutGuide.bottomAnchor, constant = 1),
+				titleView.bottomAnchor.constraint(equalTo = contetDiv.safeAreaLayoutGuide.bottomAnchor, constant = -16),
+				// 左侧约束
+				titleView.leadingAnchor.constraint(equalTo = contetDiv.safeAreaLayoutGuide.leadingAnchor, constant = 16),
+				// 右侧约束
+				titleView.trailingAnchor.constraint(equalTo = contetDiv.safeAreaLayoutGuide.trailingAnchor, constant = -16)
+			])
+
+		}
+
+		contetDiv.translatesAutoresizingMaskIntoConstraints = false
+		maskerDom!.addSubview(contetDiv)
+		NSLayoutConstraint.activate([
+			// 中心约束
+			contetDiv.centerXAnchor.constraint(equalTo = maskerDom!.centerXAnchor),
+			contetDiv.centerYAnchor.constraint(equalTo = maskerDom!.centerYAnchor),
+			// 宽约束100
+			contetDiv.widthAnchor.constraint(equalToConstant = config.size.toDouble()),
+			// 高为至少100
+			contetDiv.heightAnchor.constraint(greaterThanOrEqualToConstant = config.size.toDouble())
+		])
+
+		parentView.addSubview(maskerDom!)
+
+	})
+}
+
+export function hideXloading() {
+	DispatchQueue.main.async(execute = () : void => {
+		if (maskerDom != null) {
+			maskerDom!.removeFromSuperview()
+		}
+	})
+}

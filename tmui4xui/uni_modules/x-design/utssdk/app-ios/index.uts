@@ -1,0 +1,103 @@
+import { UIViewController, UIView, UIWindow, UIScreen, UIColor, UIBlurEffect } from 'UIKit';
+import { CGRect, CGFloat, CGPoint, CGAffineTransform, CGSize } from 'CoreFoundation';
+import { CABasicAnimation, CAMediaTimingFillMode, CATransform3DIsIdentity, CATransform3DIdentity, CATransform3DMakeTranslation, CATransform3DRotate, CATransform3DScale } from 'QuartzCore';
+import { getRootView } from "./libs/util.uts"
+import { Color } from 'SwiftUI';
+import { hexToRgb } from '../libs/color.uts'
+
+
+
+export class xModalPage {
+	contentView : UIView | null = null;
+	rootWin : UIWindow;
+	constructor() {
+		let winsize = UIScreen.main.bounds as CGRect;
+		let mainwidth = new CGRect(x = 0, y = 180, width = 300, height = 200)
+		// 创建一个新的 UIWindow 实例
+		let newWindow = new UIWindow(frame = mainwidth)
+		// newWindow.frame = mainwidth
+		this.rootWin = newWindow;
+	}
+	setView(ele : UniElement | null) {
+		if (ele == null) return;
+		let userView = ele!.getIOSView() as UIView | null
+		if (userView == null) return;
+		this.contentView = userView!;
+		class ContentWin extends UIViewController {
+			userView : UIView | null = null;
+			setAddView(userViewBox : UIView | null) {
+				this.userView = userViewBox;
+			}
+			override viewDidLoad() {
+				super.viewDidLoad();
+				let root = super.view as UIView;
+				root.backgroundColor = UIColor.black
+				if (this.userView != null) {
+					let cview = this.userView! as UIView;
+					cview.frame = UIScreen.main.bounds
+					root.addSubview(cview)
+				}
+			}
+
+
+		}
+		if (this.contentView == null) return;
+		DispatchQueue.main.async(execute = () : void => {
+			// 创建一个新的 UIViewController 实例作为模态视图控制器
+			let secondViewController = new ContentWin()
+			secondViewController.setAddView(this.contentView)
+			// 将模态视图控制器添加到新窗口中
+			this.rootWin.rootViewController = secondViewController as UIViewController
+
+		})
+	}
+	show() {
+		let pageconroll = this.rootWin.rootViewController;
+		if (this.contentView == null || pageconroll == null) return;
+		DispatchQueue.main.async(execute = () : void => {
+			this.rootWin.makeKeyAndVisible()
+			let parent = UTSiOS.getCurrentViewController() as UIViewController;
+			parent.present(pageconroll!, animated = true, completion = nil)
+		})
+
+	}
+	hide() {
+		DispatchQueue.main.async(execute = () : void => {
+			this.rootWin.rootViewController?.dismiss(animated = true, completion = nil)
+		})
+	}
+	destroy() {
+
+	}
+}
+
+export class xdBlur {
+	$element : UniNativeViewElement;
+	targetView : UIView | null = null;
+	constructor(element : UniNativeViewElement) {
+		//接收传递过来的UniNativeViewElement
+		this.$element = element;
+		this.targetView = new UIView()
+		this.$element.bindIOSView(this.targetView!);
+	}
+	
+	setFilterBg(blur : number, bgcolor : string,ele:UniElement|null = null) {
+		let colorrgba = hexToRgb(bgcolor)
+		let br = (blur / 100).toFloat()
+		let view = this.targetView!
+		XdBlur.applyBlur(
+			to = view,
+			style = UIBlurEffect.Style.light,
+			intensity = new CGFloat(br),
+			backgroundColor = UTSiOS.colorWithString(bgcolor)
+		)
+	}
+	public static setFilterSelfBg(ele : UniElement,bg:UniElement, blur : number, bgcolor : string) {
+		let colorrgba = hexToRgb(bgcolor)
+		let br = (blur / 100).toFloat()
+		let view = ele.getIOSView()! as UIView
+		let viewbg = bg.getIOSView()! as UIView
+		
+		XdBlur.applyBlurSelf(ele=view,bg = viewbg, blur = new CGFloat(br), backgroundColor = UTSiOS.colorWithString(bgcolor))
+	}
+}

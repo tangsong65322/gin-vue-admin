@@ -1,0 +1,12 @@
+export function makePhone(tel : string) {
+	let isCanalinks = document.body.querySelector("#xPhoneAlinks")
+	if (!isCanalinks) {
+		let a = document.createElement("a")
+		a.href = `tel:${tel}`
+		a.id = "xPhoneAlinks"
+		document.body.append(a)
+		isCanalinks = a;
+	}
+	isCanalinks.click();
+
+}

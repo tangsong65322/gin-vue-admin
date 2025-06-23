@@ -1,0 +1,650 @@
+<template>
+	<view class="xSlideVerify xSlideVerifyNodes"
+		:style="{width:_width,height:_height,backgroundColor:_color,borderRadius:_round}">
+		<view :style="{
+			borderRadius:_round,
+			 width:'100%',
+			 height:'100%'
+		 }" class="xSlideVerifyBox2">
+			<view class="xSlideVerifyActive"
+			 <!-- #ifndef MP -->
+			:style="{width:(totalWidth - barWidth)+'px',height:'100%'}"
+			<!-- #endif -->
+			<!-- #ifdef MP -->
+			:style="{width:`100%`,height:'100%'}"
+			<!-- #endif -->
+			>
+				<view class="xSlideVerifyActiveBg" :style="{
+					width:(percentage)+'%',
+					height:'100%',
+					'border-top-left-radius':_round,
+					'border-bottom-left-radius':_round,
+					backgroundColor:_activeColor
+				}">
+					<!--
+					@slot 激活时的标签插槽 
+					 -->
+					<slot name='activeLabel'>
+						<text :style="{color:'white',fontSize:'14px'}">{{_tips}}</text>
+					</slot>
+				</view>
+			</view>
+			<view ref="xSlideVerifyBar" class="xSlideVerifyBar xSlideVerifyNodes" 
+			
+			<!-- #ifdef WEB -->
+			@mousedown="mmStart"
+			<!-- #endif -->
+			
+			@touchstart="mStart"
+				@touchmove="mMove" @touchend="mEnd" :style="{
+				'border-top-right-radius':_round,
+				'border-bottom-right-radius':_round,
+				backgroundColor:_btnColor,width:_height,height:'100%',left:boxLeft+'px'}">
+				<!-- 
+				 @slot 拖动时的按钮插槽
+				 -->
+				<slot name="btn">
+					<x-icon :font-size="_btnFontSize" :color="_btnFontColor" :dark-color="_btnFontColor"
+						:name="status==2?'check-double-line':'arrow-right-double-line'"></x-icon>
+				</slot>
+			</view>
+			<view 
+			class="xSlideVerifyBar2" :style="{
+				borderRadius:_round,
+				backgroundColor:`${_successColor}`,
+				opacity:props.showVerifyBox&&status!=2?'0.1':'0',
+				width:_height,height:'100%',left:(_verifyPos)+'px'}">
+				<!-- 
+				 @slot 目标虚拟框位置的插槽
+				 -->
+				<slot name="target"></slot>
+			</view>
+		</view>
+
+		<view class="xSlideVerifyTextBox" >
+			<!-- 
+			@slot 未激活时的标签插槽 
+			 -->
+			<slot name="label">
+				<text :style="{color:_tipsTextColor,opacity:_isDark?'0.5':'1'}">{{_tipsText}}</text>
+			</slot>
+			
+			<!-- 标签动态 -->
+			<view @transitionend="aniEnd" ref="xSlideVerifyLabelAni" class="xSlideVerifyLabelAni"></view>
+		</view>
+	</view>
+</template>
+
+<script lang="ts" setup>
+	
+	import { checkIsCssUnit, getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor, colorAddDeepen } from "../../core/util/xCoreColorUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { PropType, inject, getCurrentInstance, onMounted, watch, onBeforeUnmount } from "vue"
+	
+	/**
+	 * @name 滑动验证 xSlideVerify
+	 * @description 可以防止机器人刷新页面，防止恶意注册，防止恶意评论等
+	 * @page /pages/index/slide-verify
+	 * @category 其它组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	defineOptions({name:"xSlideVerify"})
+	
+	const proxy = getCurrentInstance()!.proxy!
+	const emits = defineEmits([
+		/**
+		 * 开始拖动验证时触发
+		 */
+		'start',
+		/**
+		 * 验证成功时触发
+		 */
+		'success',
+		/**
+		 * 验证失败时触发
+		 */
+		'fail',
+		/**
+		 * 用户拖放结束时触发
+		 */
+		'completed',
+		/**
+		 * 重置时触发
+		 */
+		'reset'])
+	const props = defineProps({
+		/**
+		 * 宽，允许使用auto,百分比，数字，带单位的字符串
+		 */
+		width: {
+			type: String,
+			default: 'auto'
+		},
+		/**
+		 * 高不允许使用auto
+		 */
+		height: {
+			type: String,
+			default: '50'
+		},
+		/**
+		 * 未激活背景色
+		 */
+		color: {
+			type: String,
+			default: '#e9ecf0'
+		},
+		/**
+		 * 激活时的状态背景色，空取全局
+		 */
+		activeColor: {
+			type: String,
+			default: ''
+		},
+		/**
+		 * 暗黑时的未激活背景色
+		 */
+		darkColor: {
+			type: String,
+			default: '#21232c'
+		},
+		/**
+		 * 验证通过时的背景色
+		 */
+		successColor: {
+			type: String,
+			default: 'success'
+		},
+		/**
+		 * 验证失败时的背景色
+		 */
+		failColor: {
+			type: String,
+			default: 'error'
+		},
+		/**
+		 * 按钮背景
+		 */
+		btnColor: {
+			type: String,
+			default: 'white'
+		},
+		/**
+		 * 暗黑按钮背景，如果为空取sheetDarkColor
+		 */
+		btnDarkColor: {
+			type: String,
+			default: '#3b3e4d'
+		},
+		/**
+		 * 空取全局主题色
+		 */
+		btnFontColor: {
+			type: String,
+			default: ""
+		},
+		/**
+		 * 按钮上的图标大小
+		 */
+		btnFontSize: {
+			type: String,
+			default: "20"
+		},
+		/**
+		 * 验证正确的位置
+		 * 0-100是百分比，让用户滑动到哪个位置触发验证正确。
+		 */
+		verifyPos: {
+			type: Number,
+			default: 100
+		},
+		/**
+		 * 是否显示目标指示框
+		 */
+		showVerifyBox:{
+			type:Boolean,
+			default:false
+		},
+		/**
+		 * 默认的提示验证文本
+		 */
+		tipsText: {
+			type: String,
+			default: "请拖动到指定位置"
+		},
+		/**
+		 * 失败时的文本
+		 */
+		tipsTextSuccess: {
+			type: String,
+			default: "验证成功"
+		},
+		/**
+		 * 成功时的文本
+		 */
+		tipsTextFail: {
+			type: String,
+			default: "验证失败"
+		},
+		/**
+		 * 底部提示文本颜色
+		 */
+		tipsTextColor: {
+			type: String,
+			default: "#b8b8b8"
+		},
+		/**
+		 * 圆角
+		 */
+		round: {
+			type: String,
+			default: "25"
+		},
+		/**
+		 * 验证失败时，是否自动重置
+		 */
+		resetAuto:{
+			type:Boolean,
+			default:true
+		}
+	})
+	//1初始状态，2成功，3失败
+	const status = ref(1)
+	const isCompleted = ref(false)
+	const _tipsText = computed(():string => props.tipsText)
+	const _tipsTextColor = computed(():string => props.tipsTextColor)
+	const _isDark = computed(():boolean => xConfig.dark=='dark')
+	const _tips = computed(():string => {
+		if (status.value == 1) return ''
+		if (status.value == 2) return props.tipsTextSuccess
+		return props.tipsTextFail
+	})
+	const _width = computed(():string => {
+		return checkIsCssUnit(props.width, xConfig.unit)
+	})
+	const _height = computed(():string => {
+		return checkIsCssUnit(props.height, xConfig.unit)
+	})
+	const _round = computed(():string => {
+		return checkIsCssUnit(props.round, xConfig.unit)
+	})
+	const _btnFontSize = computed(():string => {
+		return checkIsCssUnit(props.btnFontSize, xConfig.unit)
+	})
+	const _activeColor = computed(():string => {
+		if (status.value == 2 && isCompleted.value) return getDefaultColor(props.successColor)
+		if (status.value == 3 && isCompleted.value) return getDefaultColor(props.failColor)
+		let color = props.activeColor;
+		if (color == '') {
+			color = xConfig.color
+		}
+		return getDefaultColor(color)
+	})
+	const _successColor = computed(():string => {
+		return getDefaultColor(props.successColor)
+	})
+	const _color = computed(():string => {
+		let colorbg = props.color;
+		if (xConfig.dark == 'dark') {
+			colorbg = xConfig.inputDarkColor
+			if (props.darkColor != '') {
+				colorbg = props.darkColor
+			}
+		}
+		return getDefaultColor(colorbg)
+	})
+	const _btnColor = computed(():string => {
+		let colorbg = props.btnColor;
+		if (xConfig.dark == 'dark') {
+			colorbg = xConfig.sheetDarkColor
+			if (props.btnDarkColor != '') {
+				colorbg = props.btnDarkColor
+			}
+		}
+		return getDefaultColor(colorbg)
+	})
+	const _btnFontColor = computed(():string => {
+		if ((status.value == 2 && isCompleted.value)) return getDefaultColor(props.successColor)
+		let colorbg = props.btnFontColor;
+		if (colorbg == '') {
+			colorbg = xConfig.color
+		}
+		return getDefaultColor(colorbg)
+	})
+	const totalWidth = ref(0)
+	const barWidth = ref(0)
+	const barHeight = ref(0)
+	const _min = 0
+	const _max = 100
+	const percentage = ref(0)
+	const safePercentage = ref(0)
+	const _x = ref(0)
+	const _y = ref(0)
+	const _now_x = ref(0)
+	const isMoveing = ref(false)
+	const boxLeft = ref(0)
+	const anipos = ref(0)
+	let tid = 0
+	const _verifyPos = computed(():number => props.verifyPos/100 * (totalWidth.value - barWidth.value))
+	const eventIds = Math.random().toString(16).substring(2,8)
+	const getNodeInfo = () => {
+		// xSlideVerifyBar
+		// xSlideVerify
+		uni.createSelectorQuery()
+			.in(proxy)
+			.selectAll('.xSlideVerifyNodes')
+			.boundingClientRect()
+			.exec((rect) => {
+				let nodes = rect[0] as NodeInfo[]
+
+				if (nodes.length != 2) return;
+				let node1 = nodes[0] as NodeInfo
+				let node2 = nodes[1] as NodeInfo
+				totalWidth.value = node1.width!
+				barWidth.value = node2.width!
+				barHeight.value = node2.width!
+				let node = proxy.$refs['xSlideVerifyBar'] as UniElement
+				node.style.setProperty('left','0px')
+			})
+
+	}
+
+
+
+	/**
+	 * 比例转值
+	 */
+	const proToValue = (val : number) : number => {
+
+		const minValue = Math.min(_min, _max);
+		const maxValue = Math.max(_min, _max);
+		if (minValue === maxValue) {
+			return minValue;
+		}
+		return Math.ceil((val / 100) * (maxValue - minValue) + minValue);
+	}
+	/**
+	 * 值转比例
+	 */
+	const valueToPro = (val : number) : number => {
+		let min = Math.min(_min, _max);
+		let max = Math.max(_min, _max);
+		let realval = Math.max(Math.min(val, max), min);
+		return (realval - min) / (max - min) * 100;
+	}
+	// 位置宽转比例
+	const widthToPro = (val : number) : number => {
+		let maxWidth = totalWidth.value - barWidth.value;
+		let bl = val / maxWidth;
+		return bl * 100
+	}
+	const widthToPro2 = (val : number) : number => {
+		let maxWidth = totalWidth.value - barWidth.value;
+		let bl = val / maxWidth;
+		return bl * 100
+	}
+	// 比例转位置.
+	const ProToWidthByval = (percentage : number) : number => {
+		let maxWidth = totalWidth.value;
+		let val = maxWidth * percentage / 100;
+		return Math.ceil(val)
+	}
+
+	/**
+	 * 复位
+	 * @public
+	 */
+	const reset = () => {
+		status.value = 1
+		boxLeft.value = 0
+		isCompleted.value = false;
+		percentage.value = 0
+		// #ifdef APP-ANDROID||MP-WEIXIN
+		let node = proxy.$refs['xSlideVerifyBar'] as UniElement|null
+		if(node==null) return;
+		node.style.setProperty("left",'0px');
+		// #endif
+	}
+
+	const __move = (mx:number,my:number)=>{
+		
+		let node = proxy.$refs['xSlideVerifyBar'] as UniElement
+		
+		let x = mx - _x.value
+		let diffX = my - _now_x.value
+		let maxX = totalWidth.value - barWidth.value;
+	
+		x = Math.max(Math.min(maxX, x), 0)
+		
+		
+		// #ifdef APP-ANDROID||MP-WEIXIN
+		node.style.setProperty("left", `${x}px`)
+		// #endif
+		// #ifdef APP-IOS||WEB
+		boxLeft.value = x
+		// #endif
+		
+		
+		percentage.value = Math.ceil(widthToPro(x));
+		safePercentage.value = Math.ceil(widthToPro2(x));
+		_now_x.value = x
+	}
+	
+	const __moveStart = (mx:number,my:number)=>{
+		emits('start')
+		let node = proxy.$refs['xSlideVerifyBar'] as UniElement
+		let leftpos = parseInt(node.style.getPropertyValue("left")! as string)
+		_x.value = mx - leftpos
+		_now_x.value = mx
+		isMoveing.value = true
+	}
+	const mStart = (evt : UniTouchEvent) => {
+		evt.preventDefault()
+		if (isCompleted.value) return
+		isMoveing.value = true;
+		__moveStart(evt.changedTouches[0].clientX,evt.changedTouches[0].clientY)
+	}
+	const mMove = (evt : UniTouchEvent) => {
+		evt.preventDefault()
+		if (isCompleted.value) return
+		__move(evt.changedTouches[0].clientX,evt.changedTouches[0].clientY)
+
+	}
+	
+	const mtransEnd = (x:number) => {
+		isMoveing.value = false
+		isMoveing.value = false;
+		if(Math.abs(_now_x.value  - x)==0){
+			
+			return;
+		}
+		isCompleted.value = true;
+		let diff = Math.abs(percentage.value-props.verifyPos);
+		// 给5个像素的容差。
+		if (diff >= 0 && diff <= 4) {
+			status.value = 2;
+			emits('success')
+		} else {
+			status.value = 3;
+			emits('fail')
+			if(props.resetAuto){
+				setTimeout(function () {
+					emits('reset')
+					reset()
+				}, 1500);
+			}
+			
+		}
+		emits('completed')
+	}
+	const mEnd = (evt : UniTouchEvent) => {
+		mtransEnd(evt.changedTouches[0].clientX)
+	}
+	const appPlayPos = ()=>{
+		let el = proxy.$refs['xSlideVerifyLabelAni'] as UniElement;
+		el.style.setProperty("transition-duration", `1.5s`)
+		el.style.setProperty("left", totalWidth.value+'px')
+		// setTimeout(function() {
+		// 	el.style.setProperty("width", `60%`)
+		// }, 1000);
+		
+	}
+
+	
+	// #ifdef WEB
+	const mmStart = (evt:UniMouseEvent) => {
+		evt.preventDefault()
+		window.xSliderEvents = eventIds
+		if (isCompleted.value) return
+		isMoveing.value = true;
+		__moveStart(evt.clientX,evt.clientY)
+		
+	}
+	const mmMove = (evt:UniMouseEvent) => {
+		
+		if (isCompleted.value||!isMoveing.value||window.xSliderEvents!=eventIds ) return
+		__move(evt.clientX,evt.clientY)
+	}
+	const mmEnd = (evt:UniMouseEvent) => {
+		if (!isMoveing.value||window.xSliderEvents!=eventIds ) return
+		isMoveing.value = false;
+		mtransEnd(evt.clientX)
+	}
+	
+	document.body.addEventListener('mouseup', mmEnd);
+	document.body.addEventListener('mousemove', mmMove);
+	// #endif
+	
+	const aniEnd = ()=>{
+		let el = proxy.$refs['xSlideVerifyLabelAni'] as UniElement;
+		
+		el.style.setProperty("transition-duration", `1.5s`)
+		el.style.setProperty("left", `-20%`)
+		clearTimeout(tid)
+		tid = setTimeout(function() {
+			appPlayPos();
+		}, 50);
+	}
+
+	onMounted(() => {
+		
+		// #ifdef APP||MP-WEIXIN
+		clearTimeout(tid)
+		tid = setTimeout(function() {
+			getNodeInfo()
+			appPlayPos();
+		}, 250);
+		// #endif
+		// #ifdef WEB
+		getNodeInfo()
+		// #endif
+		
+	})
+	onBeforeUnmount(()=>{
+		clearTimeout(tid)
+		// #ifdef WEB
+		document.body.removeEventListener('mouseup', mmEnd);
+		document.body.removeEventListener('mousemove', mmMove);
+		// #endif
+	})
+	
+	
+	// 手动重置
+	defineExpose({reset})
+</script>
+
+<style scoped>
+	.xSlideVerify {
+		position: relative;
+	}
+
+	.xSlideVerifyBox {
+		position: absolute;
+	}
+
+	.xSlideVerifyTextBox {
+		width: 100%;
+		height: 100%;
+		background-color: rgba(196, 248, 182, 0.0);
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		flex-direction: row;
+		position: relative;
+		pointer-events: none;
+	}
+	.xSlideVerifyLabelAni{
+		pointer-events: none;
+		width: 80px;
+		height: 100%;
+		position: absolute;
+		left: 0px;
+		top: 0px;
+		z-index: 2;
+		background-image: linear-gradient(to right,rgba(255,255,255,0),rgba(255,255,255,0.3));
+		/* #ifdef WEB||MP */
+		animation: anidh 1s infinite linear;
+		/* #endif */
+		
+		/* #ifdef APP */
+		transition-duration: 1s;
+		transition-property: left,width;
+		transition-timing-function: linear;
+		/* #endif */
+	}
+	/* #ifdef WEB||MP */
+	@keyframes anidh {
+		0%{
+			left: 0%;
+		}
+		100%{
+			left: 100%;
+		}
+	}
+	/* #endif */
+
+	.xSlideVerifyBox2 {
+		position: absolute;
+		left: 0px;
+		top: 0px;
+		z-index: 3
+	}
+
+	.xSlideVerifyBar {
+		position: absolute;
+		left: 0px;
+		top: 0px;
+		z-index: 5;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		flex-direction: row;
+	}
+
+	.xSlideVerifyBar2 {
+		position: absolute;
+		left: 0px;
+		top: 0px;
+		z-index: 6;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		flex-direction: row;
+		pointer-events: none;
+
+	}
+
+	.xSlideVerifyActiveBg {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		flex-direction: row;
+		transition-duration: 0.24s;
+		transition-property: background-color;
+		transition-timing-function: linear;
+	}
+</style>

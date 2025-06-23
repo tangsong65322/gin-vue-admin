@@ -1,0 +1,206 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+		<!-- #ifdef MP-WEIXIN -->
+		<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+			<navigation-bar :background-color="xThemeConfigNavBgColor"
+				:front-color="xThemeConfigNavFontColor"></navigation-bar>
+		</page-meta>
+		<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">xRequest - Library</x-text>
+			<x-text color="#999999">
+				这是一个核心的极简请求库，拦截，事件监听一应俱全。而且事件监听可重复叠加。可跨页面中断所有请求，同时包含了dev模式可
+				以统计所有的请求并打印。
+			</x-text>
+		</x-sheet>
+
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">设置全局请求域名</x-text>
+			<x-sheet color="info" dark-color="#333" :margin="['0']">
+				<x-text>当前:{{hostUrl}}</x-text>
+			</x-sheet>
+			<view class="flex flex-row flex-row-center-between mt-12">
+				<x-button @click="setGloabalHostUrl" width="45%">设置域名</x-button>
+				<x-button @click="clearGloabalHostUrl" width="45%">删除域名</x-button>
+			</view>
+		</x-sheet>
+
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">添加监听事件,可重复添加合并执行</x-text>
+
+			<x-sheet color="info" dark-color="#333" :margin="['0']">
+				<x-text>监听事件执行状态:{{status}}</x-text>
+				<x-text>结果:{{resulte}}</x-text>
+			</x-sheet>
+
+			<view class="flex flex-row flex-row-center-between mt-12">
+				<x-button @click="request" :block="true">请求接口</x-button>
+			</view>
+		</x-sheet>
+
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">打开dev记录所有请求</x-text>
+			<x-text color="#999999">
+				打开为dev后，请重新发起请求，将会全局记录所有页面的请求记录和日志
+			</x-text>
+			<view class="flex flex-row flex-row-center-between my-16">
+				<x-button @click="openDev" :block="true">打开开发模式</x-button>
+			</view>
+
+			<x-sheet color="info" dark-color="#333" :margin="['0']">
+				<x-text>{{historyRq}}</x-text>
+			</x-sheet>
+
+		</x-sheet>
+
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">xRequest真实请求Api示例</x-text>
+			<x-text color="#999999">
+				基此封装的api路由请见demo/pages/libs下面. 本接口设置了缓存模式，请求一次后在1分钟内不会重复请求，直接返回结果。
+			</x-text>
+			<x-button :block="true" @click="testRq">请求作者服务器</x-button>
+		</x-sheet>
+
+		<view style="height:300px"></view>
+		<x-devtool></x-devtool>
+		<!-- enterFrame -->
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	import { xRequestOptions, xRequestOptionsCallBack, xRequestResult, xRequestHistoryType } from "@/uni_modules/tmx-ui/interface.uts"
+	import { xRequest, xRequestCall } from "@/uni_modules/tmx-ui/index.uts"
+	import { api } from "../libs/api";
+	import { LISTPAGEART_TYPE } from "../libs/interface";
+
+	export default {
+		data() {
+			return {
+				status: "",
+				resulte: null as xRequestResult | null
+			};
+		},
+		computed: {
+			hostUrl() : string {
+				return xRequestCall.hostUrl;
+			},
+			historyRq() : xRequestHistoryType[] {
+				return xRequestCall.history;
+			}
+		},
+		onLoad() {
+
+		},
+		methods: {
+			async testRq() : Promise<any | null> {
+				let result = await api.getArtListArt<LISTPAGEART_TYPE>({
+					page: 1,
+					count: 16
+				} as UTSJSONObject)
+				if (result == null) return Promise.resolve(null);
+				console.log(result)
+				return Promise.resolve(null)
+			},
+			setGloabalHostUrl() {
+				// 可以在任意地方页面,uts中执行，全局生效
+				xRequest.setHostUrl("https://mockapi.eolink.com/SZ2MLNR496b4c667257afac7776f24aea84c907abb261c1")
+			},
+			clearGloabalHostUrl() {
+				// 可以在任意地方页面,uts中执行，全局生效
+				xRequest.setHostUrl("")
+			},
+			openDev() {
+				// 可以在任意地方页面,uts中执行，全局生效
+				xRequest.setDev(true)
+			},
+			request() {
+				let _this = this;
+				let rq = new xRequest()
+				rq.addEventListener('before', (opts : any) : Promise<any> => {
+						let optsObj = opts as xRequestOptionsCallBack;
+
+						// before允许你请求前再次修复参数opts,然后返回到请求中.
+						optsObj.header = { biubiu: "888" } as UTSJSONObject
+						// 在h5端会报sdk bug，但不影响使用，我目前不知道原因。建议不要修改这个data字段。
+						optsObj.data = { sdf: "00" } as UTSJSONObject
+
+						_this.status = 'before'
+						// 下面改false可以中断请求。
+						return Promise.resolve(optsObj)
+					})
+					.addEventListener('before', (opts : any) : Promise<any> => {
+						let optsObj = opts as xRequestOptionsCallBack;
+						_this.status = 'before-2'
+						// before也允许返回boolean用于中断请求.
+						// 任何事件，都可以重复添加。然后会把所有相同的before事件一并执行
+						// 但如果其中有一个返回了false，会中断后面的执行，并结束请求，不会发起真正的请求。
+						return new Promise((res, rej) => {
+							setTimeout(function () {
+								res(true)
+							}, 800);
+						})
+					})
+					.addEventListener('abort', (result : any) : Promise<any> => {
+						let jg = result as xRequestResult;
+						_this.status = 'abort'
+						return Promise.resolve(true)
+					})
+					.addEventListener('timeout', (result : any) : Promise<any> => {
+						let jg = result as xRequestResult;
+						_this.status = 'timeout'
+						// 请求超时时触发。
+						return Promise.resolve(true)
+					})
+					.addEventListener('error', (result : any) : Promise<any> => {
+						let jg = result as xRequestResult;
+						_this.status = 'error'
+						// 请求错误时触发
+						return Promise.resolve(true)
+					})
+					.addEventListener('after', (result : any) : Promise<any> => {
+						let jg = result as xRequestResult;
+						_this.status = 'after'
+
+						// 可以改变请求结果的数据
+						return new Promise((res) => {
+							setTimeout(function () {
+								jg.data = { code: 2, msg: "成功", data: "我是after修改后的结果" } as UTSJSONObject
+								res(jg)
+							}, 800);
+						})
+					})
+					.addEventListener('complete', (result : any) : Promise<any> => {
+						let jg = result as xRequestResult;
+						_this.status = 'complete'
+
+						// 不管成功与否都会触发这里
+						return Promise.resolve(true)
+					})
+
+
+
+				rq.request({ url: "/web/atcilDetail/", data: { id: 2 } })
+					.then(result => {
+						_this.resulte = result as xRequestResult;
+						// 如果你在这里请求发现jg返回的数据通过服务器比如，需要重新登录
+						// 你可以 
+						// xRequest.setAuth(x:boolean)
+						// 请求成功后
+						console.log(result, "请求成功的数据", _this.resulte)
+					})
+					.catch((er) => {
+						// 请求失败后
+						console.log(er, "请求错误")
+					})
+			}
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

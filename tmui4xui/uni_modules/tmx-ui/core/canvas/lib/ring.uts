@@ -1,0 +1,151 @@
+import { Shape } from './shape.uts';
+import { CanvasRotateCenter, ShapeSetAttrType, IShapeBoundRect, IShapeOptional } from '../interface.uts';
+import { ICanvas } from '@/uni_modules/tmx-ui/core/canvas/ICanvas.uts';
+
+
+export class IRing extends Shape {
+	override type = 'IRing'
+	constructor(config : IShapeOptional,canvas:ICanvas) {
+		super(config,canvas);
+		this.width = this.outerRadius * 2
+		this.height = this.outerRadius * 2
+	}
+
+	setInnerRadius(value : number) : IRing {
+		this.innerRadius = value;
+		this.needsUpdate = true;
+		return this;
+	}
+	setOuterRadius(value : number) : IRing {
+		this.outerRadius = value;
+		this.needsUpdate = true;
+		return this;
+	}
+	override getBoundRect() : IShapeBoundRect {
+		const w = this.outerRadius * 2;
+		return {
+			x: this.x,
+			y: this.y,
+			width: w,
+			height: w
+		} as IShapeBoundRect;
+	}
+
+	override setWidth(value : number) : IRing {
+		this.height = value;
+		this.width = value;
+		this.outerRadius = value / 2
+		this.needsUpdate = true;
+		return this;
+	}
+
+	override setHeight(value : number) : IRing {
+		this.height = value;
+		this.width = value;
+		this.outerRadius = value / 2
+		this.needsUpdate = true;
+		return this;
+	}
+
+
+	override draw(ctx : CanvasRenderingContext2D) {
+		if (this.visible == false) return;
+		super.draw(ctx);
+		ctx.beginPath();
+		// 将角度转换为弧度
+		const startRad = this.startAngle * Math.PI / 180;
+		const endRad = this.endAngle * Math.PI / 180;
+		// 绘制外圆弧
+		ctx.arc(this.x, this.y, this.outerRadius, startRad, endRad, false);
+		// 绘制内圆弧（反方向）
+		ctx.arc(this.x, this.y, this.innerRadius, endRad, startRad, true);
+		ctx.closePath();
+		if (this.fill != "") {
+			ctx.fill();
+
+		}
+		if (this.stroke != "") {
+			ctx.stroke();
+		}
+		ctx.restore();
+	}
+	
+	override isPointInPath(x : number, y : number, shapeId : string) : boolean {
+		if (!this.visible || (shapeId != "" && shapeId != this.id)) return false;
+		
+		// 计算点击位置相对于圆心的实际坐标
+		let realX = x - this.offsetX - this.x;
+		let realY = y - this.offsetY - this.y;
+		
+		// 如果有旋转，需要将坐标转换回未旋转状态
+		if (this.rotation != 0) {
+			const angle = -this.rotation * Math.PI / 180;
+			const cos = Math.cos(angle);
+			const sin = Math.sin(angle);
+			let centerX = 0;
+			let centerY = 0;
+			
+			// 根据不同的旋转中心点设置centerX和centerY
+			switch(this.rotateCenter) {
+				case 'topLeft':
+					centerX = 0;
+					centerY = 0;
+					break;
+				case 'topRight':
+					centerX = this.width;
+					centerY = 0;
+					break;
+				case 'bottomLeft':
+					centerX = 0;
+					centerY = this.height;
+					break;
+				case 'bottomRight':
+					centerX = this.width;
+					centerY = this.height;
+					break;
+				case 'center':
+				default:
+					centerX = this.width/2;
+					centerY = this.height/2;
+					break;
+			}
+			
+			const dx = realX - centerX;
+			const dy = realY - centerY;
+			realX = centerX + dx * cos - dy * sin;
+			realY = centerY + dx * sin + dy * cos;
+		}
+		
+		// 计算点到圆心的距离
+		const distance = Math.sqrt(realX * realX + realY * realY);
+		
+		// 考虑缩放因素
+		const scaledInnerRadius = this.innerRadius * Math.min(this.scaleX, this.scaleY);
+		const scaledOuterRadius = this.outerRadius * Math.min(this.scaleX, this.scaleY);
+		
+		// 检查距离是否在内径和外径之间
+		if (distance < scaledInnerRadius || distance > scaledOuterRadius) {
+			return false;
+		}
+		
+		// 计算点击位置的角度（弧度）
+		let angle = Math.atan2(realY, realX);
+		// 将角度转换为0-2π范围
+		if (angle < 0) angle += 2 * Math.PI;
+		// 将角度转换为度数
+		angle = angle * 180 / Math.PI;
+		
+		// 将起始角度和结束角度标准化到0-360度范围
+		let start = this.startAngle % 360;
+		if (start < 0) start += 360;
+		let end = this.endAngle % 360;
+		if (end < 0) end += 360;
+		
+		// 处理跨越0度线的情况
+		if (start <= end) {
+			return angle >= start && angle <= end;
+		} else {
+			return angle >= start || angle <= end;
+		}
+	}
+}

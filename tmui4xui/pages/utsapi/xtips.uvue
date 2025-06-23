@@ -1,0 +1,62 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">提醒 xTips</x-text>
+			<x-text  color="#999999" >这是全局方法,可以在任意位置调用,会覆盖整个屏幕的内容包括系统界面.使用场景,是具有提醒,但又不打扰用户主界面时非常好.显示在顶和底.</x-text>
+		</x-sheet>
+		<x-sheet >
+			<x-button :block="true" @click="loadAlert1">顶部提示</x-button>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-24">定义图标，颜色,底部显示</x-text>
+			<x-button :block="true" @click="loadAlert2">底部显示</x-button>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-24">大段文字显示</x-text>
+			<x-button :block="true" @click="loadAlert3">大段文字显示</x-button>
+		</x-sheet>
+		
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	import { showTips,XTIPS_TYPE } from "@/uni_modules/x-tips-s"
+	import { xStore } from "@/uni_modules/tmx-ui/index.uts"
+	export default {
+		data() {
+			return {
+				
+			};
+		},
+		computed:{
+			msgBGcolor():string{
+				return xStore.xConfig.dark=='dark'?'#333333':"#ffffff"
+			},
+			maskBGcolor():string{
+				return xStore.xConfig.dark=='dark'?'#000':"#f5f5f5"
+			}
+		},
+		onLoad() {
+			
+		},
+		methods:{
+			loadAlert1(){
+				showTips({title:"操作成功"} as XTIPS_TYPE)
+			},
+			loadAlert2(){
+				showTips({iconCode:"EB79",position:'bottom',title:"操作成功",contentBgColor:"#333",titleColor:"#1fc73d",iconColor:"#1fc73d"} as XTIPS_TYPE)
+			},
+			loadAlert3(){
+				showTips({iconCode:"",contentBgColor:'#000000',title:"提示消息提示消息提示消息提示消息操作成功操作成功提示消息提示消息提示消息提示消息操作成功操作成功"} as XTIPS_TYPE)
+			}
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

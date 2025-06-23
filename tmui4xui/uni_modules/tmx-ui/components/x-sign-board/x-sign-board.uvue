@@ -1,0 +1,498 @@
+<script lang="ts">
+	import { nextTick, ComponentInternalInstance } from "vue"
+	import { px2dp, checkIsCssUnit, getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	type HUIZHI_TYPE = {
+		width : string,
+		height : string,
+		backgroundColor : string,
+		strokeColor : string,
+		strokeWidth : number,
+	}
+	type EvtCustomDetail = {
+		x : number,
+		y : number,
+		type : string
+	}
+	type PointVegByXsignBorad = {
+		x : number,
+		y : number,
+		lineWidth:number
+	}
+
+
+	/**
+	 * @name 签名板 xSignBoard
+	 * @description 手写签名板，适合需要签字的场景
+	 * @page /pages/index/sign-board
+	 * @category 其它组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				ctx: null as null | DrawableContext,
+				canvas: null as Element | null,
+				isDrawer: false,
+				id: "xSignBoard" + getUid(),
+				ratio: 1,
+				_x: 0,
+				_y: 0,
+				_left: 0,
+				_top: 0,
+				tid: 0,
+				realWidth: 0,
+				realHeight: 0,
+				// 添加笔峰相关变量
+				lastTime: 0,
+				lastX: 0,
+				lastY: 0,
+				diffXY: 1, // 差异，比如两点之间小于1就不会存储。可减少点数提高 性能。
+				ponits: [] as PointVegByXsignBorad[][],
+				currentPath:[] as PointVegByXsignBorad[],
+				step:0
+				
+			}
+		},
+		props: {
+			/**
+			 * 宽度，可任意单位
+			 */
+			width: {
+				type: String,
+				default: '100%'
+			},
+			/**
+			 * 高度，可任意单位
+			 */
+			height: {
+				type: String,
+				default: '150'
+			},
+			/**
+			 * 背景颜色
+			 */
+			backgroundColor: {
+				type: String,
+				default: 'transparent'
+			},
+			/**
+			 * 画笔颜色
+			 */
+			strokeColor: {
+				type: String,
+				default: 'primary'
+			},
+			/**
+			 * 画笔粗细
+			 */
+			strokeWidth: {
+				type: Number,
+				default: 8
+			}
+		},
+		computed: {
+			_props() : HUIZHI_TYPE {
+
+				return {
+					width: checkIsCssUnit(this.width, xConfig.unit),
+					height: checkIsCssUnit(this.height, xConfig.unit),
+					backgroundColor: getDefaultColor(this.backgroundColor),
+					strokeColor: getDefaultColor(this.strokeColor),
+					strokeWidth: this.strokeWidth,
+				} as HUIZHI_TYPE
+			}
+		},
+		mounted() {
+			this.init()
+			// #ifdef WEB||MP
+			this.getNodes();
+			// #endif
+			// #ifdef APP
+			let t = this;
+			this.tid = setTimeout(function () {
+				t.getNodes();
+			}, 100);
+			// #endif
+
+			uni.$on('onResize', this.getNodes)
+		},
+		beforeUnmount() {
+			clearTimeout(this.tid)
+			uni.$off('onResize', this.getNodes)
+		},
+		onPageScroll() {
+
+		},
+		methods: {
+			init() {
+				let canvas = this.$refs['canvas'] as UniElement
+				let t = this;
+				let ctx = null as DrawableContext | null
+				let ratio = uni.getWindowInfo().pixelRatio;
+				// #ifdef APP
+				ctx = canvas.getDrawableContext()!
+				ratio = 1;
+				// #endif
+				// #ifdef WEB
+
+				let crect = canvas.getBoundingClientRect();
+				let dom = canvas as HTMLElement;
+				canvas = dom.querySelector('canvas')
+				ratio = window.devicePixelRatio;
+				let w = crect.width
+				let h = crect.height
+
+				canvas.width = w * ratio
+				canvas.height = h * ratio
+				ctx = canvas.getContext('2d')!
+				t.realWidth = canvas.width
+				t.realHeight = canvas.height
+				// #endif
+
+				// #ifdef MP-WEIXIN
+				uni.createCanvasContextAsync({
+					id: this.id,
+					component: this,
+					success(context) {
+						ctx = context.getContext('2d')!;
+						canvas = ctx.canvas
+						if (ctx == null) return;
+
+						canvas.width = canvas.offsetWidth * ratio
+						canvas.height = canvas.offsetHeight * ratio
+						t.realWidth = canvas.width
+						t.realHeight = canvas.height
+						ctx.scale(ratio, ratio);
+
+
+						t.canvas = canvas!;
+						t.ctx = ctx!;
+						ratio = 1;
+						t.ratio = ratio;
+					},
+					fail() {
+						uni.showToast({ title: '错误', icon: 'none' })
+					}
+				})
+
+				// #endif
+
+				// #ifdef APP||WEB
+				if (ctx == null) return;
+				this.canvas = canvas!;
+				this.ctx = ctx!;
+				this.ratio = ratio;
+				// #endif
+
+				// #ifdef WEB
+				this.clear()
+				// #endif
+			},
+
+			eventDips(evt : EvtCustomDetail) {
+				if (evt.type == 'start') {
+					this.isDrawer = true;
+					this._x = evt.x - this._left
+					this._y = evt.y - this._top
+					// 初始化笔峰相关变量
+					this.lastTime = Date.now()
+					this.lastX = this._x
+					this.lastY = this._y
+					// 初始化新的路径组
+					this.currentPath = [] as PointVegByXsignBorad[]
+					// 存储第一个点
+					this.currentPath.push({x: this._x, y: this._y,lineWidth:this._props.strokeWidth } as PointVegByXsignBorad)
+				}
+				if (evt.type == 'move') {
+					if (this.isDrawer) {
+						let ctx = this.ctx!
+						let new_x = evt.x - this._left
+						let new_y = evt.y - this._top
+
+						// 计算速度和笔画粗细
+						let currentTime = Date.now()
+						let deltaTime = currentTime - this.lastTime
+						let distance = Math.sqrt(Math.pow(new_x - this.lastX, 2) + Math.pow(new_y - this.lastY, 2))
+						let speed = distance / deltaTime
+
+						// 根据速度调整笔画粗细，速度越快笔画越细
+						let width = Math.max(this._props.strokeWidth * (1 - speed * 0.5), this._props.strokeWidth * 0.4)
+
+						// 判断是否需要存储当前点
+						let lastStoredPoint = this.currentPath[this.currentPath.length - 1]
+						let distanceFromLastStored = Math.sqrt(
+							Math.pow(new_x - lastStoredPoint.x, 2) + 
+							Math.pow(new_y - lastStoredPoint.y, 2)
+						)
+
+						// 当距离大于阈值且当前路径点数小于最大限制时存储点
+						if (distanceFromLastStored > this.diffXY && this.currentPath.length < 100) {
+							this.currentPath.push({x: new_x, y: new_y,lineWidth:width} as PointVegByXsignBorad)
+						}
+
+						ctx.beginPath();
+						ctx.strokeStyle = this._props.strokeColor
+						ctx.lineCap = 'round';
+						ctx.lineJoin = 'round';
+						ctx.lineWidth = width * this.ratio;
+						ctx.moveTo(this._x * this.ratio, this._y * this.ratio);
+						ctx.lineTo(new_x * this.ratio, new_y * this.ratio);
+						ctx.stroke();
+
+						// 更新位置和时间
+						this._x = new_x
+						this._y = new_y
+						this.lastTime = currentTime
+						this.lastX = new_x
+						this.lastY = new_y
+
+						// #ifdef APP
+						ctx!.update()
+						// #endif
+						ctx.closePath()
+					}
+				}
+				if (evt.type == 'end') {
+					this.isDrawer = false;
+					this._x = evt.x - this._x
+					this._y = evt.y - this._y
+					// 将当前路径组添加到ponits数组中
+					if (this.currentPath.length > 1) {
+						this.ponits.push(this.currentPath)
+					}
+					
+				}
+			},
+
+			mStart(evt : UniTouchEvent) {
+				let event = evt.changedTouches[0];
+				uni.createSelectorQuery().in(this)
+				.select(".canvas")
+				.boundingClientRect().exec((ret) => {
+					let nodeinfo = ret[0] as NodeInfo;
+					this._left = nodeinfo.left!;
+					this._top = nodeinfo.top!;
+					// #ifdef WEB
+					this._top += uni.getWindowInfo().windowTop;
+					// #endif
+					this.eventDips({ x: event.clientX, y: event.clientY, type: 'start' } as EvtCustomDetail)
+				})
+			},
+			mMove(evt : UniTouchEvent) {
+				if (!this.isDrawer) return
+				evt.stopPropagation()
+				evt.preventDefault()
+				let event = evt.changedTouches[0];
+				this.eventDips({ x: event.clientX, y: event.clientY, type: 'move' } as EvtCustomDetail)
+			},
+			mEnd(evt : UniTouchEvent) {
+				let event = evt.changedTouches[0];
+				this.eventDips({ x: event.clientX, y: event.clientY, type: 'end' } as EvtCustomDetail)
+			},
+			// #ifdef WEB
+			mmStart(evt : UniMouseEvent) {
+				this.eventDips({ x: evt.clientX, y: evt.clientY, type: 'start' } as EvtCustomDetail)
+
+			},
+			mmMove(evt : UniMouseEvent) {
+				if (!this.isDrawer) return
+				evt.stopPropagation()
+				evt.preventDefault()
+				this.eventDips({ x: evt.clientX, y: evt.clientY, type: 'move' } as EvtCustomDetail)
+			},
+			mmEnd(evt : UniMouseEvent) {
+				this.eventDips({ x: evt.clientX, y: evt.clientY, type: 'end' } as EvtCustomDetail)
+			},
+
+			// #endif
+			
+			/**
+			 * 获取当前的笔画数量
+			 * 这是个大概值，并非完全准确，但至少可以验证
+			 * 出用户写了多少笔，是否真的签名了。
+			 * @public
+			 */
+			getLineCount():number{
+				return this.ponits.length;
+			},
+
+			/**
+			 * 清空画布
+			 * @public
+			 */
+			clear() {
+				let ctx = this.ctx!;
+				let canvas = this.canvas!;
+				this.ponits = [];
+				this.step = 0
+				ctx.fillStyle = 'transparent'
+				ctx.fillRect(0, 0, this.realWidth, this.realHeight)
+				// #ifdef MP||WEB
+				ctx!.clearRect(0, 0, this.realWidth, this.realHeight)
+				// #endif
+				// #ifdef APP
+				ctx.reset();
+				ctx!.update()
+				// #endif
+			},
+			drawOffC(pos : PointVegByXsignBorad[][]) {
+				let ctx = this.ctx!;
+				let canvas = this.canvas!;
+				
+				ctx.fillStyle = 'transparent'
+				ctx.fillRect(0, 0, this.realWidth, this.realHeight)
+				// #ifdef MP||WEB
+				ctx!.clearRect(0, 0, this.realWidth, this.realHeight)
+				// #endif
+				// #ifdef APP
+				ctx.reset();
+				ctx!.update()
+				// #endif
+				
+
+				// #ifdef APP
+				ctx!.update()
+				// #endif
+
+				ctx!.strokeStyle = this._props.strokeColor
+				pos.forEach((el : PointVegByXsignBorad[]) => {
+					
+					let p = el[0]
+					let x0 = p.x
+					let y0 = p.y
+					ctx!.lineWidth = p.lineWidth * this.ratio;
+					ctx!.beginPath();
+					// ctx.moveTo(px2dp(x0), px2dp(y0));
+					el.forEach((d : PointVegByXsignBorad) => {
+						let x1 = d.x
+						let y1 = d.y
+						ctx!.moveTo(x0 * this.ratio, y0 * this.ratio);
+						ctx!.lineTo(x1 * this.ratio, y1 * this.ratio);
+						x0 = x1;
+						y0 = y1;
+						// ctx.moveTo(px2dp(x0), px2dp(y0));
+						ctx!.lineCap = 'round';
+						ctx!.stroke();
+						// #ifdef APP
+						ctx!.update()
+						// #endif
+					})
+					ctx!.closePath()
+				})
+
+			},
+			/**
+			 * 回退的步数,暂不开放
+			 * @param {number} n - 回退的步数
+			 */
+			back(n : number) {
+				this.step += n
+				if (this.ponits.length - this.step < 0 || this.step < 0) {
+					uni.showToast({ title: "超出步骤数", icon: 'none' })
+				} else {
+					let newdata = this.ponits.slice(0, this.ponits.length - (this.step+1))
+					this.drawOffC(newdata)
+				}
+			},
+			/**
+			 * 前进的步数,暂不开放
+			 * @param {number} n - 前进的步数
+			 */
+			go(n : number) {
+				this.step -= n
+				if (this.step < 0) {
+					uni.showToast({ title: "超出步骤数", icon: 'none' })
+				} else {
+					let newdata = this.ponits.slice(0, this.ponits.length - this.step)
+					this.drawOffC(newdata)
+				}
+
+			},
+			getNodes() {
+				uni.createSelectorQuery().in(this)
+					.select(".canvas")
+					.boundingClientRect().exec((ret) => {
+						let nodeinfo = ret[0] as NodeInfo;
+						this._left = nodeinfo.left!;
+						this._top = nodeinfo.top!;
+						// #ifdef WEB
+						this._top += uni.getWindowInfo().windowTop;
+						// #endif
+					})
+			},
+			/**
+			 * 获取图片数据
+			 * @public
+			 * @returns {Promise<UTSJSONObject>} - {src:图片路径,width:图片宽,height:图片高,error:错误信息}
+			 */
+			getImage() : Promise<UTSJSONObject> {
+				let t = this;
+				let canvas = this.$refs['canvas'] as UniElement
+				let width = 0;
+				let height = 0
+				// #ifdef APP||WEB
+				let rect = canvas.getBoundingClientRect()
+				width = rect.width
+				height = rect.height
+				// #endif
+				// #ifdef MP
+				width = this.canvas?.offsetWidth
+				height = this.canvas?.offsetHeight
+				// #endif
+
+				return new Promise((res, rej) => {
+					// #ifdef APP
+					canvas.takeSnapshot({
+						success: function (rult) {
+
+							res({
+								src: rult.tempFilePath,
+								width: width,
+								height: height,
+								error: "成功"
+							} as UTSJSONObject)
+						},
+						fail: function () {
+							rej({ error: "失败" } as UTSJSONObject)
+						}
+					})
+					// #endif
+
+					// #ifdef WEB||MP
+					var imageData = this.canvas!.toDataURL('image/png');
+					res({
+						src: imageData,
+						width: width,
+						height: height,
+						error: "成功"
+					} as UTSJSONObject)
+					// #endif
+				})
+			},
+
+		},
+	}
+</script>
+<template>
+
+	<!-- #ifdef WEB||MP-WEIXIN -->
+	<canvas :id="id" ref="canvas" type="2d" class="canvas" @touchstart="mStart" @touchend="mEnd" @touchmove.stop="mMove"
+		@mousedown="mmStart" @mouseup="mmEnd" @mousemove.stop="mmMove" @mouseleave="mmEnd"
+		:style="{width:_props.width,height:_props.height}"></canvas>
+	<!-- #endif -->
+
+	<!-- #ifdef APP -->
+	<view :id="id" class="canvas" ref="canvas" @touchstart="mStart" @touchend="mEnd" @touchmove="mMove"
+		:style="{width:_props.width,height:_props.height}">
+
+	</view>
+	<!-- #endif -->
+</template>
+<style scoped lang="scss">
+
+</style>

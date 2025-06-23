@@ -1,0 +1,61 @@
+
+export type XTREEFLAT_CONFIG = {
+	/** 不填写默认为1000 */
+	width?:number,
+	/** 不填写默认为1000 */
+	height?:number,
+	/** 不填写默认为透明,即不绘制背景 */
+	bgColor?:string,
+	nodeBgColor?:string,
+	/** 不填写默认为#333 */
+	fontColor?:string,
+	/** 不填写默认为14,如果子节点设置了以子节点为准 */
+	fontSize ?: number,
+	/** 统一连线颜色,不配置取节点的背景,如果节点背景也没设置取#333 */
+	lineColor?:string,
+	/** 连线宽 */
+	lineWidth?:number,
+	/** 画板对象,必填写 **/
+	canvas:CanvasContext,
+	/** 节点布局信息 **/
+	nodeInfo:NodeInfo,
+	/** 绘制文本时的内边跑 */
+	padding ?: number,
+	/** 绘制项目是连接线上下项目或者左右项目的间距 */
+	gutter ?: number,
+	/** 父级与子级之间的连续长度 */
+	parentLineGutter ?: number,
+	/** 点击有子节点的父级时，是否允许关闭和展开，默认关闭 */
+	enbleOpenChildren ?:boolean,
+	/** 节点圆角，默认为8 */
+	nodeRadius ?: number
+}
+
+
+export type XTREEFLAT_CHILDREN = {
+	/** 唯一标识,如果不填写内部自动填写 */
+	id : string | number,
+	/** 标题 */
+	title : string,
+	/** 文本颜色 */
+	fontColor : string,
+	/** 文本背景颜色 */
+	bgColor : string,
+	/** 绘制文本时的内边跑 */
+	padding : number,
+	/** 绘制项目是连接线上下项目或者左右项目的间距 */
+	gutter : number,
+	/** 父级与子级之间的连续长度 */
+	parentLineGutter : number,
+	/** 是否展开了子级 */
+	opened : boolean,
+	/** 是否禁用展开子级 */
+	disabled : boolean,
+	/** 当前项目是否选中 */
+	selected : boolean,
+	/** 绘制文本的字号大小 */
+	fontSize : number,
+	/** 子级数据,可以为空数组代表无子级不绘制下级 */
+	children : Array<XTREEFLAT_CHILDREN>,
+	lineColor : string
+}

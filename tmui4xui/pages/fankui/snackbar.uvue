@@ -1,0 +1,62 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">消息条 Snackbar</x-text>
+			<x-text color="#999999">
+				位置可以在顶或者底，并且不需要ref函数来实现，我创新的通过使用变量id更改来发送新的消息条。
+				消息条是无限累加在旧消息条的前面,并且现在支持6个方向的弹出.
+			</x-text>
+		</x-sheet>
+		<x-snackbar position="top" :content="content"></x-snackbar>
+		<x-sheet>
+			<x-button :block="true" @click="randMsg">随机一条顶部消息</x-button>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b ">可以设置为横幅尺寸和自定样式</x-text>
+		</x-sheet>
+		<x-snackbar :block="true" :content="content2"></x-snackbar>
+		<x-sheet>
+			<x-button color="warn" :block="true" @click="randMsg2">随机一条底部消息</x-button>
+		</x-sheet>
+
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script lang="uts" setup>
+	import { SNACKBAR_INFO } from '@/uni_modules/tmx-ui/interface.uts';
+	const content = ref<SNACKBAR_INFO>({
+		id: -1,//-1表示 不显示。
+		content: ""
+	})
+	const content2 = ref<SNACKBAR_INFO>({
+		id: -1,//-1表示 不显示。
+		content: ""
+	})
+	const randMsg = () => {
+		content.value = {
+			id: content.value.id + 1,
+			content: "测试标题" + content.value.id.toString()
+		} as SNACKBAR_INFO
+	}
+	const randMsg2 = () => {
+		content2.value = {
+			id: content2.value.id + 1,
+			content: "可以随意定义颜色可以随意定义颜色" + content2.value.id.toString(),
+			background: 'red',
+			icon: "close-circle-line"
+		} as SNACKBAR_INFO
+	}
+</script>
+
+<style lang="scss">
+
+</style>

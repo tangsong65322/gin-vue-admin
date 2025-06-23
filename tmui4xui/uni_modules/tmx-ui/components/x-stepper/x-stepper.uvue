@@ -1,0 +1,410 @@
+<script lang="ts">
+	import { type PropType } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit, getUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+
+	/**
+	 * @name 步进器 xStepper
+	 * @description 可整数，小数
+	 * @page /pages/index/stepper
+	 * @category 表单组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				_value: 0,
+				_input_value: "",
+				addDomDisabeld: false,
+				surDomDisabeld: false
+			}
+		},
+		emits: [
+			/**
+			 * 输入值或者点击按钮时触发
+			 * @param {number} str - 当前的值。
+			 */
+			'change', 'update:modelValue',
+		],
+		props: {
+			/**
+			 * 当前值，可v-model
+			 */
+			modelValue: {
+				type: Number,
+				default: 0
+			},
+			/**
+			 * 最大值
+			 */
+			max: {
+				type: Number,
+				default: 100
+			},
+			/**
+			 * 组件宽
+			 */
+			width: {
+				type: String,
+				default: "auto"
+			},
+			/**
+			 * 最小值
+			 */
+			min: {
+				type: Number,
+				default: 0
+			},
+			/**
+			 * 开启后自动隐藏限制的按钮
+			 * 最小时隐藏减号按钮
+			 */
+			autoHideBtn:{
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 是否禁用整个组件
+			 */
+			disabled: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 是否禁用输入框
+			 */
+			disabledInput: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 步进值
+			 */
+			step: {
+				type: Number,
+				default: 1
+			},
+			/**
+			 * 如果进步值是小数位需要设置此值
+			 */
+			decimalLen: {
+				type: Number,
+				default: 0
+			},
+			/**
+			 * 按钮的颜色
+			 */
+			btnColor: {
+				type: String,
+				default: "info"
+			},
+			/**
+			 * 按钮的暗黑颜色
+			 * 空值读取全局的Input暗黑背景色
+			 */
+			darkBtnColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 输入框的背景色
+			 */
+			bgColor: {
+				type: String,
+				default: "info"
+			},
+			/**
+			 * 输入框的自定样式
+			 * 可以写背景字体等样式
+			 */
+			inputStyle: {
+				type: String,
+				default: ''
+			},
+			/**
+			 * 输入框的暗黑背景色
+			 * 空值读取全局的Input暗黑背景色
+			 */
+			darkBgColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 按钮的宽
+			 */
+			btnWidth: {
+				type: String,
+				default: "36"
+			},
+			/**
+			 * 输入框及按钮的高
+			 */
+			height: {
+				type: String,
+				default: "36"
+			},
+			/**
+			 * 按钮的圆角。
+			 */
+			round: {
+				type: String,
+				default: "4"
+			},
+
+			/**
+			 * 是否按钮与输入框独立开来
+			 * 不和输入框粘一起。
+			 */
+			splitBtn: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 按钮文本颜色，暗黑时取白色
+			 */
+			btnFontColor: {
+				type: String,
+				default: "#333333"
+			},
+			/**
+			 * 文本颜色,暗黑时取白色
+			 */
+			fontColor: {
+				type: String,
+				default: "#333333"
+			},
+			/**
+			 * 文本文字大小
+			 */
+			fontSize: {
+				type: String,
+				default: "14"
+			},
+		},
+		computed: {
+			_round() : string {
+				if (this.round == "") {
+					return checkIsCssUnit(xConfig.progressRadius, xConfig.unit)
+				}
+				return checkIsCssUnit(this.round, xConfig.unit)
+			},
+			_width() : string {
+				return checkIsCssUnit(this.width, xConfig.unit)
+			},
+			_inputStyle() : string {
+				return this.inputStyle
+			},
+			
+			_fontSize() : string {
+				let fontSize = checkIsCssUnit(this.fontSize, xConfig.unit);
+				if (xConfig.fontScale == 1) return fontSize;
+				let sizeNumber = parseInt(fontSize)
+				if (isNaN(sizeNumber)) {
+					sizeNumber = 14
+				}
+				return (sizeNumber * xConfig.fontScale).toString() + getUnit(fontSize)
+			},
+			_unFontSize() : string {
+				return this.fontSize
+			},
+			_btnFontColor() : string {
+				return getDefaultColor(this.btnFontColor)
+			},
+			_fontColor() : string {
+				if (xConfig.dark == 'dark') return '#ffffff'
+				return getDefaultColor(this.fontColor)
+			},
+			_height() : string {
+				return checkIsCssUnit(this.height, xConfig.unit)
+			},
+			_btnWidth() : string {
+				return checkIsCssUnit(this.btnWidth, xConfig.unit)
+			},
+			_splitBtn() : boolean {
+				return this.splitBtn
+			},
+			_disabledInput() : boolean {
+				return this.disabledInput
+			},
+			_btnColor() : string {
+				let color = getDefaultColor(this.btnColor)
+				if (xConfig.dark == 'dark') {
+					if (this.darkBtnColor == "") {
+						color = xConfig.inputDarkColor
+					} else {
+						color = getDefaultColor(this.darkBtnColor)
+					}
+				}
+				return color
+			},
+			_bgColor() : string {
+
+				let color = getDefaultColor(this.bgColor)
+				if (xConfig.dark == 'dark') {
+					if (this.darkBgColor == "") {
+						color = xConfig.inputDarkColor
+					} else {
+						color = getDefaultColor(this.darkBgColor)
+					}
+				}
+				return color
+			},
+			_max() : number {
+				return this.max
+			},
+			_min() : number {
+				return this.min
+			},
+			_step() : number {
+				return this.step
+			},
+			_disabled() : boolean {
+				return this.disabled
+			}
+		},
+		watch: {
+			modelValue(newval : number) {
+				if (newval == this._value) return;
+				this.setValue(newval, false)
+			}
+		},
+		mounted() {
+			this.setValue(this.modelValue, false)
+		},
+		methods: {
+			isInRange(value : number) : boolean {
+				return value >= this._min && value <= this._max;
+			},
+			clampValue(value : number) : number {
+				return Math.min(Math.max(value, this._min), this._max);
+			},
+			getDecimalPlaces() : number {
+				return this.decimalLen;
+			},
+			/**
+			 * 加
+			 */
+			handleIncrement() {
+
+				const newValue = Math.min(this._value + this._step, this.max);
+				let val = this.clampValue(parseFloat(newValue.toFixed(this.decimalLen)));
+
+				this.setValue(val, true)
+			},
+			/**减 */
+			handleDecrement() {
+				const newValue = Math.max(this._value - this._step, this.min);
+				let val = this.clampValue(parseFloat(newValue.toFixed(this.decimalLen)));
+				this.setValue(val, true)
+			},
+			handleInputChange(event : UniInputEvent) {
+				this._input_value = event.detail.value
+			},
+			getDien(str:string):string{
+				let v1 = str.split(".")
+				let result = v1[0]
+				if(v1.length==0){
+					result = '0.' 
+					for(let i =0;i<this.decimalLen;i++){
+						result+='0'
+					}
+				}else if(v1.length==1){
+					result = result + "."
+					for(let i =0;i<this.decimalLen;i++){
+						result+='0'
+					}
+				}else{
+					result = result + "." + v1[1].substring(0,this.decimalLen)
+				}
+				return result
+			},
+			inputBlur() {
+				const inputValue = parseFloat(this._input_value);
+				if (!isNaN(inputValue)) {
+					let str = this.getDien(inputValue + '')
+					let val = this.clampValue(parseFloat(str));
+					this.setValue(val, true)
+				} else {
+					this.setValue(parseFloat(this._min.toFixed(this.decimalLen)), true)
+				}
+			},
+			setValue(value : number, isEmit : boolean) {
+				const clampedValue = this.clampValue(value);
+				this._value = clampedValue;
+				this._input_value = this._value.toString();
+				this.addDomDisabeld = this._value >= this.max
+				this.surDomDisabeld = this._value <= this.min
+
+				if (isEmit) {
+					/**
+					 * 等同v-model
+					 */
+					this.$emit("update:modelValue", clampedValue)
+					/**
+					 * 输入值或者点击按钮时触发
+					 * @param {number} 当前的值。
+					 */
+					this.$emit("change", clampedValue)
+				}
+			}
+		},
+	}
+</script>
+<template>
+	<view class="xStepper" :style="{width:_width,borderRadius:_round}">
+		<view v-if="(!surDomDisabeld&&autoHideBtn)||!autoHideBtn" :hover-start-time="20" :hover-stay-time="150" :hover-class="addDomDisabeld?'':'xStepperHoverbtn'"
+			@click="handleDecrement" class="xStepperBtn"
+			:style="{backgroundColor:_btnColor,height:_height,width:_btnWidth,opacity:surDomDisabeld?0.6:1,borderRadius:_splitBtn?'50px':'0rpx'}">
+			<x-icon class="xStepperBtnBtn" :color="_btnFontColor" :font-size="_unFontSize"
+				name="subtract-line"></x-icon>
+		</view>
+
+		<input v-if="(!surDomDisabeld&&autoHideBtn)||!autoHideBtn" :always-embed="true" :disabled="_disabledInput||_disabled" @blur="inputBlur" @input="handleInputChange" :value="_input_value" class="xStepperInput"
+			:style="[
+				{backgroundColor:_splitBtn?'transparent':_btnColor,height:_height,color:_fontColor,fontSize:_fontSize},
+				_inputStyle
+			]"
+			:type="decimalLen>0?'digit':'number'" />
+		<view  :hover-start-time="20" :hover-stay-time="150" :hover-class="addDomDisabeld?'':'xStepperHoverbtn'"
+			@click="handleIncrement" class="xStepperBtn"
+			:style="{backgroundColor:_btnColor,height:_height,width:_btnWidth,borderRadius:_splitBtn?'50px':'0rpx'}">
+			<x-icon class="xStepperBtnBtn" :style="{opacity:addDomDisabeld?0.6:1}" :color="_btnFontColor"
+				:font-size="_unFontSize" name="add-line"></x-icon>
+		</view>
+
+	</view>
+</template>
+<style scoped>
+	.xStepperBtnBtn {
+		pointer-events: none;
+	}
+
+	.xStepperHoverbtn {
+		opacity: 0.8;
+	}
+
+	.xStepper {
+		display: flex;
+		flex-direction: row;
+		overflow: hidden;
+	}
+
+	.xStepperInput {
+		flex: 1;
+		margin: 0 1px;
+		padding: 0 5px;
+		text-align: center;
+	}
+
+	.xStepperBtn {
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+	}
+</style>

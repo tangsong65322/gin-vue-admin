@@ -1,0 +1,89 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">侧边分类 xSliderTree</x-text>
+			<x-text color="#999999" >侧边分类选择，可多选，单选模式。</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b">单选（可无限级）</x-text>
+			<x-divider class="my-24"></x-divider>
+			<x-slider-tree :model-value="['1-3']" height="280" :list="list"></x-slider-tree>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b">多选（可无限级）</x-text>
+			<x-divider class="my-24"></x-divider>
+			<x-slider-tree v-model="selecteds" :multiple="true" height="280px" :list="list"></x-slider-tree>
+			<x-button class="mt-24" @click="selecteds = ['1-3-1','10']" :block="true">动态赋值</x-button>
+		</x-sheet>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	import { SLIDER_TREE_ITEM_INFO } from "@/uni_modules/tmx-ui/interface.uts"
+	export default {
+		data() {
+			const items = [
+				{
+					title: '江西',
+					id: "1-1",
+					children: [
+						{
+							title: '南昌',
+							id: "1",
+							children: [
+								{ title: '青山湖区', id: "1-2" } as SLIDER_TREE_ITEM_INFO,
+								{ title: '高新区', id: "1-3" } as SLIDER_TREE_ITEM_INFO,
+								{ title: '红谷滩区', id: "1-4" } as SLIDER_TREE_ITEM_INFO,
+								{
+
+									title: '东湖区', id: "1-5",
+
+									children: [
+										{ title: '三级-青山湖区', id: "1-2-1" } as SLIDER_TREE_ITEM_INFO,
+										{ title: '三级-高新区', id: "1-3-1" } as SLIDER_TREE_ITEM_INFO,
+										{ title: '三级-红谷滩区', id: "1-4-1" } as SLIDER_TREE_ITEM_INFO,
+										{ title: '三级-东湖区', id: "1-5-1" } as SLIDER_TREE_ITEM_INFO,
+									] as SLIDER_TREE_ITEM_INFO[],
+
+								} as SLIDER_TREE_ITEM_INFO,
+							] as SLIDER_TREE_ITEM_INFO[],
+
+						} as SLIDER_TREE_ITEM_INFO,
+						{ title: '九江', id: "2" } as SLIDER_TREE_ITEM_INFO,
+						{ title: '赣州', id: "8", disabled: true } as SLIDER_TREE_ITEM_INFO,
+						{ title: '吉安', id: "9" } as SLIDER_TREE_ITEM_INFO,
+						{ title: '抚州', id: "10" } as SLIDER_TREE_ITEM_INFO,
+					] as SLIDER_TREE_ITEM_INFO[],
+				} as SLIDER_TREE_ITEM_INFO,
+				{
+					title: '江苏',
+					id: "4-1",
+					children: [
+						{ title: '常熟', id: "4" } as SLIDER_TREE_ITEM_INFO,
+						{ title: '苏州', id: "5" } as SLIDER_TREE_ITEM_INFO,
+						{ title: '小上海', id: "6" } as SLIDER_TREE_ITEM_INFO,
+					] as SLIDER_TREE_ITEM_INFO[],
+				} as SLIDER_TREE_ITEM_INFO,
+				{ title: '安徽(被禁用)', disabled: true, id: "7" } as SLIDER_TREE_ITEM_INFO,
+				{ title: '湖南', id: "99" } as SLIDER_TREE_ITEM_INFO,
+			] as SLIDER_TREE_ITEM_INFO[];
+			return {
+				list: items,
+				selecteds: [] as string[]
+			};
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

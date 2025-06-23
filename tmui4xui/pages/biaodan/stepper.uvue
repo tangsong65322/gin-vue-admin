@@ -1,0 +1,64 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">步进器 Stepper</x-text>
+			<x-text color="#999999" >可整数，小数步进</x-text>
+		</x-sheet>
+		
+		<x-sheet class="flex flex-row">
+			<x-stepper width="110" ></x-stepper>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b">达到界定值时自动隐藏按钮</x-text>
+		</x-sheet>
+		<x-sheet class="">
+			<x-stepper :autoHideBtn="true" :max="5" width="110" ></x-stepper>
+			<view class="py-10"></view>
+			<x-stepper :autoHideBtn="true"  darkBtnColor="primary" btn-color="primary" btn-font-color="white" font-color="primary" :splitBtn="true" :model-value="0" width="110" ></x-stepper>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b">小数点</x-text>
+		</x-sheet>
+		<x-sheet class="flex flex-row">
+			<x-stepper :decimal-len="1" :step="0.1" width="110" ></x-stepper>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b">圆角类型</x-text>
+		</x-sheet>
+		<x-sheet class="flex flex-row">
+			<x-stepper :splitBtn="true" :model-value="50" width="110" ></x-stepper>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b">更换颜色</x-text>
+		</x-sheet>
+		<x-sheet class="">
+			<x-stepper darkBtnColor="primary" btn-color="primary" btn-font-color="white" font-color="primary" :splitBtn="true" :model-value="10" width="110" ></x-stepper>
+		</x-sheet>
+		
+		
+		
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+
+			};
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

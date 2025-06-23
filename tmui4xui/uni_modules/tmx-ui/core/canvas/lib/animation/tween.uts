@@ -1,0 +1,283 @@
+import { Shape } from '../shape.uts';
+import { ICanvas } from '@/uni_modules/tmx-ui/core/canvas/ICanvas.uts';
+
+export type EasingFunction = (t: number) => number;
+type UpdateCall = (t: number) => void;
+type AnimationConfig = {
+    props: UTSJSONObject;
+    duration: number;
+    easing?: EasingFunction;
+    startValues: Map<string, number>;
+}
+
+export class Tween {
+    private target: Shape;
+    private startValues: Map<string, number> = new Map();
+    private endValues: Map<string, number> = new Map();
+    private duration: number;
+    private startTime: number = 0;
+    private isPlaying: boolean = false;
+    private easing: EasingFunction;
+    private onUpdateFun: ((progress:number) => void) | null = null;
+    private onCompleteFun: (() => void) | null = null;
+    private canvas: CanvasContext;
+    private parentICanvas: ICanvas;
+    private requestAnimationFrameId = 0;
+    private loop: number = 0; // 循环次数，0表示不循环，-1表示无限循环
+    private currentLoop: number = 0; // 当前已完成的循环次数
+    private yoyo: boolean = false; // 是否开启往返播放
+    private isReverse: boolean = false; // 当前是否为反向播放
+    private animationQueue: AnimationConfig[] = []; // 动画队列
+    private currentAnimationIndex: number = -1; // 当前执行的动画索引
+
+    constructor(target: Shape, canvas: ICanvas) {
+        this.target = target;
+        this.canvas = canvas.canvas!;
+        this.parentICanvas = canvas;
+        this.duration = 1000;
+        this.easing = Easing.linear as EasingFunction;
+    }
+
+    to(props: UTSJSONObject, duration: number = 1000): Tween {
+        return this.addTo(props, duration);
+    }
+
+    addTo(props: UTSJSONObject, duration: number = 1000, easing: EasingFunction = this.easing): Tween {
+        const startValues = new Map<string, number>();
+        for (const key in props) {
+            let keyValue = props[key];
+            if (typeof keyValue == 'number') {
+                let startValue = this.target.getAttr(key);
+                if(typeof startValue == 'number'){
+                    startValues.set(key, startValue);
+                }
+            }
+        }
+        this.animationQueue.push({
+            props: props,
+            duration: duration,
+            easing: easing,
+            startValues: startValues
+        });
+        return this;
+    }
+
+    clearAnimations(): Tween {
+        this.animationQueue = [];
+        this.currentAnimationIndex = -1;
+		this.canvas.cancelAnimationFrame(this.requestAnimationFrameId)
+        this.stop();
+        return this;
+    }
+    
+
+    start(): Tween {
+        this.isPlaying = true;
+        this.update();
+        return this;
+    }
+
+    stop(): Tween {
+        this.isPlaying = false;
+        return this;
+    }
+
+    private update(): void {
+        const selftThis = this;
+        let updateSelf = null as null|UpdateCall;
+        selftThis.currentLoop = 1;
+        selftThis.isReverse = false;
+        // 开始执行队列中的第一个动画
+        if (selftThis.currentAnimationIndex == -1 && selftThis.animationQueue.length > 0) {
+            selftThis.currentAnimationIndex = 0;
+            const currentAnimation = selftThis.animationQueue[selftThis.currentAnimationIndex];
+            selftThis.duration = currentAnimation.duration;
+            selftThis.easing = currentAnimation.easing ?? selftThis.easing;
+            selftThis.startValues.clear();
+            selftThis.endValues.clear();
+            for (const key in currentAnimation.props) {
+                let keyValue = currentAnimation.props[key];
+                if (typeof keyValue == 'number') {
+                    let startValue = currentAnimation.startValues?.get(key);
+                    if(typeof startValue == 'number'){
+                        selftThis.startValues.set(key, startValue!);
+                        selftThis.endValues.set(key, keyValue);
+                    }
+                }
+            }
+        }
+
+        updateSelf = (time:number)=>{
+			
+            if (!selftThis.isPlaying) return;
+            const currentTime = time;
+            let elapsed = currentTime - selftThis.startTime;
+           
+            if (elapsed > selftThis.duration) {
+				
+                if (selftThis.yoyo && !selftThis.isReverse && (selftThis.currentLoop < selftThis.loop||selftThis.loop==-1)) {
+                    // 开启yoyo且当前为正向播放，切换为反向播放
+                    selftThis.isReverse = true;
+				
+                    if (selftThis.isPlaying) {
+                        selftThis.requestAnimationFrameId = selftThis.canvas.requestAnimationFrame((t) => {
+                            selftThis.startTime = t;
+                            updateSelf!(t)
+                        });
+                        return;
+                    }
+                } else {
+                    if(this.yoyo){
+                        selftThis.isReverse = false;
+                    }
+                    // 检查是否还有下一个动画
+                    if (selftThis.currentAnimationIndex < selftThis.animationQueue.length - 1) {
+                        selftThis.currentAnimationIndex++;
+                        const nextAnimation = selftThis.animationQueue[selftThis.currentAnimationIndex];
+                        selftThis.duration = nextAnimation.duration;
+                        selftThis.easing = nextAnimation.easing ?? selftThis.easing;
+                        selftThis.startValues.clear();
+                        selftThis.endValues.clear();
+                        for (const key in nextAnimation.props) {
+                            let keyValue = nextAnimation.props[key];
+                            if (typeof keyValue == 'number') {
+                                let startValue = selftThis.target.getAttr(key);
+                                if(typeof startValue == 'number'){
+                                    selftThis.startValues.set(key, nextAnimation.startValues.get(key)!);
+                                    selftThis.endValues.set(key, keyValue);
+									
+                                }
+                            }
+                        }
+                        selftThis.requestAnimationFrameId = selftThis.canvas.requestAnimationFrame((t) => {
+                            selftThis.startTime = t;
+                            updateSelf!(t);
+                        });
+                        return;
+                    } else if (selftThis.loop == -1 || selftThis.currentLoop < selftThis.loop) {
+                        // 重置动画索引，开始新一轮循环
+                        selftThis.currentAnimationIndex = 0;
+						selftThis.currentLoop++;
+                        const nextAnimation = selftThis.animationQueue[selftThis.currentAnimationIndex];
+                        selftThis.duration = nextAnimation.duration;
+                        selftThis.easing = nextAnimation.easing ?? selftThis.easing;
+                        selftThis.startValues.clear();
+                        selftThis.endValues.clear();
+						
+                        for (const key in nextAnimation.props) {
+                            let keyValue = nextAnimation.props[key];
+                            if (typeof keyValue == 'number') {
+                                let startValue = selftThis.target.getAttr(key);
+                                if(typeof startValue == 'number'){
+                                    selftThis.startValues.set(key, nextAnimation.startValues.get(key)!);
+                                    selftThis.endValues.set(key, keyValue);
+									
+                                }
+                            }
+                        }
+                        selftThis.requestAnimationFrameId = selftThis.canvas.requestAnimationFrame((t) => {
+                            selftThis.startTime = t;
+                            updateSelf!(t);
+                        });
+                        return;
+                    }
+					
+                    selftThis.isPlaying = false;
+                    selftThis.currentAnimationIndex = -1; // 重置动画索引
+                    selftThis.canvas.cancelAnimationFrame(selftThis.requestAnimationFrameId);
+                }
+            }
+            
+            let progress = selftThis.easing(elapsed / selftThis.duration);
+            if (selftThis.isReverse) {
+                progress = 1 - progress;
+            }
+			
+            selftThis.startValues.forEach((startValue, key) => {
+                const endValue = selftThis.endValues.get(key)!;
+                const value = startValue + (endValue - startValue) * progress;
+                selftThis.target.setAttr(key,value);
+            });
+            
+            selftThis.target.needsUpdate = true;
+            
+            if (selftThis.onUpdateFun!=null) {
+                selftThis.onUpdateFun!(progress);
+            }
+            selftThis.parentICanvas.update();
+            if (!selftThis.isPlaying && selftThis.onCompleteFun!=null) {
+                selftThis.onCompleteFun!();
+                return;
+            }
+            if (selftThis.isPlaying) {
+                selftThis.requestAnimationFrameId = selftThis.canvas.requestAnimationFrame((t) => updateSelf!(t));
+            }
+        }
+        selftThis.requestAnimationFrameId = selftThis.canvas.requestAnimationFrame((t) => {
+            selftThis.startTime = t;
+            updateSelf!(t);
+        });
+    }
+
+    setEasing(easingFunction: EasingFunction): Tween {
+        this.easing = easingFunction;
+        return this;
+    }
+
+    onUpdate(callback: (progress:number) => void): Tween {
+        this.onUpdateFun = callback;
+        return this;
+    }
+
+    onComplete(callback: () => void): Tween {
+        this.onCompleteFun = callback;
+        return this;
+    }
+
+    setLoop(count: number): Tween {
+        this.loop = count;
+        return this;
+    }
+
+    setYoyo(value: boolean): Tween {
+        this.yoyo = value;
+        return this;
+    }
+}
+
+export const Easing = {
+    linear: (t: number): number => t,
+    
+    easeInQuad: (t: number): number => t * t,
+    
+    easeOutQuad: (t: number): number => t * (2 - t),
+    
+    easeInOutQuad: (t: number): number => {
+        return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+    },
+    
+    easeInCubic: (t: number): number => t * t * t,
+    
+    easeOutCubic: (t: number): number => (t-1) * t * t + 1,
+    
+    easeInOutCubic: (t: number): number => {
+        return t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
+    },
+    
+    easeInElastic: (t: number): number => {
+        const c4 = (2 * Math.PI) / 3;
+        return t === 0 ? 0 : t === 1 ? 1 : -Math.pow(2, 10 * t - 10) * Math.sin((t * 10 - 10.75) * c4);
+    },
+    
+    easeOutElastic: (t: number): number => {
+        const c4 = (2 * Math.PI) / 3;
+        return t === 0 ? 0 : t === 1 ? 1 : Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * c4) + 1;
+    },
+    
+    easeInOutElastic: (t: number): number => {
+        const c5 = (2 * Math.PI) / 4.5;
+        return t === 0 ? 0 : t === 1 ? 1 : t < 0.5
+            ? -(Math.pow(2, 20 * t - 10) * Math.sin((20 * t - 11.125) * c5)) / 2
+            : (Math.pow(2, -20 * t + 10) * Math.sin((20 * t - 11.125) * c5)) / 2 + 1;
+    }
+};

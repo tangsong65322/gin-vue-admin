@@ -1,0 +1,59 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">文件选择 xUploadFile</x-text>
+			<x-text color="#999999">使用时请注意区别：安卓端,IOS端,微信小程序没有区别。web端是我模拟的格式有点区别，上传文件是File对象。</x-text>
+			<x-text color="#999999">微信小程序使用前:请确保授权相关文件选择权限.</x-text>
+		</x-sheet>
+		
+
+		
+		<x-sheet>
+			<x-upload-file :before-upload="bef" :auto-start="true" ref='filse' @change="onchange"
+				:default-list="list"></x-upload-file>
+			<x-button @click="upl" :block="true" class="mt-20" skin="thin">手动上传</x-button>
+		</x-sheet>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script setup>
+	import { fileListType } from "@/uni_modules/x-file-s"
+	// @ts-ignore
+	const filse = ref<XUploadFileComponentPublicInstance | null>(null)
+	const list = [
+		{ name: "测试文档.doc", type: "doc", id: "1", request: "{code:1,data:'11',msg:'成功'}" } as UTSJSONObject,
+		{ name: "测试服务默认文件22.mp4", type: "mp4", id: "2", request: "{code:1,data:'22',msg:'成功'}" } as UTSJSONObject,
+	] as UTSJSONObject[]
+
+	
+	
+	const onchange = (list : fileListType[]) => {
+		// console.log(list)
+		
+		// uni.redirectTo({
+		// 	url:"/pages/index/upload-file"
+		// })
+	}
+
+	const upl = () => {
+		filse.value?.start?.()
+	}
+	const bef = (list : fileListType[]) : Promise<fileListType[]> => {
+		console.log(list)
+		// 处理或者过滤好list再返回来就可以过滤掉待要或者已经上传的文件.
+		return Promise.resolve(list)
+	}
+</script>
+
+<style>
+
+</style>

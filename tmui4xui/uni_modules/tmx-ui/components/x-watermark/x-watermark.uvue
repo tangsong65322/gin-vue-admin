@@ -1,0 +1,325 @@
+<script lang="ts">
+	import { nextTick, ComponentInternalInstance } from "vue"
+	import { rpx2px, checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { getUid } from '../../core/util/xCoreUtil.uts';
+	import { xConfig, xProvitae } from "../../config/xConfig.uts"
+	type POSITION = {
+		x : number,
+		y : number
+	}
+	/**
+	 * @name 水印 xWatermark
+	 * @description 适合需要保密，版权的页面使用，可自行调整透明度，颜色值等，方便打标签。
+	 * @page /pages/index/watermark
+	 * @category 展示组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				ctx: null as null | DrawableContext,
+				canvas: null as Element | null,
+				isDrawer: false,
+				id: "xSignBoard" + getUid(),
+				width: 0,
+				height: 0,
+				textWidth: 0,
+				textHeight: 0,
+				devwidth:0,
+				devheight:0,
+				tid: 0,
+				windtop: 0
+			}
+		},
+		props: {
+			/**
+			 * 水印文字
+			 */
+			label: {
+				type: String,
+				default: "XUI DESIGN"
+			},
+			/**
+			 * 水印颜色
+			 */
+			color: {
+				type: String,
+				default: "rgba(0,0,0,0.05)"
+			},
+			/**
+			 * 暗黑时的水印颜色
+			 */
+			darkColor: {
+				type: String,
+				default: "rgba(255,255,255,0.05)"
+			},
+			/**
+			 * 文字大小
+			 */
+			fontSize: {
+				type: String,
+				default: "18"
+			},
+			/**
+			 * 渲染的水印之间的间隙，单位px
+			 */
+			gap: {
+				type: Number,
+				default: 40
+			},
+		},
+		watch: {
+			label() {
+				this.reset()
+			},
+			color() {
+				this.reset()
+			},
+			fontSize() {
+				this.reset()
+			},
+			gap() {
+				this.reset()
+			},
+			_xProvitae_w() {
+				let t = this;
+				let sys = uni.getWindowInfo()
+				// #ifndef APP
+				this.width = sys.windowWidth
+				this.height = sys.windowHeight;
+				this.windtop = sys.windowTop;
+				// #endif
+				// #ifdef APP
+				this.width = sys.windowWidth
+				this.height = sys.windowHeight + 44;
+				// #endif
+			}
+		},
+		computed: {
+			_label() : string {
+				return this.label
+			},
+			_fontSize() : string {
+
+				return checkIsCssUnit(this.fontSize, xConfig.unit)
+			},
+			_color() : string {
+				if(xConfig.dark=='dark') return this.darkColor
+				return getDefaultColor(this.color)
+			},
+			_gap() : number {
+				return this.gap
+			},
+			_xProvitae_w() : number {
+				return xProvitae.windowInnerWidth
+			}
+		},
+		mounted() {
+			
+			
+			this.resetDrawer();
+			
+			uni.$on('onResize',this.resetDrawer)
+		},
+		beforeUnmount() {
+			if (this.tid == 0) return
+			clearTimeout(this.tid)
+			uni.$off('onResize',this.resetDrawer)
+		},
+		methods: {
+			
+			resetDrawer(){
+				let t = this;
+				let sys = uni.getWindowInfo()
+				// #ifndef APP
+				this.width = sys.windowWidth
+				this.height = sys.windowHeight;
+				this.windtop = sys.windowTop;
+				// #endif
+				// #ifdef APP
+				this.width = sys.windowWidth
+				this.height = sys.windowHeight + 44;
+				// #endif
+				this.devwidth = sys.windowWidth
+				this.devheight = sys.windowHeight
+				// 计算最大宽三角函数计算。
+				let maxheight = Math.sqrt(this.width*this.width + this.height * this.height);
+				
+				let maxwidth = Math.max(this.width,this.height);
+				this.width = maxwidth*2;
+				this.height = maxheight*2;
+				clearTimeout(this.tid)
+				this.tid = setTimeout(function () {
+					t.getNodes()
+				}, 100);
+			},
+			reset() {
+				let t = this;
+				clearTimeout(this.tid)
+				this.tid = setTimeout(function () {
+					t.getNodes()
+				}, 100);
+			},
+			getNodes() {
+				uni.createSelectorQuery().in(this)
+					.select(".xWaterMarkText")
+					.boundingClientRect().exec((ret) => {
+						let nodeinfo = ret[0] as NodeInfo;
+						this.textWidth = nodeinfo.width!;
+						this.textHeight = nodeinfo.height!;
+						this.drawer();
+					})
+
+			},
+			calcText() : POSITION[] {
+				let gap = this._gap
+				let item_w = this.textWidth + gap;
+				let item_h = this.textHeight + gap;
+				//计算一行几个。
+				let maxCols = Math.ceil(this.width / item_w);
+				// 总共几行。
+				let maxRows = Math.ceil(this.height / item_h);
+				let pos = [] as POSITION[];
+				for (let i = 0; i < maxRows; i++) {
+					for (let j = 0; j < maxCols; j++) {
+						pos.push({
+							x: j * item_w,
+							y: i * item_h
+						} as POSITION)
+					}
+				}
+				
+				return pos
+			},
+			async drawer():Promise<any|null> {
+				let canvas = uni.getElementById(this.id as string) as UniElement
+				let ctx = null as DrawableContext | null
+				let ratio = 1;
+				// #ifdef APP
+				ctx = canvas.getDrawableContext()!
+				// #endif
+				// #ifdef WEB
+				let dom = canvas as HTMLElement;
+				canvas = dom.querySelector('canvas')
+				ratio = window.devicePixelRatio;
+				
+				let w = this.width
+				let h = this.height
+				
+				canvas.width = w * ratio
+				canvas.height = h * ratio
+				ctx = canvas.getContext('2d')!
+				// #endif
+				
+				// #ifdef MP-WEIXIN
+				let ctxnode = await uni.createCanvasContextAsync({
+				  id: this.id,
+				  component: this,
+				  })
+				 const canvasContext = ctxnode.getContext('2d')!;
+				 canvas = canvasContext.canvas;
+				 // 处理高清屏逻辑
+				 const dpr = uni.getWindowInfo()?.pixelRatio ?? 1;
+				 canvas.width = canvas.offsetWidth * dpr;
+				 canvas.height = canvas.offsetHeight * dpr;
+				 canvasContext.scale(dpr, dpr);
+				 ctx = canvasContext
+				
+				// #endif
+				
+				
+				
+				if (ctx == null) return Promise.resolve(null)
+
+				
+				// #ifdef APP
+				ctx!.reset();
+				// #endif
+				// #ifdef MP||WEB
+				ctx!.clearRect(0,0, this.width * ratio,this.height * ratio)
+				// #endif
+				
+				// ctx!.fillStyle = 'transparent'
+				// ctx!.fillRect(0, 0, this.width * ratio, this.height * ratio)
+				
+				ctx!.font = this._fontSize;
+
+				// #ifdef WEB || MP-WEIXIN
+				let font = 0;
+				if (this._fontSize.indexOf('rpx') > -1) {
+					font = rpx2px(parseFloat(this._fontSize)) * ratio
+				} else {
+					font = parseFloat(this._fontSize) * ratio
+				}
+				ctx!.font = font.toString() + 'px Arial';
+
+				// #endif
+
+
+				ctx!.fillStyle = this._color;
+				ctx!.textAlign = 'left';
+
+				let ar = this.calcText();
+				// #ifdef MP-WEIXIN
+				ctx.translate(this.width/2, this.height/2);
+				ctx.rotate((-45 * Math.PI) / 180);
+				ctx.translate(-this.width/2,-this.height/2);
+				// #endif
+				ar.forEach((el : POSITION) => {
+					ctx!.fillText(this._label, el.x * ratio, el.y * ratio);
+				})
+
+				// #ifdef APP
+				ctx!.update()
+				// #endif
+
+				return Promise.resolve(null)
+			}
+		},
+	}
+</script>
+<template>
+
+	<!-- #ifdef APP -->
+	<view class="xWaterMark" :id="id" :style="{width:width+'px',height:height+'px',top:-(height-devheight)/2+'px',left:-(width-devwidth)/2+'px','transform-origin':`(${width/2}px,${height/2}px)`}">
+		<view>
+			<text class="xWaterMarkText" :style="{fontSize:_fontSize}">{{_label}}</text>
+		</view>
+	</view>
+	<!-- #endif -->
+	<!-- #ifdef WEB || MP-WEIXIN -->
+	<view class="xWaterMark" :style="{width:width+'px',height:height+'px',top:-(height-devheight)/2+'px',left:-(width-devwidth)/2+'px','transform-origin':`(${width/2}px,${height/2}px)`}">
+		<text class="xWaterMarkText" :style="{fontSize:_fontSize}">{{_label}}</text>
+		<canvas ref="xWaterMark" :id="id" :style="{width:width+'px',height:height+'px'}"></canvas>
+	</view>
+	<!-- #endif -->
+
+</template>
+<style scoped>
+	.xWaterMark {
+		pointer-events: none;
+		position: fixed;
+		z-index: 88;
+		left: 0px;
+		top: 0px;
+		display: flex;
+		flex-direction: row;
+		/* #ifdef APP || WEB */
+		transform: rotate(-45deg);
+		/* #endif */
+	}
+
+	.xWaterMarkText {
+		opacity: 0;
+		color: yellow;
+		background-color: #000000;
+		position: fixed;
+		left: 0;
+		top: 0;
+		pointer-events: none;
+	}
+</style>

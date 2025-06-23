@@ -1,0 +1,182 @@
+<script lang="ts">
+	import { xProvitae } from "../../config/xConfig.uts"
+	import { PropType } from "vue"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit, rpx2px, getUid } from "../../core/util/xCoreUtil.uts"
+	type OBJINFO = {
+		width : number,
+		top : number,
+		left : number,
+		height : number
+	}
+
+	/**
+	 * @name 粘性布局 Sticky
+	 * @description 可以同时存在多个悬停，多个悬停时，还支持触发距离悬停的设置，
+	 * 在复杂页面需要多个菜单吸附时非常有用。并且配合切换change事件做到更复杂的布局。
+	 * @page /pages/index/sticky
+	 * @category 导航组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				id: 'xSticky-' + getUid(),
+				sizes: {
+					width: 0,
+					height: 0,
+					left: 0,
+					top: 0
+				} as OBJINFO,
+				isFiexd: false
+			}
+		},
+		emits: [
+			/**
+			 * 当触发悬停切换时触发
+			 * @description 当你有多个悬停，复杂布局页面时这个事件非常有用，可以帮助您做一些逻辑操作。
+			 * @param {boolean} isFixed - 是否悬停的状态
+			 */
+			'change'
+		],
+		slots: Object as SlotsType<{
+			default : {
+				status : boolean
+			}
+		}>,
+		props: {
+			/**
+			 * 顶部的偏移量
+			 */
+			top: {
+				type: String,
+				default: "0"
+			},
+			/**
+			 * 左边的偏移量。
+			 */
+			left: {
+				type: String,
+				default: "0"
+			},
+			/**
+			 * 触发距离，默认0，意思是组件距离顶部多远时触发悬停。
+			 * 对于需要多个悬停时此属性非常有用。
+			 * 这个值不允许使用%单位，可以是：px,rpx,数字（默认是rpx）
+			 */
+			diffTop: {
+				type: String,
+				default: '0'
+			},
+			/**
+			 * 层级
+			 */
+			zIndex: {
+				type: Number,
+				default: 88
+			},
+		},
+		computed: {
+			_stop() : number {
+			
+				return xProvitae.scrollTop;
+			},
+			_top() : string {
+				if (!this.isFiexd) return "0px"
+
+				let p = parseInt(this.top);
+				if (this.top.lastIndexOf('rpx') > -1) {
+					p = rpx2px(p);
+				}
+
+
+				// #ifdef H5
+				let headerNode = document.querySelector(".uni-page-head")
+				let headeerTop = uni.getWindowInfo().windowTop
+				p = p + headeerTop
+
+				// #endif
+
+				return p.toString() + 'px';
+			},
+			_left() : string {
+				if (!this.isFiexd) return "0px"
+				return checkIsCssUnit(this.left, 'rpx');
+			},
+			_diffTop() : number {
+				let p = checkIsCssUnit(this.diffTop, 'rpx')
+				let tp = 0
+
+				if (p.lastIndexOf('rpx') > -1) {
+					tp = rpx2px(parseInt(p))
+				}
+				tp = parseInt(p);
+
+
+
+				return tp
+			}
+		},
+		watch: {
+			_stop(newValue : number) {
+				let isf = newValue >= (this.sizes.top - this._diffTop)
+				if (isf != this.isFiexd) {
+					this.isFiexd = isf;
+					/**
+					 * 当触发悬停切换时触发
+					 * @description 当你有多个悬停，复杂布局页面时这个事件非常有用，可以帮助您做一些逻辑操作。
+					 * @param isFixed {boolean} 是否悬停的状态
+					 */
+					this.$emit('change',isf)
+				}
+				
+			}
+		},
+		mounted() {
+			this.$nextTick(() => {
+				this.getNodes();
+			})
+		},
+		methods: {
+			getNodes() {
+				uni.createSelectorQuery().in(this)
+					.select(".xStickyWrap")
+					.boundingClientRect().exec((ret) => {
+						let nodeinfo = ret[0] as NodeInfo;
+						this.sizes = {
+							width: nodeinfo.width!,
+							height: nodeinfo.height!,
+							left: nodeinfo.left!,
+							top: nodeinfo.top!
+						} as OBJINFO
+					})
+			},
+			getParentTop(){
+				const parent = this.$parent;
+				console.log(parent)
+			}
+		},
+	}
+</script>
+<template>
+	<view class="xSticky">
+
+		<view :id="id" class="xStickyWrap"
+			:style="{position:isFiexd?'fixed':'relative',left:_left,top:_top,zIndex:isFiexd?zIndex:0}">
+			<!-- 
+			 @slot 默认插槽，你要悬停的布局放在这里。
+			 @prop {boolean} status - 当前悬停的状态.
+			 -->
+			<slot :status="isFiexd"></slot>
+		</view>
+		<view v-if="isFiexd" :style="{height:sizes.height+'px'}"></view>
+	</view>
+</template>
+<style scoped>
+	.xStickyWrap {
+		width: 100%;
+	}
+</style>

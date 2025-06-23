@@ -1,0 +1,7 @@
+{
+  "minSdkVersion": "21",
+  "dependencies":[
+  	  "jp.wasabeef:blurry:4.0.1",
+  	  "com.github.Dimezis:BlurView:version-2.0.6"
+  	]
+}

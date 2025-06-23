@@ -1,0 +1,238 @@
+import { ICanvas } from '@/uni_modules/tmx-ui/core/canvas/ICanvas.uts';
+export type ShapeType = any;
+/** 旋转元素时的中心点,默认是topLeft左顶,center表示元素的中间 */
+export type ITextAlignType = 'left' | 'center' | 'right';
+export type ITextBaselineType = 'top' | 'middle' | 'bottom';
+export type ILineJoinType = "round" | "bevel" | "miter";
+export type ILineCapType = "butt" | "round" | "square";
+export type CanvasRotateCenter = "topLeft"|"center"|"topRight"|"bottomLeft"|"bottomRight"
+export type DirectionEventType = 'down' | 'move' | 'up';
+
+export type InteractionEventType = 'click' | 'longpress' | 'dbclick' | 'cancel';
+export type CanvasEventType = DirectionEventType | InteractionEventType;
+export type ShapeSetAttrType = string | number | boolean | Array<string>
+export type IShapeVector2d = {
+	x:number,
+	y:number
+}
+export type ICanvasEvent = {
+    type: CanvasEventType;
+	/** 在画布上的坐标X */
+    x: number;
+	/** 在画布上的坐标Y */
+    y: number;
+	detail:IcanvasDomEventDetail[],
+	touches:ICanvasEvent[];
+    target: ShapeType[];
+}
+export type IcanvasDomEventDetail = {
+	startX:number,
+	startY:number,
+	endX:number,
+	endY:number,
+	moveX:number,
+	moveY:number,
+	/** 相对上一次移动的距离*/
+	moveLenX:number,
+	/** 相对上一次移动的距离*/
+	moveLenY:number,
+	/** 相对起始时到当前位置移动的距离*/
+	endLenX:number,
+	/** 相对起始时到当前位置移动的距离*/
+	endLenY:number
+	// /** 多点触摸时,两点之间的距离 */
+	// touchesLenX:number,
+	// /** 多点触摸时,两点之间的距离 */
+	// touchesLenY:number
+}
+export type ICanvasDomEvent = {
+    type: CanvasEventType;
+    x: number;
+    y: number;
+	detail:IcanvasDomEventDetail[],
+	touches:ICanvasDomEvent[];
+}
+
+export type IEventListener = (event: ICanvasEvent) => void;
+
+export type  IEventShape = {
+	type: CanvasEventType;
+	x: number;
+	y: number;
+	/** 元素本身内的坐标X */
+	layerX:number;
+	/** 元素本身内的坐标Y */
+	layerY:number;
+	touches:IEventShape[];
+	target:ShapeType
+}
+export type IEventShapeListener =  (event: IEventShape) => void;
+
+export type IEventMap = Map<string, IEventListener[]>;
+export type ICanvasOptional = {
+	/** 选式时传递当前组件this,组合式传递 getCurrentInstance()?.proxy ?? null */
+	component:any|null,
+	/** 画布id */
+	canvasId:string,
+}
+export type IShapeOptional = {
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+    fill?: string;
+    stroke?: string;
+    strokeWidth?: number;
+    opacity?: number;
+    visible?: boolean;
+    rotation?: number;
+    scaleX?: number;
+    scaleY?: number;
+	/** 元素相对舞台x坐标系的坐标，就是x,y为起始点，如果x,y为0就相当于是舞台的顶左 **/
+    offsetX?: number;
+	/** 元素相对舞台y坐标系的坐标，就是x,y为起始点，如果x,y为0就相当于是舞台的顶左 **/
+    offsetY?: number;
+    draggable?: boolean;
+	// 元素之间上下重叠时，是否允许穿透冒泡逐层触发，默认不允许
+	bubbleEvent?: boolean;
+	rotateCenter?:CanvasRotateCenter;
+	
+	// 线条样式
+	lineJoin?: ILineJoinType;
+	lineDashOffset?: number;
+	lineDash ?:number[] ;
+	lineCap?: ILineCapType;
+	
+	
+	text?: string;
+	fontSize?: number;
+	fontFamily?: string;
+	textAlign?: ITextAlignType;
+	textBaseline?: ITextBaselineType;
+	padding?: number;
+	lineHeight?: number;
+	
+	innerRadius ?: number;
+	outerRadius ?: number;
+	startAngle ?: number;
+	endAngle ?: number;
+	
+	radius ?:number;
+	
+	sides ?:number;
+	//多边形线的点
+	points ?:number[];
+	//多边形线是否自动闭合
+	closed ?:boolean;
+	// 多边线将连接线曲线化
+	tension ?:number
+	//将曲线平滑化
+	bezier ?:boolean;
+    // 椭圆的小径
+	radiusX ?:number
+	//椭圆的大径
+	radiusY ?:number
+	//星的角数量,默认5角星
+	numPoints ?: number;
+	
+	pointStart?:IShapeVector2d;
+	pointEnd?:IShapeVector2d;
+	
+	strokeGradient?:string[];
+	fillGradient?:string[];
+	clip?:boolean;
+	zIndex?:number;
+	textBgColor?:string;
+}
+export type IShapeBoundRect = {
+	x : number,
+	y : number,
+	height : number,
+	width : number
+}
+export interface IShape {
+	canvas : ICanvas,
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    fill: string;
+    stroke: string;
+    strokeWidth: number;
+    opacity: number;
+    visible: boolean;
+    rotation: number;
+    scaleX: number;
+    scaleY: number;
+	/** 元素相对舞台x坐标系的坐标，就是x,y为起始点，如果x,y为0就相当于是舞台的顶左 **/
+    offsetX: number;
+	/** 元素相对舞台y坐标系的坐标，就是x,y为起始点，如果x,y为0就相当于是舞台的顶左 **/
+    offsetY: number;
+    draggable: boolean;
+	// 元素之间上下重叠时，是否允许穿透冒泡逐层触发，默认不允许
+	bubbleEvent: boolean;
+	rotateCenter:CanvasRotateCenter;
+	/**toggle方法中的选中状态 */
+	toggleStatus:boolean;
+	
+
+	
+	// 线条样式
+	lineJoin: ILineJoinType;
+	lineDashOffset: number;
+	lineDash:number[] 
+	lineCap: ILineCapType;
+	
+	// text数据
+	
+	text : string;
+	fontSize : number;
+	fontFamily : string ;
+	textAlign : ITextAlignType;
+	textBaseline : ITextBaselineType;
+	padding : number;
+	lineHeight : number;
+	
+	//ring数据
+	
+	innerRadius : number;
+	outerRadius : number;
+	startAngle : number;
+	endAngle : number;
+	
+	radius :number;
+	sides: number;
+	
+	points :number[];
+	//多边形线是否自动闭合
+	closed :boolean;
+	// 多边线将连接线曲线化
+	tension:number
+	bezier :boolean;
+
+	// 椭圆的小径
+	radiusX :number;
+	//椭圆的大径
+	radiusY :number;
+	
+	//星的角数量,默认5角星
+	numPoints: number;
+	
+	pointStart:IShapeVector2d;
+	pointEnd:IShapeVector2d;
+
+	strokeGradient:string[];
+	fillGradient:string[];
+	
+	clip:boolean;
+	zIndex:number;
+	textBgColor:string;
+	drag : (eventName : CanvasEventType, parentEventDetail : ICanvasEvent) => void
+	
+    draw(ctx: CanvasRenderingContext2D): void;
+    isPointInPath(x: number, y: number,shapeId:string): boolean;
+	getBoundRect() : IShapeBoundRect;
+	setAttr(key:string,value:any):void;
+	getAttr(key: string): any | null;
+	toggle(call:(status:boolean,target:any)=>void):void;
+}

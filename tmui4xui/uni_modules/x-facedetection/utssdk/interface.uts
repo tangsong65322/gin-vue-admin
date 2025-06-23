@@ -1,0 +1,99 @@
+
+export type XFACE_CHECK_OPTS = {
+	//如果是通过图片检测需要提供
+	url ?: string,
+	//如果是通过图片buffer解析需要提供(暂无法使用)
+	buffer ?: ArrayBuffer,
+	//ViewId,如果是通过相机动态绑定嵌入式页面时,需要提供页面view的id
+	viewId ?: string,
+	/**
+	 * 活体检测指令，通过相机视频检测
+	 * 如果提供指令数组时,会根据完整指令顺序检测直到验证通过.
+	 * 如果视频检测时,指令为空数组则只检测整个五官是不是在画面中,一旦检测到人脸立即验证通过.
+	 */
+	instruction ?: XFACE_INS[]
+	//验证结束并通过时返回
+	success ?: (data : XFACE_EVENT_CHECK_SUCCESS) => void,
+	/**
+	 * 在视频活体检测时，返回每一帧的检测详细检测过程的信息，此事件是持续触发，直到结束，会一直触发每帧的图片检测结果。
+	 * 在图片检测的时候，只返回一次。
+	 */
+	enter ?: (data : XFACE_EVENT_SUCCESS[],maps:string) => void,
+	/**
+	 * 开始检测，正在开始检测的指令。类似：向左转一次，向右转一次，点点头，张张嘴等执行时触发，
+	 * 方便用户自定自己的提示语或者语音播报
+	 * 'start'，现在开始，
+	 * 'ins_start_指令名称'：某个指令开始，如：ins_start_left,ins_start_right,通过这个解析哪个指令开始执行
+	 * 'ins_end_指令名称'：某个指令结束，如：ins_end_left,ins_end_right,通过这个解析哪个指令结束执行
+	 * 'end'结束所有指令
+	 * 之后会触发success,enter事件
+	 */
+	insTipsEvent ?: (data : string) => void,
+	fail ?: (error : string) => void,
+}
+export type XFACE_TEST_EYE_TYPE = {
+	//眼睛张开的概率值
+	openNum : number,
+	isOpen : boolean
+}
+export type XFACE_FACE_Direction = "left" | "right" | "center" | "down" | "up"
+
+/**
+ * 活体检测指令，可以通过指令控制检测动作
+ * left:向左转一次
+ * right:向右转一次
+ * downUp:上下点头
+ * eyeOplenClose:眨眼
+ * monthOpenClose:张张嘴.
+ */
+export type XFACE_INS = "left" | "right" | "downUp" | "eyeOplenClose" | "monthOpenClose"
+// >0.8就算打开了眼或者张开了嘴.
+export type XFACE_EVENT_SUCCESS = {
+	// 右眼眨眼睛的闭合数据
+	rightEye : XFACE_TEST_EYE_TYPE,
+	// 左眼眨眼睛的闭合数据
+	leftEye : XFACE_TEST_EYE_TYPE,
+	// 是否在微信
+	isSmile : boolean,
+	//脸向左,向在,中间
+	faceRightLeft : XFACE_FACE_Direction,
+	//点头的方向
+	faceUpDown : XFACE_FACE_Direction,
+	imgWidth : number,
+	imgHeight : number,
+	// 嘴巴是不是张开
+	isMouthOpened : boolean,
+	// 整个脑袋是否在画面中.
+	allHeadBody : boolean,
+	/**
+	 * 检测过程中如果被检测人移动移出屏幕或者光线变化太大或者明显改变人造型等都会被改变此值,并认为并非是同一个从而
+	 * 让检测认证失败,因此被检测人一定要从头到尾保持端正并始终不离开视频画面.
+	 * 人脸Id
+	 */
+	faceId:number|null
+}
+export type XFACE_EVENT_CHECK_SUCCESS = {
+	/**
+	 * 此结果是在活体检测结果会返回，如果是通过图片人脸检测,则此值为空值.
+	 * 验证结束保存的视频地址，方便上传保存到后台储存备份，抽查验证。
+	 */
+	videoPath : string
+	/**
+	 * 此结果是在活体检测结果会返回，如果是通过图片人脸检测,则此值为空数组
+	 * 在活体检测过程中,会按照你给定人的指令顺序进行截图,保存验证时人脸对应的动画图片.多少个指令就有多少张图片.最后
+	 * 一张为全脸捕捉画面.
+	 */
+	images : string[],
+	/**
+	 * 验证是否通过
+	 */
+	isPass : boolean
+}
+
+export type AUTH_CALL_BACK_TYPE = (auth : boolean) => void;
+export type XCHECKFACE_ENTER_CALL = (image : XFACE_EVENT_SUCCESS[], bitMap : any | null) => void;
+
+export type CAMERA_PHOTO_SIZE = {
+	width : number,
+	height : number
+}

@@ -1,0 +1,195 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">抽屉 Drawer</x-text>
+			<x-text color="#999999" >
+				提供四个方向的弹出，如果要居中显示，请使用overlay组件。可以设置高为auto,百分比,最大值
+				可以是插槽触发或者变量控制触发
+			</x-text>
+		</x-sheet>
+		
+		<x-sheet class="flex flex-row flex-row-center-between">
+			<x-drawer :beforeClose="beforeClose" @open="openDrawer" style="width:24%" size="80%" position="left" :show-footer="true">
+				<template #trigger><x-button :block="true" >左弹出</x-button></template>
+				<x-checkbox label="标签"></x-checkbox>
+				<x-switch-slider height="60" >
+					<x-cell min-height="60" :showBottomBorder="false" :card="false" icon="discuss-line"
+					title="可以左滑菜单演示" desc="可以双向绑定,手动管理状态"></x-cell>
+					<template #menu>
+						<view class="flex flex-row flex-row-center-end" style="height: 100%;">
+							<view class="flex flex-row flex-row-center-center"
+								style="width:110px;background:black;height: 100%;">
+								<text class="text-white">分享</text>
+							</view>
+							<view class="flex flex-row flex-row-center-center"
+								style="width:110px;background:red;height: 100%;">
+								<text class="text-white">删除</text>
+							</view>
+						</view>
+					</template>
+				</x-switch-slider>
+				<x-picker :list="list">
+					<x-button :block="true">打开选项</x-button>
+				</x-picker>
+			</x-drawer>
+			<x-drawer style="width:24%" position="right">
+				<template #trigger><x-button :block="true" >右弹出</x-button></template>
+			</x-drawer>
+			<x-drawer  style="width:24%" :show-title="false" :show-close="true"  position="top">
+				<x-text>此弹层有内容开启了事件协商和手势关闭,向上滑一定的距离能关闭弹层。</x-text>
+				<template #trigger><x-button :block="true" >顶弹出</x-button></template>
+			</x-drawer>
+			<x-drawer style="width:24%" :show-close="true" position="bottom">
+				<template #trigger>
+					<x-button :block="true" >底弹出</x-button>
+					</template>
+			</x-drawer>
+		</x-sheet>
+	
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b">嵌套</x-text>
+		</x-sheet>
+		
+		<x-sheet >
+			<x-button @click="show2 = true" :block="true">显示底部操作栏+嵌套</x-button>
+		</x-sheet>
+		
+		<x-drawer customWrapStyle="margin:0 16px 16px 16px;width:auto;border-radius:16px;" :lazy="true" v-model:show="show2" overflayBgColor="rgba(0,0,0,0.64)" position="bottom" :show-footer="true" size="64%">
+			<template v-slot:contentTop>
+				<view style="display: flex;flex-direction: row;justify-content: center;margin-bottom: 10px;align-items: center;padding:4px 16px;">
+					<x-text font-size="16" color="white">这里是额外的顶部插槽，可以做广告。</x-text>
+				</view>
+			</template>
+			<x-form :show-label="false">
+				<x-form-item :show-bottom-border="false">
+					<x-input placeholder="请输入帐号" dark-bg-color=""></x-input>
+				</x-form-item>
+				<x-form-item :show-bottom-border="false">
+					<x-input placeholder="请输入密码" dark-bg-color=""></x-input>
+				</x-form-item>
+				<x-button form-type="form" icon="lock-unlock-fill" :block="true">登入</x-button>
+			</x-form>
+			<x-drawer :show-close="true" position="bottom">
+				<template #trigger><x-button class="mt-32"  :block="true" >嵌套2</x-button></template>
+				
+				<x-drawer :show-close="true" position="bottom" size="34%">
+					<template #trigger><x-button :block="true" >嵌套3</x-button></template>
+				</x-drawer>
+			</x-drawer>
+			<text class="text-size-m text-grey mt-10 line-8">塞拉利昂共和国总统 比奥：中国在不长的时间内取得了巨大的发展成就，发展不仅需要领导人提出规划，还需要人民的共同努力。习近平主席非常专注，习主席知道应为中国人民带来什么，他不受外界噪音的干扰，明确了发展愿景，赢得了中国人民的拥护，取得了卓越成效。</text>
+
+		</x-drawer>
+		
+		<x-sheet >
+			<x-button @click="show = true" :block="true">定义底部插槽</x-button>
+		</x-sheet>
+		
+		<x-drawer v-model:show="show"  position="bottom" :show-footer="true">
+			<text class="text-size-m text-grey mt-10 line-8">此弹层有内容开启了事件协商和手势关闭。可以向上滚动内容，或者向下拉会关闭弹层</text>
+			<text class="text-size-m text-grey mt-10 line-8">国在不长的时间内取得了巨大的发展成就，发国在不长的时间内取得了巨大的发展成就，发国在不长的时间内取得了巨大的发展成就，发国在不长的时间内取得了巨大的发展成就，发国在不长的时间内取得了巨大的发展成就，发国在不长的时间内取得了巨大的发展成就，发国在不长的时间内取得了巨大的发展成就，发塞拉利昂共和国总统 比奥：中国在不长的时间内取得了巨大的发展成就，发展不仅需要领导人提出规划，还需要人民的共同努力。习近平主席非常专注，习主席知道应为中国人民带来什么，他不受外界噪音的干扰，明确了发展愿景，赢得了中国人民的拥护，取得了卓越成效。</text>
+			<text class="text-size-m text-grey mt-10 line-8">国在不长的时间内取得了巨大的发展成就，发国在不长的时间内取得了巨大的发展成就，发国在不长的时间内取得了巨大的发展成就，发国在不长的时间内取得了巨大的发展成就，发国在不长的时间内取得了巨大的发展成就，发国在不长的时间内取得了巨大的发展成就，发国在不长的时间内取得了巨大的发展成就，发塞拉利昂共和国总统 比奥：中国在不长的时间内取得了巨大的发展成就，发展不仅需要领导人提出规划，还需要人民的共同努力。习近平主席非常专注，习主席知道应为中国人民带来什么，他不受外界噪音的干扰，明确了发展愿景，赢得了中国人民的拥护，取得了卓越成效。</text>
+			<text class="text-size-m text-grey mt-10 line-8">国在不长的时间内取得了巨大的发展成就，发国在不长的时间内取得了巨大的发展成就，发国在不长的时间内取得了巨大的发展成就，发国在不长的时间内取得了巨大的发展成就，发国在不长的时间内取得了巨大的发展成就，发国在不长的时间内取得了巨大的发展成就，发国在不长的时间内取得了巨大的发展成就，发塞拉利昂共和国总统 比奥：中国在不长的时间内取得了巨大的发展成就，发展不仅需要领导人提出规划，还需要人民的共同努力。习近平主席非常专注，习主席知道应为中国人民带来什么，他不受外界噪音的干扰，明确了发展愿景，赢得了中国人民的拥护，取得了卓越成效。</text>
+			<text class="text-size-m text-grey mt-10 line-8">国在不长的时间内取得了巨大的发展成就，发国在不长的时间内取得了巨大的发展成就，发国在不长的时间内取得了巨大的发展成就，发国在不长的时间内取得了巨大的发展成就，发国在不长的时间内取得了巨大的发展成就，发国在不长的时间内取得了巨大的发展成就，发国在不长的时间内取得了巨大的发展成就，发塞拉利昂共和国总统 比奥：中国在不长的时间内取得了巨大的发展成就，发展不仅需要领导人提出规划，还需要人民的共同努力。习近平主席非常专注，习主席知道应为中国人民带来什么，他不受外界噪音的干扰，明确了发展愿景，赢得了中国人民的拥护，取得了卓越成效。</text>
+			<template #footer>
+				<x-button @click="show=false" :block="true">定义底部插槽</x-button>
+			</template>
+		</x-drawer>
+		
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	import { PICKER_ITEM_INFO } from "@/uni_modules/tmx-ui/interface.uts"
+	const items = [
+		{
+			title: '江西',
+			id: "9-1",
+			children: [
+				{
+					title: '南昌',
+					id: "132",
+					children: [
+						{ title: '青山湖区', id: "1-2" } as PICKER_ITEM_INFO,
+						{ title: '高新区', id: "1-3", disabled: true } as PICKER_ITEM_INFO,
+						{ title: '红谷滩区', id: "1-4" } as PICKER_ITEM_INFO,
+					] as PICKER_ITEM_INFO[],
+
+				} as PICKER_ITEM_INFO,
+				{
+
+					title: '九江', id: "222",
+					children: [
+						{ title: '2青山湖区', id: "1-32" } as PICKER_ITEM_INFO,
+						{ title: '2高新区', id: "1-33" } as PICKER_ITEM_INFO,
+						{ title: '3红谷滩区', id: "1-34" } as PICKER_ITEM_INFO,
+					] as PICKER_ITEM_INFO[],
+				} as PICKER_ITEM_INFO,
+			] as PICKER_ITEM_INFO[],
+		} as PICKER_ITEM_INFO,
+		{
+			title: '安徽',
+			id: "10-13",
+			children: [
+				{
+					title: '5南昌',
+					id: "3",
+					children: [
+						{ title: '5青山湖区', id: "1-52" } as PICKER_ITEM_INFO,
+						{ title: '5高新区', id: "1-53" } as PICKER_ITEM_INFO,
+						{ title: '5红谷滩区', id: "1-54" } as PICKER_ITEM_INFO,
+					] as PICKER_ITEM_INFO[],
+
+				} as PICKER_ITEM_INFO,
+				{
+					title: '5南昌',
+					id: "36",
+					children: [
+						{ title: '6青山湖区', id: "61-52" } as PICKER_ITEM_INFO,
+						{ title: '6高新区', id: "61-53" } as PICKER_ITEM_INFO,
+						{ title: '6红谷滩区', id: "61-54" } as PICKER_ITEM_INFO,
+					] as PICKER_ITEM_INFO[],
+
+				} as PICKER_ITEM_INFO,
+			] as PICKER_ITEM_INFO[],
+		} as PICKER_ITEM_INFO,
+
+	] as PICKER_ITEM_INFO[];
+	export default {
+		data() {
+			return {
+				list: items,
+				show:false,
+				show2:false,
+			};
+		},
+		onLoad() {
+			let _this = this;
+			
+		},
+		methods:{
+			openDrawer(){
+				console.log(12)
+			},
+			beforeClose():Promise<boolean>{
+				return new Promise(res=>{
+					setTimeout(function() {
+						res(false)
+					}, 2000);
+				})
+			}
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

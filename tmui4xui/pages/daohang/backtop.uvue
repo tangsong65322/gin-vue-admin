@@ -1,0 +1,37 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">返回顶部 xBacktop</x-text>
+			<x-text color="#999999" >请往下滚动100px，触发显示返回顶部按钮，请注意观察右下角。</x-text>
+			<x-text color="#999999" >添加自定style可以覆盖位置，将元素定位到左边。</x-text>
+			<view style="height: 1600px;"></view>
+		</x-sheet>
+		<!--  style="right: auto;left: 30px;" 添加自定style可以覆盖位置，将元素定位到左边。 -->
+		<x-backtop></x-backtop>
+		<x-backtop style="right: auto;left: 16px;"></x-backtop>
+		
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+
+			};
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

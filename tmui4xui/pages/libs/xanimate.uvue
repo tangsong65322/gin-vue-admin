@@ -1,0 +1,312 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor"
+			:front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">xAnimate - Library</x-text>
+			<x-text color="#999999">
+				这是动画核心类库，异常简便，为你开发动画类组件和效果提供了高效流畅性能的动力
+				不管是web还是安卓均采用系统及的刷新回调，使得动画异常流畅。
+			</x-text>
+		</x-sheet>
+
+
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">刷新回调</x-text>
+			<x-text color="#999999">
+				可以利用此创建吸引视觉强交互动画
+			</x-text>
+		</x-sheet>
+
+		<x-sheet>
+			<canvas ref="canvas" id="canvas" android-layer-type="hardware" style="height: 150px;width:100%" class="mb-32">
+			</canvas>
+			<x-button :block="true" @click="enterFramAni">播放</x-button>
+		</x-sheet>
+
+		<x-sheet>
+			<view ref="vid" android-layer-type="hardware"
+				style="width:10%;height:100px; background-color: rgb(28, 132, 255);"></view>
+		</x-sheet>
+		<x-sheet class="flex flex-row">
+			<x-button width="25%" class="mr-5" size="normal" @click="play">播放/继续</x-button>
+			<x-button width="24%" class="mr-5" color="success" size="normal" @click="pause">暂停</x-button>
+			<x-button width="24%" class="mr-5" color="error" size="normal" @click="stop">停止</x-button>
+			<x-button width="24%" size="normal" color="orange" @click="setReverse">反转播放</x-button>
+		</x-sheet>
+
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">联合动画动画及函数</x-text>
+			<x-text color="#999999">
+				它是支持常见的动画类型比如:ease,linear等内置了24种常见动画，当然也是支持自定义动画函数。
+			</x-text>
+		</x-sheet>
+
+		<x-sheet>
+			<view class="flex flex-row flex-row-center-center mb-24">
+				<view android-layer-type="hardware" ref="scaleIds"
+					style="width:100px;height:100px;background-color: rgb(28, 132, 255);border-style: solid;border-width:10px">
+				</view>
+			</view>
+			<x-button :block="true" @click="palyScale">播放</x-button>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">动画按顺序执行</x-text>
+			<x-text color="#999999">
+				支持官方所述的所有css动画属性：如border,left,width,opactiy等等
+				如果要播放transfrom属性时，请直接写属性名比如:scale,scaleX等
+			</x-text>
+		</x-sheet>
+
+		<x-sheet>
+			<view class="flex flex-row flex-row-center-center mb-24">
+				<view android-layer-type="hardware" ref="unionAni"
+					style="width:100px;height:100px;background-color: rgb(28, 132, 255);"></view>
+			</view>
+			<x-button :block="true" @click="palyunionAni">播放</x-button>
+		</x-sheet>
+
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">其它属性</x-text>
+			<x-text color="#999999">
+				loop：-1时可永久播放及tyty设置为true可来回循环动画衔接
+			</x-text>
+		</x-sheet>
+
+		<x-sheet class="flex flex-row flex-row-center-center">
+			<view android-layer-type="hardware" ref="repeatRef"
+				style="width:50px;height:50px;background-color: rgba(28, 132, 255,1);"></view>
+		</x-sheet>
+		<x-sheet class="flex flex-row flex-row-center-between">
+			<x-button width="46%" class="mr-10" size="normal" @click="repeatPlay">播放/继续</x-button>
+			<x-button width="46%" class="mr-10" color="success" size="normal" @click="repeatPlayStop">暂停</x-button>
+		</x-sheet>
+
+		<!-- enterFrame -->
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	import { XANIMATE_OPIONS } from "@/uni_modules/tmx-ui/interface.uts"
+	import { xAnimate } from "@/uni_modules/tmx-ui/index.uts"
+	export default {
+		data() {
+			return {
+				xani: null as null | xAnimate,
+				repeatAni: null as null | xAnimate,
+				xani2: null as null | xAnimate,
+				enterAni: null as null | xAnimate,
+				isRealCtx: false,
+			};
+		},
+		onLoad() {
+
+
+		},
+		onUnload() {
+			this.xani?.stop()
+			this.repeatAni?.stop()
+			this.xani2?.stop()
+			this.enterAni?.stop()
+			this.isRealCtx = false;
+		},
+		methods: {
+			enterFramAni() {
+				let width = 0
+				let height = 0
+				let ratio = uni.getWindowInfo().pixelRatio;
+				const _this = this;
+				
+				function buildcall(ctx:CanvasRenderingContext2D){
+					if (_this.enterAni == null) {
+						_this.enterAni = new xAnimate(null, {} as XANIMATE_OPIONS);
+						
+					}
+					let max = width - 20
+					let maxy = height - 20
+					let x = 0
+					let y = 0
+					let fz = 1
+					let fzy = 1
+						
+						
+					_this.enterAni!.enterFrame(function () {
+						ctx.save()
+						ctx.clearRect(0,0,width,height)
+						
+						ctx.beginPath()
+						ctx.fillStyle = "red"
+						x = x + 1 * fz
+						y = y + 2 * fzy
+					
+						ctx.arc(x * ratio, y * ratio, 10 * ratio, 0, Math.PI * 2)
+						ctx.arc(max - x * ratio, maxy - y * ratio, 10 * ratio, 0, Math.PI * 2)
+						ctx.fill()
+						ctx.closePath()
+					
+						if (x * ratio >= max) {
+							fz = -1;
+						}
+						if (x <= 0) {
+							fz = 1;
+						}
+						if (y * ratio >= maxy) {
+							fzy = -1;
+						}
+						if (y <= 0) {
+							fzy = 1;
+						}
+						ctx.restore()
+					})
+				}
+			
+				uni.createCanvasContextAsync({
+					id: "canvas",
+					component: this,
+					success: (context : CanvasContext) => {
+					
+						const canvasContext = context.getContext('2d')!;
+						// #ifdef APP
+						canvasContext.resetTransform()
+						// #endif
+						const canvas = canvasContext.canvas;
+						canvas.width = canvas.offsetWidth * ratio;
+						canvas.height = canvas.offsetHeight * ratio;
+						canvasContext.scale(ratio, ratio);
+						const ctx = canvasContext as CanvasRenderingContext2D;
+						ctx!.globalAlpha = 1;
+						width = canvas.offsetWidth;
+						height = canvas.offsetHeight;
+						buildcall(ctx)
+						
+					},
+					fail(er){
+						console.error(er)
+					}
+				})
+				
+				
+				
+				
+				
+				
+				
+				
+
+			},
+			palyunionAni() {
+				let ele = this.$refs['unionAni'] as UniElement
+				if (this.xani2 != null) {
+					this.xani2!.stop();
+				}
+				this.xani2 = new xAnimate(
+					ele,
+					{
+						timingFunction: 'easeInOutBack',
+						duration: 1000,
+						isDescPlay: true,
+						complete() {
+							console.log('动画结束')
+						}
+					} as XANIMATE_OPIONS)
+				this.xani2!
+					.attr('background-color', 'orange', 'primary')
+					.attr('scale', '1', '0', false)
+					.attr('scale', '0', '1', false)
+					.attr('left', '0px', '100px', false)
+					.attr('left', '100px', '-100px', false)
+					.attr('rotate', '0deg', '360deg', false)
+					.attr('background-color', 'primary', 'orange', false)
+					.attr('background-color', 'orange', 'primary', false)
+					.attr('left', '-100px', '0px', false)
+					.play()
+			},
+			palyScale() {
+				let ele = this.$refs['scaleIds'] as UniElement
+				new xAnimate(
+					ele,
+					{
+						timingFunction: 'easeInOutBack',
+						complete() {
+
+						}
+					} as XANIMATE_OPIONS)
+					.attr('border-color', 'red', 'yellow')
+					.attr('scale', '0', '1')
+					.attr('border-color', 'yellow', 'red')
+					.attr('border-width', '1px', '20px')
+					.play()
+			},
+			play() {
+				if (this.xani == null) {
+					let ele = this.$refs['vid'] as UniElement
+
+					this.xani = new xAnimate(
+						ele,
+						{
+							duration: 1500,
+							start() {
+								console.log("动画开始")
+							},
+							complete() {
+								console.log("动画结束")
+							},
+							frame(propress : number) {
+								// console.log("动画进度", propress)
+							}
+						} as XANIMATE_OPIONS)
+				}
+				this.xani!
+					.attr('width', '10%', '100%')
+					.attr('background-color', 'rgba(28, 132, 255)', 'red')
+					.play()
+			},
+			stop() {
+
+				this.xani?.stop()
+			},
+			pause() {
+
+				this.xani?.pause()
+			},
+			setReverse() {
+
+				this.xani?.setAniReverse()
+				this.xani?.play()
+
+			},
+			repeatPlay() {
+				let ele = this.$refs['repeatRef'] as UniElement
+				if (this.repeatAni == null) {
+					this.repeatAni = new xAnimate(
+						ele,
+						{
+							loop: -1,
+							tyty: false,
+							duration: 1000
+						} as XANIMATE_OPIONS)
+				}
+				this.repeatAni!.attr('rotate', '0deg', '360deg').play()
+
+			},
+			repeatPlayStop() {
+				if (this.repeatAni != null) {
+
+					this.repeatAni!.pause();
+				}
+			}
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

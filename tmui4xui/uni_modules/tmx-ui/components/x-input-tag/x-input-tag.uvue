@@ -1,0 +1,370 @@
+<script lang="ts">
+	import { type PropType } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit, getUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	type POSITIONTYPE = "out" | "in"
+	/**
+	 * @name 标签输入框 xInputTag
+	 * @description 可通过键盘或者按钮，输入框输入字段回车保存标签词
+	 * @page /pages/index/input-tag
+	 * @category 表单组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				nowValue: [] as string[],
+				keyword: ""
+			}
+		},
+		emits: [
+			/**
+			 * 标签变化时触发
+			 * @param {string[]} value - 当前的标签数组。
+			 */
+			'change', 'update:modelValue'],
+		props: {
+			/**
+			 * 输入框背景及标签背景
+			 */
+			bgColor: {
+				type: String,
+				default: "#f5f5f5"
+			},
+			/**
+			 * 输入框的暗黑背景色
+			 * 空值读取全局的Input暗黑背景色
+			 */
+			darkBgColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 右边按钮主题色，空取全局主题色
+			 */
+			btnColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 文本大小
+			 */
+			fontSize: {
+				type: String,
+				default: "16"
+			},
+			/**
+			 * 文本颜色，暗黑时取白
+			 */
+			fontColor: {
+				type: String,
+				default: "#333333"
+			},
+			/**
+			 * 宽
+			 */
+			width: {
+				type: String,
+				default: "auto"
+			},
+			/**
+			 * 高
+			 */
+			height: {
+				type: String,
+				default: "40"
+			},
+			/**
+			 * 圆角
+			 */
+			round: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 输入提示词
+			 */
+			placeholder: {
+				type: String,
+				default: "请输入，确认键盘添加"
+			},
+			/**
+			 * 双向绑定
+			 */
+			modelValue: {
+				type: Array as PropType<string[]>,
+				default: () : string[] => [] as string[]
+			},
+			/**
+			 * 标签在内还是在外
+			 */
+			postion: {
+				type: String as PropType<POSITIONTYPE>,
+				default: "out"
+			},
+			/**
+			 * postion为in时,可以控制隐藏按钮.
+			 */
+			showBtn:{
+				type:Boolean,
+				default:true
+			},
+			/**
+			 * 添加按钮的文本
+			 */
+			btnText:{
+				type:String,
+				default:"添加标签"
+			},
+			/**
+			 * 设置键盘右下角按钮的文字，仅在 type为text 时生效。
+			 */
+			confirmType:{
+				type:String,
+				default:'done'
+			},
+			/**
+			 * 最佳输入标签数量,只有用户主动输入才会触发此限制
+			 * 你代码赋值不会限制.-1表示不限制
+			 */
+			maxCount:{
+				type:Number,
+				default:-1
+			}
+		},
+		computed: {
+			_btnText():string{
+				return this.btnText
+			},
+			_postion():POSITIONTYPE {
+				return this.postion
+			},
+			_maxCount():number {
+				return this.maxCount
+			},
+			_bgColor() : string {
+				let color = getDefaultColor(this.bgColor)
+				if (xConfig.dark == 'dark') {
+					if (this.darkBgColor == "") {
+						color = xConfig.inputDarkColor
+					} else {
+						color = getDefaultColor(this.darkBgColor)
+					}
+				}
+				return color
+			},
+			_intagBg():string{
+				if (xConfig.dark == 'dark') return '#333'
+				return "#ffffff"
+			},
+			_fontColor() : string {
+				if (xConfig.dark == 'dark') return '#ffffff'
+				return getDefaultColor(this.fontColor)
+			},
+			_btnColor() : string {
+				if (this.btnColor == "") return getDefaultColor(xConfig.color)
+				return getDefaultColor(this.btnColor)
+			},
+			_round() : string {
+				if (this.round == "") return checkIsCssUnit(xConfig.buttonRadius, xConfig.unit)
+				return checkIsCssUnit(this.round, xConfig.unit)
+			},
+
+			_fontSize() : string {
+				let fontSize = checkIsCssUnit(this.fontSize, xConfig.unit);
+				if (xConfig.fontScale == 1) return fontSize;
+				let sizeNumber = parseInt(fontSize)
+				if (isNaN(sizeNumber)) {
+					sizeNumber = 16
+				}
+				return (sizeNumber * xConfig.fontScale).toString() + getUnit(fontSize)
+			},
+			_width() : string {
+				return checkIsCssUnit(this.width, xConfig.unit)
+			},
+			_height() : string {
+				return checkIsCssUnit(this.height, xConfig.unit)
+			},
+		},
+		mounted() {
+			this.nowValue = this.modelValue;
+		},
+		watch: {
+			modelValue(newValue : string[]) {
+				if (newValue.join("") == this.nowValue.join("")) return;
+				this.nowValue = this.modelValue;
+			}
+		},
+		methods: {
+			okConfirm() {
+				let word = this.keyword.trim()
+
+				if (word == "") {
+					uni.showToast({ title: "不能为空", icon: 'none' })
+					return;
+				}
+				if(this._maxCount>-1&&this.nowValue.length>=this._maxCount){
+					uni.showToast({ title: "超过限制最大数:"+this._maxCount.toString(), icon: 'none' })
+					return;
+				}
+				let isKey = this.nowValue.findIndex((el : string) : boolean => el == word)
+				if (isKey == -1) {
+					if(this._postion == 'out'){
+						this.nowValue.unshift(word)
+					}else{
+						this.nowValue.push(word)
+					}
+					/**
+					 * 等同v-model
+					 */
+					this.$emit('update:modelValue', this.nowValue)
+
+					/**
+					 * 标签变化时触发
+					 * @param {string[]} value 当前的标签数组。
+					 */
+					this.$emit('change', this.nowValue)
+
+				}
+				this.keyword = ""
+			},
+			del(index : number) {
+				this.nowValue.splice(index, 1)
+				/**
+				 * 等同v-model
+				 */
+				this.$emit('update:modelValue', this.nowValue)
+
+				/**
+				 * 标签变化时触发
+				 * @param {string[]} value 当前的标签数组。
+				 */
+				this.$emit('change', this.nowValue)
+
+			}
+		},
+	}
+</script>
+<template>
+	<view v-if="_postion == 'out'">
+		<view class="xInputTag" :style="{width:_width,height:_height,borderRadius:_round,backgroundColor:_bgColor,}">
+			<input  confirm-type="confirmType" v-model="keyword" @confirm="okConfirm" :placeholder="placeholder" class="xInputTagWrap"
+				:style="{color:_fontColor,fontSize:_fontSize,height:_height}" type="text" />
+			<x-button v-if="showBtn" @click="okConfirm" :round="_round" :font-size="fontSize" :color="_btnColor" width="30%"
+				style="min-width:100px;max-width:190px" :height="_height">{{btnText}}</x-button>
+		</view>
+		<view class="xInputTagGroup">
+			<!-- 
+			 @slot 标签插槽，如果对标签样式不喜欢可通过此修改。
+			 @prop {string[]} tags - 当前标签组件。
+			 -->
+			<slot name="tag" :tags="nowValue">
+				<view v-for="(item,index) in nowValue" :key="index" class="xInputTagTag"
+					:style="{backgroundColor:_bgColor,borderRadius:_round}">
+					<view style="flex: 1;">
+						<x-text :font-size="fontSize" class="xInputTagText">{{item}}</x-text>
+					</view>
+					<view @click="del(index)" class="xInputTagClose">
+						<x-icon color="#d0d0d0" font-size="16" name="close-circle-fill"></x-icon>
+					</view>
+				</view>
+			</slot>
+		</view>
+	</view>
+	<view v-if="_postion == 'in'">
+		<view class="xInputTag xInputTagIntag" :style="{width:_width,minHeight:_height,borderRadius:_round,backgroundColor:_bgColor,}">
+			<!--
+			 @slot 标签插槽，如果对标签样式不喜欢可通过此修改。
+			 @prop {string[]} tags - 当前标签组件。
+			 -->
+			<slot name="tag" :tags="nowValue">
+				<view v-for="(item,index) in nowValue" :key="index" class="xInputTagTag xInputTagTagItemIn"
+					:style="{backgroundColor:_intagBg,borderRadius:_round}">
+					<view style="flex: 1;">
+						<x-text :font-size="fontSize" class="xInputTagText">{{item}}</x-text>
+					</view>
+					<view @click="del(index)" class="xInputTagClose">
+						<x-icon color="#d0d0d0" font-size="16" name="close-circle-fill"></x-icon>
+					</view>
+				</view>
+			</slot>
+			<input confirm-type="confirmType" :confirm-hold="true" v-model="keyword" @confirm="okConfirm" :placeholder="placeholder" class="xInputTagWrap xInputTagWrapIn"
+				:style="{color:_fontColor,fontSize:_fontSize,height:_postion == 'in'?'32px':'24px',marginBottom:'8px'}" type="text" />
+			
+		</view>
+
+	</view>
+
+</template>
+<style scoped>
+	.xInputTagIntag{
+		flex-wrap: wrap;
+		padding-top: 8px;
+		padding-left: 8px;
+		padding-right: 8px;
+		display: flex;
+		flex-direction: row;
+		/* justify-items: flex-start; */
+		justify-content: flex-start;
+		align-items: flex-start;
+		align-content: flex-start;
+	}
+	.xInputTagClose {
+		padding-left: 5px;
+	}
+
+	.xInputTagText {
+		/* font-size: 28rpx; */
+		color: #333;
+	}
+
+	.xInputTagGroupBox {
+		position: relative;
+	}
+
+	.xInputTagTag {
+		margin-bottom: 12px;
+		margin-right: 6px;
+		padding: 3px 10px;
+		position: relative;
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+		flex-wrap: wrap;
+		
+	}
+	.xInputTagTagItemIn{
+		margin-bottom: 8px;
+	}
+	
+
+	.xInputTagGroup {
+		margin-top: 16px;
+		display: flex;
+		flex-direction: row;
+		justify-content: flex-start;
+		flex-wrap: wrap;
+	}
+
+	.xInputTag {
+		display: flex;
+		flex-direction: row;
+		justify-content: flex-start;
+		align-items: flex-start;
+	}
+
+	.xInputTagWrap {
+		padding: 0 12px;
+		flex: 1;
+	}
+	.xInputTagWrapIn{
+		min-width: 120px;
+		padding: 0px 0px;
+	}
+</style>

@@ -1,0 +1,70 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">图片 image</x-text>
+			<x-text color="#999999" >
+				图片自带加载功能，宽和高可以不设置，自动以父级宽度为最大值，如果只设置了宽，高会自动设置，免去了大家设置图片宽高的麻烦
+				支持百分比，px,rpx单位宽高设置
+			</x-text>
+		</x-sheet>
+
+		<view >
+			<x-sheet class="flex flex-row" style="justify-content: space-between;align-items: flex-start;">
+				<x-image width="18%" src="https://store.tmui.design/api_v2/public/random_picture?random=183"></x-image>
+				<x-image width="18%" src="https://store.tmui.design/api_v2/public/random_picture?random=0239"></x-image>
+				<x-image width="18%" src="https://store.tmui.design/api_v2/public/random_picture?random=22233"></x-image>
+				<x-image width="18%" src="https://store.tmui.design/api_v2/public/random_picture?random=9654"></x-image>
+				<x-image width="18%" src="https://store.tmui.design/api_v2/public/random_picture?random=212"></x-image>
+			</x-sheet>
+				
+			<x-sheet >
+				<x-image round="12" src="https://store.tmui.design/api_v2/public/random_picture?random=993"></x-image>
+				<x-text font-size="18" class=" text-weight-b my-8">本地图片显示</x-text>
+				<x-image width="150" height="150"  src="/static/tmui4xLibs/static/logo.png"></x-image>
+			</x-sheet>
+			<x-sheet class="flex flex-row flex-row-center-between">
+				<x-image width="150" height="150" src="https://store.tmui.design/api_v2/public/random_psicture?random=5342"></x-image>
+				<x-image width="150" height="150" src="https://store.tmui.design/api_v2/public/random_picture?random=6s73"></x-image>
+			</x-sheet>
+				
+			<x-sheet>
+				<view class="flex flex-row flex-row-center-between flex-wrap">
+					<x-image width="48%" src="https://store.tmui.design/api_v2/public/random_picture?random=vsf"></x-image>
+					<x-image width="48%" src="https://store.tmui.design/api_v2/public/random_picture?random=df3"></x-image>
+				</view>
+			</x-sheet>
+		</view>
+		
+		
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+<script>
+	import { XACTION_MENU_ITEM_INFO } from "@/uni_modules/tmx-ui/interface.uts"
+	export default {
+		data() {
+			return {
+				list:[] as XACTION_MENU_ITEM_INFO[],
+			};
+		},
+		onLoad() {
+			
+		},
+		methods:{
+			
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

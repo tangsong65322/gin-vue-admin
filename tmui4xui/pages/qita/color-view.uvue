@@ -1,0 +1,33 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">颜色选择 xColorView</x-text>
+			<x-text color="#999999">精致且方便用户操作移动颜色选择容器,为你的APP增彩
+			</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-color-view v-model="value"></x-color-view>
+			<x-sheet color="info" :margin="['0','24','0','0']">
+				<x-text>当前颜色值:{{value}}</x-text>
+			</x-sheet>
+		</x-sheet>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script setup>
+	import { ref } from "vue"
+	const value = ref('rgb(44, 76, 242)')
+</script>
+
+<style>
+
+</style>

@@ -1,0 +1,197 @@
+import { xProvitae, xConfig } from "./xConfig.uts"
+import { xPageStyle} from "../interface.uts"
+
+/**
+ * 获取当前缓存的暗黑主题设置。
+ */
+export function getDarkMode() : 'light' | 'dark' {
+	let dark = getOsTheme();
+	
+	let model = "light" as 'light' | 'dark'
+	if (dark == 'dark' || dark == 'light') {
+		model = dark
+	}
+
+	let customSetings = uni.getStorageSync('tmuiXuiOsThemeSet');
+	if (customSetings != null && customSetings != 'auto' && customSetings!='') {
+		let dsd = customSetings as string;
+		if (dark == 'dark' || dark == 'light') {
+			model = dsd as 'light' | 'dark'
+		}
+	}
+	
+
+	return model;
+}
+/**
+ * 是否设置过暗黑主题，即是否有缓存。
+ */
+export function isCustomTheme() : boolean {
+
+	let issettheme = false
+	let customSetings = uni.getStorageSync('tmuiXuiOsThemeSet');
+	if (customSetings != null) {
+		let str = customSetings as string;
+		if (str == 'dark' || str == 'light' || str == 'auto') {
+			issettheme = true
+		}
+	}
+	return issettheme;
+}
+
+export function getOsTheme() : 'dark' | 'light' {
+	
+	let defaultModel = 'light' as 'dark' | 'light'
+	// #ifdef WEB
+	const mq = window.matchMedia('(prefers-color-scheme: dark)');
+	
+	if (mq.matches) {
+		defaultModel = 'dark'
+	}
+	
+	// #endif
+	// #ifdef APP
+	let str = uni.getSystemInfoSync().osTheme 
+	if (str != null) {
+		defaultModel = str
+	}
+	// #endif
+	
+	return defaultModel;
+
+}
+
+export function WebObserveTheme() {
+	// #ifdef WEB
+	const mq = window.matchMedia('(prefers-color-scheme: dark)');
+	const listener = (e) => {
+		
+		let customSetings = uni.getStorageSync('tmuiXuiOsThemeSet');
+		if (customSetings != 'auto') return;
+		if (e.matches) {
+			// 系统设置了主题为暗黑
+			xConfig.dark = 'dark'
+		} else {
+			// 系统设置了主题为非暗黑
+			xConfig.dark = 'light'
+		}
+		
+		setThemeDarkModel()
+	};
+	// 添加监听器  
+	mq.onchange = listener
+	// #endif
+	// #ifdef APP
+	uni.onOsThemeChange((res : OsThemeChangeResult) => {
+		let customSetings = uni.getStorageSync('tmuiXuiOsThemeSet');
+		if (customSetings != 'auto') return;
+		xConfig.dark = res.osTheme
+		setThemeDarkModel()
+	})
+	// #endif
+}
+
+export function setThemeDarkModel(){
+	setBgBodyColor();
+}
+
+export function setBgBodyColor(){
+	let dark = xConfig.dark
+	
+	
+	// #ifdef WEB
+	
+	let pages = getCurrentPages()
+	let page = pages[pages.length-1]
+	if(!page?.$getPageStyle||!page) return;
+	let pageJson = page.$getPageStyle()
+	let newpages = {} as UTSJSONObject
+	if(!xProvitae.pageStyle.has(page.route)){
+		let oldNavbgColor = ""
+		let oldNavTxtColor = ""
+		let oldbgColor = ""
+		// #ifdef WEB
+		oldNavbgColor = pageJson.navigationBarBackgroundColor||""
+		oldNavTxtColor = pageJson.navigationBarTextStyle||""
+		//h5无法获取背景色 sdk有bug
+		oldbgColor = pageJson.backgroundColorContent||""
+		// oldbgColor = document.body.style.getPropertyValue("--background-color-content")||""
+		// #endif
+		xProvitae.pageStyle.set(page.route,{
+			path:page.route,
+			backgroundColorContent:oldbgColor==null?"":oldbgColor,
+			navigationBarBackgroundColor:oldNavbgColor==null?"":oldNavbgColor,
+			navigationBarTextStyle:oldNavTxtColor==null?"":oldNavTxtColor
+		} as xPageStyle )
+	}
+	
+	let pageStyles = xProvitae.pageStyle.get(page.route) as xPageStyle
+	
+	document.body.style.setProperty('--header-bg-color',`#ffffff`)
+	document.body.style.setProperty('--header-title-color','black')
+	let header = document.body.querySelector("style")
+
+	if(!header){
+		let cssNode = document.createElement("style")
+		cssNode.id="xTmui4.0BodyCssId"
+		cssNode.type = 'text/css'
+		cssNode.innerHTML  = ".uni-page-head{background-color:var(--header-bg-color) !important;color:var(--header-title-color) !important;}"
+		document.body.appendChild(cssNode)
+		
+	}
+	if(dark=='light'){
+		let pageBgColor = pageStyles!.backgroundColorContent==""?xConfig.backgroundColorContentLight:pageStyles!.backgroundColorContent
+		let navBgColor = pageStyles!.navigationBarBackgroundColor==""?xConfig.navigationBarBackgroundColorLight:pageStyles!.navigationBarBackgroundColor
+		let navTextColor = pageStyles!.navigationBarTextStyle==""?xConfig.navigationBarTextStyleLight:pageStyles!.navigationBarTextStyle
+		
+		pageJson.backgroundColorContent = pageBgColor
+		pageJson.navigationBarBackgroundColor = navBgColor
+		pageJson.navigationBarTextStyle = navTextColor
+		if(pageBgColor){
+			document.body.style.setProperty('background-color',pageBgColor)
+			document.body.style.setProperty('--background-color-content',pageBgColor)
+		}
+
+		document.body.style.setProperty('--header-bg-color',navBgColor)
+		document.body.style.setProperty('--header-title-color',navTextColor)
+		
+	}
+	if(dark=='dark'){
+		pageJson.backgroundColorContent = xConfig.backgroundColorContentDark
+		pageJson.navigationBarBackgroundColor = xConfig.navigationBarBackgroundColorDark
+		pageJson.navigationBarTextStyle = xConfig.navigationBarTextStyleDark
+		
+		document.body.style.setProperty('background-color',xConfig.backgroundColorContentDark)
+	
+		document.body.style.setProperty('--background-color-content',xConfig.backgroundColorContentDark)
+		document.body.style.setProperty('--header-bg-color',xConfig.navigationBarBackgroundColorDark)
+		document.body.style.setProperty('--header-title-color',xConfig.navigationBarTextStyleDark)
+	
+	}
+	
+	uni.setTabBarStyle({
+		backgroundColor:dark=='dark'?xConfig.tabarBackgroundColorDark:xConfig.tabarBackgroundColorLight,
+		borderStyle:dark=='dark'?xConfig.tabarBackgroundColorDark:xConfig.tabarBackgroundColorLight,
+		fail:(result)=>{}
+	} as SetTabBarStyleOptions)
+	uni.setNavigationBarColor({
+		frontColor:dark=='dark'?'#ffffff':'#000000',
+		backgroundColor:pageJson.navigationBarBackgroundColor
+	} as SetNavigationBarColorOptions)
+	page.$setPageStyle(newpages)
+	// #endif
+	// #ifdef APP
+	uni.setAppTheme({
+		theme:dark,
+		success(_: SetAppThemeSuccessResult){
+			// console.log(uni.getSystemInfoSync().osTheme,'****')
+		},
+		fail(result: IAppThemeFail){
+			console.log(result)
+		}
+	})
+	
+	// #endif
+
+}
+

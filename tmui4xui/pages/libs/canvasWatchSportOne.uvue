@@ -1,0 +1,275 @@
+<template>
+
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor"
+			:front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+
+	<x-sheet>
+		<x-text font-size="18" class=" text-weight-b mb-8">运动环示例</x-text>
+		<x-text color="#999999" class="mb-8">请结合自己的物联网设备调整和绘制</x-text>
+
+	</x-sheet>
+	<x-sheet color="#000" dark-color="#000" :padding="['0']">
+		<canvas :id="canvasId" @click="bindEvents" @touchstart="bindEvents" @touchmove="bindEvents"
+			@touchend="bindEvents" @touchcancel="bindEvents" @mousedown="bindEvents" @mousemove="bindEvents"
+			@mouseup="bindEvents" <!-- #ifdef WEB -->
+			@mouseleave="bindEvents"
+			<!-- #endif -->
+			style="width: 100%;height: 450px;" ref="canvasDom"
+			>
+		</canvas>
+	</x-sheet>
+
+
+</template>
+
+<script setup>
+	import { ICanvas } from '@/uni_modules/tmx-ui/core/canvas/ICanvas.uts';
+	import { CanvasEventType, ICanvasEvent } from '@/uni_modules/tmx-ui/core/canvas/interface.uts';
+
+	import { IRect } from '@/uni_modules/tmx-ui/core/canvas/lib/rect.uts';
+	import { IText } from '@/uni_modules/tmx-ui/core/canvas/lib/text.uts';
+	import { Tween } from '@/uni_modules/tmx-ui/core/canvas/lib/animation/tween.uts';
+	import { ImageShape } from '@/uni_modules/tmx-ui/core/canvas/lib/image.uts';
+	import { Path2DShape } from '@/uni_modules/tmx-ui/core/canvas/lib/path2d.uts';
+	import { IRing } from '@/uni_modules/tmx-ui/core/canvas/lib/ring.uts';
+	import { IArc } from '@/uni_modules/tmx-ui/core/canvas/lib/arc.uts';
+	import { ISector } from '@/uni_modules/tmx-ui/core/canvas/lib/sector.uts';
+	import { IRegularPolygon } from '@/uni_modules/tmx-ui/core/canvas/lib/regularPolygon.uts';
+	import { ILinePolygon } from '@/uni_modules/tmx-ui/core/canvas/lib/linePolygon.uts';
+	import { ICircle } from '@/uni_modules/tmx-ui/core/canvas/lib/circle.uts';
+	import { IEllipse } from '@/uni_modules/tmx-ui/core/canvas/lib/ellipse.uts';
+	import { IStar } from '@/uni_modules/tmx-ui/core/canvas/lib/star.uts';
+	import { ILine } from '@/uni_modules/tmx-ui/core/canvas/lib/line.uts';
+
+
+
+	const canvasDom = ref<UniCanvasElement | null>(null)
+	const canvasId = "xCanvas-" + Math.random().toString(16).substring(4)
+	const proxy = getCurrentInstance()?.proxy ?? null;
+	const xcanvas = ref<ICanvas>(new ICanvas({ canvasId: canvasId, component: proxy as any | null }));
+	let tw1 = null as Tween | null
+	let tw2 = null as Tween | null
+	let tw3 = null as Tween | null
+	let tw4 = null as Tween | null
+
+	const bindEvents = (evt : UniTouchEvent | UniPointerEvent | UniMouseEvent) => {
+		xcanvas.value.bindEvent(evt)
+	}
+
+
+	// 绘制刻度
+	const drawerRule = () => {
+		if (xcanvas.value == null) return;
+		const render = xcanvas.value! as ICanvas
+		let centerX = render.boxWidth / 2
+		let centerY = render.boxHeight / 2
+		let radius = 65
+		// 首先定义刻度的参数
+		const divisions = 45; // 等分数量
+		const tickLength = 10; // 刻度长度
+		const innerRadius = radius - tickLength; // 内径半径（从这里开始向外画刻度）
+		// 计算起始角度和结束角度（转换为数学角度）
+		const startAngle = 135;
+		const endAngle = 45;
+		// 处理角度范围（确保endAngle大于startAngle）
+		const totalAngle = endAngle <= startAngle ? endAngle + 360 - startAngle : endAngle - startAngle;
+		// 计算每个刻度之间的角度
+		const angleStep = totalAngle / divisions;
+		// 绘制刻度
+		for (let i = 0; i <= divisions; i++) {
+			// 当前刻度的角度
+			const currentAngle = (startAngle + i * angleStep) * (Math.PI / 180);
+	
+			// 计算刻度起点（内径上的点）
+			const innerX = centerX + innerRadius * Math.cos(currentAngle);
+			const innerY = centerY + innerRadius * Math.sin(currentAngle);
+	
+			// 计算刻度终点（外径上的点）
+			const outerX = centerX + radius * Math.cos(currentAngle);
+			const outerY = centerY + radius * Math.sin(currentAngle);
+	
+			// 创建刻度线
+			const tick = new ILine({
+				pointStart: { x: innerX, y: innerY },
+				pointEnd: { x: outerX, y: outerY },
+				stroke: "#831f55",
+				strokeWidth: 1,
+				lineCap:'round'
+			}, render);
+	
+			// 添加到画布
+			render.addShape(tick);
+		}
+	}
+	
+
+	const drawer = () => {
+		if (xcanvas.value == null) return;
+		const render = xcanvas.value! as ICanvas
+		render.checkPointInHitEvents = ['down', 'move', 'up', 'cancel']
+		const boxWidth = render.boxWidth
+		const boxHeight = render.boxHeight
+
+		const strokeWidth = 30
+		const radius = 110
+		render.addShape(new IArc({
+			startAngle:0,
+			radius: radius - strokeWidth,
+			endAngle: 360,
+			x: boxWidth / 2,
+			y: boxHeight / 2,
+			stroke:"rgba(255,255,255,0.1)",
+			strokeWidth: strokeWidth-10,
+			lineCap: 'round',
+			
+		}, render
+		))
+		const iarc = new IArc({
+			startAngle: 0,
+			radius: radius - strokeWidth,
+			endAngle: 0,
+			x: boxWidth / 2,
+			y: boxHeight / 2,
+			strokeGradient:['45deg','#6d00c6 0%','#c33181 100%'],
+			strokeWidth: strokeWidth-10,
+			lineCap: 'round',
+			
+		}, render
+		)
+		render.addShape(iarc)
+		render.addShape(new IArc({
+			startAngle: 0,
+			radius: radius,
+			endAngle: 360,
+			x: boxWidth / 2,
+			y: boxHeight / 2,
+			stroke:"rgba(255,255,255,0.1)",
+			strokeWidth: strokeWidth,
+			lineCap: 'round',
+			
+		}, render
+		))
+		const greearc = new IArc({
+			startAngle: 0,
+			radius: radius,
+			endAngle: 275,
+			x: boxWidth / 2,
+			y: boxHeight / 2,
+			strokeGradient:['45deg','#13794e 0%','#c33181 100%'],
+			strokeWidth: strokeWidth,
+			lineCap: 'round',
+			
+		}, render
+		)
+		render.addShape(greearc)
+		
+		render.addShape( new IArc({
+			radius: radius+strokeWidth+5,
+			endAngle: 360,
+			x: boxWidth / 2,
+			y: boxHeight / 2,
+		
+			strokeWidth: strokeWidth,
+			stroke:"rgba(255,255,255,0.1)",
+			lineCap: 'round',
+			rotateCenter:'center'
+		}, render
+		))
+		const shap1 = new IArc({
+			startAngle: -45,
+			radius: radius+strokeWidth+5,
+			endAngle: 235,
+			x: boxWidth / 2,
+			y: boxHeight / 2,
+		
+			strokeWidth: strokeWidth,
+			strokeGradient:['45deg','#abab00 0%','#c33181 100%'],
+			lineCap: 'round',
+			rotateCenter:'center'
+		}, render
+		)
+		render.addShape(shap1)
+		
+		const shap2 = new IArc({
+			startAngle: -45,
+			radius: radius+strokeWidth+5,
+			endAngle: -45,
+			x: boxWidth / 2,
+			y: boxHeight / 2,
+			stroke: 'rgba(255, 239, 53, 1.0)',
+			strokeWidth: strokeWidth-10,
+			lineCap: 'round',
+			rotateCenter:'center'
+		}, render
+		)
+		render.addShape(shap2)
+		const text= new IText({
+			text:'0',
+			fontSize:70,
+			textAlign:'center',
+			x: 0,
+			y: boxHeight / 2 - 35,
+			fill:'rgba(255, 239, 53, 1.0)',
+		},render)
+		render.addShape(text)
+		const text2= new IText({
+			text:'跑步圈数',
+			fontSize:15,
+			textAlign:'center',
+			x: 0,
+			y: boxHeight / 2 + 40,
+			fill:"#c33181",
+		},render)
+		render.addShape(text2)
+		drawerRule()
+		render.render()
+		
+		tw1 = new Tween(shap2,render)
+		.addTo({rotation:360},10*1000)
+		.setLoop(-1)
+		.onUpdate((progress:number)=>{
+			text.setText((progress*100).toFixed(0))
+		})
+		.start()
+		
+		tw2 = new Tween(shap1,render)
+		.addTo({rotation:360},10*1000)
+		.setLoop(-1)
+		.start()
+		tw3 = new Tween(greearc,render)
+		.addTo({rotation:-360},10*1000)
+		.setLoop(-1)
+		.start()
+		tw4 = new Tween(iarc,render)
+		.addTo({endAngle:360},10*1000)
+		.setLoop(-1)
+		.start()
+
+	}
+
+	const oninit = () => {
+		xcanvas.value.init()
+			.then(() => {
+				drawer()
+			})
+	}
+
+	onReady(() => {
+		oninit()
+	})
+	
+	onBeforeUnmount(() => {
+		tw1?.stop()
+		tw2?.stop()
+		tw3?.stop()
+		tw4?.stop()
+	})
+</script>
+
+<style>
+
+</style>

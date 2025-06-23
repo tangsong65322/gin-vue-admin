@@ -1,0 +1,74 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">浮球 FloatButton</x-text>
+			<x-text color="#999999">
+				提供自由拖动，吸附功能，预设四个位置，请参阅文档。
+			</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">双向绑定位置</x-text>
+			<x-text color="#999999">
+				请拖动橙色自由球：{{offsets.join(",")}}
+			</x-text>
+		</x-sheet>
+		<x-float-button>
+			<view class="flex flex-center" style="width:100%;height:100%">
+				<x-icon color="white" font-size="30" name="phone-fill"></x-icon>
+			</view>
+		</x-float-button>
+		<x-float-button bg-color="success" :offset="[-2,-2]">
+			<view class="flex flex-center" style="width:100%;height:100%">
+				<x-icon color="white" font-size="30" name="bluetooth-line"></x-icon>
+			</view>
+		</x-float-button>
+		<x-float-button :disabled="true" bg-color="linear-gradient(to left, #FFED46, #FF7EC7)" :offset="[-5,-5]">
+			<view class="flex flex-center" style="width:100%;height:100%">
+				<x-icon color="white" font-size="30" name="forbid-line"></x-icon>
+			</view>
+		</x-float-button>
+		<x-float-button @click="onclik" bg-color="error" :offset="[-3,-3]">
+			<view class="flex flex-center" style="width:100%;height:100%">
+				<x-icon color="white" font-size="30" name="add-line"></x-icon>
+			</view>
+		</x-float-button>
+		<x-float-button :adsorption="false" bg-color="danger" :offset="[-4, -4]" @change="moveChange">
+			<view class="flex flex-center" style="width:100%;height:100%">
+				<x-icon color="white" font-size="30" name="sketching"></x-icon>
+			</view>
+		</x-float-button>
+		
+		<view style="height:1500px"></view>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+				offsets: [] as number[]
+			};
+		},
+		methods:{
+			onclik(){
+				console.log('click')
+			},
+			moveChange(xy:number[]){
+				// this.offsets = xy;
+			}
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

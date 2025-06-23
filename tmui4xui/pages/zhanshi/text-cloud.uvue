@@ -1,0 +1,186 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">词云 TtextCloud</x-text>
+			<x-text color="#999999" >把文字集中一起随机绘制，权重高的会突显变大，并居中显示。</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-text-cloud :list="list"></x-text-cloud>
+		</x-sheet>
+		<x-sheet>
+			<x-text-cloud :list="list2"></x-text-cloud>
+		</x-sheet>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	import { TEXTCLOUD_ITEM_INFO } from "@/uni_modules/tmx-ui/interface.uts"
+	export default {
+		data() {
+			return {
+				list: [
+					{ text: '我是词', weight: 10, color: '#e1e1e1' },
+					{ text: '贵', weight: 60, color: 'red' },
+					{ text: '你好', weight: 30, color: '#e1e1e1' },
+					{ text: '好', weight: 1, color: '#e1e1e1' },
+					{ text: '棒', weight: 10, color: '#e1e1e1' },
+					{ text: '牛逼', weight: 4, color: '#e1e1e1' },
+					{ text: '我是词', weight: 10, color: '#e1e1e1' },
+					{ text: '666', weight: 20, color: 'red' },
+					{ text: '你好', weight: 30, color: '#e1e1e1' },
+					{ text: '好', weight: 1, color: '#e1e1e1' },
+					{ text: '棒', weight: 10, color: '#e1e1e1' },
+					{ text: '牛逼', weight: 4, color: '#e1e1e1' },
+					{ text: '我是词', weight: 10, color: '#e1e1e1' },
+					{ text: '乱', weight: 30, color: 'red' },
+					{ text: '你好', weight: 30, color: '#e1e1e1' },
+					{ text: '好', weight: 1, color: '#e1e1e1' },
+					{ text: '棒', weight: 10, color: '#e1e1e1' },
+					{ text: '牛逼', weight: 4, color: '#e1e1e1' },
+					{ text: '我是词', weight: 10, color: '#e1e1e1' },
+					{ text: '贵', weight: 20, color: 'red' },
+					{ text: '你好', weight: 30, color: '#e1e1e1' },
+					{ text: '好', weight: 1, color: '#e1e1e1' },
+					{ text: '棒', weight: 10, color: '#e1e1e1' },
+					{ text: '牛逼', weight: 4, color: '#e1e1e1' },
+					{ text: '我是词', weight: 10, color: '#e1e1e1' },
+					{ text: '贵', weight: 80, color: 'red' },
+					{ text: '你好', weight: 30, color: '#e1e1e1' },
+					{ text: '好', weight: 1, color: '#e1e1e1' },
+					{ text: '棒', weight: 10, color: '#e1e1e1' },
+					{ text: '牛逼', weight: 4, color: '#e1e1e1' },
+					{ text: '我是词', weight: 10, color: '#e1e1e1' },
+					{ text: '世界观', weight: 40, color: 'red' },
+					{ text: '你好', weight: 30, color: '#e1e1e1' },
+					{ text: '好', weight: 1, color: '#e1e1e1' },
+					{ text: '棒', weight: 10, color: '#e1e1e1' },
+					{ text: '牛逼', weight: 4, color: '#e1e1e1' },
+					{ text: '我是词', weight: 10, color: '#e1e1e1' },
+					{ text: '贵', weight: 20, color: 'red' },
+					{ text: '你好', weight: 30, color: '#e1e1e1' },
+					{ text: '好', weight: 1, color: '#e1e1e1' },
+					{ text: '棒', weight: 10, color: '#e1e1e1' },
+					{ text: '牛逼', weight: 4, color: '#e1e1e1' },
+					{ text: '我是词', weight: 10, color: '#e1e1e1' },
+					{ text: '666', weight: 10, color: 'red' },
+					{ text: '你好', weight: 30, color: '#e1e1e1' },
+					{ text: '好', weight: 1, color: '#e1e1e1' },
+					{ text: '棒', weight: 10, color: '#e1e1e1' },
+					{ text: '牛逼', weight: 4, color: '#e1e1e1' },
+					{ text: '我是词', weight: 10, color: '#e1e1e1' },
+					{ text: '乱', weight: 60, color: 'red' },
+					{ text: '你好', weight: 30, color: '#e1e1e1' },
+					{ text: '好', weight: 1, color: '#e1e1e1' },
+					{ text: '棒', weight: 10, color: '#e1e1e1' },
+					{ text: '牛逼', weight: 4, color: '#e1e1e1' },
+					{ text: '我是词', weight: 10, color: '#e1e1e1' },
+					{ text: '贵', weight: 5, color: 'red' },
+					{ text: '你好', weight: 30, color: '#e1e1e1' },
+					{ text: '好', weight: 1, color: '#e1e1e1' },
+					{ text: '棒', weight: 10, color: '#e1e1e1' },
+					{ text: '牛逼', weight: 4, color: '#e1e1e1' },
+					{ text: '我是词', weight: 10, color: '#e1e1e1' },
+					{ text: '贵', weight: 10, color: 'red' },
+					{ text: '你好', weight: 30, color: '#e1e1e1' },
+					{ text: '好', weight: 1, color: '#e1e1e1' },
+					{ text: '棒', weight: 10, color: '#e1e1e1' },
+					{ text: '牛逼', weight: 4, color: '#e1e1e1' },
+					{ text: '我是词', weight: 10, color: '#e1e1e1' },
+					{ text: '世界观', weight: 100, color: 'red' },
+					{ text: '你好', weight: 30, color: '#e1e1e1' },
+					{ text: '好', weight: 1, color: '#e1e1e1' },
+					{ text: '棒', weight: 10, color: '#e1e1e1' },
+					{ text: '牛逼', weight: 4, color: '#e1e1e1' },
+				] as TEXTCLOUD_ITEM_INFO[],
+				list2: [
+					{ text: '我是词', weight: 10, color: '#bababa' },
+					{ text: '贵', weight: 60, color: 'green' },
+					{ text: '你好', weight: 30, color: '#bababa' },
+					{ text: '好', weight: 1, color: '#bababa' },
+					{ text: '棒', weight: 10, color: '#bababa' },
+					{ text: '牛逼', weight: 4, color: '#bababa' },
+					{ text: '我是词', weight: 10, color: '#bababa' },
+					{ text: '666', weight: 20, color: 'green' },
+					{ text: '你好', weight: 30, color: '#bababa' },
+					{ text: '好', weight: 1, color: '#bababa' },
+					{ text: '棒', weight: 10, color: '#bababa' },
+					{ text: '牛逼', weight: 4, color: '#bababa' },
+					{ text: '我是词', weight: 10, color: '#bababa' },
+					{ text: '乱', weight: 30, color: 'green' },
+					{ text: '你好', weight: 30, color: '#bababa' },
+					{ text: '好', weight: 1, color: '#bababa' },
+					{ text: '棒', weight: 10, color: '#bababa' },
+					{ text: '牛逼', weight: 4, color: '#bababa' },
+					{ text: '我是词', weight: 10, color: '#bababa' },
+					{ text: '贵', weight: 20, color: 'green' },
+					{ text: '你好', weight: 30, color: '#bababa' },
+					{ text: '好', weight: 1, color: '#bababa' },
+					{ text: '棒', weight: 10, color: '#bababa' },
+					{ text: '牛逼', weight: 4, color: '#bababa' },
+					{ text: '我是词', weight: 10, color: '#bababa' },
+					{ text: '贵', weight: 80, color: 'green' },
+					{ text: '你好', weight: 30, color: '#bababa' },
+					{ text: '好', weight: 1, color: '#bababa' },
+					{ text: '棒', weight: 10, color: '#bababa' },
+					{ text: '牛逼', weight: 4, color: '#bababa' },
+					{ text: '我是词', weight: 10, color: '#bababa' },
+					{ text: '世界观', weight: 40, color: 'green' },
+					{ text: '你好', weight: 30, color: '#bababa' },
+					{ text: '好', weight: 1, color: '#bababa' },
+					{ text: '棒', weight: 10, color: '#bababa' },
+					{ text: '牛逼', weight: 4, color: '#bababa' },
+					{ text: '我是词', weight: 10, color: '#bababa' },
+					{ text: '贵', weight: 20, color: 'green' },
+					{ text: '你好', weight: 30, color: '#bababa' },
+					{ text: '好', weight: 1, color: '#bababa' },
+					{ text: '棒', weight: 10, color: '#bababa' },
+					{ text: '牛逼', weight: 4, color: '#bababa' },
+					{ text: '我是词', weight: 10, color: '#bababa' },
+					{ text: '666', weight: 10, color: 'green' },
+					{ text: '你好', weight: 30, color: '#bababa' },
+					{ text: '好', weight: 1, color: '#bababa' },
+					{ text: '棒', weight: 10, color: '#bababa' },
+					{ text: '牛逼', weight: 4, color: '#bababa' },
+					{ text: '我是词', weight: 10, color: '#bababa' },
+					{ text: '乱', weight: 60, color: 'green' },
+					{ text: '你好', weight: 30, color: '#bababa' },
+					{ text: '好', weight: 1, color: '#bababa' },
+					{ text: '棒', weight: 10, color: '#bababa' },
+					{ text: '牛逼', weight: 4, color: '#bababa' },
+					{ text: '我是词', weight: 10, color: '#bababa' },
+					{ text: '贵', weight: 5, color: 'green' },
+					{ text: '你好', weight: 30, color: '#bababa' },
+					{ text: '好', weight: 1, color: '#bababa' },
+					{ text: '棒', weight: 10, color: '#bababa' },
+					{ text: '牛逼', weight: 4, color: '#bababa' },
+					{ text: '我是词', weight: 10, color: '#bababa' },
+					{ text: '贵', weight: 10, color: 'green' },
+					{ text: '你好', weight: 30, color: '#bababa' },
+					{ text: '好', weight: 1, color: '#bababa' },
+					{ text: '棒', weight: 10, color: '#bababa' },
+					{ text: '牛逼', weight: 4, color: '#bababa' },
+					{ text: '我是词', weight: 10, color: '#bababa' },
+					{ text: '世界观', weight: 100, color: 'green' },
+					{ text: '你好', weight: 30, color: '#bababa' },
+					{ text: '好', weight: 1, color: '#bababa' },
+					{ text: '棒', weight: 10, color: '#bababa' },
+					{ text: '牛逼', weight: 4, color: '#bababa' },
+				] as TEXTCLOUD_ITEM_INFO[]
+
+			};
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

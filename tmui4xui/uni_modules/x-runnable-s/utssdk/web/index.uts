@@ -1,0 +1,44 @@
+// 将函数转换为 Worker
+function createWorker(workerFunction) {
+	// 将函数转换为字符串
+	const workerCode = `
+    const result = (${workerFunction.toString()})();
+    self.postMessage(result);
+  `;
+
+	// 创建 Blob
+	const blob = new Blob([workerCode], { type: 'application/javascript' });
+	
+	// 创建 URL
+	const workerUrl = URL.createObjectURL(blob);
+
+	// 创建 Worker
+	const worker = new Worker(workerUrl);
+
+	// 清理 URL
+	worker.addEventListener('message', () => {
+		URL.revokeObjectURL(workerUrl);
+	});
+
+	return worker;
+}
+
+
+
+export function runWorker(callback : () => any | null, resultCallback : (msg : any | null) => void) {
+	// 创建 Worker
+	const worker = createWorker(callback);
+
+	// 接收结果
+	worker.onmessage = (event) => {
+		resultCallback(event.data)
+		// 删除旧的worder
+		worker.postMessage('remove')
+	};
+
+	// 错误处理
+	worker.onerror = (error) => {
+		console.error('Worker error:', error);
+	};
+
+}

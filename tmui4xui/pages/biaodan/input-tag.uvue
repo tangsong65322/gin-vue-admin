@@ -1,0 +1,39 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">标签输入框 xInputTag</x-text>
+			<x-text color="#999999" >用来自定分类时使用</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">默认标签在输入框内</x-text>
+			<x-input-tag v-model="keywords"></x-input-tag>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">让标签在输入框内</x-text>
+			<x-input-tag postion="in" placeholder="输入,确认添加" v-model="keywords"></x-input-tag>
+		</x-sheet>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+				keywords: ['测试标签', '权限设置', '产品销售']
+			};
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

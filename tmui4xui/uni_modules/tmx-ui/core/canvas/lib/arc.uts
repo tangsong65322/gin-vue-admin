@@ -1,0 +1,123 @@
+import { Shape } from './shape.uts';
+import { CanvasRotateCenter, ShapeSetAttrType, IShapeBoundRect, IShapeOptional } from '../interface.uts';
+import { ICanvas } from '@/uni_modules/tmx-ui/core/canvas/ICanvas.uts';
+export class IArc extends Shape {
+	constructor(config : IShapeOptional,canvas:ICanvas) {
+		super(config,canvas);
+		this.radius = config?.radius ?? 30;
+		this.startAngle = config?.startAngle ?? 0;
+		this.endAngle = config?.endAngle ?? 90;
+		this.type = "IArc"
+	}
+
+	setRadius(value : number) : IArc {
+		this.radius = value;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	override getBoundRect() : IShapeBoundRect {
+		const w = this.radius * 2;
+		return {
+			x: this.x,
+			y: this.y,
+			width: w,
+			height: w
+		} as IShapeBoundRect;
+	}
+
+	override setWidth(value : number) : IArc {
+		this.height = value;
+		this.width = value;
+		this.radius = value / 2
+		this.needsUpdate = true;
+		return this;
+	}
+
+	override setHeight(value : number) : IArc {
+		this.height = value;
+		this.width = value;
+		this.radius = value / 2
+		this.needsUpdate = true;
+		return this;
+	}
+	
+	setStartAngle(angle:number):IArc{
+		this.startAngle = angle;
+		this.needsUpdate = true;
+		return this;
+	}
+	setEndAngle(angle:number):IArc{
+		this.endAngle = angle;
+		this.needsUpdate = true;
+		return this;
+	}
+
+
+
+	override draw(ctx : CanvasRenderingContext2D) {
+		if (this.visible == false) return;
+		super.draw(ctx);
+		ctx.beginPath();
+		// 将角度转换为弧度
+		const startRad = this.startAngle * Math.PI / 180;
+		const endRad = this.endAngle * Math.PI / 180;
+		// 如果有填充色，先移动到圆心，绘制扇形
+		if (this.fill != ""||this.fillGradient.length>0) {
+			ctx.moveTo(this.x, this.y);
+		}
+		// 绘制圆弧
+		ctx.arc(this.x, this.y, this.radius, startRad, endRad, false);
+		
+		if (this.fill != ""||this.fillGradient.length>0) {
+			ctx.closePath();
+			ctx.fill();
+		}
+		if (this.stroke != ""||this.strokeGradient.length>0) {
+			ctx.stroke();
+		}
+		
+		ctx.restore();
+	}
+	override isPointInPath(x: number, y: number, shapeId: string): boolean {
+		if (!this.visible || (shapeId != "" && shapeId != this.id)) return false;
+		const realX = x - (this.offsetX) - this.x;
+		const realY = y - (this.offsetY) - this.y;
+
+		// 计算点到圆心的距离
+		const dx = realX;
+		const dy = realY;
+		const distance = Math.sqrt(dx * dx + dy * dy);
+
+		// 计算点相对于圆心的角度（弧度）
+		const angle = Math.atan2(dy, dx);
+		// 将角度转换为0-360度范围
+		let degrees = angle * 180 / Math.PI;
+		if (degrees < 0) degrees += 360;
+
+		// 将起始角度和结束角度标准化到0-360度范围
+		let start = this.startAngle % 360;
+		if (start < 0) start += 360;
+		let end = this.endAngle % 360;
+		if (end < 0) end += 360;
+		// 确保end大于start
+		if (end < start) end += 360;
+
+		// 检查点的角度是否在弧的范围内
+		const inAngle = degrees >= start && degrees <= end;
+
+		if (this.fill !== "") {
+			// 填充模式：检查是否在扇形内
+			return inAngle && distance <= this.radius;
+		} else if (this.stroke !== "") {
+			// 非填充模式：检查是否在圆弧线附近
+			// 考虑整个线宽作为检测范围
+			const tolerance = this.strokeWidth;
+			const distanceFromArc = Math.abs(distance - this.radius);
+			return inAngle && distanceFromArc <= tolerance;
+		}
+		
+		
+		return false;
+	}
+}

@@ -1,0 +1,1005 @@
+{
+	"pages": [
+
+		{
+			"path": "pages/index/index",
+			"style": {
+				"navigationBarTitleText": "index",
+				"enablePullDownRefresh": false,
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path" : "pages/index/global",
+			"style" : 
+			{
+				"navigationBarTitleText" : "全局配置"
+			}
+		},
+		{
+			"path" : "pages/index/search",
+			"style" : 
+			{
+				"navigationBarTitleText" : "搜索"
+			}
+		},
+		// #ifdef APP||WEB
+		{
+			"path" : "pages/index/menu",
+			"style" : 
+			{
+				"navigationBarTitleText" : "菜单"
+			}
+		}
+		// #endif
+
+	],
+	"subPackages": [
+		{
+			"root": "pages/chongyong",
+			"pages": [
+				{
+					"path" : "text",
+					"style" : 
+					{
+						"navigationBarTitleText" : "",
+						"navigationStyle": "custom"
+					}
+				},
+				{
+					"path" : "button",
+					"style" : 
+					{
+						"navigationBarTitleText" : "按钮 xButton"
+					}
+				},
+				{
+					"path" : "icon",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "sheet",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "row",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "tag",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				}
+			]
+		},
+		{
+			"root": "pages/biaodan",
+			"pages": [
+				{
+					"path" : "calendar-view",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "calendar-multiple",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "input",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "picker-date",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "picker-view",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "picker",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "between-time",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "upload-file",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "picker-city",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "tree",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "picker-selected",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "form",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "input-tag",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "keyboard",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "stepper",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "slider",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "rate",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "picker-time",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "cascader",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "upload-media",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "checkbox",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "radio",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "switch",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "editor",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "input-number",
+					"style" : 
+					{
+						"navigationBarTitleText" : "数字输入框"
+					}
+				}
+			]
+		},
+		{
+			"root": "pages/daohang",
+			"pages": [
+				{
+					"path" : "weekbar",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "pagination",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "sticky",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "search",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "navbar",
+					"style" : 
+					{
+						"navigationBarTitleText" : "",
+						"navigationStyle": "custom"
+					}
+				},
+				{
+					"path" : "indexbar",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "backtop",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "grid",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "radio-button",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "tabbar",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "slider-menu",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "slider-tree",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "tabs",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				}
+			]
+		},
+		{
+			"root": "pages/zhanshi",
+			"pages": [
+				{
+					"path" : "avatar-group",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "alert",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "link",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				
+				{
+					"path" : "scrollx",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "skeleton",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "waterfall",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "image-group",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "table",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "card",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "more",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "swiper",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "countdown",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "circle-progress",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "collapse",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "empty",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "watermark",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "divider",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "text-cloud",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "steps",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "image",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "cell",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "badge",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "notice",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "progress",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "rolling-number",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "markdown",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "virtual-list",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				}
+			]
+		},
+		{
+			"root": "pages/fankui",
+			"pages": [
+				{
+					"path" : "drawer",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				
+				{
+					"path" : "pull-refresh",
+					"style" : 
+					{
+						"navigationBarTitleText" : "",
+						"disableScroll": true
+					}
+				},
+				{
+					"path" : "view-tofull",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "drag",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "action-modal",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "float-button",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "msg-notice",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "barrage",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "action-menu",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "float-drawer",
+					"style" : 
+					{
+						"navigationBarTitleText" : "",
+						"disableScroll": true
+					}
+				},
+				{
+					"path" : "loading",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "snackbar",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "dropdown-menu",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "modal",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "overlay",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "popover",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "switch-slider",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				}
+			]
+		},
+		{
+			"root": "pages/qita",
+			"pages": [
+				{
+					"path" : "image-resizer",
+					"style" : 
+					{
+						"navigationBarTitleText" : "",
+						"disableScroll": true
+					}
+				},
+				{
+					"path" : "color-view",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "mention",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "slide-verify",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "money",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "code-input",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "barcode",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "animation",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "sign-board",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "finger",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "qrcoder",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "echart",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "tree-flat",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				}
+			]
+		},
+		{
+			"root": "pages/libs",
+			"pages": [
+				{
+					"path" : "canvas",
+					"style" : 
+					{
+						"navigationBarTitleText" : "ICanvas绘画库",
+						"disableScroll": true
+					}
+				},
+				{
+					"path" : "xdate",
+					"style" : 
+					{
+						"navigationBarTitleText" : "xDate日期库"
+					}
+				},
+				{
+					"path" : "xrequest",
+					"style" : 
+					{
+						"navigationBarTitleText" : "xRequest请求库"
+					}
+				},
+				{
+					"path" : "xanimate",
+					"style" : 
+					{
+						"navigationBarTitleText" : "xAnimate元素动画"
+					}
+				},
+				{
+					"path" : "xTween",
+					"style" : 
+					{
+						"navigationBarTitleText" : "xTween动画贴"
+					}
+				},
+				{
+					"path" : "canvasRotarySwitch",
+					"style" : 
+					{
+						"navigationBarTitleText" : "canvasRotarySwitch",
+						"disableScroll": true
+					}
+				},
+				{
+					"path" : "canvasWatchSportOne",
+					"style" : 
+					{
+						"navigationBarTitleText" : "",
+						"disableScroll": true
+					}
+				}
+			]
+		},
+		{
+			"root": "pages/utsapi",
+			"pages": [
+				
+				// #ifdef APP||WEB
+				{
+					"path" : "sqlite",
+					"style" : 
+					{
+						"navigationBarTitleText" : "sqlite"
+					}
+				},
+				
+				// #endif
+				
+				// #ifdef APP
+				{
+					"path" : "facedetection",
+					"style" : 
+					{
+						"navigationBarTitleText" : "facedetection"
+					}
+				},
+				{
+					"path" : "screenshot",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "share",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				// #endif
+				// #ifndef MP
+				{
+					"path" : "xtips",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "ocr",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				// #endif
+				{
+					"path" : "scan",
+					"style" : 
+					{
+						"navigationBarTitleText" : "xScanU"
+					}
+				},
+				{
+					"path" : "xcamrea",
+					"style" : 
+					{
+						"navigationBarTitleText" : "xcamrea"
+					}
+				},
+				{
+					"path" : "clipboard",
+					"style" : 
+					{
+						"navigationBarTitleText" : "clipboard"
+					}
+				},
+				{
+					"path" : "arrbufftobase64",
+					"style" : 
+					{
+						"navigationBarTitleText" : "arrbufftobase64"
+					}
+				},
+				{
+					"path" : "xcrypto",
+					"style" : 
+					{
+						"navigationBarTitleText" : "xcrypto"
+					}
+				},
+				{
+					"path" : "xmqtt",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "xanimations",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "xmodal",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "xtoast",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				{
+					"path" : "xloadings",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				},
+				// #ifdef APP||WEB
+				{
+					"path" : "xsse",
+					"style" : 
+					{
+						"navigationBarTitleText" : "sse"
+					}
+				},
+				// #endif
+				{
+					"path" : "other",
+					"style" : 
+					{
+						"navigationBarTitleText" : ""
+					}
+				}
+				
+				
+			]
+		}
+	],
+	
+	"globalStyle": {
+		"navigationBarTextStyle": "@navTxtStyle",
+		"navigationBarBackgroundColor": "@navBgColor",
+		"backgroundColorContent": "@backgroundColor",
+		"backgroundColor": "@backgroundColor",
+		"navigationBarTitleText": "tmui4.0",
+		"pageOrientation":"auto"
+	},
+
+	"uniIdRouter": {},
+	"condition" : {
+		"current": 0,
+		"list": [
+			{
+				"name": "",
+				"path": "",
+				"query": "" 
+			}
+		]
+	}
+}

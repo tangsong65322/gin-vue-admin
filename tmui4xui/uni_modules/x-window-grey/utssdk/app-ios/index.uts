@@ -1,0 +1,30 @@
+import { UIViewController, UIView, UIWindow, UIScreen, UIColor } from 'UIKit';
+import { CIFilter } from 'CoreImage';
+
+let greayUview : UIView | null = null;
+export function setWindowGrey(ele:any|null=null) {
+	if (UTSiOS.available("iOS 13.0, *")) {
+		let winsize = UIScreen.main.bounds as CGRect;
+		let view = new UIView();
+		view.backgroundColor = UIColor.lightGray
+
+		view.frame = winsize;
+		view.isUserInteractionEnabled = false;
+		view.layer.compositingFilter = "saturationBlendMode"
+		let paret = UTSiOS.getCurrentViewController()
+		greayUview = view;
+		DispatchQueue.main.async(execute = () : void => {
+			paret.view.addSubview(greayUview!)
+
+		})
+	}
+
+
+}
+export function removeWindowGrey(ele:any|null=null) {
+	DispatchQueue.main.async(execute = () : void => {
+		if (greayUview != null) {
+			greayUview!.removeFromSuperview();
+		}
+	})
+}

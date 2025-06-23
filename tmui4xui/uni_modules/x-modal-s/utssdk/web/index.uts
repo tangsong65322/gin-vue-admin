@@ -1,0 +1,219 @@
+export {X_MODAL_TYPE,X_MODAL_TYPE_PRIVATE} from "../interface.uts"
+import {defaultConfig,configCover} from "../libs/config.uts"
+import { LoadFontFace } from "./loadFont.uts"
+let maskerDom : null | HTMLDivElement = null;
+let tid = 0
+
+
+export const close = (call : () => void, isClose : boolean)=>{
+	if (!isClose) return;
+	if (maskerDom != null) {
+		clearTimeout(tid)
+		maskerDom.remove()
+	}
+	call()
+}
+export const showModal = (opts : X_MODAL_TYPE) => {
+	LoadFontFace()
+	if (maskerDom != null) {
+		clearTimeout(tid)
+		maskerDom.remove()
+	}
+	let config = configCover(opts)
+	let titleHeight = 60;
+	let footerHeight = 74
+	let contentHeight = config.height;
+	let width = config.width;
+	let height = config.height
+	
+	maskerDom = document.createElement("div")
+	if (maskerDom == null)  return;
+	
+	maskerDom.style.setProperty("background-color", config.maskBgColor)
+	maskerDom.style.setProperty("position", "fixed")
+	maskerDom.style.setProperty("left", "0px")
+	maskerDom.style.setProperty("top", "0px")
+	maskerDom.style.setProperty("width", "100%")
+	maskerDom.style.setProperty("height", "100%")
+	maskerDom.style.display = "flex"
+	maskerDom.style.flexDirection = "row"
+	maskerDom.style.justifyContent = "center"
+	maskerDom.style.alignItems = "center"
+	maskerDom.style.zIndex = "301"
+	// 内容层
+	let container = document.createElement("div")
+	// container.style.padding = "30px"
+	container.style.width = width+"px"
+	// container.style.height = height+"px"
+	container.style.backgroundColor = config.contentBgColor
+	container.style.borderRadius = config.radius+"px"
+	container.style.boxSizing = "border-box"
+	container.style.display = "flex"
+	container.style.overflow = "hidden"
+	container.style.flexDirection = "column"
+	container.style.transition = 'all 0.3s cubic-bezier(.42,.38,.15,.93)'
+	container.style.scale = "0"
+	container.style.opacity = "0"
+	
+	// 标题
+	let titleDiv = document.createElement("div");
+	titleDiv.style.textAlign = "center";
+	titleDiv.style.height = titleHeight + "px";
+
+	titleDiv.style.display = "flex"
+	titleDiv.style.flexDirection = "row"
+	titleDiv.style.alignItems = "center"
+	titleDiv.style.justifyContent = "center"
+	titleDiv.style.fontSize = "18px"
+	titleDiv.style.fontWeight = "bold"
+	titleDiv.style.color = config.titleColor
+	titleDiv.innerText = config.title
+	
+	// 内容
+	let content = document.createElement("div");
+	content.style.height = contentHeight + "px";
+	content.style.display = "flex"
+	content.style.fontSize = "16px"
+	content.style.color = config.contentColor
+	content.innerHTML = config.content
+	content.style.overflowY = 'auto';
+	content.style.boxSizing = "border-box"
+	content.style.padding = "0 16px"
+	if(config.contentAlign=='center'){
+		content.style.flexDirection = 'column'
+		content.style.justifyContent = 'center'
+		content.style.alignItems = 'center'
+		content.style.textAlign = 'center'
+	}
+	
+	content.addEventListener('click',(e:PointerEvent)=>{
+		e.preventDefault()
+		e.stopPropagation()
+		// @ts-ignore
+		if(e.target?.href){
+			// @ts-ignore
+			let href = e.target?.href??""
+			if(href){
+				config.clickLink(href)
+			}
+		}
+		
+	})
+	// 底部容器
+	let footerDiv = document.createElement("div");
+	footerDiv.style.display = "flex"
+	footerDiv.style.flexDirection = "row"
+	footerDiv.style.justifyContent = "center"
+	footerDiv.style.alignItems = "center"
+	
+	// 取消按钮
+	let cancelDiv = document.createElement("div");
+	cancelDiv.style.flex = "1"
+	cancelDiv.style.height = "55px"
+	cancelDiv.style.backgroundColor = config.cancelBgColor
+	cancelDiv.style.color = config.cancelColor
+	cancelDiv.style.fontSize = "16px"
+	cancelDiv.style.display = "flex"
+	cancelDiv.style.flexDirection = "row"
+	cancelDiv.style.justifyContent = "center"
+	cancelDiv.style.alignItems = "center"
+	cancelDiv.style.fontFamily = "remixicon"
+	
+	if(config.cancelIcon!=""){
+		let iconstr = String.fromCharCode(parseInt(config.cancelIcon, 16));
+		let str = config.cancelText==""?iconstr:(iconstr+" "+config.cancelText)
+		cancelDiv.innerHTML = str
+	}else{
+		cancelDiv.innerText = config.cancelText
+	}
+	
+	
+	let confirmDiv = document.createElement("div");
+	confirmDiv.style.flex = "1"
+	confirmDiv.style.height = "55px"
+	confirmDiv.style.backgroundColor = config.confirmBgColor
+	confirmDiv.style.color = config.confirmColor
+	confirmDiv.style.fontSize = "16px"
+	confirmDiv.style.display = "flex"
+	confirmDiv.style.flexDirection = "row"
+	confirmDiv.style.justifyContent = "center"
+	confirmDiv.style.alignItems = "center"
+	confirmDiv.style.fontFamily = "remixicon"
+	if(config.confirmIcon!=""){
+		let iconstr = String.fromCharCode(parseInt(config.confirmIcon, 16));
+		let str = config.confirmText==""?iconstr:(iconstr+" "+config.confirmText)
+		confirmDiv.innerHTML = str
+	}else{
+		confirmDiv.innerText = config.confirmText
+	}
+	
+	
+	
+	if(config.isSplitBtn){
+		footerDiv.style.padding = "16px"
+		cancelDiv.style.marginRight = "16px"
+		confirmDiv.style.borderRadius = "55px"
+		cancelDiv.style.borderRadius = "55px"
+	}else{
+		content.style.paddingBottom = "16px"
+	}
+	if(!config.isSplitBtn&&config.showCancel){
+		footerDiv.style.borderTop = `0.5px solid ${config.lineColor}`
+		cancelDiv.style.borderRight = `0.5px solid ${config.lineColor}`
+	}
+	if(config.isBlurMask){
+		maskerDom.style.backdropFilter = "blur(6px)"
+	}
+	
+	function close(){
+		try{
+			container.style.scale = "0"
+			container.style.opacity = "0"
+			tid = setTimeout(function() {
+				maskerDom?.remove()
+			}, 200);
+		}catch(e){
+			//TODO handle the exception
+		}
+	}
+	
+	cancelDiv.addEventListener("click",function(){
+		close()
+		config.close()
+		config.cancel()
+	})
+	confirmDiv.addEventListener("click",function(){
+		close()
+		config.close()
+		config.confirm()
+	})
+	container.addEventListener("click",function(evt:PointerEvent){
+		evt.preventDefault()
+		evt.stopPropagation()
+	
+	})
+	maskerDom.addEventListener("click",function(){
+		if(config.clickMaskClose){
+			close()
+			config.close()
+		}
+	})
+	if(config.showCancel){
+		footerDiv.appendChild(cancelDiv)
+	}
+	footerDiv.appendChild(confirmDiv)
+	container.appendChild(titleDiv)
+	container.appendChild(content)
+	container.appendChild(footerDiv)
+	maskerDom!.appendChild(container)
+	window.document.body.appendChild(maskerDom!)
+	
+	try{
+		setTimeout(function() {
+			container.style.scale = "1"
+			container.style.opacity = "1"
+		}, 10);
+	}catch(e){
+		//TODO handle the exception
+	}
+}

@@ -1,0 +1,49 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">底部对话框 ActionModal</x-text>
+			<x-text color="#999999" >
+				样式与darawer不一样，风格更为圆润精致，适于提醒框，阅读对话框等场景。
+			</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-action-modal :show="showModal" title="技巧提醒" btn-text="我知道了哇">
+				<template #trigger>
+					<x-button :block="true">显示技巧提醒</x-button>
+				</template>
+			
+				<x-sheet class="flex flex-col flex-col-center-center">
+					<x-icon font-size="96" color="primary" name="pantone-fill"></x-icon>
+					<x-text font-size="18" class="text-weight-b">你学会了吗？</x-text>
+					<x-text class="text-align-center text-grey">风格与drawer样式不同的是两边和底部有间隙？风格是否喜欢呢？</x-text>
+				</x-sheet>
+			</x-action-modal>
+		</x-sheet>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+				showModal: false
+			};
+		},
+		onReady() {
+			this.showModal = true;
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

@@ -1,0 +1,109 @@
+import {X_MODAL_TYPE,X_MODAL_TYPE_PRIVATE} from "../interface.uts"
+export const defaultConfig = {
+	title:"提醒",
+	content:"",
+	contentAlign:'center',
+	cancelText:"取消",
+	cancelColor:"#333",
+	cancelBgColor:"#f5f5f5",
+	confirmText:"确认",
+	confirmBgColor:"#0579FF",
+	confirmColor:"#FFF",
+	titleColor:'#000000',
+	contentColor:"#333333",
+	lineColor:"transparent",
+	linkFontColor:"rgb(5, 121, 255)",
+	radius:16,
+	confirmIcon:"",
+	cancelIcon:"",
+	isSplitBtn:true,
+	contentBgColor:"#fff",
+	maskBgColor:"rgba(0,0,0,0.6)",
+	confirm:()=>{},
+	cancel:()=>{},
+	close:()=>{},
+	clickLink:(href:string)=>{},
+	isBlurMask:true,
+	height:80,
+	width:320,
+	clickMaskClose:true,
+	showCancel:true
+} as X_MODAL_TYPE_PRIVATE
+
+
+export const configCover = (opts : X_MODAL_TYPE) : X_MODAL_TYPE_PRIVATE => {
+	let title = opts.title==null?defaultConfig.title:(opts.title!);
+	let content = opts.content==null?defaultConfig.content:(opts.content!);
+	let cancelText = opts.cancelText==null?defaultConfig.cancelText:(opts.cancelText!);
+	let cancelBgColor = opts.cancelBgColor==null?defaultConfig.cancelBgColor:(opts.cancelBgColor!);
+	let cancelColor = opts.cancelColor==null?defaultConfig.cancelColor:(opts.cancelColor!);
+	let confirmText = opts.confirmText==null?defaultConfig.confirmText:(opts.confirmText!);
+	let confirmBgColor = opts.confirmBgColor==null?defaultConfig.confirmBgColor:(opts.confirmBgColor!);
+	let confirmColor = opts.confirmColor==null?defaultConfig.confirmColor:(opts.confirmColor!);
+	let radius = opts.radius==null?defaultConfig.radius:(opts.radius!);
+	let confirmIcon = opts.confirmIcon==null?defaultConfig.confirmIcon:(opts.confirmIcon!);
+	let cancelIcon = opts.cancelIcon==null?defaultConfig.cancelIcon:(opts.cancelIcon!);
+	let contentBgColor = opts.contentBgColor==null?defaultConfig.contentBgColor:(opts.contentBgColor!);
+	let maskBgColor = opts.maskBgColor==null?defaultConfig.maskBgColor:(opts.maskBgColor!);
+	let confirm = opts.confirm==null?defaultConfig.confirm:(opts.confirm!);
+	let cancel = opts.cancel==null?defaultConfig.cancel:(opts.cancel!);
+	let close = opts.close==null?defaultConfig.close:(opts.close!);
+	let height = opts.height==null?defaultConfig.height:(opts.height!);
+	let width = opts.width==null?defaultConfig.width:(opts.width!);
+	let titleColor = opts.titleColor==null?defaultConfig.titleColor:(opts.titleColor!);
+	let contentColor = opts.contentColor==null?defaultConfig.contentColor:(opts.contentColor!);
+	let contentAlign = opts.contentAlign==null?defaultConfig.contentAlign:(opts.contentAlign!);
+	let clickLink = opts.clickLink==null?defaultConfig.clickLink:(opts.clickLink!);
+	let linkFontColor = opts.linkFontColor==null?defaultConfig.linkFontColor:(opts.linkFontColor!);
+	let lineColor = opts.lineColor==null?defaultConfig.lineColor:(opts.lineColor!);
+
+	
+	// #ifdef APP-ANDROID
+	
+	let clickMaskClose = opts.clickMaskClose==null?defaultConfig.clickMaskClose:(opts.clickMaskClose!);
+	let showCancel = opts.showCancel==null?defaultConfig.showCancel:(opts.showCancel!);
+	let isBlurMask = opts.isBlurMask==null?defaultConfig.isBlurMask:(opts.isBlurMask!);
+	let isSplitBtn = opts.isSplitBtn==null?defaultConfig.isSplitBtn:(opts.isSplitBtn!);
+	// #endif
+	
+	// #ifdef WEB || APP-IOS || MP
+	
+	let clickMaskClose = opts.clickMaskClose==null?defaultConfig.clickMaskClose:(opts.clickMaskClose);
+	let showCancel = opts.showCancel==null?defaultConfig.showCancel:(opts.showCancel);
+	let isBlurMask = opts.isBlurMask==null?defaultConfig.isBlurMask:(opts.isBlurMask);
+	let isSplitBtn = opts.isSplitBtn==null?defaultConfig.isSplitBtn:(opts.isSplitBtn);
+	// #endif
+	
+	return {
+		title,
+		content,
+		cancelText,
+		cancelBgColor,
+		cancelColor,
+		confirmText,
+		confirmBgColor,
+		confirmColor,
+		linkFontColor,
+		lineColor,
+		radius,
+		confirmIcon,
+		cancelIcon,
+		isSplitBtn,
+		// 框体内容背景
+		contentBgColor,
+		// 遮罩背景
+		maskBgColor,
+		confirm,
+		cancel,
+		close,
+		clickLink,
+		isBlurMask,
+		height,
+		width,
+		clickMaskClose,
+		showCancel,
+		titleColor,
+		contentColor,
+		contentAlign
+	} as X_MODAL_TYPE_PRIVATE
+}

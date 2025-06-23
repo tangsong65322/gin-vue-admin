@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools"
+	package="io.dcloud.uni_modules.xMlkitScannigS">
+	<uses-permission android:name="android.permission.VIBRATE" />
+	<uses-feature android:name="android.hardware.camera.any" />
+	<uses-permission android:name="android.permission.CAMERA" />
+
+	<application>
+		<meta-data android:name="UTS_MLKIT_SCANNIG_xMlkitScannigS" android:value="xMlkitScannigS" />
+		<activity android:name="uts.sdk.modules.xMlkitScannigS.DemoActivity"></activity>
+	</application>
+</manifest>
+

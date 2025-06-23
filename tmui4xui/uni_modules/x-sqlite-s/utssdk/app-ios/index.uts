@@ -1,0 +1,358 @@
+import {SQLiteConfig,SQLiteResult,SQLiteExecuteBatchParams,SQLiteDbFileInfo} from '../interface.uts';
+import { URL, URLResourceKey } from 'Foundation';
+import { Attribute } from 'UIKit';
+
+
+
+/**
+ * SQLite数据库操作类
+ * 提供SQLite数据库的创建、查询、更新等基本操作，支持加密和事务处理
+ */
+export class xSqlite {
+	/** 数据库配置信息 */
+	config : SQLiteConfig = {
+		password : null,
+		encryption : false,
+		locateFile:null
+	};
+	private db : xSqliteHelp|null = null;
+	
+	constructor(config ?: SQLiteConfig ) {
+		if(config!=null){
+			let realCofing:SQLiteConfig = config!;
+			let directory:null|string = realCofing.defaultDirectory
+			if(typeof directory == 'string' && directory !=null){
+				directory = UTSiOS.convert2AbsFullPath(directory!)
+			}
+			realCofing.defaultDirectory = directory
+			
+			this.config = realCofing;
+		}
+		
+		this.db = new xSqliteHelp(
+			config = SQLiteConfigBySt(
+				password = this.config.password,
+				encryption = this.config.encryption,
+				defaultDirectory = this.config.defaultDirectory,
+			)
+		)
+	}
+	
+	private converFormat(result?:SQLiteResultBySt):SQLiteResult{
+		if(result==null){
+			return {
+				rows: [] ,
+				columns: [] ,
+				changes: null,
+				lastInsertRowid: null,
+				error: null,
+			};
+		}
+		
+		return {
+			rows: (result?.rows==null?[]:result?.rows),
+			columns: (result?.columns==null?[]:result?.columns),
+			changes: (result?.changes==null?null:result?.changes),
+			maps: (result?.maps==null?null:result?.maps),
+			lastInsertRowid: (result?.lastInsertRowid==null?null:result?.lastInsertRowid),
+			error: (result?.error==null?null:result?.error),
+		};
+	}
+	
+	
+	/**
+	 * 创建数据库
+	 * @param fileName 数据库文件名，如果为null则使用默认名称'sqlite'
+	 * @returns 创建成功返回true，失败返回false
+	 */
+	createDb(fileName:string|null = null) : boolean{
+		if (this.db==null){
+			return false;
+		}
+		this.db!.createDb(filename = fileName)
+		return true
+	}
+	/**
+	 * 执行SQL语句
+	 * @param sql SQL语句
+	 * @param params SQL参数数组
+	 * @returns SQLiteResult 执行结果，包含changes(影响行数)和lastInsertRowid(最后插入行ID)
+	 */
+	run(sql: string, params: any[] = []): SQLiteResult {
+		try {
+			if (this.db==null) throw new Error('Database not initialized');
+			const result = this.db!.run(sql, params = params);
+			return this.converFormat(result)
+		} catch (error) {
+			return { error: error.message };
+		}
+	}
+	
+	/**
+	 * 查询数据
+	 * @param sql 查询SQL语句
+	 * @param params 查询参数数组
+	 * @returns SQLiteResult 查询结果，包含rows(数据行)和columns(列名)
+	 */
+	query(sql: string, params: Array<any> = [] as any[]): SQLiteResult {
+		if (this.db==null){
+			console.error('Database not initialized')
+			return { error:"Database not initialized" };
+		}
+		const result = this.db!.query(sql, params = params);
+		
+		return this.converFormat(result)
+	}
+	
+	/**
+	 * 插入数据
+	 * @param table 表名
+	 * @param data 要插入的数据对象
+	 * @returns SQLiteResult 插入结果
+	 */
+	insert(table: string, data: UTSJSONObject): SQLiteResult {
+		if (this.db==null){
+			console.error('Database not initialized')
+			return { error:"Database not initialized" };
+		}
+		const dataMap = new Map<string,any>();
+		for(const key in data){
+			const item = data.getAny(key);
+			dataMap.set(key,item)
+		}
+		const result = this.db!.insert(table = table,  data = dataMap);
+		return this.converFormat(result)
+	}
+	
+	/**
+	 * 更新数据
+	 * @param table 表名
+	 * @param data 要更新的数据对象
+	 * @param whereName WHERE条件语句
+	 * @param params WHERE条件参数数组
+	 * @returns SQLiteResult 更新结果
+	 */
+	update(table: string, data: UTSJSONObject, whereName: string, params: any[] = []): SQLiteResult {
+		if (this.db==null){
+			console.error('Database not initialized')
+			return { error:"Database not initialized" };
+		}
+		const dataMap = new Map<string,any>();
+		for(const key in data){
+			const item = data.getAny(key);
+			dataMap.set(key,item)
+		}
+		const result = this.db!.update(table = table, data = dataMap, where = whereName, params = params);
+		
+		return this.converFormat(result)
+	}
+	
+	/**
+	 * 删除数据
+	 * @param table 表名
+	 * @param whereName WHERE条件语句
+	 * @param params WHERE条件参数数组
+	 * @returns SQLiteResult 删除结果
+	 */
+	delete(table: string, whereName: string, params: any[] = []): SQLiteResult {
+		if (this.db==null){
+			console.error('Database not initialized')
+			return { error:"Database not initialized" };
+		}
+		const result = this.db!.delete(table = table,  where = whereName ,params = params);
+		return this.converFormat(result)
+	}
+	
+	/**
+	 * 检查表是否存在
+	 * @param tableName 表名
+	 * @returns 表存在返回true，不存在返回false
+	 */
+	tableExists(tableName: string): boolean {
+		if (this.db==null){
+			console.error('Database not initialized')
+			return false;
+		}
+		return this.db!.tableExists(tableName = tableName);
+	}
+	/**
+	 * 创建数据表
+	 * @param tableName 表名
+	 * @param columns 列定义对象，key为列名，value为列类型定义
+	 * @returns SQLiteResult 创建结果
+	 */
+	createTable(tableName: string, columns: UTSJSONObject): SQLiteResult  {
+		
+		const dataMap = new Map<string,string>();
+		for(const key in columns){
+			const item = columns.getString(key)!;
+			dataMap.set(key,item)
+		}
+		console.log('createTabled:',this.db)
+		if (this.db==null){
+			console.error('Database not initialized')
+			return { error:"Database not initialized" };
+		}
+		
+		
+		try {
+			const result = this.db!.createTable(tableName = tableName, columns = dataMap);
+		
+			return this.converFormat(result)
+		} catch (error) {
+			console.error(error)
+			return { error: error.message };
+		}
+	}
+	
+	/**
+	 * 删除数据表
+	 * @param tableName 要删除的表名
+	 * @returns SQLiteResult 删除结果
+	 */
+	dropTable(tableName: string): SQLiteResult {
+		if (this.db==null){
+			console.error('Database not initialized')
+			return { error:"Database not initialized" };
+		}
+		const result = this.db!.dropTable(tableName = tableName);
+		return this.converFormat(result)
+	}
+	
+	/**
+	 * 关闭数据库连接
+	 * 释放数据库资源，关闭后需要重新创建才能使用
+	 */
+	close(): void {
+		if (this.db!=null) {
+			this.db!.close();
+			this.db = null;
+		}
+	}
+	/**
+	 * 开始事务
+	 * 开始一个新的事务，在提交或回滚之前，所有操作都在事务内
+	 * @returns SQLiteResult 事务开始结果
+	 */
+	beginTransaction(): SQLiteResult{
+		if (this.db==null){
+			console.error('Database not initialized')
+			return { error:"Database not initialized" };
+		}
+		const result = this.db!.beginTransaction();
+		return this.converFormat(result)
+	}
+	
+	/**
+	 * 提交事务
+	 * 提交当前事务的所有操作
+	 * @returns SQLiteResult 事务提交结果
+	 */
+	commit(): SQLiteResult {
+		if (this.db==null){
+			console.error('Database not initialized')
+			return { error:"Database not initialized" };
+		}
+		const result = this.db!.commit();
+		return this.converFormat(result)
+	}
+	
+	/**
+	 * 回滚事务
+	 * 撤销当前事务中的所有操作
+	 * @returns SQLiteResult 事务回滚结果
+	 */
+	rollback(): SQLiteResult {
+		if (this.db==null){
+			console.error('Database not initialized')
+			return { error:"Database not initialized" };
+		}
+		const result = this.db!.rollback();
+		return this.converFormat(result)
+	}
+	/**
+	 * 批量执行SQL语句
+	 * @param statements SQL语句数组，每个元素包含sql和params
+	 * @returns SQLiteResult[] 每个语句的执行结果数组
+	 */
+	executeBatch(statements: SQLiteExecuteBatchParams[]): SQLiteResult[] {
+		if (this.db==null){
+			console.error('Database not initialized')
+			return [];
+		}
+		const list = new Array<SQLiteExecuteBatchParamsBySt>()
+		for(const item in statements){
+			list.push(SQLiteExecuteBatchParamsBySt(
+			sql = item.sql,
+			params = item.params
+			))
+		}
+		const result = this.db!.executeBatch(statements = list);
+		let resultList = [] as SQLiteResult[]
+		for(const item in result){
+			resultList.push(this.converFormat(item))
+		}
+		
+		return resultList
+	}
+	
+	
+	/**
+	 * 保存数据库到本地文件
+	 * @param filename 保存的文件名，可选，默认为'sqlite'
+	 * @returns SQLiteResult 保存结果
+	 */
+	saveLocal(filename?: string): SQLiteResult {
+	    if (this.db==null){
+	    	return {error:'Database not initialized'};
+	    }
+		const result = this.db!.saveLocal(filename = filename);
+		return this.converFormat(result)
+	}
+	
+	/**
+	 * 从本地文件加载数据库
+	 * @param filename 要加载的数据库文件名
+	 * @returns SQLiteResult 加载结果
+	 */
+	loadLocal(filename:string): SQLiteResult{
+		const result = this.db!.loadLocal(filename = filename);
+		return this.converFormat(result)
+	}
+	/**
+	 * 获取数据库文件路径获取前会备份到缓存目录
+	 */
+	getDatabasePath():string|null{
+		if (this.db==null){
+			console.error('Database not initialized')
+			return null
+		}
+		const result = this.db!.getDatabasePath();
+		return result
+	}
+	/**
+	 * 当前数据库的目录
+	 */
+	setDefaultDirectory(directory: string){
+		if (this.db==null){
+			console.error('Database not initialized')
+			return
+		}
+		let rdirectory = directory;
+		if(rdirectory!=''){
+			rdirectory = UTSiOS.convert2AbsFullPath(directory)
+		}
+		this.db!.setDefaultDirectory(directory = rdirectory);
+	}
+	/**
+	 * 设置数据库密码
+	 * 空值或者null即删除密码
+	 */
+	setPassword(password: string|null = null){
+		if (this.db==null){
+			console.error('Database not initialized')
+			return
+		}
+		this.db!.setPassword(password);
+	}
+}

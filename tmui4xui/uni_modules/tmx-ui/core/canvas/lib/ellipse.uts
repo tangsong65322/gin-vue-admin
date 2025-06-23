@@ -1,0 +1,140 @@
+import { Shape } from './shape.uts';
+import { CanvasRotateCenter, IShapeBoundRect, IShapeOptional } from '../interface.uts';
+import { ICanvas } from '@/uni_modules/tmx-ui/core/canvas/ICanvas.uts';
+
+export class IEllipse extends Shape {
+	override type = 'IEllipse'
+	constructor(config : IShapeOptional,canvas:ICanvas) {
+		super(config,canvas);
+		this.radiusX = config?.radiusX ?? 80;
+		this.radiusY = config?.radiusY ?? 20;
+	}
+
+	setRadiusX(value : number) : IEllipse {
+		this.radiusX = value;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	setRadiusY(value : number) : IEllipse {
+		this.radiusY = value;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	override getBoundRect() : IShapeBoundRect {
+		const w = this.radiusX * 2;
+		const h = this.radiusY * 2;
+		return {
+			x: this.x,
+			y: this.y,
+			width: w,
+			height: h
+		} as IShapeBoundRect;
+	}
+
+	override setWidth(value : number) : IEllipse {
+		this.width = value;
+		this.radiusX = value / 2;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	override setHeight(value : number) : IEllipse {
+		this.height = value;
+		this.radiusY = value / 2;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	override draw(ctx : CanvasRenderingContext2D) {
+		if (this.visible == false) return;
+		super.draw(ctx);
+		ctx.beginPath();
+		ctx.ellipse(this.x, this.y, this.radiusX, this.radiusY, 0, 0, Math.PI * 2, false);
+		ctx.closePath();
+		if (this.fill != "") {
+			ctx.fill();
+		}
+		if (this.stroke != "") {
+			ctx.stroke();
+		}
+		ctx.restore();
+	}
+
+	override isPointInPath(x: number, y: number, shapeId: string): boolean {
+		if (!this.visible || (shapeId != "" && shapeId != this.id)) return false;
+		
+		// 计算点击位置相对于椭圆中心的实际坐标
+		let realX = x - this.offsetX - this.x;
+		let realY = y - this.offsetY - this.y;
+		
+		// 如果有旋转，需要将坐标转换回未旋转状态
+		if (this.rotation != 0) {
+			const angle = -this.rotation * Math.PI / 180;
+			const cos = Math.cos(angle);
+			const sin = Math.sin(angle);
+			let centerX = 0;
+			let centerY = 0;
+			
+			// 根据不同的旋转中心点设置centerX和centerY
+			switch(this.rotateCenter) {
+				case 'topLeft':
+					centerX = 0;
+					centerY = 0;
+					break;
+				case 'topRight':
+					centerX = this.width;
+					centerY = 0;
+					break;
+				case 'bottomLeft':
+					centerX = 0;
+					centerY = this.height;
+					break;
+				case 'bottomRight':
+					centerX = this.width;
+					centerY = this.height;
+					break;
+				case 'center':
+				default:
+					centerX = this.width/2;
+					centerY = this.height/2;
+					break;
+			}
+			
+			const dx = realX - centerX;
+			const dy = realY - centerY;
+			realX = centerX + dx * cos - dy * sin;
+			realY = centerY + dx * sin + dy * cos;
+		}
+		
+		// 考虑缩放因素
+		const scaledRadiusX = this.radiusX * Math.abs(this.scaleX);
+		const scaledRadiusY = this.radiusY * Math.abs(this.scaleY);
+		
+		// 计算点是否在椭圆内（标准椭圆方程）
+		const normalizedX = realX / scaledRadiusX;
+		const normalizedY = realY / scaledRadiusY;
+		const distance = normalizedX * normalizedX + normalizedY * normalizedY;
+		
+		// 如果只有描边模式，检查点是否在椭圆线条附近
+		if (this.stroke != "" && this.fill == "") {
+			const strokeWidth = this.strokeWidth / 2;
+			const outerDistance = Math.sqrt(distance);
+			return Math.abs(outerDistance - 1) * Math.min(scaledRadiusX, scaledRadiusY) <= strokeWidth;
+		}
+		
+		// 如果同时有描边和填充，或者只有填充
+		if (this.fill != "") {
+			// 如果有描边，扩大检测范围到描边外缘
+			if (this.stroke != "") {
+				const strokeOffset = this.strokeWidth / (2 * Math.min(scaledRadiusX, scaledRadiusY));
+				return distance <= (1 + strokeOffset) * (1 + strokeOffset);
+			}
+			// 只有填充时，检查点是否在椭圆内
+			return distance <= 1;
+		}
+		
+		return false;
+	}
+}

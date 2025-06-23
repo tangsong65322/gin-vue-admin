@@ -1,0 +1,469 @@
+<script lang="ts">
+	import { type PropType } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	// #ifdef MP
+	import { Marked } from "./marked.uts"
+	import { hljs } from "./highlight.min.js"
+	import { markedHighlight } from "./marked-highlight.js"
+	import * as katex from "./katex.js"
+	import {
+		createClass,
+		parseLatex,
+		renderMathInText
+	} from "./index.js"
+	import {markedKatex,treeToHtml} from "./marked-katex-extension.js"
+	import { extendedTables } from "./marked-tables.js"
+
+	// #endif
+	type DATATYP = {
+		action : string
+	}
+
+	/**
+	 * @name 富文本 xMarkdown
+	 * @description 这是一个预览markdown的组件。当前支持markdown:表格，及数学公式的展示。
+	 * 【小程序端请注意】从1.1.14开始支持LaTex数学公式，但要注意数学公式暂时不要混合在表格内，会造成表格断列，样式异常。
+	 * 【组件目录内】有一个fonts.zip字体压缩包，请上传到你自己的服务器，并打开katex.min.css，把里面的字体链接换成你的字体连接，如果不换可能我服务器一关你就用不了了。
+	 * 传递正常markdown或者html内容即可,已经支持了暗黑适配，请自行配置样式。
+	 * 预览md:支持流式解析,支持动态解析内容.方便大家对话用.同时也支持了动态高,自动适配.
+	 * 同时也放开了内容复制(但会导致安卓(截止sdk4.53)页面滚动不了,需要你们自己解决:给这个组件盖个view屏蔽webview的事件,这是sdk底层问题,我修复不了.)
+	 * 1.1.10废弃了函数:getMarkdown
+	 * 所有平台的样式已经重置为none,你需要通过属性nodeStyle来设置默认样式.
+	 * @page /pages/zhanshi/markdown
+	 * @category 展示组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑ | ☑️ | 4.53+ | 1.1.10 |
+	 */
+	export default {
+		data() {
+			// #ifdef MP
+			
+			const md = new Marked(markedHighlight({
+				emptyLangClass: 'hljs',
+				langPrefix: 'hljs language-',
+				highlight(code, lang, info) {
+					const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+					return hljs.highlight(code, {
+						language:"css"
+					}).value;
+				}
+			}));
+			
+			md.use(extendedTables())
+			// md.use(markedKatex(katex)({
+			//   throwOnError: false
+			// }));
+			// #endif
+			return {
+				id: ("xEchart-" + getUid()) as string,
+				webviewContext: null as WebviewContext | null,
+				isLoaded: false,
+				boxWidth: 10,
+				boxHeight: 0,
+				tid: 0,
+				tid2: 0,
+				realLoaded: false,
+				isMp: false,
+				// #ifdef MP
+				markdownObj: md,
+				htmlMpContent: ""
+				// #endif
+			}
+		},
+		emits: [
+			/**
+			 * 特定的a,img标签被点击触发,小程序不支持,其它平台支持.
+			 * @return {Object<{text,tag,attr}>}
+			 */
+			'tagClick',
+			/**
+			 * 是否初始化成功
+			 */
+			'init',
+			/**
+			 * 需要通过ref函数调用getHtml才会触发此函数
+			 */
+			'getValue'
+		],
+		props: {
+			/**
+			 * 窗口宽
+			 */
+			width: {
+				type: String,
+				default: 'auto'
+			},
+			/**
+			 * 窗口高,auto时会自动适配高.
+			 */
+			height: {
+				type: String,
+				default: 'auto'
+			},
+			/**
+			 * 需要渲染的markdow或者html内容。
+			 */
+			value: {
+				type: String,
+				default: ""
+			},
+
+			/**
+			 * 是否启用纯html渲染。如果你的内容含有特殊字符比如:%,^&%这种不要出现在里面
+			 * 此时你启用isHtml会经过数据处理直接跳过插件,直接赋值内容到html.就不要启用Markdown了.
+			 */
+			isHtml: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 富文本的style样式,不可以动态更改.
+			 * 为了对齐所有端,默认已经把所有平台的样式删除.因此你可以自己设置默认样式来对齐所有平台.
+			 */
+			nodeStyle: {
+				type: String,
+				default: "line-height:1.6;color:#000"
+			},
+			/**
+			 * 同上，暗黑时的样式.
+			 */
+			nodeDarkStyle: {
+				type: String,
+				default: "line-height:1.6;color:#fff"
+			}
+		},
+		computed: {
+
+			_width() : string {
+				return checkIsCssUnit(this.width, xConfig.unit)
+			},
+			_height() : string {
+				return checkIsCssUnit(this.height, xConfig.unit)
+			},
+			_value() : string {
+				return this.value
+			},
+			_nodeStyle() : string {
+				return xConfig.dark == 'dark' ? this.nodeDarkStyle : this.nodeStyle
+			}
+
+
+
+		},
+		watch: {
+			value() {
+				// #ifdef APP||WEB
+				this.drawer();
+				// #endif
+				// #ifdef MP
+				this.setContent(this.value);
+				// #endif
+			}
+		},
+		mounted() {
+			let t = this;
+			// #ifdef MP
+			t.isMp = true;
+			// #endif
+			t.isLoaded = true;
+			this.tid = setTimeout(function () {
+				// #ifdef APP
+				t.webviewContext = uni.createWebviewContext(t.id, t);
+				// #endif
+				// #ifdef WEB
+				t.webviewContext = document.getElementById(t.id) as HTMLElement;
+				// #endif
+				// #ifdef MP
+
+				t.mpOnInit()
+				// #endif
+			}, 50);
+
+			this.onAddlisentMesage();
+
+
+		},
+		beforeMount() {
+			clearTimeout(this.tid)
+		},
+		beforeUnmount() {
+
+		},
+		methods: {
+			// #ifdef MP
+			mpOnInit() {
+				this.realLoaded = true;
+				this.setContent(this.value);
+				/**
+				 * 图表加载初始化完成后触发此事件。
+				 */
+				this.$emit("init")
+			},
+			htmlContentAddClass(content:string){
+				// 匹配所有HTML标签
+				const regex = /<([a-zA-Z0-9]+)([^>]*?)>/g;
+				
+				return content.replace(regex, (match, tag, attributes) => {
+					// 如果标签已经有class属性
+					if(attributes.includes('class=')){
+						// 在已有的class后面追加标签名作为类名
+						return match.replace(/class=["']([^"']*)["']/, (m, cls) => {
+							return `class="${cls} ${tag}"`;
+						});
+					}
+					// 如果没有class属性,则添加一个新的class属性
+					else {
+						// 在标签结束前插入class属性
+						return `<${tag}${attributes} class="${tag}">`;
+					}
+				});
+			},
+			setContent(str) {
+				if (this.isHtml) {
+					this.htmlMpContent = this.htmlContentAddClass(str)
+				} else {
+					let thtml = this.markdownObj.parse(this.value)
+					// thtml = this.htmlContentAddClass(thtml)
+					const nodes = renderMathInText(thtml, {
+					  delimiters: [
+					    { left: "$$", right: "$$", display: true },
+					    { left: "$", right: "$", display: false },
+					  ],
+					});
+					
+					// const htmlcontent = this.markdownObj.parse(treeToHtml(thtml))
+					this.htmlMpContent = treeToHtml(nodes)
+				}
+
+			},
+			onItemClick(event) {
+				console.log(event)
+			},
+
+			// #endif
+			// h5端
+			onAddlisentMesage() {
+				// #ifdef WEB
+				let t = this;
+				window.addEventListener('message', function (event) {
+					if (event.data.iframeId == t.id && event.data.action == 'onJSBridgeReady') {
+						clearTimeout(t.tid2)
+						t.tid2 = setTimeout(function () {
+							t.realLoaded = true;
+							t.drawer()
+							t.$emit("init")
+							t.eventJsCall('setBodyStyle', t._nodeStyle)
+						}, 50);
+					}
+
+					if (event.data.iframeId == t.id && event.data.action == 'offsetHeight') {
+						t.boxHeight = event.data.data + 20
+
+					} else if (event.data.iframeId == t.id && event.data.action == 'toValue') {
+						t.$emit('getValue', event.data.data)
+					} else if (event.data.iframeId == t.id && event.data.action == 'click') {
+						let dataStr = JSON.stringify(event.data.data);
+						let dataJson = JSON.parseObject(dataStr)!
+						t.$emit('tagClick', dataJson)
+					}
+
+
+				});
+				// #endif
+			},
+
+			onMessage(event : WebViewMessageEvent) {
+				let t = this;
+
+				let msgdatas = event.detail.data
+
+				if (msgdatas.length == 0) return;
+
+				// #ifdef APP-ANDROID
+				if (msgdatas.length > 0) {
+					let dataStr = JSON.stringify(event.detail);
+					let dataJson = JSON.parseObject(dataStr)!
+					let msgeAr = dataJson.getArray<UTSJSONObject>('data')!
+
+					let msg = msgeAr[0]!
+
+					let ac = msg["action"] as string;
+					if (ac == 'offsetHeight') {
+						const h = msg["data"]! as number;
+						t.boxHeight = h + 25
+					} else if (ac == 'toValue') {
+						t.$emit('getValue', msg["data"]! as string)
+					} else if (ac == 'click') {
+
+						t.$emit('tagClick', msg['data']! as UTSJSONObject)
+					}
+				}
+				// #endif
+
+				// #ifdef APP-IOS
+				if (msgdatas.length > 0) {
+					let msg = msgdatas[0]
+					let ac = msg['action'] as string;
+					if (ac == 'offsetHeight') {
+						t.boxHeight = (msg['data']! as Number) + 25
+					} else if (ac == 'toValue') {
+						t.$emit('getValue', msg['data'])
+					} else if (ac == 'click') {
+						let dataStr = JSON.stringify(msg['data']);
+						let dataJson = JSON.parseObject(dataStr)!
+						t.$emit('tagClick', dataJson)
+					}
+				}
+				// #endif
+
+			},
+
+			drawer() {
+				if (!this.realLoaded) {
+					uni.showToast({ title: "未初始化完成", icon: 'none' })
+					return;
+				}
+				// #ifdef WEB
+				this.eventJsCall('markdown', JSON.stringify({ value: encodeURIComponent(this._value), render: true }))
+				// #endif
+				// #ifdef APP-IOS
+				this.eventJsCall('markdown', JSON.stringify({ value: encodeURIComponent(this._value), render: true }))
+				// #endif
+				// #ifdef APP-ANDROID
+
+				this.eventJsCall('markdown', JSON.stringify({ value: this.isHtml ? btoa(encodeURIComponent(this._value)!) : this._value, render: this.isHtml ? 'android' : '' }))
+				// #endif
+			},
+
+			eventJsCall(callfun : string, str : string) {
+				// #ifdef WEB
+				var iframe = document.getElementById(this.id);
+				if (!iframe) return;
+				if ((iframe.contentWindow[callfun] || null)) {
+					iframe.contentWindow[callfun](str, this.isHtml);
+				}
+				// #endif
+				// #ifdef APP
+				this.webviewContext?.evalJS(`${callfun}(${str},${this.isHtml})`)
+				// #endif
+
+			},
+
+			/**
+			 * 获取html内容。注意本函数不会返回内容，你要通过事件getValue得到html内容.
+			 * @public
+			 */
+			getHtml() {
+				// #ifdef WEB
+				var iframe = document.getElementById(this.id);
+				if (!iframe) return;
+				iframe.contentWindow['getHtml']()
+				// #endif
+				// #ifdef APP
+				this.webviewContext?.evalJS(`getHtml()`)
+				// #endif
+				// #ifdef MP
+				this.$emit('getValue', this.htmlContentAddClass(this.htmlMpContent))
+				// #endif
+			},
+			appWebViewLoaded() {
+				this.realLoaded = true;
+				this.drawer()
+				/**
+				 * 图表加载初始化完成后触发此事件。
+				 */
+				this.$emit("init")
+				// setBodyStyle
+				this.eventJsCall('setBodyStyle', this._nodeStyle)
+			}
+		}
+	}
+</script>
+<template>
+	<view :style="{width:_width,height:boxHeight==0||isMp?_height:(boxHeight+'px')}">
+		<view v-if="!isLoaded"
+			style="width:100%;min-height:36px;display: flex;justify-content: center;align-items: center;flex-direction: row;">
+			<x-icon color="primary" :spin="true" name="loader-4-line"></x-icon>
+		</view>
+
+		<!-- #ifdef APP||WEB -->
+		<web-view v-if="isLoaded" :horizontalScrollBarAccess="true" :verticalScrollBarAccess="false"
+			class="xMarkdownNoevents" @load="appWebViewLoaded" :id="id" src="/hybrid/html/preview.html"
+			:style="{width:'100%',height:'100%',opacity:isLoaded?1:0}" @message="onMessage"></web-view>
+
+		<!-- #endif -->
+		<!-- #ifdef MP -->
+		<rich-text class="richText" :style="_nodeStyle" @itemclick="onItemClick" :selectable="true"
+			:nodes="htmlMpContent"></rich-text>
+		<!-- #endif -->
+		<!-- 兼容安卓。webview到4.19+页面无法滚动 -->
+		<!-- #ifdef APP-ANDROID -->
+		<!-- <view class="xMarkdownAndrod"></view> -->
+		<!-- #endif -->
+	</view>
+</template>
+<style  lang="scss">
+	/* #ifdef MP */
+	@import url(./default.min.css);
+	@import url(./katex.min.css);
+	.table,.p,.div,.ul,.li,.h1,.h2,.h3,.h4,.h5,.h6,.blockquote,.code,.pre,.ol,.em,.strong,.hr,.img{
+		margin:8px 0;
+	}
+	.pre{
+		overflow:auto;
+		background-color:#f3f3f3;
+		padding:10px;
+		
+	}
+	
+	.hljs{
+		&.language-css{
+			
+		}
+		.hljs-number{
+			color:red;
+		}
+	}
+
+	.table {
+		
+		width: 100%;
+		border-collapse: collapse;
+		border: 1px solid #ddd;
+		/* 表格隔行变色 */
+		.tr:nth-child(even) {
+			background-color: #f2f2f2;
+		}
+	}
+
+	.tr {
+		text-align: center;
+		border: 1px solid #ddd;
+	}
+
+	.td,
+	.th {
+		border: 1px solid #ddd;
+		padding: 4px 8px;
+		font-size:14px;
+	}
+
+	/* #endif */
+	.xMarkdownAndrod {
+		position: absolute;
+		left: 0;
+		top: 0;
+		width: 100%;
+		height: 100%;
+		z-index: 10;
+	}
+
+	.xMarkdownNoevents {
+		/* pointer-events: none; */
+	}
+</style>

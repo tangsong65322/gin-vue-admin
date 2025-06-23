@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+		<link href="./css/default.min.css" type="text/css" rel="stylesheet" />
+		<link href="./css/katex.min.css" type="text/css" rel="stylesheet" />
+		<style>
+			body,
+			html {
+				background: transparent;
+				margin: 0;
+				padding: 0;
+			}
+
+			* {
+				/* padding: 0;
+				margin: 0; */
+			}
+
+			p,
+			h1,
+			h3,
+			h2,
+			h4,
+			h5,
+			h6 {
+				margin: 8px 0;
+			}
+
+			hr {
+				border-width: 1px;
+			}
+
+		</style>
+	</head>
+	<body>
+		<div id="layout">
+
+		</div>
+
+		<script src="./js/uni.webview.1.5.5.js"></script>
+		<script src="./js/highlight.min.js"></script>
+		<script src="./js/marked-highlight.js"></script>
+		<script src="./js/marked-tables.js"></script>
+		<script src="./js/katex.js"></script>
+		<script src="./js/marked.min.js"></script>
+		<script src="./js/marked-katex-extension.js"></script>
+		<script type="text/javascript">
+			var md;
+
+			function getBodyHeight() {
+				var targetDiv = document.body.querySelector("#layout")
+				let height = targetDiv.scrollHeight
+				document.body.style.height = (height) + 'px'
+				window.parent.postMessage({
+					action: 'offsetHeight',
+					data: height + 5,
+					iframeId: iframeId
+				}, '*');
+				uni.postMessage({
+					data: {
+						action: 'offsetHeight',
+						data: height
+					}
+				})
+			}
+
+			var targetDiv = document.querySelector("#layout")
+			// 创建一个观察者对象并传入回调函数
+			var observer = new MutationObserver(function(mutations) {
+				mutations.forEach(function(mutation) {
+					if (mutation.type === 'childList' || mutation.type === 'attributes') {
+						getBodyHeight()
+					}
+				});
+			});
+
+			// 配置观察选项:
+			var config = {
+				attributes: true,
+				childList: true,
+				characterData: true,
+				subtree: true
+			};
+
+			// 选择需要观察变动的节点
+			observer.observe(targetDiv, config);
+
+
+			// 监听 div 的点击事件
+			targetDiv.addEventListener('click', function(event) {
+				let attr = {
+					text: "",
+					attr: "",
+					tag: ""
+				}
+
+				// 检查点击的目标是否是 <a> 标签
+				if (event.target.tagName === 'A') {
+					// 阻止默认行为（如跳转）
+					event.preventDefault();
+					attr.text = event.target.textContent
+					attr.attr = event.target.href
+					attr.tag = "a"
+
+				} else if (event.target.tagName === 'IMG') {
+					attr.attr = event.target.src
+					attr.tag = "img"
+				}
+				if (attr.attr != '') {
+					window.parent.postMessage({
+						action: 'click',
+						data: attr,
+						iframeId: iframeId
+					}, '*');
+					uni.postMessage({
+						data: {
+							action: 'click',
+							data: attr
+						}
+					})
+				}
+
+			});
+
+
+			function processMarkdown(markdown) {
+				// 1. 分割成行
+				const lines = markdown.split('\n');
+				let inCodeBlock = false;
+				let codeBlockIndentation = 0;
+				let processedLines = [];
+
+				for (let i = 0; i < lines.length; i++) {
+					const line = lines[i];
+					const trimmedLine = line.trimLeft();
+
+					// 检测代码块开始
+					if (trimmedLine.startsWith('```')) {
+						if (!inCodeBlock) {
+							// 进入代码块
+							inCodeBlock = true;
+							// 记录代码块的缩进级别
+							codeBlockIndentation = line.length - trimmedLine.length;
+							// 移除开始标记的缩进
+							processedLines.push(trimmedLine);
+						} else {
+							// 退出代码块
+							inCodeBlock = false;
+							// 移除结束标记的缩进
+							processedLines.push(trimmedLine);
+						}
+					} else if (inCodeBlock) {
+						// 代码块内的内容保持原有缩进
+						processedLines.push(line);
+					} else {
+						// 非代码块内容保持不变
+						processedLines.push(line);
+					}
+				}
+
+				return processedLines.join('\n');
+			}
+
+
+
+			function markdown(nr, isHtml) {
+				let content = ''
+
+				if (typeof nr == 'string') {
+					let cto = JSON.parse(nr);
+					if (cto.render == 'android') {
+						content = decodeURIComponent(atob(cto.value))
+					} else {
+						content = decodeURIComponent(cto.value)
+					}
+				} else {
+					if (nr.render == 'android') {
+						content = decodeURIComponent(atob(nr.value))
+					} else {
+						content = decodeURIComponent(nr.value)
+					}
+				}
+
+				if (isHtml) {
+					document.querySelector("#layout").innerHTML = content
+					return;
+				}
+
+
+				document.getElementById('layout').innerHTML = md.parse(processMarkdown(content));
+
+			}
+
+			function setBodyStyle(stylenr, isHtml) {
+				targetDiv.style = stylenr;
+
+			}
+
+			function getHtml() {
+
+				window.parent.postMessage({
+					action: 'toValue',
+					data: targetDiv.innerhtml,
+					iframeId: iframeId
+				}, '*');
+				uni.postMessage({
+					data: {
+						action: 'toValue',
+						data: targetDiv.innerhtml
+					}
+				})
+			}
+			// 在iframe内部执行以下代码
+			var frameElement = window.frameElement;
+			var iframeId = frameElement == null ? "" : frameElement.getAttribute('id');
+
+
+			// 等待初始化完毕
+			document.addEventListener('UniAppJSBridgeReady', () => {
+				
+				md = new marked.Marked(
+					markedHighlight({
+						emptyLangClass: 'hljs',
+						langPrefix: 'hljs language-',
+						highlight(code, lang, info) {
+							// const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+							// return hljs.highlight(code, {
+							// 	language
+							// }).value;
+						}
+					})
+				);
+				
+				md.use(extendedTables());
+				md.use(markedKatex({
+				  throwOnError: false
+				}));
+				
+				
+				md.setOptions({
+					breaks: true,
+					gfm: true,
+					
+				});
+
+
+
+
+				window.parent.postMessage({
+					action: 'onJSBridgeReady',
+					data: '',
+					iframeId: iframeId
+				}, '*');
+				uni.postMessage({
+					data: {
+						action: 'onJSBridgeReady'
+					}
+				})
+
+
+
+			})
+		</script>
+	</body>
+</html>

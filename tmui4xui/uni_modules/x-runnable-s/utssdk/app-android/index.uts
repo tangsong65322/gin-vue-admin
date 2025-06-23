@@ -1,0 +1,23 @@
+
+export function runWorker(callback : () => any | null, resultCallback : (msg : any | null) => void) {
+	class IntentRunable extends Runnable {
+		dataResult:any|null;
+		constructor(data:any|null){
+			super()
+			this.dataResult = data;
+		}
+		override run() {
+			resultCallback(this.dataResult)
+		}
+	}
+	
+	UTSAndroid.getDispatcher("io").async(function(_){
+		let data:any|null = callback();
+		UTSAndroid.getUniActivity()!.runOnUiThread(new IntentRunable(data))
+	},null)
+}
+
+
+
+
+

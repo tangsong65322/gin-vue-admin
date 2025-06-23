@@ -1,0 +1,13 @@
+export function LoadFontFace(){
+	// 定义字体
+	// @ts-ignore
+	const font = new FontFace("remixicon", "url(/static/tmui4xLibs/static/remixicon.ttf)", {
+	  style: "italic",
+	  weight: "800",
+	  stretch: "condensed",
+	});
+	
+	// 把字体添加到 document.fonts（FontFaceSet）中
+	document.fonts.add(font);
+	font.load();
+}

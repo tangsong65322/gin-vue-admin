@@ -1,0 +1,785 @@
+<script lang="ts">
+	import { type PropType } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	// #ifdef MP
+	import { Marked } from "./marked.uts"
+	// #endif
+	type DATATYP = {
+		action : string
+	}
+	type xEditeListType = "ordered" | "bullet" | "unchecked" | "checked" | ""
+	type xEditeAlign = "center" | "left" | "right" | ""
+	type xEditeOptsType = {
+		img : string,
+		link : string,
+		b : boolean,
+		i : boolean,
+		s : boolean,
+		u : boolean,
+		align : xEditeAlign,
+		list : xEditeListType,
+		indent : number,
+		header : number,
+		color : string,
+		background : string,
+		size : string
+	}
+	type xEditeListItemType = {
+		name : xEditeListType,
+		icon : string
+	}
+
+	/**
+	 * @name 富文本编辑器 xEditor
+	 * @description 传递正常markdown或者html内容即可,传递markdown时会自动转换为html,如果直接传递html不会转换直接赋值.
+	 * 值得注意的是:在微信小程序端它是没有样式高亮显示的.其它平台有样式指示,这是因为受限于微信官方本身就不支持.
+	 * 另外我测试发现HBX4.53 sdk ios端的输入框焦点有问题，导致无法设置样式，待官方修复。
+	 * @page /pages/biaodan/editor
+	 * @category 表单组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑ | ☑️ | 4.53+ | 1.1.10 |
+	 */
+	export default {
+
+		data() {
+			return {
+				id: ("xEdte-" + getUid()) as string,
+				webviewContext: null as WebviewContext | null,
+				isLoaded: false,
+				boxWidth: 10,
+				boxHeight: 0,
+				tid: 0,
+				tid2: 0,
+				realLoaded: false,
+				isMp: false,
+
+				optsStatus: {
+					img: '',
+					link: '',
+					b: false,
+					i: false,
+					s: false,
+					u: false,
+					align: '',
+					list: '',
+					indent: 0,
+					header: 0,
+					color: '',
+					background: '',
+					size: ''
+				} as xEditeOptsType,
+
+				listDataItems: [
+					{ icon: 'list-ordered', name: 'ordered' },
+					{ icon: 'list-unordered', name: 'bullet' },
+					{ icon: 'list-check-2', name: 'unchecked' },
+					{ icon: 'list-check-3', name: 'checked' },
+				] as xEditeListItemType[],
+
+
+				// #ifdef MP
+				markdownObj: new Marked(),
+				htmlMpContent: "",
+				editorCtx: null
+				// #endif
+			}
+		},
+		emits: [
+			/**
+			 * 特定的a,img标签被点击触发,小程序不支持,其它平台支持.
+			 * @return {Object<{text,tag,attr}>}
+			 */
+			'tagClick',
+			/**
+			 * 是否初始化成功
+			 */
+			'init',
+			/**
+			 * 需要通过ref函数调用getHtml才会触发此函数
+			 */
+			'getValue'
+		],
+		props: {
+			/**
+			 * 窗口宽
+			 */
+			width: {
+				type: String,
+				default: 'auto'
+			},
+			/**
+			 * 窗口高,可以传递所支持的任意单位高.
+			 */
+			height: {
+				type: String,
+				default: '350'
+			},
+			/**
+			 * 需要渲染的markdow或者html内容。
+			 */
+			value: {
+				type: String,
+				default: ""
+			},
+
+			/**
+			 * 是否启用纯html渲染。如果你的内容含有特殊字符比如:%,^&%这种不要出现在里面
+			 * 此时你启用isHtml会经过数据处理直接跳过插件,直接赋值内容到html.就不要启用Markdown了.
+			 */
+			isHtml: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 富文本的style样式,不可以动态更改.
+			 * 为了对齐所有端,默认已经把所有平台的样式删除.因此你可以自己设置默认样式来对齐所有平台.
+			 */
+			nodeStyle: {
+				type: String,
+				default: "line-height:1.6;color:#000"
+			},
+			/**
+			 * 同上，暗黑时的样式.
+			 */
+			nodeDarkStyle: {
+				type: String,
+				default: "line-height:1.6;color:#fff"
+			},
+			/**
+			 * 默认的按钮背景色
+			 */
+			color: {
+				type: String,
+				default: "#f5f5f5"
+			},
+			/**
+			 * 激活时的选中背景色
+			 * 空值取全局
+			 */
+			activeColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 自定义默认的文字/背景颜色
+			 */
+			customColos: {
+				type: Array as PropType<string[]>,
+				default: () : string[] => ['#ff0000', '#ff00ff', '#00ff00', '#00ffff', '#ffff00', '#ffffff', '#000000'] as string[]
+			}
+		},
+		computed: {
+			_customColos() : string[] {
+				return this.customColos
+			},
+			_color() : string {
+				if (this._isDark) return "#222222"
+				return getDefaultColor(this.color)
+			},
+			_activeColor() : string {
+				return getDefaultColor(this.activeColor == '' ? 'primary' : this.activeColor)
+			},
+
+			_width() : string {
+				return checkIsCssUnit(this.width, xConfig.unit)
+			},
+			_height() : string {
+				return checkIsCssUnit(this.height, xConfig.unit)
+			},
+			_value() : string {
+				return this.value
+			},
+			_nodeStyle() : string {
+				return xConfig.dark == 'dark' ? this.nodeDarkStyle : this.nodeStyle
+			},
+			_isDark() : boolean {
+				return xConfig.dark == 'dark'
+			}
+
+
+
+		},
+		watch: {
+			value() {
+				// #ifdef APP||WEB
+				this.drawer(this._value, this.isHtml)
+				// #endif
+				// #ifdef MP
+				this.setContent(this.value);
+				// #endif
+			}
+		},
+		mounted() {
+			let t = this;
+			// #ifdef MP
+			t.isMp = true;
+			// #endif
+			t.isLoaded = true;
+			this.tid = setTimeout(function () {
+				// #ifdef APP
+				t.webviewContext = uni.createWebviewContext(t.id, t);
+				// #endif
+				// #ifdef WEB
+				t.webviewContext = document.getElementById(t.id) as HTMLElement;
+				// #endif
+				// #ifdef MP
+				t.mpOnInit()
+				// #endif
+			}, 50);
+
+			this.onAddlisentMesage();
+
+
+		},
+		beforeMount() {
+			clearTimeout(this.tid)
+		},
+		beforeUnmount() {
+
+		},
+		methods: {
+			// #ifdef MP
+
+			mpOnInit() {
+				let _this = this;
+				uni.createSelectorQuery()
+					.in(this)
+					.select('#editor').context((res) => {
+						console.log(res)
+						_this.editorCtx = res.context
+						_this.realLoaded = true;
+						_this.setContent(_this.value);
+						/**
+						 * 图表加载初始化完成后触发此事件。
+						 */
+						this.$emit("init")
+					}).exec()
+			},
+			setContent(str) {
+				if (!this.realLoaded) {
+					uni.showToast({ title: "未初始化完成", icon: 'none' })
+					return;
+				}
+				if (this.isHtml) {
+					this.htmlMpContent = str
+				} else {
+					const htmlcontent = this.markdownObj.parse(str)
+					this.htmlMpContent = htmlcontent
+				}
+				console.log(this.htmlMpContent)
+				this.editorCtx.setContents({ html: this.htmlMpContent })
+			},
+			onItemClick(event) {
+				console.log(event)
+			},
+
+			onfocus(event) {
+				// console.log(this.editorCtx)
+			},
+			onstatuschange(event) {
+				const detail = event.detail || {}
+				let key = ''
+				let value = ''
+
+
+				if (Object(detail).hasOwnProperty('bold')) {
+					this.optsStatus.b = value as boolean;
+				} else if (Object(detail).hasOwnProperty('underline')) {
+					this.optsStatus.u = value as boolean;
+				} else if (Object(detail).hasOwnProperty('italic')) {
+					this.optsStatus.italic = value as boolean;
+				} else if (Object(detail).hasOwnProperty('header')) {
+					this.optsStatus.header = value as number;
+					console.log(detail)
+				} else if (Object(detail).hasOwnProperty('align')) {
+					this.optsStatus.align = value;
+				} else if (Object(detail).hasOwnProperty('list')) {
+					this.optsStatus.list = value as xEditeListType;
+				} else if (Object(detail).hasOwnProperty('background')) {
+					this.optsStatus.list = value as string;
+				} else if (Object(detail).hasOwnProperty('size')) {
+					this.optsStatus.size = value as string;
+				}
+			},
+			setFormart(key, value) {
+				const eobj = {
+					'b': 'bold', //true,false
+					'i': 'italic', //true,false
+					's': 'strike', //true,false
+					'u': 'underline', //true,false
+					'link': 'link',
+					'img': 'image',
+					'video': 'video',
+					'align': 'align', //left,right,center
+					/**
+					 * ordered：有序列表（编号列表）
+					 * bullet：无序列表（项目符号列表）
+					 * unchecked：未选中的复选框列表项
+					 * checked：选中的复选框列表项
+					 */
+					'list': 'list',
+					'blockquote': 'blockquote', //true,false
+					'indent': 'indent', //缩进值0-8
+					'color': 'color',
+					'background': 'backgroundColor',
+					'size': 'fontSize',
+					'script': 'script', //super,sub
+					'header': 'header', //1-6
+				}
+				console.log(eobj[key], value)
+				this.editorCtx?.format(eobj[key], value)
+			},
+			// #endif
+			// h5端
+			onAddlisentMesage() {
+				// #ifdef WEB
+				let t = this;
+				window.addEventListener('message', function (event) {
+					if (event.data.iframeId == t.id && event.data.action == 'onJSBridgeReady') {
+						clearTimeout(t.tid2)
+						t.tid2 = setTimeout(function () {
+							t.realLoaded = true;
+							t.drawer(t._value, t.isHtml)
+							t.$emit("init")
+							t.eventJsCall('setBodyStyle', t._nodeStyle)
+						}, 50);
+					}
+
+					if (event.data.iframeId == t.id && event.data.action == 'offsetHeight') {
+						t.boxHeight = event.data.data + 20
+
+					} else if (event.data.iframeId == t.id && event.data.action == 'toValue') {
+						t.$emit('getValue', event.data.data)
+					} else if (event.data.iframeId == t.id && event.data.action == 'click') {
+						let dataStr = JSON.stringify(event.data.data);
+						let dataJson = JSON.parseObject(dataStr)!
+						t.$emit('tagClick', dataJson)
+					} else if (event.data.iframeId == t.id && event.data.action == 'fontStyleOpts') {
+						let localOptsNow = event.data.data as xEditeOptsType;
+						t.optsStatus = localOptsNow;
+					}
+
+
+				});
+				// #endif
+			},
+
+			onMessage(event : WebViewMessageEvent) {
+				let t = this;
+
+				let msgdatas = event.detail.data
+
+				if (msgdatas.length == 0) return;
+
+				// #ifdef APP-ANDROID
+				if (msgdatas.length > 0) {
+					let dataStr = JSON.stringify(event.detail);
+					let dataJson = JSON.parseObject(dataStr)!
+					let msgeAr = dataJson.getArray<UTSJSONObject>('data')!
+
+					let msg = msgeAr[0]!
+
+					let ac = msg["action"] as string;
+					if (ac == 'offsetHeight') {
+						// const h = msg["data"]! as number;
+						// t.boxHeight = h + 25
+					} else if (ac == 'toValue') {
+						t.$emit('getValue', msg["data"]! as string)
+					} else if (ac == 'click') {
+
+						t.$emit('tagClick', msg['data']! as UTSJSONObject)
+					} else if (ac == 'fontStyleOpts') {
+
+						let datamsg = JSON.stringify(msg['data']!)!;
+						let localOptsNow = JSON.parseObject<xEditeOptsType>(datamsg! as string)! as xEditeOptsType;
+						t.optsStatus = localOptsNow;
+					}
+				}
+				// #endif
+
+				// #ifdef APP-IOS
+				if (msgdatas.length > 0) {
+					let msg = msgdatas[0]
+					let ac = msg['action'] as string;
+					if (ac == 'offsetHeight') {
+						// t.boxHeight = (msg['data']! as Number) + 25
+					} else if (ac == 'toValue') {
+						t.$emit('getValue', msg['data'])
+					} else if (ac == 'click') {
+						let dataStr = JSON.stringify(msg['data']);
+						let dataJson = JSON.parseObject(dataStr)!
+						t.$emit('tagClick', dataJson)
+					} else if (ac == 'fontStyleOpts') {
+						let localOptsNow = msg['data']! as xEditeOptsType;
+						t.optsStatus = localOptsNow;
+					}
+				}
+				// #endif
+
+			},
+
+			drawer(value : string, isHtml : boolean) {
+				if (!this.realLoaded) {
+					uni.showToast({ title: "未初始化完成", icon: 'none' })
+					return;
+				}
+				// #ifdef WEB
+				this.eventJsCall('markdown', JSON.stringify({ value: encodeURIComponent(value), render: true }))
+				// #endif
+				// #ifdef APP-IOS
+				this.eventJsCall('markdown', JSON.stringify({ value: encodeURIComponent(value), render: true }))
+				// #endif
+				// #ifdef APP-ANDROID
+
+				this.eventJsCall('markdown', JSON.stringify({ value: isHtml ? btoa(encodeURIComponent(value)!) : value, render: isHtml ? 'android' : '' }))
+				// #endif
+
+			},
+
+			eventJsCall(callfun : string, str : string) {
+				// #ifdef WEB
+				var iframe = document.getElementById(this.id);
+				if (!iframe) return;
+				if ((iframe.contentWindow[callfun] || null)) {
+					iframe.contentWindow[callfun](str, this.isHtml);
+				}
+				// #endif
+				// #ifdef APP
+				this.webviewContext?.evalJS(`${callfun}(${str},${this.isHtml})`)
+				// #endif
+
+			},
+
+			setEventContent(callanem : string, value : string, ishtml : boolean) {
+				if (!this.realLoaded) {
+					uni.showToast({ title: "未初始化完成", icon: 'none' })
+					return;
+				}
+				const _this = this;
+				function evenjscall(callfun : string, str : string, isHtml : boolean) {
+					// #ifdef WEB
+					var iframe = document.getElementById(_this.id);
+					if (!iframe) return;
+					if ((iframe.contentWindow[callfun] || null)) {
+						iframe.contentWindow[callfun](str, isHtml);
+					}
+					// #endif
+					// #ifdef APP
+					_this.webviewContext?.evalJS(`${callfun}(${str},${isHtml})`)
+					// #endif
+				}
+
+
+				// #ifdef WEB
+				evenjscall(callanem, JSON.stringify({ value: encodeURIComponent(value), render: true }), ishtml)
+				// #endif
+				// #ifdef APP-IOS
+				evenjscall(callanem, JSON.stringify({ value: encodeURIComponent(value), render: true }), ishtml)
+				// #endif
+				// #ifdef APP-ANDROID
+				let rendervalue = (ishtml ? 'android' : '') as string
+				let cvalue = (ishtml ? btoa(encodeURIComponent(value)!) : value) as any
+				let resultValue = JSON.stringify({ value: cvalue, render: rendervalue })! as string
+				evenjscall(callanem, resultValue, ishtml)
+				// #endif
+
+
+			},
+
+			/**
+			 * 获取html内容。注意本函数不会返回内容，你要通过事件getValue得到html内容.
+			 * @public
+			 */
+			getHtml() {
+				// #ifdef WEB
+				var iframe = document.getElementById(this.id);
+				if (!iframe) return;
+
+				iframe.contentWindow['getHtml']()
+				// #endif
+				// #ifdef APP
+				this.webviewContext?.evalJS(`getHtml()`)
+				// #endif
+				// #ifdef MP
+				this.$emit('getValue', this.htmlMpContent)
+				// #endif
+			},
+			appWebViewLoaded() {
+				this.realLoaded = true;
+				this.drawer(this._value, this.isHtml)
+				/**
+				 * 图表加载初始化完成后触发此事件。
+				 */
+				this.$emit("init")
+				// setBodyStyle
+				this.eventJsCall('setBodyStyle', this._nodeStyle)
+			},
+			/**
+			 * 获取选区
+			 */
+			getSelected() {
+
+			},
+			setFontStyle(key : string, value : boolean | number | string) {
+				// #ifndef MP
+				this.setEventContent('setSelectedStyle', JSON.stringify({ key: key, value: value }), true)
+				this.$nextTick(() => {
+					if (key == 'b') {
+						this.optsStatus.b = value as boolean;
+					} else if (key == 'u') {
+						this.optsStatus.u = value as boolean;
+					} else if (key == 'i') {
+						this.optsStatus.i = value as boolean;
+					} else if (key == 's') {
+						this.optsStatus.s = value as boolean;
+					} else if (key == 'header') {
+						this.optsStatus.header = value as number;
+					} else if (key == 'align') {
+						this.optsStatus.align = value as xEditeAlign;
+					} else if (key == 'list') {
+						this.optsStatus.list = value as xEditeListType;
+					} else if (key == 'background') {
+						this.optsStatus.list = value as string;
+					} else if (key == 'size') {
+						this.optsStatus.size = value as string;
+					}
+
+				})
+				// #endif
+				// #ifdef MP
+				this.setFormart(key, value)
+				console.log(key)
+				// #endif
+
+			},
+
+			getBgColor(isActive : boolean) : string {
+				if (isActive) return this._activeColor;
+				return this._color
+			},
+			getFontColor(isActive : boolean) : string {
+				if (isActive || this._isDark) return "#ffffff";
+				return "#333333"
+			}
+		}
+	}
+</script>
+<template>
+	<view class="xEdite" :style="{width:_width,height:_height}">
+		<view v-if="!isLoaded"
+			style="width:100%;height:100%;display: flex;justify-content: center;align-items: center;flex-direction: row;">
+			<x-icon color="primary" :spin="true" name="loader-4-line"></x-icon>
+		</view>
+
+		<view class="FontTabsGroup">
+			<view class="fontTabs" style="flex:1;margin-right: 2px;">
+				<view @click="setFontStyle('b',!optsStatus.b)" class="xEditorBtns"
+					:style="{backgroundColor:getBgColor(optsStatus.b)}">
+					<x-icon :color="getFontColor(optsStatus.b)" name="bold"></x-icon>
+				</view>
+				<view @click="setFontStyle('i',!optsStatus.i)" class="xEditorBtns"
+					:style="{backgroundColor:getBgColor(optsStatus.i)}">
+					<x-icon :color="getFontColor(optsStatus.i)" name="italic"></x-icon>
+				</view>
+				<view @click="setFontStyle('u',!optsStatus.u)" class="xEditorBtns"
+					:style="{backgroundColor:getBgColor(optsStatus.u)}">
+					<x-icon :color="getFontColor(optsStatus.u)" name="underline"></x-icon>
+				</view>
+				<view @click="setFontStyle('s',!optsStatus.s)" class="xEditorBtns"
+					:style="{backgroundColor:getBgColor(optsStatus.s)}">
+					<x-icon :color="getFontColor(optsStatus.s)" name="strikethrough"></x-icon>
+				</view>
+
+			</view>
+			<view class="fontTabs" style="width: 36px;align-self: stretch;margin-right: 2px;">
+				<x-popover position="bc" style="flex:1;align-self: stretch;">
+					<view class="xEditorBtns" :style="{backgroundColor:getBgColor(optsStatus.size!='')}">
+						<x-icon :color="getFontColor(optsStatus.size!='')" name="font-size"></x-icon>
+					</view>
+					<template #menu>
+						<view style="width:110px">
+							<view v-for="item in ['12px', '14px', '16px', '18px', '24px']" :key="item"
+								@click="setFontStyle('size',optsStatus.size==item?'':item)" class="fontTabsCirlItem"
+								:style="{backgroundColor:getBgColor(optsStatus.size==item)}">
+								<x-text :color="getFontColor(optsStatus.size==item)">{{item}}</x-text>
+							</view>
+						</view>
+
+					</template>
+				</x-popover>
+			</view>
+			
+			<view class="fontTabs" style="width: 120px;align-self: stretch;">
+
+				<x-popover position="bc" style="flex:1;align-self: stretch;">
+					<view class="xEditorBtns" :style="{backgroundColor:getBgColor(optsStatus.background!='')}">
+						<view class="fontTabsCirl"
+							:style="{backgroundColor:optsStatus.background==''?'transparent':optsStatus.background}">
+						</view>
+						<x-icon :color="getFontColor(optsStatus.background!='')" name="drop-fill"></x-icon>
+					</view>
+					<template #menu>
+						<view style="width:110px">
+							<view @click="setFontStyle('background',item)" v-for="(item,index) in _customColos"
+								:key="index" class="fontTabsCirlItem"
+								:style="{backgroundColor:_isDark?'#222222':'#ffffff'}">
+								<view class="fontTabsCirl2" :style="{backgroundColor:item}"></view>
+							</view>
+						</view>
+
+					</template>
+				</x-popover>
+
+				<x-popover position="br" style="flex:1;align-self: stretch;">
+					<view class="xEditorBtns" :style="{backgroundColor:getBgColor(optsStatus.color!='')}">
+						<view class="fontTabsCirl"
+							:style="{backgroundColor:optsStatus.color==''?'transparent':optsStatus.color}"></view>
+						<x-icon :color="getFontColor(optsStatus.color!='')" name="font-color"></x-icon>
+					</view>
+					<template #menu>
+						<view style="width:110px">
+							<view @click="setFontStyle('color',item)" v-for="(item,index) in _customColos" :key="index"
+								class="fontTabsCirlItem" :style="{backgroundColor:_isDark?'#222222':'#ffffff'}">
+								<view class="fontTabsCirl2" :style="{backgroundColor:item}"></view>
+							</view>
+						</view>
+
+					</template>
+				</x-popover>
+
+
+
+
+
+			</view>
+		</view>
+		<view class="FontTabsGroup">
+			
+			<view class="fontTabs" style="width: 36px;align-self: stretch;margin-right: 2px;">
+				<x-popover position="bl" style="flex:1;align-self: stretch;">
+					<view class="xEditorBtns" :style="{backgroundColor:getBgColor(optsStatus.header!=0)}">
+						<x-icon :color="getFontColor(optsStatus.header!=0)" name="heading"></x-icon>
+					</view>
+					<template #menu>
+						<view style="width:110px">
+							<view v-for="item in 6" :key="item"
+								@click="setFontStyle('header',optsStatus.header==item?0:item)" class="fontTabsCirlItem"
+								:style="{backgroundColor:getBgColor(optsStatus.header==item)}">
+								<x-icon :color="getFontColor(optsStatus.s)" :name="`h-${item}`"></x-icon>
+							</view>
+						</view>
+			
+					</template>
+				</x-popover>
+			
+			</view>
+			<view class="fontTabs" style="flex:1;margin-right: 2px;">
+				<view v-for="(item,index) in ['left','center','right']" :key="index"
+					@click="setFontStyle('align',optsStatus.align==item?'':item)" class="xEditorBtns"
+					:style="{backgroundColor:getBgColor(optsStatus.align==item)}">
+					<x-icon :color="getFontColor(optsStatus.align==item)" :name="`align-${item}`"></x-icon>
+				</view>
+			</view>
+			<view class="fontTabs" style="align-self: stretch;flex:1">
+				<view v-for="(item,index) in listDataItems" :key="index"
+					@click="setFontStyle('list',optsStatus.list==item.name?'':item.name)" class="xEditorBtns"
+					:style="{backgroundColor:getBgColor(optsStatus.list==item.name)}">
+					<x-icon :color="getFontColor(optsStatus.list==item.name)" :name="item.icon"></x-icon>
+				</view>
+		
+			</view>
+		</view>
+		<view style="height: 8px;"></view>
+		
+		<view style="flex:1;">
+		
+			<!-- #ifdef APP||WEB -->
+			<web-view v-if="isLoaded" :horizontalScrollBarAccess="true" :verticalScrollBarAccess="false"
+				class="xMarkdownNoevents" @load="appWebViewLoaded" :id="id" src="/hybrid/html/edite.html"
+				:style="{width:'100%',height:'100%',opacity:isLoaded?1:0}" @message="onMessage"></web-view>
+
+			<!-- #endif -->
+			<!-- #ifdef MP -->
+			<editor class="xMarkdownNoevents" id="editor" @ready="mpOnInit" @itemclick="onItemClick" @focus="onfocus"
+				@statuschange="onstatuschange" :selectable="true" placeholder="请输入"
+				:style="[{width:'100%',height:'100%'},_nodeStyle]"></editor>
+			<!-- #endif -->
+			<!-- 兼容安卓。webview到4.19+页面无法滚动 -->
+			<!-- <view v-if="!_edite" class="xMarkdownAndrod"></view> -->
+		</view>
+	</view>
+</template>
+<style scoped>
+	.xEdite{
+		display: flex;
+		flex-direction: column;
+	}
+	.xEditorBtns {
+		height: 40px;
+		flex: 1;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		flex-direction: row;
+	}
+
+	.fontTabsCirl {
+		width: 12px;
+		height: 12px;
+		border-radius: 10px;
+		border: 1px solid #b2b2b2;
+		margin-right: 5px;
+	}
+
+	.fontTabsCirl2 {
+		width: 20px;
+		height: 20px;
+		border-radius: 20px;
+		border: 1px solid #b2b2b2;
+	}
+
+	.fontTabsCirlItem {
+		height: 36px;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		flex-direction: row;
+	}
+
+	.fontTabs {
+		display: flex;
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 2px;
+		border-radius: 4px;
+		overflow: hidden;
+	}
+
+	.FontTabsGroup {
+		display: flex;
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+	}
+
+	.xMarkdownAndrod {
+		position: absolute;
+		left: 0;
+		top: 0;
+		width: 100%;
+		height: 100%;
+		z-index: 10;
+	}
+
+	.xMarkdownNoevents {
+		/* pointer-events: none; */
+		width: 100%;
+		/* height: 100%; */
+	}
+</style>

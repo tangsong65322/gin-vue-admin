@@ -1,0 +1,239 @@
+<script lang="ts">
+	import { type PropType, Ref } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { CHILDREN_INFO,CHILDREN_SIZE } from "../x-drag/interface.uts"
+
+	/**
+	 * @name 拖拽排序子组件 xDragItem
+	 * @description 仅可放置在父容器x-drag中，如果在组件上写style时，不可写left,top,width,height等属性来影响组件的高和宽。
+	 * 也不可直接写padding,margin来影响组件的位置。你可以在组件中自己写view后，再自由的布局写间隙等。
+	 * @page /pages/index/drag
+	 * @category 反馈组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				id: ('xCollapseItem-' + getUid()) as string,
+				cellHeight: 0,
+				cellWidth: 0,
+				nowActiveIndex: -1,
+				targetActiveIndex: -1,
+				orderIndex: -1,
+				nowId: ''
+			}
+		},
+		props: {
+			/**
+			 * 索引，vfor时提供index,必填
+			 * 而且一定是正确的索引列表顺序，不可随便填写。
+			 */
+			order: {
+				type: Number,
+				default: 0,
+				required: true
+			},
+			/**
+			 * 是禁用本项目被拖动，禁用时本项目顺序会被固定。不会被打乱。
+			 */
+			disabled:{
+				type:Boolean,
+				default:false
+			}
+		},
+		emits: [
+			/**
+			 * 点击时触发
+			 */
+			"click"
+		],
+		mounted() {
+			this.orderIndex = this.order
+			let _this = this;
+			uni.$on("onResize",this.getNodes)
+			// #ifndef APP-IOS
+			this.getNodes()
+			// #endif
+			// #ifdef APP-IOS
+			setTimeout(function() {
+				_this.getNodes()
+			}, 20);
+			// #endif
+		},
+		inject: {
+			XDRAGE_HEIGHT: {
+				type: String,
+				default: '0px'
+			},
+			XDRAGE_COL: {
+				type: Number,
+				default: 0
+			},
+			XDRAGE_MAX_LEN: {
+				type: Number,
+				default: 0
+			},
+		},
+		computed: {
+			_height() : string {
+				return this.XDRAGE_HEIGHT
+			},
+			_width() : string {
+				return (100 / this.XDRAGE_COL).toString() + '%'
+			},
+			_defaultTop() : number {
+				let rowIndex = Math.floor(this.orderIndex / this.XDRAGE_COL);
+				return this.cellHeight * rowIndex
+			},
+			_defaultLeft() : number {
+				let colindex = this.orderIndex % this.XDRAGE_COL;
+				return this.cellWidth * colindex
+			},
+			_disabled() : boolean {
+				return this.disabled
+			}
+			
+			
+		},
+		watch:{
+			disabled:()=>{
+				this.getNodes()
+			}
+		},
+		beforeUnmount() {
+			// @ts-ignore
+			let parent : XDragComponentPublicInstance | null = null;
+			try {
+				// @ts-ignore
+				parent = this.$parent as XDragComponentPublicInstance
+			} catch (e) {
+
+			}
+			if (parent != null) {
+				parent!.delItem(this.id)
+			}
+			uni.$off("onResize",this.getNodes)
+		},
+		methods: {
+			onClick() {
+				// #ifdef WEB
+				this.$emit("click")
+				// #endif
+			},
+			onTouchEnd(){
+				// #ifdef APP
+				this.$emit("click")
+				// #endif
+			},
+			
+			getNodes() {
+				let ele = this.$refs['xDragItem'] as UniElement|null;
+				if(ele == null) return;
+				ele.getBoundingClientRectAsync()
+				?.then(rect=>{
+					this.cellHeight = rect.height!
+					this.cellWidth = rect.width!
+					this.pushChildren(rect)
+					this.setStylSetProperty('height',this._height)
+					this.setStylSetProperty('width',this._width)
+					this.setStylSetProperty('top',this._defaultTop+'px')
+					this.setStylSetProperty('left',this._defaultLeft+'px')
+					this.setStylSetProperty('z-index','1')
+					this.setStylSetProperty('transition-duration','0s')
+				})
+				.catch(()=>{})
+				
+			},
+
+			pushChildren(node : DOMRect) {
+				// @ts-ignore
+				let parent : XDragComponentPublicInstance | null = null;
+				try {
+					// @ts-ignore
+					parent = this.$parent as XDragComponentPublicInstance
+				} catch (e) {
+
+				}
+				if (parent != null) {
+					
+					parent!.addItem({
+						id: this.id,
+						index: this.order,
+						oldindex: this.order,
+						ele: this,
+						disabled:this._disabled,
+						node: node
+					} as CHILDREN_INFO)
+				}
+			},
+
+			updateForce() {
+				this.$forceUpdate()
+			},
+			setOrderIndex(index : number) {
+				this.orderIndex = index;
+			},
+			setActivdId(id : string) {
+				this.nowId = id;
+			},
+			setStylSetProperty(name:string,value:any|null){
+				let ele = this.$refs['xDragItem'] as UniElement
+				ele.style.setProperty(name,value)
+			},
+			getStylSetProperty(name:string): any | null{
+				let ele = this.$refs['xDragItem'] as UniElement
+				return ele.style.getPropertyValue(name);
+			},
+			updatePos(){
+				this.setStylSetProperty('height',this._height)
+				this.setStylSetProperty('width',this._width)
+				this.setStylSetProperty('top',this._defaultTop+'px')
+				this.setStylSetProperty('left',this._defaultLeft+'px')
+				this.setStylSetProperty('transition-duration','0.4s')
+				this.setStylSetProperty('z-index','1')
+				
+			}
+
+		},
+	}
+</script>
+<template>
+	<view @click="onClick" @touchend="onTouchEnd" ref="xDragItem" class="xDragItem"
+	 :style="{
+		height:_height,
+		width:_width,
+		top:_defaultTop+'px',
+		left:_defaultLeft+'px',
+		zIndex:nowId==id&&nowId!=''?'5':'1',
+		transitionDuration:nowId!=id&&nowId!=''?'0.4s':'0s',
+	}">
+		<!-- 
+		@slot 默认插槽 
+		 -->
+		<slot></slot>
+	</view>
+</template>
+<style scoped>
+	.xDragItem {
+		position: absolute;
+		left: 0px;
+		top: 0px;
+		transition-timing-function: ease;
+		transition-property: top, left;
+		/* #ifdef WEB */
+		cursor: grab;
+		/* #endif */
+		z-index: 1;
+	}
+	/* #ifdef WEB */
+	.xDragItem:active{
+		cursor: grabbing;
+	}
+	/* #endif */
+</style>

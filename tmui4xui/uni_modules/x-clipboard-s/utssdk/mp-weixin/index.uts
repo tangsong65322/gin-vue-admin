@@ -1,0 +1,27 @@
+
+export const setClipboardData = (data : string):Promise<boolean>  => {
+	return new Promise((resl,rejl)=>{
+		wx.setClipboardData({
+			data: data,
+			success(res) {
+				resl(true)
+			},
+			fail(res) {
+				rejl(false)
+			}
+		})
+	})
+}
+export const getClipboardData = ():Promise<string>  => {
+	return new Promise((resl,rejl)=>{
+		wx.getClipboardData({
+			success(res) {
+				resl(res.data)
+			},
+			fail(res) {
+				rejl('未知错误')
+			}
+		})
+	})
+
+}

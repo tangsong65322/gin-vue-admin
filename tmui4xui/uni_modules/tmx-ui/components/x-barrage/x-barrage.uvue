@@ -1,0 +1,122 @@
+<script lang="ts">
+	import { checkIsCssUnit, getUid, splitArrayByGroup } from '../../core/util/xCoreUtil.uts'
+
+	// import barrageText from "./barrage-text.uvue"
+	import { BARRAGE_ITEM_AR } from "./interface.uts"
+
+	/**
+	 * 
+	 * @name 弹幕 Barrage
+	 * @page /pages/index/barrage
+	 * @category 反馈组件
+	 * @description 弹幕，当前版本比较初级。
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		// components: {
+		// 	'barrage-text': barrageText
+		// },
+		data() {
+			return {
+				id: 'xBarrage-' + getUid(),
+				real_w: 0,
+				real_h: 0,
+				datas: [] as BARRAGE_ITEM_AR[][]
+			}
+		},
+		props: {
+			/**
+			 * 弹幕的总高度。如果你的容器高小于此高会被裁切。
+			 */
+			layerHeight: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 字符数组
+			 */
+			list: {
+				type: Array as PropType<string[]>,
+				default: () : string[] => [] as string[]
+			}
+		},
+		computed: {
+			_list() : string[] {
+				return this.list
+			},
+			_height() : string {
+				if (this.layerHeight == "") return '100%'
+				return checkIsCssUnit(this.layerHeight, 'rpx')
+			}
+		},
+		watch: {
+			list() {
+				this.chuliDatas();
+			}
+		},
+		mounted() {
+			this.getNodes();
+		},
+		methods: {
+			chuliDatas() {
+				let maxLines = Math.floor(this.real_h / 34);
+				let ps = splitArrayByGroup(this.list, maxLines)
+				let mbl = ps.map((el : string[], index : number) : BARRAGE_ITEM_AR[] => {
+					return el.map((item : string, chirenIndex : number) : BARRAGE_ITEM_AR => {
+						let tels = {
+							id: 'xBarrage_item_id' + getUid(),
+							top: (index * 24 + 10).toString() + 'px',
+							label: item,
+							parentIndex: index,
+							chirenIndex,
+							delay: index * 500 + (chirenIndex) * 1500
+						} as BARRAGE_ITEM_AR
+						return tels
+					})
+				})
+				this.datas = mbl
+			},
+			getIds(index : number) : string {
+				return 'xBarrageBOx-' + getUid() + '-' + (index).toString()
+			},
+			getNodes() {
+				uni.createSelectorQuery().in(this)
+					.select("#" + this.id)
+					.boundingClientRect().exec((ret) => {
+						let nodeinfo = ret[0] as NodeInfo;
+						this.real_w = nodeinfo.width!;
+						this.real_h = nodeinfo.height!;
+						this.chuliDatas();
+					})
+			},
+		}
+	}
+</script>
+<template>
+	<view>
+		<!-- 
+		@slot 默认内容插槽，内容的高度至少要大于弹幕整体的layerHeight高度。 
+		 -->
+		<slot></slot>
+		<view class="xBarrageWrap" :id="id" :style="{height:_height}">
+			<x-barrage-item v-for="(item2,index2) in datas" :key='getIds(index2)' :index="index2" :boxWidth="real_w"
+				:data="item2" :style="{
+			 	top:(index2*34+10).toString()+'px',
+			 }"></x-barrage-item>
+		</view>
+	</view>
+</template>
+<style scoped>
+	.xBarrageWrap {
+		position: absolute;
+		top: 0;
+		left: 0;
+		pointer-events: none;
+		width: 100%;
+		height: 100%;
+		overflow: hidden;
+	}
+</style>

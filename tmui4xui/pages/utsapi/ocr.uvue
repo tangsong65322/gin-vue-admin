@@ -1,0 +1,102 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+		
+		<x-sheet>
+			<x-text font-size="18"  class=" text-weight-b mb-8">文本识别 xOcrS</x-text>
+			<x-text color="#999999" >
+				支持中文，韩文，日语，英文，德语的识别。
+			</x-text>
+		</x-sheet>
+		
+		<x-sheet >
+			<x-text font-size="18" class=" text-weight-b mb-8">相册/相机识别</x-text>
+			<x-button :block="true" @click="choose">相册/相机选取</x-button>
+			
+			<x-sheet color="info" :margin="['0','32','0','0']" dark-color="#333">
+				<x-text>
+					识别结果：{{result.join('\n')}}
+				</x-text>
+				
+			</x-sheet>
+		</x-sheet>
+			
+		
+		<!-- #ifdef APP -->
+		<x-sheet >
+			<x-text font-size="18" class=" text-weight-b mb-8">网络图片</x-text>
+			<x-image round="16" src="https://cdn.tmui.design/xui/xuiocrScanImg.jpg"></x-image>
+			
+			<x-button class="mt-32" :block="true" @click="download">识别上图文字</x-button>
+			
+			<x-sheet color="info" :margin="['0','32','0','0']" dark-color="#333">
+				<x-text>
+					识别结果：{{result2.join('\n')}}
+				</x-text>
+				
+			</x-sheet>
+		</x-sheet>
+		<!-- #endif -->
+		<x-sheet >
+			<x-text font-size="18" class=" text-weight-b mb-8">本地图片路径</x-text>
+			<x-image round="16" src="/static/tmui4xLibs/testData/braner.jpg"></x-image>
+			
+			<x-button class="mt-32" :block="true" @click="localImg">识别上图文字</x-button>
+			
+			<x-sheet color="info" :margin="['0','32','0','0']" dark-color="#333">
+				<x-text>
+					识别结果：{{result3.join('\n')}}
+				</x-text>
+				
+			</x-sheet>
+		</x-sheet>
+		
+		<view style="height:50px"></view>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	import {chooseImageBuilder,downloadUrlImageBuilder,localFilePathImageBuilder} from "@/uni_modules/x-ocr-s"
+	
+	export default {
+		data() {
+			return {
+				result:[] as string[],
+				result2:[] as string[],
+				result3:[] as string[],
+ 			};
+		},
+		methods:{
+	
+			choose(){
+				let _this = this;
+				chooseImageBuilder((txt:string[],sour:string[])=>{
+					_this.result = txt
+					console.log(txt,sour as string[])
+				},'zh')
+			},
+			download(){
+				let _this = this;
+				downloadUrlImageBuilder('https://cdn.tmui.design/xui/xuiocrScanImg.jpg',(txt:string[],sour:string[])=>{
+					_this.result2 = txt
+					console.log(txt,sour as string[])
+				},'zh')
+				
+			},
+			localImg(){
+				let _this = this;
+				localFilePathImageBuilder('/static/tmui4xLibs/testData/braner.jpg',(txt:string[],sour:string[])=>{
+					_this.result3 = txt
+					console.log(txt,sour as string[])
+				},'zh')
+			}
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

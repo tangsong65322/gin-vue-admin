@@ -1,0 +1,68 @@
+import Context from 'android.content.Context'
+import LinearLayout from 'android.widget.LinearLayout';
+import ViewGroup from 'android.view.ViewGroup';
+import View from 'android.view.View';
+import TextView from 'android.widget.TextView';
+import ImageView from 'android.widget.ImageView';
+import Gravity from 'android.view.Gravity';
+import Color from 'android.graphics.Color';
+import Activity from 'android.app.Activity';
+import { ref} from "vue"
+import TextUtils from 'android.text.TextUtils';
+import GradientDrawable from 'android.graphics.drawable.GradientDrawable'
+import MotionEvent from 'android.view.MotionEvent';
+import Typeface from 'android.graphics.Typeface';
+import {hexToRgb,getDefaultColor,toFillMarginAr} from "../util/xCoreColorUtil.uts"
+import {getUid,dp2px} from "../util/xCoreUtil.uts"
+
+
+class xIcon {
+	view:any
+	constructor(context : Context,name:string=""){
+		let view = new TextView(context);
+		let layoutParams_crd = new LinearLayout.LayoutParams(
+			ViewGroup.LayoutParams.WRAP_CONTENT,
+			ViewGroup.LayoutParams.WRAP_CONTENT
+		)
+		
+		view.setGravity(Gravity.CENTER)
+		view.setLayoutParams(layoutParams_crd);
+		this.view = view;
+		
+		this._setCodeStr(name)
+	}
+	getView():View{
+		return this.view as View;
+	}
+	setIcon(name:string=""):xIcon{
+		this._setCodeStr(name)
+		return this;
+	}
+	
+	setFontSize(n:number):xIcon{
+		let view = this.view as TextView;
+		view.setTextSize(dp2px(n).toFloat())
+		return this;
+	}
+	setFontColor(str:string):xIcon{
+		let view = this.view as TextView;
+		view.setTextColor(Color.parseColor(getDefaultColor(str)))
+		return this;
+	}
+	
+	private _setCodeStr(code:string){
+		let view = this.view as TextView;
+		let assetManager = view.getContext()!.getAssets();
+		let typeface = Typeface.createFromAsset(assetManager, "remixicon.ttf")
+		view.setTypeface(typeface)
+		if(!TextUtils.isEmpty(code)){
+			let codePoint = Integer.parseInt(code, 16);
+			let charArray = Character.toChars(codePoint);
+			let text = new String(charArray);
+			view.setText(text);
+		}
+	}
+	
+}
+
+export default xIcon;

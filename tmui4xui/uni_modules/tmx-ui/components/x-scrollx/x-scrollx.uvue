@@ -1,0 +1,225 @@
+<script lang="ts" setup>
+	import { ref, getCurrentInstance, onMounted, computed, onBeforeUnmount } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	
+	/**
+	* @name 横向滚动 xScrollx
+	* @description 需要明确内部宽，否则无法左右导航滚动。
+	* @page /pages/index/scrollx
+	* @category 展示组件
+	* @constant 平台兼容
+	* | H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+	  | --- | --- | --- | --- | --- | --- | --- |
+	  | ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	*/
+	defineOptions({name:"xScrollx"})
+	const proxy = getCurrentInstance()?.proxy
+	const props = defineProps({
+		/**
+		 * 宽，不能设置为auto,需要一个具体的宽度值
+		 * 否则无法左右滚动。
+		 */
+		width: {
+			type: String,
+			default: '100%'
+		},
+		/**
+		 * 高
+		 */
+		height: {
+			type: String,
+			default: 'auto'
+		},
+		/**
+		 * 下面横向小条宽,px单位
+		 */
+		scrollbarWidth: {
+			type: Number,
+			default: 100
+		},
+		/**
+		 * 下面横向小条高,px单位
+		 */
+		scrollbarHeight: {
+			type: Number,
+			default: 6
+		},
+		/**
+		 * 是否显示底部横线指示
+		 */
+		showScrollBar:{
+			type:Boolean,
+			default:true
+		},
+		/**
+		 * 内部小指示条的宽,px单位
+		 */
+		scrollPosBarWidth: {
+			type: Number,
+			default: 20
+		},
+		/**
+		 * 下面滚动指示条的轨道背景
+		 */
+		scrollPosBgColor: {
+			type: String,
+			default: "#f3f5f8"
+		},
+		/**
+		 * 下面滚动指示条的轨道暗黑背景
+		 * 不填充的话取输入框的暗黑背景
+		 */
+		darkScrollPosBgColor: {
+			type: String,
+			default: ""
+		},
+		/**
+		 * 下面滚动指示条的活动背景
+		 * 不填写的话取全局的color
+		 */
+		scrollPosColor: {
+			type: String,
+			default: ""
+		}
+	})
+	const _width = computed(() : string => checkIsCssUnit(props.width, xConfig.unit))
+	const _height = computed(() : string => checkIsCssUnit(props.height, xConfig.unit))
+	const _showScrollBar = computed(() : boolean => props.showScrollBar)
+	
+	const _scrollPosColor = computed(() : string => {
+		if (props.scrollPosColor == "") return getDefaultColor(xConfig.color)
+		return getDefaultColor(props.scrollPosColor)
+	})
+	const _scrollPosBgColor = computed(() : string => {
+		let bgcolor = props.scrollPosBgColor;
+		if (xConfig.dark == 'dark') {
+			bgcolor = props.darkScrollPosBgColor;
+			if (bgcolor == '') {
+				bgcolor = xConfig.inputDarkColor;
+			}
+
+		}
+		return getDefaultColor(bgcolor)
+	})
+	const totalWidth = ref(0)
+	const scrollLeft = ref(0)
+	const barwidth = ref(props.scrollPosBarWidth)
+	const boxWidth = ref(0)
+	const _posLeft = computed(() : string => {
+		if (totalWidth.value == 0 || scrollLeft.value == 0 || boxWidth.value == 0) return '0px'
+		let bvl = scrollLeft.value / (totalWidth.value - boxWidth.value)
+		let sw = props.scrollbarWidth - barwidth.value
+		let realz = sw * bvl;
+		realz = Math.max(0, realz)
+		realz = Math.min(sw, realz)
+
+		return (realz).toFixed(4) + 'px'
+	})
+	const onScrollH = (evt : UniScrollEvent) => {
+		totalWidth.value = evt.detail.scrollWidth
+		scrollLeft.value = evt.detail.scrollLeft
+
+	}
+	const getBoxWidth = () => {
+		uni.createSelectorQuery()
+			.in(proxy)
+			.select(".xScrollxBox")
+			.boundingClientRect()
+			.exec((res) => {
+				let node = res[0] as NodeInfo;
+				boxWidth.value = node.width!;
+			})
+	}
+
+	onMounted(() => {
+		getBoxWidth()
+		uni.$on('onResize', getBoxWidth)
+	})
+	onBeforeUnmount(() => {
+		uni.$off('onResize', getBoxWidth)
+	})
+</script>
+<template>
+	<view ref="xScrollx" class="xScrollxBox">
+		<view class="xScrollx">
+			<scroll-view :show-scrollbar="false" @scroll="onScrollH" direction="horizontal" class="xScrollxX" :style="{
+				height:_height,
+				width:_width
+			}">
+				<view class="xScrollxWrap">
+					<!-- 
+					 @slot 当前滚指示内部的小条的位置
+					 -->
+					<slot></slot>
+				</view>
+			</scroll-view>
+		</view>
+		<view v-if="_showScrollBar" class="xScrollxBarBgWrap">
+			<view class="xScrollxBarBgWrapBg" :style="{
+				height:scrollbarHeight+'px',
+				width:scrollbarWidth+'px',
+				background:_scrollPosBgColor
+			}">
+				<view class="xScrollxBarBgWrapBgBar" :style="{
+				width:barwidth+'px',
+				background:_scrollPosColor,
+				transform: `translateX(${_posLeft})`
+			}"></view>
+			</view>
+		</view>
+	</view>
+</template>
+<style scoped>
+	.xScrollxBarBgWrapBgBar {
+		border-radius: 10px;
+		height: 100%;
+		position: relative;
+
+	}
+
+	.xScrollxBarBgWrapBg {
+		position: relative;
+		border-radius: 10px;
+		overflow: hidden;
+	}
+
+	.xScrollxBarBgWrap {
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+		/* height: px; */
+		margin-top: 20px;
+	}
+
+	.xScrollx {
+		position: relative;
+	}
+
+	.xScrollxX {
+		/* #ifndef MP */
+		display: flex;
+		flex-direction: row;
+		flex-wrap: nowrap;
+		/* #endif */
+
+	}
+
+	.xScrollxWrap {
+		/* #ifdef MP */
+		display: inline-flex;
+		width: max-content;
+		/* #endif */
+		/* #ifndef MP */
+		display: flex;
+		/* #endif */
+		flex-direction: row;
+		height: 100%;
+		justify-content: flex-start;
+		align-items: flex-start;
+		flex-wrap: nowrap;
+	}
+</style>

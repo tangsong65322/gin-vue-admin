@@ -1,0 +1,17 @@
+{
+	"deploymentTarget": "12",
+	"dependencies-pods": [
+		{
+			"name": "GoogleMLKit/TextRecognition",
+			"version": "3.2.0"
+		},
+		{
+			"name": "GoogleMLKit/TextRecognitionChinese",
+			"version": "3.2.0"
+		},
+		{
+			"name": "GoogleMLKit/TextRecognitionJapanese",
+			"version": "3.2.0"
+		}
+	]
+}

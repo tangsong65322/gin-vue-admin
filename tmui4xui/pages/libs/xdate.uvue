@@ -1,0 +1,97 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor"
+			:front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">xDate - Library</x-text>
+			<x-text color="#999999" >
+				日期处理库，简单好上手，单库只有14kb
+				能满足日常的时间处理需求
+			</x-text>
+		</x-sheet>
+
+		<x-sheet >
+			<x-text font-size="18" class=" text-weight-b mb-8">默认日期</x-text>
+			<x-sheet class="flex flex-col" color="info" dark-color='#333' :margin="['0']">
+				<x-text>{{xdate.date}}</x-text>
+			</x-sheet>
+			<x-text font-size="18" class=" text-weight-b my-16">格式化</x-text>
+			<x-sheet class="flex flex-col" color="info" dark-color='#333' :margin="['0']">
+				<x-text>{{xdate.format('YYYY年MM月DD日 hh时mm分ss秒')}}</x-text>
+			</x-sheet>
+			<x-text font-size="18" class=" text-weight-b my-16">本月最大天数</x-text>
+			<x-sheet class="flex flex-col" color="info" dark-color='#333' :margin="['0']">
+				<x-text>{{xdate.getMonthCountDay()}}</x-text>
+			</x-sheet>
+			<x-text font-size="18" class=" text-weight-b my-16">本月最后的日期</x-text>
+			<x-sheet class="flex flex-col" color="info" dark-color='#333' :margin="['0']">
+				<x-text>{{xdate.getDateEndOf('m').format('YYYY年MM月DD日 hh时mm分ss秒')}}</x-text>
+			</x-sheet>
+			<x-text font-size="18" class=" text-weight-b my-16">本周周一</x-text>
+			<x-sheet class="flex flex-col" color="info" dark-color='#333' :margin="['0']">
+				<x-text>{{xdate.getDateStartOf('w').format('YYYY年MM月DD日')}}</x-text>
+			</x-sheet>
+			<x-text font-size="18" class=" text-weight-b my-16">当前在本年第几周，周几</x-text>
+			<x-sheet class="flex flex-col" color="info" dark-color='#333' :margin="['0']">
+				<x-text>本年第 {{xdate.getWeek()}} 周 - 今天是：{{xdate.getWeekDayCn()}}</x-text>
+			</x-sheet>
+			<x-text font-size="18" class=" text-weight-b my-16">今天与2023-5-2相比</x-text>
+			<x-sheet class="flex flex-col" color="info" dark-color='#333' :margin="['0']">
+				<x-text>{{xdate.isBetweenOf(testDate,'>','d')?'大于：2023-5-2':'小于：2023-5-2'}}</x-text>
+			</x-sheet>
+			<x-text font-size="18" class=" text-weight-b my-16">今天与2024-5-18相比过了多久</x-text>
+			<x-sheet class="flex flex-col" color="info" dark-color='#333' :margin="['0']">
+				<x-text>{{xdate.fromBetweenLongTime('2024-5-18 8:0:0',null,null)}}</x-text>
+			</x-sheet>
+			<x-text font-size="18" class=" text-weight-b my-16">今天与2024-5-18相差的时间</x-text>
+			<x-sheet class="flex flex-col" color="info" dark-color='#333' :margin="['0']">
+				<x-text>按天相差：{{xdate.diffTime(testDate2,'d')}}天</x-text>
+				<x-text>按月相差：{{xdate.diffTime('2024-5-18','m')}}月</x-text>
+				<x-text>按小时相差：{{xdate.diffTime('2024-5-18','h')}}小时</x-text>
+				<x-text>按周相差：{{xdate.diffTime('2024-5-18','w')}}周</x-text>
+			</x-sheet>
+			<x-text font-size="18" class=" text-weight-b my-16">返回本周的日期组</x-text>
+			<x-sheet class="flex flex-col" color="info" dark-color='#333' :margin="['0']">
+				<scroll-view style="max-height: 100px;">
+					<x-text>{{xdate.getDaysOf('w')}}</x-text>
+				</scroll-view>
+			</x-sheet>
+		</x-sheet>
+
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	import {xDate } from "@/uni_modules/tmx-ui/index.uts"
+	
+	export default {
+		data() {
+			const xdate = new xDate();
+			xdate.setDateLocale('en')
+			return {
+				xdate:xdate,
+				testDate:new xDate(),
+				testDate2:new xDate('2024-5-18'),
+				
+			};
+		},
+		onLoad() {
+			console.log()
+		},
+		methods: {
+			
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

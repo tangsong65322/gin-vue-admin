@@ -1,0 +1,483 @@
+export type  SQLiteConfig = {
+	password?: string;
+	encryption?: boolean;
+	locateFile?: (filename: string) => string;
+}
+
+export type SQLiteResult = {
+	rows?: any[];
+	columns?: string[];
+	changes?: number;
+	lastInsertRowid?: number;
+	error?: string;
+	maps?:Map<string,any>[]
+}
+export type SQLiteExecuteBatchParams = {
+	sql:string,
+	params?:any[]
+}
+
+async function loadScript(url) {
+	return new Promise(res => {
+		var script = document.createElement('script');
+		script.type = 'text/javascript';
+		script.src = url;
+
+		// 当脚本加载完成后，执行回调
+		script.onload = function () {
+			res()
+		};
+
+		// 处理旧版浏览器的onreadystatechange事件
+		script.onreadystatechange = function () {
+			if (this.readyState === 'loaded' || this.readyState === 'complete') {
+				script.onload();
+			}
+		};
+
+		// 将脚本添加到head中，开始加载
+		document.head.appendChild(script);
+	})
+}
+
+async function loadScripts(scripts) {
+	await (async function loadNextScript(i) {
+		if (i < scripts.length) {
+			await loadScript(scripts[i]);
+			await loadNextScript(i + 1)
+		}
+	})(0);
+}
+
+let jsFiles = [
+	'/static/tmui4xLibs/lib/sql-wasm.js'
+];
+
+/**
+ * SQLite数据库操作类
+ * 提供SQLite数据库的创建、查询、更新等基本操作，支持加密和事务处理
+ */
+export class xSqlite {
+	/** 数据库实例 */
+	private db: any|null = null;
+	private config: SQLiteConfig;
+	private isInTransaction: boolean = false;
+	private SQL:any|null = null;
+	private newFileName:string = "sqlite"
+
+	constructor(configs: SQLiteConfig = {}) {
+		let locateFile = filename => `/static/tmui4xLibs/lib/sql-wasm.wasm`
+		this.config = {locateFile,...configs};
+		this.config.locateFile = this.config.locateFile||locateFile
+	}
+
+	private _loadSqliteJs(): Promise<any>{
+		let _this = this;
+		return new Promise((res, rej) => {
+			loadScripts(jsFiles).then(() => {
+				initSqlJs(_this.config).then((SQL) => {
+					_this.SQL = SQL;
+					res();
+				}).catch(e => rej(e))
+			}).catch(e => rej(e))
+		})
+	}
+	/**
+	 * 创建数据库
+	 * @param filename 数据库文件名，如果为null则使用默认名称'sqlite'
+	 * @returns Promise<any> 创建的数据库实例
+	 */
+	async createDb(filename?:string): Promise<any> {
+		let _this = this;
+		this.newFileName = filename||"sqlite"
+		return new Promise((res, rej) => {
+			_this._loadSqliteJs()
+			.then(_=>{
+				_this.db = new _this.SQL.Database();
+				// 如果配置了加密
+				if (this.config.encryption && _this.config.password) {
+					_this.run('PRAGMA key = ?', [_this.config.password]);
+				}
+			})
+			.catch(_=>{
+				
+			})
+			
+		})
+	}
+
+	/**
+	 * 执行SQL语句
+	 * @param sql SQL语句
+	 * @param params SQL参数数组
+	 * @returns SQLiteResult 执行结果，包含changes(影响行数)和lastInsertRowid(最后插入行ID)
+	 */
+	run(sql: string, params: any[] = []): SQLiteResult {
+		try {
+			if (this.isInTransaction) {
+				return { error: 'Transaction already in progress' };
+			}
+			const result = this.db.run(sql, params);
+			return {
+				changes: result?.changes,
+				lastInsertRowid: result?.lastInsertRowid
+			};
+		} catch (error) {
+			return { error: error.message };
+		}
+	}
+
+	/**
+	 * 查询数据
+	 * @param sql 查询SQL语句
+	 * @param params 查询参数数组
+	 * @returns SQLiteResult 查询结果，包含rows(数据行)和columns(列名)
+	 */
+	query(sql: string, params: any[] = []): SQLiteResult {
+		try {
+			if (this.isInTransaction) {
+				return { error: 'Transaction already in progress' };
+			}
+			const result = this.db.exec(sql, params);
+			const maps = [] as Map<string,any>[];
+			const rows = result?.[0]?.values || [] ;
+			const columns = result?.[0]?.columns || [] ;
+			if(rows.length>0&&columns.length>0){
+				rows.forEach(el=>{
+					let newmap = new Map<string,any>();
+					columns.forEach((key,index)=>{
+						newmap.set(key,el[index])
+					})
+					maps.push(newmap)
+				})
+			}
+			return { 
+				rows: rows,
+				columns: columns,
+				maps
+			};
+		} catch (error) {
+			return { error: error.message };
+		}
+	}
+
+	/**
+	 * 插入数据
+	 * @param table 表名
+	 * @param data 要插入的数据对象
+	 * @returns SQLiteResult 插入结果
+	 */
+	insert(table: string, data: object): SQLiteResult {
+		const keys = Object.keys(data);
+		const values = Object.values(data);
+		const sql = `INSERT INTO ${table} (${keys.join(',')}) VALUES (${keys.map(() => '?').join(',')})`;  
+		return this.run(sql, values);
+	}
+
+	/**
+	 * 更新数据
+	 * @param table 表名
+	 * @param data 要更新的数据对象
+	 * @param where WHERE条件语句
+	 * @param params WHERE条件参数数组
+	 * @returns SQLiteResult 更新结果
+	 */
+	update(table: string, data: object, where: string, params: any[] = []): SQLiteResult {
+		const sets = Object.keys(data).map(key => `${key} = ?`).join(',');
+		const values = [...Object.values(data), ...params];
+		const sql = `UPDATE ${table} SET ${sets} WHERE ${where}`;
+		return this.run(sql, values);
+	}
+
+	/**
+	 * 删除数据
+	 * @param table 表名
+	 * @param where WHERE条件语句
+	 * @param params WHERE条件参数数组
+	 * @returns SQLiteResult 删除结果
+	 */
+	delete(table: string, where: string, params: any[] = []): SQLiteResult {
+		const sql = `DELETE FROM ${table} WHERE ${where}`;
+		return this.run(sql, params);
+	}
+
+	/**
+	 * 保存数据库到本地存储
+	 * @param filename 保存的文件名，可选，默认为'sqlite'
+	 * @returns SQLiteResult 保存结果
+	 */
+	saveLocal(filename?: string): SQLiteResult {
+		if (this.db==null) throw new Error('Database not initialized');
+		let fname = filename??'sqlite'
+		const data = this.db.export();
+		this.newFileName = fname;
+		// const blob = new Blob([data], { type: 'application/octet-stream' });
+		// const url = window.URL.createObjectURL(blob);
+		
+		const base64String = btoa(String.fromCharCode(...data));
+		// const a = document.createElement('a');
+		// a.href = url;
+		// a.download = filename;
+		// document.body.appendChild(a);
+		// a.click();
+		// a.remove();
+		// window.URL.revokeObjectURL(url);
+		if(base64String.length>5*1024*1024){
+			console.error("数据过大")	
+			return {error:"数据过大"};
+		}
+		try {
+			uni.setStorageSync(fname,base64String)
+		} catch (error) {
+			return {error:"数据过大"};
+		}
+		
+		
+	}
+	async loadLocal(filename: string): Promise<SQLiteResult> {
+		this.newFileName = filename;
+		const data = uni.getStorageSync(filename)
+		if(data==null){
+			console.error("没有数据库")
+			return Promise.reject({error:"没有数据库"})
+		}
+		try {
+			const buffer = Uint8Array.from(atob(data), c => c.charCodeAt(0));
+			await this._loadSqliteJs()
+			this.loadFromBuffer(buffer);
+			return Promise.resolve({})
+		} catch (error) {
+			return Promise.reject({error:"数据库损坏"})
+		}
+		return Promise.reject({error:"没有数据库"})
+	}
+	
+	/**
+	 * 从文件加载数据库
+	 * @param file 要加载的数据库文件
+	 * @returns Promise<void> 加载完成的Promise
+	 */
+	async loadFromFile(file: File): Promise<void> {
+		return new Promise((resolve, reject) => {
+			const reader = new FileReader();
+			reader.onload = async event => {
+				try {
+					const uInt8Array = new Uint8Array(event.target.result as ArrayBuffer);
+					await this.loadFromBuffer(uInt8Array);
+					resolve();
+				} catch (error) {
+					reject(error);
+				}
+			};
+			reader.onerror = () => reject(reader.error);
+			reader.readAsArrayBuffer(file);
+		});
+	}
+
+	/**
+	 * 从远程URL加载数据库
+	 * @param url 数据库文件的URL地址
+	 * @returns Promise<void> 加载完成的Promise
+	 */
+	async loadFromUrl(url: string): Promise<void> {
+		const response = await fetch(url);
+		if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+		const buffer = await response.arrayBuffer();
+		await this.loadFromBuffer(new Uint8Array(buffer));
+	}
+
+	// 从Buffer加载数据库
+	loadFromBuffer(buffer: Uint8Array): void{
+		if (this.SQL==null) throw new Error('Database not initialized');
+		this.db = new this.SQL.Database(buffer);
+		// 如果配置了加密
+		if (this.config.encryption && this.config.password) {
+			this.run('PRAGMA key = ?', [this.config.password]);
+		}
+	}
+
+	/**
+	 * 检查表是否存在
+	 * @param tableName 表名
+	 * @returns boolean 表存在返回true，不存在返回false
+	 */
+	tableExists(tableName: string): boolean {
+		const result = this.query("SELECT name FROM sqlite_master WHERE type='table' AND name=?", [tableName]);
+		return result.rows && result.rows.length > 0;
+	}
+
+	/**
+	 * 创建数据表
+	 * @param tableName 表名
+	 * @param columns 列定义对象，key为列名，value为列类型定义
+	 * @returns SQLiteResult 创建结果
+	 */
+	createTable(tableName: string, columns: UTSJSONObject): SQLiteResult {
+		const dataMap = new Map<string,string>();
+		for(const key in columns){
+			const item = columns.getString(key)!;
+			dataMap.set(key,item)
+		}
+		
+		const columnDefinitions = Array.from(dataMap.entries())
+			.map(([name, type]) => `${name} ${type}`)
+			.join(',');
+		const sql = `CREATE TABLE IF NOT EXISTS ${tableName} (${columnDefinitions})`;
+		return this.run(sql);
+	}
+
+	/**
+	 * 删除数据表
+	 * @param tableName 要删除的表名
+	 * @returns SQLiteResult 删除结果
+	 */
+	dropTable(tableName: string): SQLiteResult {
+		const sql = `DROP TABLE IF EXISTS ${tableName}`;
+		return this.run(sql);
+	}
+
+	/**
+	 * 关闭数据库连接
+	 * 释放数据库资源，关闭后需要重新创建才能使用
+	 */
+	close(): void {
+		if (this.db) {
+			this.db.close();
+			this.db = null;
+		}
+	}
+
+	/**
+	 * 开始事务
+	 * 开始一个新的事务，在提交或回滚之前，所有操作都在事务内
+	 * @returns SQLiteResult 事务开始结果
+	 */
+	beginTransaction(): SQLiteResult{
+		if (this.isInTransaction) {
+			return { error: 'Transaction already in progress' };
+		}
+		const result = this.run('BEGIN TRANSACTION');
+		if (!result.error) {
+			this.isInTransaction = true;
+		}
+		return result;
+	}
+
+	/**
+	 * 提交事务
+	 * 提交当前事务的所有操作
+	 * @returns SQLiteResult 事务提交结果
+	 */
+	commit(): SQLiteResult {
+		if (!this.isInTransaction) {
+			return { error: 'No transaction in progress' };
+		}
+		const result = this.run('COMMIT');
+		if (!result.error) {
+			this.isInTransaction = false;
+		}
+		return result;
+	}
+
+	/**
+	 * 回滚事务
+	 * 撤销当前事务中的所有操作
+	 * @returns SQLiteResult 事务回滚结果
+	 */
+	rollback(): SQLiteResult {
+		if (!this.isInTransaction) {
+			return { error: 'No transaction in progress' };
+		}
+		const result = this.run('ROLLBACK');
+		if (!result.error) {
+			this.isInTransaction = false;
+		}
+		return result;
+	}
+
+	/**
+	 * 批量执行SQL语句
+	 * @param statements SQL语句数组，每个元素包含sql和params
+	 * @returns SQLiteResult[] 每个语句的执行结果数组
+	 */
+	executeBatch(statements: SQLiteExecuteBatchParams[]): SQLiteResult[] {
+		if (this.isInTransaction) {
+			return [];
+		}
+		const results: SQLiteResult[] = [];
+		let hasError = false;
+
+		// 自动使用事务包装批量操作
+		const wasInTransaction = this.isInTransaction;
+		if (!wasInTransaction) {
+			this.beginTransaction();
+		}
+
+		try {
+			for (const stmt of statements) {
+				const result = this.run(stmt.sql, stmt?.params??[]);
+				results.push(result);
+				if (result.error) {
+					hasError = true;
+					break;
+				}
+			}
+
+			// 如果有错误并且是我们开始的事务，则回滚
+			if (hasError && !wasInTransaction) {
+				this.rollback();
+			} else if (!wasInTransaction) {
+				// 如果是我们开始的事务且没有错误，则提交
+				this.commit();
+			}
+		} catch (error) {
+			// 发生异常且是我们开始的事务，则回滚
+			if (!wasInTransaction) {
+				this.rollback();
+			}
+			results.push({ error: error.message });
+		}
+
+		return results;
+	}
+	
+	/**
+	 * 获取数据库文件路径
+	 * 获取当前数据库文件的完整路径，获取前会备份到缓存目录
+	 * @returns string|null 数据库文件路径，如果数据库未初始化则返回null
+	 */
+	getDatabasePath():Uint8Array|null{
+		if (this.db==null){
+			console.error('Database not initialized')
+			return null
+		}
+		const data = this.db.export();
+		// const blob = new Blob([data], { type: 'application/octet-stream' });
+		// const url = window.URL.createObjectURL(blob);
+		
+		return data;
+	}
+	/**
+	 * 当前数据库的目录
+	 */
+	setDefaultDirectory(directory: string){
+		if (this.db==null){
+			console.error('Database not initialized')
+			return
+		}
+		
+		
+	}
+	/**
+	 * 设置数据库密码
+	 * 空值或者null即删除密码
+	 */
+	setPassword(password: string|null = null){
+		if (this.db==null){
+			console.error('Database not initialized')
+			return
+		}
+		this.config.password = password
+		this.config.encryption = password!=null&&!!password
+	}
+}

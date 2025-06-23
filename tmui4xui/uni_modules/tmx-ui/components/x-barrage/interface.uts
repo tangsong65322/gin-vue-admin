@@ -1,0 +1,8 @@
+export  type BARRAGE_ITEM_AR = {
+	id:string,
+	top:string,
+	parentIndex:number,
+	chirenIndex:number,
+	label:string,
+	delay:number
+}

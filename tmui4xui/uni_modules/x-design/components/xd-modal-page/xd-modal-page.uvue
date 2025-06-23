@@ -1,0 +1,53 @@
+<template>
+	<view  :id="guid">
+		<view>
+			<text>445fdsf枯顶替顶替</text>
+		</view>
+		<view v-if="showmodal">
+			<slot></slot>
+		</view>
+	</view>
+	<x-button @click="show">显示</x-button>
+	<x-button @click="hide">隐藏</x-button>
+</template>
+<script setup lang="uts">
+	import { xModalPage } from '@/uni_modules/x-design';
+	const guid = "xdModal-"+Math.random().toString(16).substring(2,20)
+	const modal = new xModalPage()
+	const showmodal = ref(false)
+	const createpage = ()=>{
+		let ele = uni.getElementById(guid) as UniElement|null;
+		modal.setView(ele)
+	}
+	const show = ()=>{
+		if(!showmodal.value){
+			showmodal.value = true;
+			setTimeout(function() {
+				modal.show()
+			}, 250);
+		}
+		
+	}
+	const hide = ()=>{
+		modal.hide()
+	}
+	onMounted(()=>{
+		uni.$once('onReady',()=>{
+			createpage()
+		})
+		
+		setTimeout(function() {
+			show()
+		}, 1500);
+	})
+</script>
+<style lang="css" scoped>
+	.xdModalPage{
+		display: flex;
+	}
+
+	.xdModalPageOff{
+		display: none;
+	}
+	
+</style>

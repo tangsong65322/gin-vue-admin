@@ -1,0 +1,72 @@
+import { NWPathMonitor, NWPath, NWInterface } from 'Network';
+import { DispatchQueue } from "Dispatch"
+import { xNetworkType } from "../interface"
+let network = new NWPathMonitor()
+
+@UTSJS.keepAlive
+export function xNetChange(call : (conecting : boolean) => void) {
+	network.pathUpdateHandler = (nwpath : NWPath) => {
+		if (nwpath.status == NWPath.Status.satisfied) {
+			DispatchQueue.main.async(execute = () : void => {
+				call(true)
+			})
+		} else {
+			DispatchQueue.main.async(execute = () : void => {
+				call(false)
+			})
+		}
+	}
+	network.start(queue = DispatchQueue.global())
+}
+export function xUnNetChange() {
+	let network = new NWPathMonitor()
+	network.cancel()
+}
+
+//当前是否有网络。
+export function isNetworkAvailable() : Promise<boolean> {
+	return new Promise((res) => {
+		let network2 = new NWPathMonitor()
+		network2.pathUpdateHandler = (nwpath : NWPath) => {
+			if (nwpath.status == NWPath.Status.satisfied) {
+				DispatchQueue.main.async(execute = () : void => {
+					res(true)
+				})
+			} else {
+				DispatchQueue.main.async(execute = () : void => {
+					res(false)
+				})
+			}
+			network2.cancel()
+		}
+		network2.start(queue = DispatchQueue.global())
+	})
+}
+
+export function getNetworkType() : Promise<xNetworkType | null> {
+	return new Promise((res) => {
+		let network2 = new NWPathMonitor()
+		network2.pathUpdateHandler = (nwpath : NWPath) => {
+			if (nwpath.status == NWPath.Status.satisfied) {
+				DispatchQueue.main.async(execute = () : void => {
+					if (nwpath.usesInterfaceType(NWInterface.InterfaceType.wifi)) {
+						res('WiFi')
+					} else if (nwpath.usesInterfaceType(NWInterface.InterfaceType.cellular)) {
+						res('Mobile')
+					} else if (nwpath.usesInterfaceType(NWInterface.InterfaceType.wiredEthernet)) {
+						res('WiredNetwork')
+					} else {
+						res('Other')
+					}
+
+				})
+			} else {
+				DispatchQueue.main.async(execute = () : void => {
+					res(null)
+				})
+			}
+			network2.cancel()
+		}
+		network2.start(queue = DispatchQueue.global())
+	})
+}

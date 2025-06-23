@@ -1,0 +1,8 @@
+export function setWindowGrey(ele:any|null=null) {
+	let dom = document.body;
+	dom.style.setProperty('filter', 'grayscale(1)')
+}
+export function removeWindowGrey(ele:any|null=null) {
+	let dom = document.body;
+	dom.style.removeProperty('filter')
+}

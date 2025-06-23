@@ -1,0 +1,12 @@
+/**
+ * 获取窗口截图
+ */
+export function getRootShotImage(callback : (str : string) => void) {
+	callback("")
+}
+/**
+ * 获取指定元素截图
+ */
+export function getElementShotImage(ele:UniElement|null, callback : (str : string) => void) {
+	callback("")
+}

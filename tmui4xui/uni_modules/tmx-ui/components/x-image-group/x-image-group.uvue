@@ -1,0 +1,259 @@
+<script lang="ts">
+	import { type PropType } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit, getUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+
+	/**
+	 * @name 图集 xImageGroup
+	 * @description 主要是为了一些需要快速图片排版集的展示，比如评论图集，详情列表图集等，快速开发时使用。方便快捷。
+	 * @page /pages/index/image-group
+	 * @category 展示组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+
+			}
+		},
+		emits: [
+			/**
+			 * 图片项目被点击
+			 * @param {UTSJSONobj} item - 项目
+			 */
+			'click'
+		],
+		props: {
+			/**
+			 * 图片列表
+			 * 只要包含有url字段即可。
+			 * label需要在图片显示的文本字段，如果没有不要出现此字段
+			 * 如果提供了temp缩略图，会优先展示temp字段，预览时采用url原图
+			 * {url:string,label?:string,temp?:string}
+			 */
+			list: {
+				type: Array as PropType<UTSJSONObject[]>,
+				default: () : UTSJSONObject[] => [] as UTSJSONObject[]
+			},
+			/**
+			 * 显示的模式见：https://doc.dcloud.net.cn/uni-app-x/component/image.html
+			 */
+			model: {
+				type: String,
+				default: "scaleToFill"
+			},
+			/**
+			 * 图片高,不要使用auto，%，
+			 */
+			height: {
+				type: String,
+				default: "100"
+			},
+			/**
+			 * 图片宽,不要使用auto，可以%值
+			 */
+			width: {
+				type: String,
+				default: "33.33%"
+			},
+			/**
+			 * 间隙
+			 */
+			gutter: {
+				type: String,
+				default: "2"
+			},
+			/**
+			 * inset表示文本在图片上
+			 * ouuter表示文本在正文展示
+			 * 不要动态修改
+			 */
+			labelModel: {
+				type: String as PropType<'inset' | 'outter'>,
+				default: "inset"
+			},
+			/**
+			 * 如果有文字显示文字的大小
+			 */
+			labelFontSize: {
+				type: String,
+				default: "14"
+			},
+			/**
+			 * 如果有文字，显示文字的颜色
+			 */
+			labelFontColor: {
+				type: String,
+				default: "white"
+			},
+			/**
+			 * 如果有文字，显示文字的颜色，暗黑时为空时取白
+			 */
+			darkLabelFontColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 是否预览图片
+			 */
+			preview: {
+				type: Boolean,
+				default: true
+			},
+			round:{
+				type:String,
+				default:'0'
+			}
+		},
+		computed: {
+			_list() : UTSJSONObject[] {
+				return this.list
+			},
+			_labelFontColor() : string {
+				if (xConfig.dark == 'dark') {
+					if (this.darkLabelFontColor != '') return getDefaultColor(this.darkLabelFontColor)
+					return "#ffffff"
+				}
+				return getDefaultColor(this.labelFontColor)
+			},
+			_gutter() : string {
+				return checkIsCssUnit(this.gutter, xConfig.unit)
+			},
+			_labelFontSize() : string {
+				let fontSize = checkIsCssUnit(this.labelFontSize, xConfig.unit);
+				if (xConfig.fontScale == 1) return fontSize;
+				let sizeNumber = parseInt(fontSize)
+				if (isNaN(sizeNumber)) {
+					sizeNumber = 14
+				}
+				return (sizeNumber * xConfig.fontScale).toString() + getUnit(fontSize)
+			},
+			_width() : string {
+				return checkIsCssUnit(this.width, xConfig.unit)
+			},
+			_height() : string {
+				return checkIsCssUnit(this.height, xConfig.unit)
+			},
+			_round():string{
+				return checkIsCssUnit(this.round, xConfig.unit)
+			}
+		},
+		methods: {
+			showUrlList(item : UTSJSONObject) : string {
+				let url = item.getString('url');
+				url = url == null ? '' : url
+				let temp = item.getString('temp');
+				if (temp != null) return temp;
+				return url;
+			},
+			showLabel(item : UTSJSONObject) : string {
+				let label = item.getString('label');
+				label = label == null ? '' : label
+
+				return label;
+			},
+			onClick(item : UTSJSONObject,index:number) {
+				let url = item.getString('url');
+				url = url == null ? '' : url
+				let listurl = this._list.map((el : UTSJSONObject) : string => {
+					let temurl = el.getString('url');
+					temurl = temurl == null ? '' : temurl
+					return temurl;
+				})
+				if(this.preview){
+					uni.previewImage({
+						current: url,
+						urls: listurl as string[]
+					})
+				}
+				
+
+				this.$emit('click', item)
+			}
+		}
+	}
+</script>
+<template>
+	<view class="xImageGroup">
+		<view @click="onClick(item,index)" v-for="(item,index) in _list" :key="index" class="xImageGroupWrap"
+			:style="{padding:_gutter,width:_width,height:_height,borderRadius:_round}">
+			<view class="xImageGroupWrapBox">
+				<x-image :round="_round" :ratio="1" width="100%" height="100%" style="height: 100%;width:100%" :model="model" :preview="false" :src="showUrlList(item)"></x-image>
+			</view>
+			<!-- margin:labelModel=='inset'?_gutter:'0px' -->
+			<view v-if="showLabel(item)!=''" class="xImageGroupLabelBox" :style="{
+				position:labelModel=='inset'?'absolute':'static',
+				}">
+				<view class="xImageGroupLabelBoxPadding" :style="{
+					margin:labelModel=='inset'?_gutter:'0px',
+					padding: labelModel=='inset'?'20rpx':'20rpx 0px',
+					borderRadius:_round,
+					'background-image':  labelModel=='inset'?'linear-gradient(to bottom,rgba(0,0,0,0),rgba(0,0,0,0.9))':''
+				}">
+					<text :style="{fontSize:_labelFontSize,color:_labelFontColor}"
+						class="xImageGroupLabelLabel">{{showLabel(item)}}</text>
+				</view>
+			</view>
+		</view>
+	</view>
+</template>
+<style scoped>
+	.xImageGroupLabelBox {
+		z-index: 2;
+		left: 0px;
+		bottom: 0px;
+		pointer-events: none;
+		width: 100%;
+		/* #ifdef MP || WEB */
+		box-sizing: border-box;
+		/* #endif */
+	}
+
+	.xImageGroupLabelBoxPadding {
+
+		/* background-image: linear-gradient(to bottom,rgba(0,0,0,0),rgba(0,0,0,0.9)); */
+	}
+
+	.xImageGroupLabelLabel {
+
+		/* color:white; */
+		lines: 1;
+		/* #ifdef WEB */
+		display: -webkit-box;
+		-webkit-line-clamp: 1;
+		-webkit-box-orient: vertical;
+		text-overflow: ellipsis;
+		overflow: hidden;
+		word-break: break-all;
+		/* #endif */
+	}
+
+	.xImageGroupWrap {
+		display: flex;
+		flex-direction: column;
+		align-items: stretch;
+		position: relative;
+		/* #ifdef MP || WEB */
+		box-sizing: border-box;
+		/* #endif */
+	}
+
+	.xImageGroupWrapBox {
+		flex: 1;
+		pointer-events: none;
+
+	}
+
+	.xImageGroup {
+		display: flex;
+		flex-direction: row;
+		justify-content: flex-start;
+		align-items: flex-start;
+		flex-wrap: wrap;
+	}
+</style>

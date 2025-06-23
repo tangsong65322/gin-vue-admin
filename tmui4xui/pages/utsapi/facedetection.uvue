@@ -1,0 +1,76 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1;">
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">人脸检测 xFacedetection</x-text>
+			<x-text color="#999999">
+				目前仅支持安卓图片及视频实时检测.ios支持图片上检测.请在光线良好地方使用.
+			</x-text>
+		</x-sheet>
+		
+		<x-sheet>
+			<view style="width:300px;height:300px;background-color: black;margin: 30px auto;border-radius: 150px;"
+				id="camrea"></view>
+			<x-text color="black" font-size="32" _style="text-align: center;" dark-color="black">{{chatTips}}</x-text>
+			<x-button :block="true" @click="openCamrea">相机检测(仅安卓)</x-button>
+			<x-button class="my-16" :block="true" @click="checkFace">识别人脸</x-button>
+		</x-sheet>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script setup lang="ts">
+	import { xSqlite, } from "@/uni_modules/x-sqlite-s"
+	import { checkFaceByImage, checkFaceByCamra, checkCamraPermissions, type XFACE_CHECK_OPTS, type XFACE_EVENT_CHECK_SUCCESS, XFACE_EVENT_SUCCESS } from "@/uni_modules/x-facedetection"
+	const SQL = new xSqlite()
+	const chatTips = ref("")
+	const checkFace = () => {
+		checkFaceByImage({
+			success(data : XFACE_EVENT_CHECK_SUCCESS) {
+				console.log("data:", data)
+			},
+			enter(data : XFACE_EVENT_SUCCESS[], maps : string) {
+				console.log("enterData:", maps)
+			}
+		} as XFACE_CHECK_OPTS)
+	}
+
+	const openCamrea = () => {
+		const instTipsCn = new Map<string, string>([
+			['ins_start_left', '向左转头'],
+			['ins_start_right', '向右转头'],
+			['ins_start_downUp', '点点头'],
+			['ins_start_eyeOplenClose', '眨一眨眼'],
+			['ins_start_monthOpenClose', '张一张嘴'],
+		])
+		checkCamraPermissions((isAuth : boolean) => {
+			if (isAuth) {
+				checkFaceByCamra({
+					viewId: "camrea",
+					instruction: ["left", "right", "downUp", "eyeOplenClose", "monthOpenClose"],
+					insTipsEvent(tips) {
+						if (tips == 'start') {
+							chatTips.value = "开始检测"
+						} else if (tips == 'end') {
+							chatTips.value = "结束检测"
+						} else {
+							chatTips.value = instTipsCn.get(tips) ?? ""
+						}
+					},
+					success(data) {
+						console.log("data:", data)
+					},
+					fail(er) {
+						console.error(er)
+					}
+				} as XFACE_CHECK_OPTS)
+			}
+		})
+	}
+</script>
+
+<style>
+
+</style>

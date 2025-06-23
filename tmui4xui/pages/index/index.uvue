@@ -1,0 +1,226 @@
+<template>
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor"
+			:front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+	
+	<x-navbar  :showNavBack="false" titleFontSize="20" bg-color="#f5f5f5" active-bg-color="white"
+		title="TMUI4 x 1.1.14">
+		<template v-slot:left>
+			<!-- #ifndef MP -->
+			<view @click="opendMenu" class="pa-16" >
+				<x-icon font-size="22" :name="_isOpenedMenu?'close-large-line':'menu-line'"></x-icon>
+			</view>
+			<!-- #endif -->
+			<!-- #ifdef MP -->
+			<x-icon @click="share" class="ml-16" font-size="22" name="share-line"></x-icon>
+			<!-- #endif -->
+		</template>
+		<!-- #ifndef MP -->
+		<template v-slot:right>
+			<x-icon @click="share" class="mr-16" font-size="22" name="share-line"></x-icon>
+		</template>
+		<!-- #endif -->
+	</x-navbar>
+		
+	<swiper :duration="0" :circular="true" :current="current" @change="swiperChange" class="flex-1">
+		<swiper-item>
+			<home-uvue v-if="isReady"></home-uvue>
+		</swiper-item>
+		<swiper-item>
+			<search-uvue v-if="isReady&&(pagesStatus.get(1)==true)"></search-uvue>
+		</swiper-item>
+		<swiper-item>
+			<demo-uvue v-if="isReady&&(pagesStatus.get(2)==true)"></demo-uvue>
+		</swiper-item>
+		<swiper-item>
+			<myuser-uvue v-if="isReady&&(pagesStatus.get(3)==true)"></myuser-uvue>
+		</swiper-item>
+	</swiper>
+	
+
+	<x-tabbar 
+	v-if="isReady"
+	@click="tabsItemClick"
+	:is-canvas-render="false" :outIndex="2" v-model:autoTabbarHeight="autoTabbarHeight" color="#808080"  >
+		<template v-slot:item="{isactive,children,selfindex}">
+			<text v-if="selfindex!=2" :style="{color:(isactive as boolean)?_color:'#808080'}">
+				{{(children as TABBAR_ITEM).title}}
+			</text>
+		</template>
+	</x-tabbar>
+
+</template>
+
+<script lang="uts" setup>
+	import { TABBAR_ITEM_INFO,NAVIGATE_TYPE,TABBAR_ITEM } from "@/uni_modules/tmx-ui/interface.uts"
+	import { xStore, xDate } from "@/uni_modules/tmx-ui/index.uts"
+	import { demoStore } from "@/libs/demoStore.uts";
+	import homeUvue from "./components/home.uvue";
+	import searchUvue from "./components/search.uvue";
+	import demoUvue from "./components/demo.uvue";
+	import myuserUvue from "./components/myuser.uvue";
+	
+	import { showModal,X_MODAL_TYPE } from "@/uni_modules/x-modal-s";
+	import {setClipboardData} from "@/uni_modules/x-clipboard-s";
+	// #ifdef APP
+	import {xShare} from "@/uni_modules/x-share-s";
+	// #endif
+	// #ifdef MP
+	import { onShareAppMessage } from '@dcloudio/uni-app';
+	// #endif
+	import {openCameraApi} from "@/uni_modules/x-mlkit-scannig-s";
+	import {showLoading,hideXloading,XLOADINGS_TYPE} from "@/uni_modules/x-loading-s";
+	const isReady = ref(false)
+	const current = ref(0)
+	const _isOpenedMenu = computed(():boolean => demoStore.homeMenuOpened )
+	const _color = computed(():string => xStore.xConfig.color )
+
+	const tabsList = ref<TABBAR_ITEM_INFO[]>([
+		{title:"首页",icon:"home-smile-2-line",selectedIcon:"home-smile-2-fill",dotType:'dot'} as TABBAR_ITEM_INFO,
+		{title:"探索",icon:"drive-line",selectedIcon:"drive-fill"} as TABBAR_ITEM_INFO,
+		{title:"扫码",icon:"qr-scan-2-line",selectedIcon:"qr-scan-2-line"} as TABBAR_ITEM_INFO,
+		{title:"实战",icon:"bar-chart-2-line",selectedIcon:"bar-chart-2-fill",dotLabel:'99+',} as TABBAR_ITEM_INFO,
+		{title:"我的",icon:"group-line",selectedIcon:"group-fill"} as TABBAR_ITEM_INFO
+	])
+	
+	const autoTabbarHeight = ref(0)
+	//管理页面显示状态，如果已经显示过就直接显示，没有显示过隐藏不显示，以加快渲染速度。
+	const pagesStatus = new Map<number,boolean>([
+		[0,true],
+		[1,false],
+		[2,false],
+		[3,false],
+	])
+	
+	function opendMenu(){
+		if(demoStore.homeMenuOpened) return
+		uni.openDialogPage({
+			url:"/pages/index/menu",
+			success(ops){
+				demoStore.homeMenuOpened = true
+			}
+		})
+	}
+			
+	function swiperChange(evt:UniSwiperChangeEvent){
+		pagesStatus.set(evt.detail.current,true)
+		current.value = evt.detail.current
+		xStore.xTabbarConfig.tabbarActiveIndex = current.value>1?(current.value+1):current.value
+	}
+	
+	function share(){
+		// #ifdef WEB
+		setClipboardData("https://x-ui.design")
+		showModal({title:"提醒",content:"web端无法分享，已复制连接地址"})
+		// #endif
+		// #ifdef MP-WEIXIN
+		uni.showLoading({title:'...'})
+		uni.downloadFile({
+		    url:"https://tmui.design:8000/api_v2/public/qrcode.png",
+		    success: (res) => {
+		        uni.hideLoading()
+		        uni.showShareImageMenu(
+		            {
+		                path:res.tempFilePath,
+		                entrancePath:"/pages/index/index",
+		                fail(er){
+		                }
+		            }
+		        )
+		    },
+		    fail: (err) => {
+		        uni.hideLoading()
+		        uni.showModal({
+		            title:"提示",
+		            content:"分享失败，请重试",
+		            showCancel:false
+		        })
+		    }
+		})
+		// #endif
+		// #ifdef APP
+		showLoading({title:'处理中'} as XLOADINGS_TYPE)
+		uni.downloadFile({
+		    url:"https://tmui.design:8000/api_v2/public/qrcode.png",
+		    success: (res) => {
+		       setTimeout(function() {
+		       	hideXloading()
+		       	xShare("TMUI4X","image/*",null,res.tempFilePath)
+		       }, 500);
+		    },
+		    fail: (err) => {
+		        hideXloading()
+				showModal({title:"提醒",content:"分享失败，请重试",showCancel:false} as X_MODAL_TYPE)
+		    }
+		})
+		
+		// #endif
+	}
+	
+	function tabsItemClick(index:number){
+		if(index==2){
+			openCameraApi((str:string)=>{
+				console.log(str)
+				if(str!=''&&str.indexOf('/pages')>-1){
+					uni.navigateTo({
+						url:str
+					})
+				}else{
+					
+					setTimeout(()=>{
+						showModal({title:"提醒",content:"不是本应用地址。"} as X_MODAL_TYPE)
+					},150)
+				}
+			},false)
+		}else{
+			let cindex = index>2?index-1:index;
+			pagesStatus.set(cindex,true)
+			current.value = cindex
+		}
+	}
+	
+	onBeforeMount(()=>{
+		xStore.xTabbarConfig.list = tabsList.value;
+	})
+	
+	onReady(()=>{
+		isReady.value = true;
+		// #ifdef MP
+		onShareAppMessage(async () => {
+			return new Promise(async (res, rej) => {
+				res({
+					title:'tmui4.0x高性能的原生开发框架基于UTS'
+				})
+			})
+		})
+		// #endif
+	})
+	
+</script>
+
+<style lang="scss">
+	/* #ifdef MP */
+	page,body{
+		height:100vh;
+		display: flex;
+		flex-direction: column;
+	}
+	/* #endif */
+	
+	.pageBodyScroll {
+		transition-property: transform;
+		transition-duration: 350ms;
+		transition-timing-function: cubic-bezier(.42, .38, .15, .93);
+	}
+
+	.pageBodyScrollOn {
+		transform: translateX(640rpx) scale(1, 0.98);
+	}
+
+	.pageBodyScrollOff {
+		transform: translateX(0px) scale(1);
+	}
+</style>

@@ -1,0 +1,216 @@
+<template>
+	<view @click="onclick" class="xLink"
+		:style="{color:_color,fontSize:_fontSize,'text-decoration-line':props.line?'underline':'none'}">
+		<text v-if="_prefix!=''" :style="{
+			'font-family': 'remixicon',
+			'font-size':_fontSize,
+			'color':_color,
+			paddingRight:'5px'
+		}">{{_prefix}}</text>
+		<text
+		:style="{color:_color,fontSize:_fontSize}"
+		>
+			<!-- 
+			@slot 默认插槽，仅可放置文本 
+			 -->
+			<slot></slot>
+		</text>
+		<text v-if="_suffix!=''" :style="{
+			'font-family': 'remixicon',
+			'font-size':_fontSize,
+			'color':_color,
+			paddingLeft:'5px'
+		}">{{_suffix}}</text>
+	</view>
+</template>
+
+<script setup lang="ts">
+
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit, getUid, getUnit } from "../../core/util/xCoreUtil.uts"
+	import { PropType } from "vue"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { NAVIGATE_TYPE } from "../../interface.uts"
+	import remixicon from "../x-icon/remixicon.uts"
+	import {openWeb} from "@/uni_modules/x-openweb"
+	/**
+	 * @name 链接 xLink
+	 * @page /pages/index/link
+	 * @category 展示组件
+	 * @description 链接可以打开指定的页面,也可以打开外链(打开外链依赖于x-openweb插件,加密用户请联系发你源码自行源码编译)
+	 * 微信小程序无法打开外链,微信小程序正式版本pc版本可以打开外链,真机手机仅可打开应用内页面.
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	defineOptions({name:"xLink"})
+	
+	const emits = defineEmits(
+	[
+		/**
+		 * 点击事件
+		 */
+		'click'
+	])
+	const props = defineProps({
+		/**
+		 * 需要打开的链接,可以是页面地址也可以是网页链接地址.
+		 */
+		href: {
+			type: String,
+			default: ""
+		},
+		/**
+		 * 空值时取全局主题
+		 */
+		color: {
+			type: String,
+			default: ""
+		},
+		/**
+		 * 字号,rpx,px,单位均可
+		 */
+		fontSize: {
+			type: String,
+			default: "15"
+		},
+		/**
+		 * 是否需要下划线
+		 */
+		line: {
+			type: Boolean,
+			default: false
+		},
+		/**
+		 * 打开方式,如果是网页链接将启动新的窗口打开.
+		 */
+		openType: {
+			type: String as PropType<NAVIGATE_TYPE>,
+			default: "navigate"
+		},
+		/**
+		 * 前缀图标名称
+		 */
+		prefix: {
+			type: String,
+			default: "links-line"
+		},
+		/**
+		 * 后缀图标名称
+		 */
+		suffix: {
+			type: String,
+			default: ""
+		}
+	})
+	const _color = computed(() : string => {
+		if (props.color == "") {
+			return getDefaultColor(xConfig.color)
+		}
+		return getDefaultColor(props.color)
+	})
+	const getIcon = (icon : string) : string => {
+		let texts = ""
+		try {
+			let code = ''
+			// #ifdef APP-ANDROID
+			code = remixicon[icon] as string;
+			let codePoint = Integer.parseInt(code, 16);
+			let charArray = Character.toChars(codePoint);
+			texts = new String(charArray);
+			// #endif
+
+			// #ifndef APP-ANDROID
+
+			code = remixicon[icon] as string;
+			texts = String.fromCharCode(parseInt(code, 16));
+
+			// #endif
+
+		} catch (e) {
+
+			console.error("xicon解析失败。", e)
+		}
+
+		return texts
+	}
+	const _fontSize = computed(() : string => {
+		let fontSize = checkIsCssUnit(props.fontSize, xConfig.unit);
+		if (xConfig.fontScale == 1) return fontSize;
+		let sizeNumber = parseInt(fontSize)
+		if (isNaN(sizeNumber)) {
+			sizeNumber = 14
+		}
+		return (sizeNumber * xConfig.fontScale).toString() + getUnit(fontSize)
+	})
+	const _prefix = computed(() : string => {
+		if (props.prefix == '') return ''
+		return getIcon(props.prefix)
+	})
+	const _suffix = computed(() : string => {
+		if (props.suffix == '') return ''
+		return getIcon(props.suffix)
+	})
+
+	const onclick = () => {
+		console.log('click')
+		emits('click')
+		if (props.href == '') return;
+		let isHttpRef = props.href.indexOf(':')
+		let href = props.href;
+		if (isHttpRef > -1) {
+			openWeb(href)
+			return;
+		}
+		switch (props.openType) {
+			case 'navigateBack':
+				uni.navigateBack({})
+				break;
+			case 'navigate':
+				uni.navigateTo({
+					url: href
+				})
+				break;
+			case 'reLaunch':
+				uni.reLaunch({
+					url: href
+				})
+				break;
+			case 'redirect':
+				uni.redirectTo({
+					url: href
+				})
+				break;
+			case 'switchTab':
+				uni.switchTab({
+					url: href
+				})
+				break;
+			default: {
+
+				uni.navigateTo({
+					url: href
+				} as NavigateToOptions)
+				break;
+			}
+		}
+	}
+</script>
+
+<style scoped>
+	.xLink {
+		display: flex;
+		flex-direction: row;
+		/* #ifdef WEB */
+		cursor: pointer;
+		/* #endif */
+	}
+
+	/* #ifdef WEB */
+	.xLink:hover {
+		opacity: 0.7;
+	}
+
+	/* #endif */
+</style>

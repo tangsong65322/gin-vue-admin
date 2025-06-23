@@ -1,0 +1,435 @@
+/**
+ * 动画过渡函数
+ * @version 1.0.0
+ * @author tmzdy
+ * @host https://xui.tmui.design
+ * @description 异常简便，没有繁杂的配置选项，只有快速的开发部署。
+ */
+import bezier from "./bezier.uts"
+import { xTweenStatus, xTweenCallbackFunType, xTweenAnimate, xTweenEventCallFunType, xTweenEventCall } from "../../interface.uts"
+import { getUid } from "./xCoreUtil.uts";
+
+type FrameRequestCallback = (time:number)=>void;
+
+export class xTween {
+	private frameId : null | number = null;
+	//当前全局动画是否在执行中，只要有一个动画在执行就会是true
+	isRuning : boolean = false;
+	//所有动画是否结束
+	isStoping : boolean = true;
+	//刷新率，不会立即得出结题，需要有至少执行16ms才可能计算出帖率
+	frmae = 0
+	// 舞台是否在执行中
+	isRendering = false;
+
+	private _callListFun : xTweenEventCallFunType[] = []
+
+	private _frema_starttimes = 0
+
+	private enters : (listAni : xTweenEventCallFunType[], tims : number) => void = (listAni : xTweenEventCallFunType[], tims : number) => { }
+	private complete : () => void = () => { }
+
+	private lastTime = 0
+	private nextHandle = 0
+	// 存储回调函数的映射
+	private callbacks : Map<number, FrameRequestCallback> = new Map();
+
+	private easingList = new Map<string, number[]>([
+		["linear", [0.250, 0.250, 0.750, 0.750]],
+		["ease", [0.250, 0.100, 0.250, 1.000]],
+		["easeIn", [0.420, 0.000, 1.000, 1.000]],
+		["easeOut", [0.000, 0.000, 0.580, 1.000]],
+		["easeInOut", [0.420, 0.000, 0.580, 1.000]],
+		["easeInQuad", [0.550, 0.085, 0.680, 0.530]],
+		["easeOutQuad", [0.250, 0.460, 0.450, 0.940]],
+		["easeInOutQuad", [0.455, 0.030, 0.515, 0.955]],
+		["easeInCubic", [0.550, 0.055, 0.675, 0.190]],
+		["easeOutCubic", [0.215, 0.610, 0.355, 1.000]],
+		["easeInOutCubic", [0.645, 0.045, 0.355, 1.000]],
+		["easeInQuart", [0.895, 0.030, 0.685, 0.220]],
+		["easeOutQuart", [0.165, 0.840, 0.440, 1.000]],
+		["easeInOutQuart", [0.770, 0.000, 0.175, 1.000]],
+		["easeInQuint", [0.755, 0.050, 0.855, 0.060]],
+		["easeOutQuint", [0.230, 1.000, 0.320, 1.000]],
+		["easeInOutQuint", [0.860, 0.000, 0.070, 1.000]],
+		["easeInSine", [0.470, 0.000, 0.745, 0.715]],
+		["easeOutSine", [0.390, 0.575, 0.565, 1.000]],
+		["easeInOutSine", [0.445, 0.050, 0.550, 0.950]],
+		["easeInExpo", [0.950, 0.050, 0.795, 0.035]],
+		["easeOutExpo", [0.190, 1.000, 0.220, 1.000]],
+		["easeInOutExpo", [1.000, 0.000, 0.000, 1.000]],
+		["easeInCirc", [0.600, 0.040, 0.980, 0.335]],
+		["easeOutCirc", [0.075, 0.820, 0.165, 1.000]],
+		["easeInOutBack", [0.680, -0.550, 0.265, 1.550]],
+		["tmxEase", [0.42, 0.38, 0.15, 0.93]]
+	]);
+
+	constructor() {
+
+	}
+	private customRequestAnimationFrame(callback : FrameRequestCallback) : number {
+		const currTime : number = Date.now();
+		const timeToCall : number = Math.max(0, 16 - (currTime - this.lastTime));
+		const handle : number = this.nextHandle++;
+
+		this.callbacks.set(handle, callback);
+
+		const id = setTimeout(() => {
+			callback(currTime + timeToCall);
+		}, timeToCall);
+
+		this.lastTime = currTime + timeToCall;
+		return handle;
+	}
+
+	private customCancelAnimationFrame(handle : number) {
+		if (this.callbacks.has(handle)) {
+			this.callbacks.delete(handle);
+			clearTimeout(handle);
+		}
+	}
+
+	/**
+	 * 启动渲染,并非执行动画,执行动画需要使用play
+	 * 但如果不启动渲染,play中的动画都无法执行.
+	 */
+	startRender() : xTween {
+		this.isRendering = true;
+		if (this.frameId == null) {
+			this._run(this)
+		}
+		return this;
+	}
+	/**
+	 * 销毁渲染.
+	 */
+	destroy() {
+		if (this.frameId != null) {
+			// #ifdef APP||WEB
+			cancelAnimationFrame(this.frameId!)
+			// #endif
+			// #ifdef MP
+			this.customCancelAnimationFrame(this.frameId!)
+			// #endif
+		}
+		this.frameId = null;
+		this.isRendering = false;
+
+	}
+	getFrame() : number {
+		return this.frmae
+	}
+	/**
+	 * 所有事件动画执行完毕
+	 */
+	setComplete(call : () => void) : xTween {
+		this.complete = call
+		return this;
+	}
+
+	/**
+	 * 设置帖动画,舞台渲染执行帖函数
+	 * 它不是animate动画,没有进度,只会不停的执行.直接舞台渲染被注销.
+	 */
+	setEnter(call : (listAni : xTweenEventCallFunType[], tims : number) => void) : xTween {
+		this.enters = call
+		return this;
+	}
+	/**
+	 * 添加一个动画,可以重复加达到多个动画联合执行的效果
+	 * 并且 每一个动画都是独立存在,这样可以细微的控制每个动画
+	 * 来达到联合处理的效果.
+	 */
+	addAnimate(opts : xTweenAnimate) : string {
+		let uid = getUid();
+		let call : xTweenEventCall = (item : xTweenEventCallFunType) => { };
+
+		this._callListFun.push({
+			id: uid,
+			ease: this._getEasing(opts?.ease ?? 'linear'),
+			duration: opts.duration,
+			status: 1,
+			progress: 0,
+			oldProgeress: 0,
+			startTime: 0,
+			autoRemove: opts?.autoRemove != null ? (opts!.autoRemove as boolean) : true,
+			complete: opts?.complete != null ? (opts!.complete!) : call,
+			enter: opts?.enter != null ? (opts!.enter!) : call,
+			start: opts?.start != null ? (opts!.start!) : call,
+			pause: opts?.pause != null ? (opts!.pause!) : call,
+			loop: opts?.loop != null ? (opts!.loop!) : 1,
+			tyty: opts?.tyty != null ? (opts!.tyty!) : false,
+			step: opts?.step != null ? (opts!.step!) : 1,
+			_finishLoop: 0,
+			reverse: false
+		} as xTweenEventCallFunType)
+		return uid;
+	}
+	/**
+	 * 删除一个事件.
+	 * @param {string} uid 如果为null表示删除所有.
+	 */
+	removeAnimate(uid : string | null = null) : xTween {
+		if (uid == null) {
+			this._callListFun = [] as xTweenEventCallFunType[]
+		} else {
+			let index = this._getCallIndex(uid as string);
+			if (index > -1) {
+				this._callListFun.splice(index, 1)
+			}
+		}
+		return this;
+	}
+	/**
+	 * 播放动画。
+	 * @param {string|null} uid 动画id,如果不填写或者为null表示播放所有动画
+	 */
+	play(uid : string | null = null) {
+		if (uid != null && uid != '') {
+			let index = this._getCallIndex(uid! as string)
+			if (index > -1) {
+				let item = this._callListFun[index]
+				if (item.status == 1) {
+					this._by_run_set_status(item, 1)
+					this._by_run_item_callFun(item, 0)
+
+				}
+				// 马上要执行运行
+				this._by_run_set_status(item, 4)
+			}
+		} else {
+			for (let i = 0; i < this._callListFun.length; i++) {
+				let item = this._callListFun[i]
+				if (item.status == 1) {
+					this._by_run_set_status(item, 1)
+					this._by_run_item_callFun(item, 0)
+				}
+
+				this._by_run_set_status(item, 4)
+
+			}
+		}
+		this._setGlobaleStatus(1)
+	}
+	getAnimationListLen() : number {
+		return this._callListFun.length;
+	}
+	/**
+	 * 暂停动画。
+	 * @param {string|null} uid 动画id,如果不填写或者为null表示暂停所有动画
+	 */
+	pause(uid : string | null = null) : xTween {
+		if (uid != null && uid != '') {
+			let index = this._getCallIndex(uid! as string)
+			if (index > -1) {
+				let item = this._callListFun[index]
+
+				this._by_run_set_status(item, this._isLoopPauseing(item) ? 6 : 3)
+				this._by_run_item_callFun(item, item.progress)
+			}
+		} else {
+			for (let i = 0; i < this._callListFun.length; i++) {
+				let item = this._callListFun[i]
+				this._by_run_set_status(item, this._isLoopPauseing(item) ? 6 : 3)
+				this._by_run_item_callFun(item, item.progress)
+			}
+			this._setGlobaleStatus(2)
+		}
+		return this;
+	}
+	/**
+	 * 结束动画。
+	 * @param {string|null} uid 动画id,如果不填写或者为null表示结束所有动画
+	 */
+	stop(uid : string | null = null) : xTween {
+
+		if (uid != null && uid != '') {
+			let index = this._getCallIndex(uid! as string)
+			if (index > -1) {
+				let item = this._callListFun[index]
+				this._by_run_set_status(item, 2)
+				this._by_run_item_callFun(item, 1)
+			}
+		} else {
+			for (let i = 0; i < this._callListFun.length; i++) {
+				let item = this._callListFun[i]
+				this._by_run_set_status(item, 2)
+				this._by_run_item_callFun(item, 1)
+			}
+			this._callListFun = this._callListFun.filter((el : xTweenEventCallFunType) : boolean => !el.autoRemove)
+			this.enters(this._callListFun, 0)
+		}
+		return this;
+	}
+
+	private _getEasing(args : any) : xTweenCallbackFunType | null {
+		let fun : xTweenCallbackFunType | null = (x : number) : number => x;
+		if (typeof args == 'string') {
+			let animateNumber = this.easingList.get(args as string)
+			if (animateNumber != null) {
+				let ease = animateNumber! as number[]
+				fun = bezier(ease[0], ease[1], ease[2], ease[3])
+			}
+		} else if (Array.isArray(args)) {
+			let argsar = args as number[]
+			if (argsar.length == 4) {
+				fun = bezier(argsar[0], argsar[1], argsar[2], argsar[3])
+			}
+		} else {
+			let animateNumber = this.easingList.get('linear')
+			if (animateNumber != null) {
+				let ease = animateNumber! as number[]
+				fun = bezier(ease[0], ease[1], ease[2], ease[3])
+			}
+		}
+
+		return fun;
+	}
+	private _getCallIndex(uid : string) : number {
+		let index = -1;
+		for (let i = 0; i < this._callListFun.length; i++) {
+			let item = this._callListFun[i]
+			if (item.id == uid) {
+				index = i;
+				break;
+			}
+		}
+		return index;
+	}
+
+	private _isLoopPauseing(item : xTweenEventCallFunType) : boolean {
+		if (item.loop == -1) return true;
+		if (item._finishLoop < item.loop) return true;
+		return false;
+	}
+	private _by_run_set_status(item : xTweenEventCallFunType, status : xTweenStatus) {
+
+		if (status == 1) {
+			item.progress = 0
+			item.startTime = 0
+			item._finishLoop = 0
+		} else if (status == 2) {
+			item.progress = 1;
+			item.oldProgeress = 0;
+			item.startTime = 0
+			item._finishLoop = item.loop
+		} else if (status == 3) {
+			item.startTime = 0
+			item.oldProgeress = item.progress
+		} else if (status == 5) {
+			item.progress = 0
+			item.oldProgeress = 0
+			item.startTime = 0
+		} else if (status == 6) {
+			item.oldProgeress = item.progress
+			item.startTime = 0
+		}
+		item.status = status;
+	}
+
+	private _by_run_item_callFun(item : xTweenEventCallFunType, progress : number) {
+		if (item.status == 1) {
+			item.start(item)
+		}
+		if (item.status == 2) {
+			item.enter(item)
+			item.complete(item)
+			if (item.autoRemove) {
+				let index = this._getCallIndex(item.id)
+				if (index > -1) {
+					this._callListFun.splice(index, 1)
+				}
+			}
+		}
+		if (item.status == 3) {
+			item.pause(item)
+		}
+		if (item.status == 4 || item.status == 5) {
+			item.enter(item)
+		}
+	}
+
+	/**
+	 * 1:执行中
+	 * 2:未在执行动画。
+	 */
+	private _setGlobaleStatus(type : number) {
+		if (type == 1) {
+			this.isRuning = true;
+			this.isStoping = false
+		} else if (type == 2) {
+			this.isRuning = false;
+			this.isStoping = true
+		}
+	}
+
+	private _run(_this : xTween) {
+		if (!_this.isRendering) {
+			return;
+		}
+		function actions(times:number){
+			_this.enters(_this._callListFun, times)
+			if (_this._frema_starttimes == 0) {
+				_this._frema_starttimes = times
+			}
+			let isAllCompelted = true;
+			for (let i = 0; i < _this._callListFun.length; i++) {
+				let item = _this._callListFun[i]
+				let isFinishStatus = 1
+				if (item.status == 4 || item.status == 5) {
+					if (item.startTime == 0) {
+						item.startTime = times
+					}
+					// 计算当前进度
+					if (_this.frmae > 0) {
+						let progress = Math.min((times - (item.startTime)) / item.duration + item.oldProgeress, 1);
+			
+						let eas = item.ease!
+						item.progress = eas(progress)
+			
+						if (progress == isFinishStatus) {
+							item._finishLoop += 1
+							if (item.loop > 0) {
+								if (item.loop == item._finishLoop) {
+									_this._by_run_set_status(item, 2)
+									_this._by_run_item_callFun(item, isFinishStatus)
+			
+								} else {
+									_this._by_run_set_status(item, 5)
+								}
+							} else if (item.loop == -1) {
+								_this._by_run_set_status(item, 5)
+							}
+							if (item.tyty) {
+								item.reverse = !item.reverse
+							}
+						}
+						_this._by_run_item_callFun(item, item.progress)
+					}
+			
+				}
+				if (item.progress != 2) {
+					isAllCompelted = false;
+				}
+			}
+			if (isAllCompelted && _this.isRuning) {
+				_this.complete()
+				_this._setGlobaleStatus(2)
+			}
+			_this.frmae = Math.ceil(1000 / (times - _this._frema_starttimes))
+			_this._frema_starttimes = times
+			_this._run(_this)
+		}
+		// #ifdef APP||WEB
+		_this.frameId = requestAnimationFrame((times : number) => {
+			actions(times)
+		})
+		// #endif
+		// #ifdef MP
+		_this.frameId = this.customRequestAnimationFrame((times : number) => {
+			actions(times)
+		})
+		// #endif
+	}
+
+}

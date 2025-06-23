@@ -1,0 +1,649 @@
+<script lang="ts">
+	import { PropType, SlotsType } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit, getUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { TABS_ITEM_INFO, TABS_ITEM } from "../../interface.uts"
+	import tabsItem from "./tabs-item.uvue"
+
+	/**
+	 * @name 标签导航 xTabs
+	 * @description 标签导航，常用于页面顶部导航时使用，角标，数字角标功能。
+	 * @page /pages/index/tabs
+	 * @category 导航组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | x | ☑️ | 4.14+ | 1.0.0 |
+	 */
+	export default {
+		components: {
+			tabsItem
+		},
+		data() {
+			return {
+				nowActiveId: "",
+				id: ('xTabsItem-' + getUid() + "-") as string,
+				lineLeft: 0,
+				lineWidth: 18,
+				activeLineWidth: 18,
+				totalWidth: 0,
+				scrollNowPosId: "",
+				first: true,
+				isQueryOk: false,
+				tid: 0,
+				tid2: 12,
+				tid3: 133,
+				tabsList: new Map<string, NodeInfo>(),
+				tabsItemLeft:0,
+				tabasItemCenter:false
+			}
+		},
+		slots: Object as SlotsType<{
+			default : {
+				active : boolean,
+				item : TABS_ITEM
+			},
+		}>,
+		emits: [
+
+			/**
+			 * 单元格被点击
+			 * @param {TABS ITEM} item - 类型是：TABS_ITEM 当前选中的标签项
+			 * @param {number} index - 当前选中的标签项index
+			 */
+			'change',
+
+			'update:modelValue'
+		],
+		props: {
+			/**
+			 * 圆角
+			 */
+			round: {
+				type: String,
+				default: "0"
+			},
+			/**
+			 * 宽
+			 */
+			width: {
+				type: String,
+				default: "auto"
+			},
+			/**
+			 * 高是必填，不可为auto。
+			 */
+			height: {
+				type: String,
+				default: "44"
+			},
+			/**
+			 * 背景
+			 */
+			color: {
+				type: String,
+				default: "white"
+			},
+			/**
+			 * 暗黑时的背景,如果不填写读取sheetDark
+			 */
+			darkColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 文本激活时的颜色 ，空值默认取全局主题色
+			 */
+			activeTitleColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 文本默认颜色
+			 */
+			titleColor: {
+				type: String,
+				default: "#888888"
+			},
+			/**
+			 * 文本默认的暗黑颜色，如果不填写取白色。
+			 */
+			darkTitleColor: {
+				type: String,
+				default: "#cacaca"
+			},
+			/**
+			 * 底部线条激活时的颜色，空值默认取全局主题色
+			 */
+			lineColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 渐变背景
+			 * 数组格式如下
+				 [方向:top,bottom,left,right,自定义值例:45deg,颜色1:,颜色2]
+			 * 例:['left','black','white']
+			 * 如提供，暗黑及主题失效。
+			 */
+			lineGradient: {
+				type: Array as PropType<string[]>,
+				default: () : string[] => []
+			},
+			lineHeight: {
+				type: String,
+				default: "2px"
+			},
+			/**
+			 * 底部的线条是与项目等宽还是固定默认的小宽度。
+			 */
+			lineFull: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 是否显示底部的线条
+			 */
+			showLine: {
+				type: Boolean,
+				default: true
+			},
+			list: {
+				type: Array as PropType<TABS_ITEM_INFO[]>,
+				default: () : TABS_ITEM_INFO[] => [] as TABS_ITEM_INFO[]
+			},
+			/**
+			 * id值，如果数据没有提供id属性，这里的id就是索引（但要转换为字符串）
+			 * 等同v-model
+			 */
+			modelValue: {
+				type: String,
+				default: "0"
+			},
+			/**
+			 * 标题字号
+			 */
+			fontSize: {
+				type: String,
+				default: "16"
+			},
+			/**
+			 * 激活时的标题字号
+			 */
+			activeFontSize: {
+				type: String,
+				default: "16"
+			},
+			/**
+			 * 项目宽度，默认是auto，即自动根据标题内容自动撑开宽度。
+			 * 如果你想均分（适合不超过一行），比如你有5个标签，那么你就可以设置为"20%"
+			 */
+			itemWidth: {
+				type: String,
+				default: "auto"
+			},
+			/**
+			 * 标题的padding是左右的间隙。
+			 */
+			titlePadding: {
+				type: String,
+				default: "12px"
+			},
+			/**
+			 * 是否让内容居中显示,
+			 * 默认为false,如果你开启了项目超过了宽出现滚动时,会自动向左对齐以便
+			 * 让内容能滚动,但如果内容少于可滚动,内容会自动居中.
+			 */
+			isItemCenter: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 激活时的项目自定样式
+			 */
+			itemActiveStyle:{
+				type:String,
+				default:""
+			},
+			/**
+			 * 未激活时的项目自定样式
+			 */
+			itemStyle:{
+				type:String,
+				default:""
+			},
+			/**
+			 * 激活时文本样式
+			 */
+			textActiveStyle:{
+				type:String,
+				default:""
+			},
+			/**
+			 * 未激活时的文本样式
+			 */
+			textStyle:{
+				type:String,
+				default:""
+			}
+		},
+		computed: {
+			_itemActiveStyle() : string {
+				return this.itemActiveStyle
+			},
+			_itemStyle() : string {
+				return this.itemStyle
+			},
+			_textActiveStyle() : string {
+				return this.textActiveStyle
+			},
+			_textStyle() : string {
+				return this.textStyle
+			},
+			_showLine() : boolean {
+				return this.showLine
+			},
+			_lineFull() : boolean {
+				return this.lineFull
+			},
+			_fontSize() : string {
+				let fontSize = checkIsCssUnit(this.fontSize, xConfig.unit);
+				if (xConfig.fontScale == 1) return fontSize;
+				let sizeNumber = parseInt(fontSize)
+				if (isNaN(sizeNumber)) {
+					sizeNumber = 14
+				}
+				return (sizeNumber * xConfig.fontScale).toString() + getUnit(fontSize)
+			},
+			_itemWidth() : string {
+				return checkIsCssUnit(this.itemWidth, xConfig.unit)
+			},
+			_round() : string {
+				return checkIsCssUnit(this.round, xConfig.unit)
+			},
+			_activeFontSize() : string {
+				return checkIsCssUnit(this.activeFontSize, xConfig.unit)
+			},
+			_lineHeight() : string {
+				return checkIsCssUnit(this.lineHeight, xConfig.unit)
+			},
+
+			_height() : string {
+				return checkIsCssUnit(this.height, xConfig.unit)
+			},
+			_width() : string {
+				return checkIsCssUnit(this.width, xConfig.unit)
+			},
+			_color() : string {
+				if (xConfig.dark == 'dark') {
+					if (this.darkColor != '') {
+						return getDefaultColor(this.darkColor)
+					} else {
+						return getDefaultColor(xConfig.sheetDarkColor)
+					}
+				}
+				return getDefaultColor(this.color)
+			},
+			_activeTitleColor() : string {
+
+				if (this.activeTitleColor == "") return getDefaultColor(xConfig.color);
+				return getDefaultColor(this.activeTitleColor)
+			},
+			_titleColor() : string {
+				if (xConfig.dark == 'dark') {
+					if (this.darkTitleColor != '') {
+						return getDefaultColor(this.darkTitleColor)
+					} else {
+						return "#ffffff"
+					}
+				}
+				return getDefaultColor(this.titleColor)
+			},
+			_lineColor() : Map<string,string> {
+				let colorstyleline = new Map<string,string>()
+				if(this.lineGradient.length==3){
+					
+					let dirs = this.lineGradient[0]
+					if (this.lineGradient[0] == 'top') {
+						dirs = 'to top'
+					} else if (this.lineGradient[0] == 'bottom') {
+						dirs = 'to bottom'
+					} else if (this.lineGradient[0] == 'left') {
+						dirs = 'to left'
+					} else if (this.lineGradient[0] == 'right') {
+						dirs = 'to right'
+					}
+					colorstyleline.set('backgroundImage',`linear-gradient(${dirs},${this.lineGradient[1]},${this.lineGradient[2]})`)
+					
+					return colorstyleline;
+				}
+				if (this.lineColor == ""){
+					colorstyleline.set('background-color',this._activeTitleColor)
+					return colorstyleline;
+				}
+				colorstyleline.set('background-color',this.lineColor)
+				return colorstyleline
+			},
+			_list() : TABS_ITEM[] {
+
+				let lits = [] as TABS_ITEM[]
+
+				this.list.forEach((el : TABS_ITEM_INFO, index : number) => {
+					lits.push({
+						id: el.id == null ? index.toString() : el.id! as string,
+						title: el.title,
+						disabled: el.disabled == null ? false : el.disabled! as boolean,
+						dotType: el.dotType == null ? "" : el.dotType! as string,
+						dotColor: el.dotColor == null ? "red" : getDefaultColor(el.dotColor!),
+						dotText: el.dotText == null ? "" : el.dotText! as string,
+
+					} as TABS_ITEM)
+				})
+
+				return lits
+			}
+
+		},
+		mounted() {
+			this.nowActiveId = this.modelValue;
+			this.$nextTick(() => {
+				this.setActiveId(this.nowActiveId)
+			})
+			uni.$on("onResize", this.resizechange)
+		},
+
+		beforeUnmount() {
+			uni.$off("onResize", this.resizechange)
+			clearTimeout(this.tid)
+			clearTimeout(this.tid2)
+			clearTimeout(this.tid3)
+		},
+		watch: {
+			modelValue(newValue : string) {
+				if (newValue == this.nowActiveId || newValue == "") return;
+				this.setActiveId(newValue)
+			},
+			list() {
+				let t = this;
+				clearTimeout(this.tid3)
+				this.tid3 = setTimeout(function() {
+					t.setActiveId(t.nowActiveId)
+				}, 50);
+			}
+		},
+		methods: {
+			resizechange() {
+				this.setActiveId(this.nowActiveId)
+			},
+			setActiveId(newValue : string) {
+				if (this._list.length == 0) return;
+				let index = -1
+				for (let i = 0; i < this._list.length; i++) {
+					if (this._list[i].id == newValue) {
+						index = i;
+						break;
+					}
+				}
+				index = Math.max(0, index)
+				let newval = this._list[index].id
+				this.nowActiveId = newval;
+
+				if (index > -1) {
+
+					this.getNodeInfo(this.id + index.toString())
+				}
+			},
+			getNodeInfo(id : string) {
+
+				if (this._list.length == 0) return;
+
+				let _this = this;
+				uni.createSelectorQuery().in(this)
+					.select(".xTabs")
+					.boundingClientRect((ret) => {
+						let parentNodeinfo = ret as NodeInfo
+						
+						try {
+							uni.createSelectorQuery().in(this)
+								.selectAll(".xTabsItem")
+								.boundingClientRect().exec((ret) => {
+
+									let allItems = ret[0] as NodeInfo[];
+									// console.log(allItems)
+									let totalWidth = 0;
+									// 从索引0算起，计算line的位置在每个项目的中间
+									let totalNowWidth = 0;
+									let isNow = false;
+									let nowNndex = 0;
+									allItems.forEach((el : NodeInfo, index : number) => {
+										totalWidth += el.width!;
+										
+										if (id == el.id) {
+											isNow = true;
+											nowNndex = index;
+										}
+										if (!isNow) {
+											totalNowWidth += el.width!;
+										}
+										
+									})
+									let realTargetlinewidth = allItems[nowNndex].width!
+									if (_this._lineFull) {
+										_this.activeLineWidth = allItems[nowNndex].width!
+									} else {
+										_this.activeLineWidth = (allItems[nowNndex].width!) / 2
+										realTargetlinewidth = _this.lineWidth
+									}
+									
+									let parentWidth = parentNodeinfo.width!;
+									
+									let center = parentWidth/2
+									_this.tabasItemCenter = (totalWidth - parentWidth)<=0&&_this.isItemCenter
+									
+									_this.tabsItemLeft = totalNowWidth - parentWidth + center + (allItems[nowNndex].width!)/2
+									
+									_this.first = false;
+								
+									
+									let totalNowWidths = totalNowWidth + ((allItems[nowNndex].width!) - _this.activeLineWidth) / 2;
+
+									_this.totalWidth = totalWidth;
+									
+									if (!_this._lineFull) {
+										// 下面的动画在4.71版本比较卡，先暂时隐藏。
+										// clearTimeout(_this.tid2)
+										// _this.tid2 = setTimeout(function () {
+										// 	_this.activeLineWidth = realTargetlinewidth
+											// let etotalNowWidth = totalNowWidth + ((allItems[nowNndex].width!) - realTargetlinewidth) / 2;
+											// _this.totalWidth = totalWidth;
+											// _this.lineLeft = etotalNowWidth;
+										// }, 100);
+										_this.activeLineWidth = realTargetlinewidth
+										let etotalNowWidth = totalNowWidth + ((allItems[nowNndex].width!) - realTargetlinewidth) / 2;
+										_this.lineLeft = etotalNowWidth;
+									}else{
+										_this.lineLeft = totalNowWidths;
+									}
+
+
+									let idnex = Math.max(0, nowNndex)
+									_this.scrollNowPosId = allItems[idnex].id!;
+
+
+								})
+
+						} catch (e) {
+							console.error("xTabs:没有找到对应的index id，请检查你的数据。")
+						}
+					})
+					.exec()
+
+			},
+			lineTranslateEnd() {
+
+			},
+			itemClick(item : TABS_ITEM, classid : string, index : number) {
+				if (item.disabled || this.nowActiveId == item.id) {
+					return;
+				}
+				this.nowActiveId = item.id;
+				/**
+				 * 当前选中的id值等同v-model
+				 */
+				this.$emit('update:modelValue', item.id);
+				/**
+				 * 切换时触发
+				 * @param {TABS_ITEM} item 当前选中的标签项
+				 * @param {number} index 当前选中的标签项index
+				 */
+				this.$emit('change', item, index);
+
+				this.getNodeInfo(classid)
+			},
+
+			tabsItemChange(recnode : NodeInfo, rectId : string) {
+				this.tabsList.set(rectId, recnode)
+				this.calcTotalWidth()
+			},
+			tabsItemDestory(id : string) {
+				this.tabsList.delete(id)
+				this.calcTotalWidth()
+			},
+			calcTotalWidth() {
+				let totalWidth = 0;
+				this.tabsList.forEach((item : NodeInfo, id : string) => {
+					totalWidth += item.width!
+				})
+				this.totalWidth = totalWidth;
+			}
+		},
+	}
+</script>
+<template>
+	<view class="xTabs" ref="xTabs" :style="{width:_width,borderRadius:_round,height:_height,backgroundColor:_color,}">
+		<!-- :scroll-into-view="scrollNowPosId" -->
+		<scroll-view :scroll-left="tabsItemLeft" :scroll-with-animation="true" class="xTabsWrap"
+			:show-scrollbar="false" 
+			<!-- #ifndef MP-WEIXIN -->
+			:style="{justifyContent:tabasItemCenter?'center':'flex-start'}"
+			<!-- #endif -->
+			direction="horizontal">
+			<!-- #ifdef MP-WEIXIN -->
+			<view class="xTabsWrapMp" :style="{justifyContent:tabasItemCenter?'center':'flex-start'}">
+			<!-- #endif -->
+				<view class="xTabsItem" ref="xTabsItem" :id="(id+index)" v-for="(item,index) in _list" :key="index"
+					:style="[
+						{width:_itemWidth,height:'100%',opacity:item.disabled?'0.6':1},
+						nowActiveId==item.id?_itemActiveStyle:_itemStyle
+					]"
+					@click="itemClick(item,(id+index),index)">
+				
+					<tabs-item :id="(id+index)" @change="tabsItemChange" @destory="tabsItemDestory" :style="{with:'100%'}">
+						<x-badge v-if="item.dotType!=''" :bg-color="item.dotColor" :dot="item.dotType=='dot'"
+							:label="item.dotText">
+				
+							<view :key="index" :style="{paddingLeft:titlePadding,paddingRight:titlePadding}">
+								<!--
+								 @slot tabs循环节点插槽,插件名称是tabs_+item.id,使用时请务必通过
+								 -->
+								<slot :item="item" :active="nowActiveId==item.id">
+									<text class="xTabsWrapText" :style="[
+										{
+											fontSize:nowActiveId==item.id?_activeFontSize:_fontSize,
+											color:nowActiveId==item.id?_activeTitleColor:_titleColor,
+										},
+										nowActiveId==item.id?_textActiveStyle:_textStyle
+									]">
+										{{item.title}}
+									</text>
+								</slot>
+							</view>
+						</x-badge>
+						<view v-else>
+							<slot :item="item" :active="nowActiveId==item.id">
+								<text class="xTabsWrapText" :style="{
+									fontSize:nowActiveId==item.id?_activeFontSize:_fontSize,
+									color:nowActiveId==item.id?_activeTitleColor:_titleColor,
+									paddingLeft:titlePadding,
+									paddingRight:titlePadding
+								}">
+									{{item.title}}
+								</text>
+							</slot>
+						</view>
+					</tabs-item>
+				
+				</view>
+			
+				<view class="xLineWrap" :style="{width:totalWidth+'px',height:_lineHeight}">
+					<!-- 未知原因，首次进来更改下面的width是不生效的。只好利用first来切换刷新下。 -->
+					<view @transitionend="lineTranslateEnd" v-if="_showLine&&!first" class="xLine" ref="xLine"
+						:style="[{transform:`translateX(${lineLeft}px)`,height:_lineHeight,width:activeLineWidth+'px',borderRadius:_lineHeight},_lineColor]">
+					</view>
+				</view>
+			<!-- #ifdef MP-WEIXIN -->
+			</view>
+			<!-- #endif -->
+		</scroll-view>
+	</view>
+</template>
+<style scoped>
+	.xTabs{
+		overflow: hidden;
+	}
+	.xTabsItem {
+		display: flex;
+		flex-direction: row;
+		flex-wrap: nowrap;
+		justify-content: center;
+		align-items: center;
+		
+	}
+
+	.xLineWrap {
+		position: absolute;
+		bottom: 0px;
+
+	}
+
+	.xLine {
+		width: 20px;
+		position: relative;
+		left: 0px;
+		transition-duration: 300ms;
+		transition-property: transform, width;
+		transition-timing-function: cubic-bezier(0, 0.55, 0.45, 1);
+	}
+
+	.xTabsWrap {
+		width: 100%;
+		height: 100%;
+		display: flex;
+		flex-direction: row;
+		flex-wrap: nowrap;
+		/* justify-content: flex-start; */
+		
+		/* align-items: center; */
+	}
+	.xTabsWrapMp {
+		/* #ifdef MP-WEIXIN */
+		z-index: 1;
+		min-width: 100%;
+		height: 100%;
+		display: flex;
+		flex-direction: row;
+		flex-wrap: nowrap;
+		box-sizing: border-box;
+		white-space:nowrap;
+		/* #endif */
+	}
+
+	.xTabsWrapText {
+		/* transition-duration: 350ms;
+		transition-property: font-size, color;
+		transition-timing-function: cubic-bezier(0, 0.55, 0.45, 1); */
+		white-space: nowrap;
+	}
+</style>

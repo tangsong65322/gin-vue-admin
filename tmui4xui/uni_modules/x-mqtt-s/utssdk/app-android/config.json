@@ -1,0 +1,6 @@
+{
+  "minSdkVersion": "21",
+  "dependencies":[
+	  "com.github.hannesa2:paho.mqtt.android:4.2.4"
+	]
+}

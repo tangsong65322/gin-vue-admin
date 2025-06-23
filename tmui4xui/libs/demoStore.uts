@@ -1,0 +1,6 @@
+type demoStoreType = {
+	homeMenuOpened:boolean
+}
+export const demoStore = reactive({
+	homeMenuOpened:false
+} as demoStoreType)

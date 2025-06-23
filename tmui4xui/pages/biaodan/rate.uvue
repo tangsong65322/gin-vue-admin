@@ -1,0 +1,62 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b ">评分 Rate</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-rate></x-rate>
+		</x-sheet>
+		
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b ">设置总评分数量</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-rate :model-value="6" :count="10"></x-rate>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b ">开启半星</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-rate :half="true" :model-value="2.5" size="32" :count="5"></x-rate>
+		</x-sheet>
+		
+		
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b ">只读</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-rate color="#f4a64c" :model-value="5" :readonly="true"></x-rate>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b ">显示右侧评分值</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-rate color='success' :model-value="5" :show-score="true"></x-rate>
+		</x-sheet>
+		
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+
+			};
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

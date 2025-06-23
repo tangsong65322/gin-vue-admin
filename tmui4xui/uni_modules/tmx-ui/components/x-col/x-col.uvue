@@ -1,0 +1,75 @@
+<script lang="ts" setup>
+	import { type PropType } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+
+	/**
+	 * @name 布局子组件 xCol
+	 * @description 只能放置中x-row中布局
+	 * @page /pages/index/row
+	 * @category 常用组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	defineOptions({ name: "xCol" })
+	export type xColPropsType = {
+		/**
+		 * 列宽，它是根据row定义的总列宽计算具体的宽度值。
+		 */
+		span:number,
+		/**
+		 * 可以输入%,数字或者带单位的偏移量
+		 */
+		offset:string,
+		/**
+		 * 自定义内部标签的style
+		 * 请使用_style
+		 */
+		_style:string,
+		/**
+		 * 自定义内部标签的class,
+		 * 请使用_class
+		 */
+		_class:string
+	}
+	const props = withDefaults(defineProps<xColPropsType>(), {
+		span:3,
+		offset:'0',
+		_style:"",
+		_class:""
+	})
+	const emit = defineEmits<{
+		/**
+		 * 单元格被点击的事件
+		 */
+		click: []
+	}>()
+	const xRowCol = inject('xRowCol', computed(():number=>12))
+	const _width = computed(():string=>{
+		return (props.span / xRowCol.value * 100).toFixed(6) + '%'
+	})
+	const __style = computed(():string=>props._style)
+	const ___class = computed(():string=>props._class)
+	const _offset = computed(():string=>{
+		return checkIsCssUnit(props.offset, xConfig.unit)
+	})
+	const onClick = () => {
+		emit("click")
+	}
+</script>
+<template>
+	<view @click="onClick" :style="{width:_width,transform:`translateX(${_offset})`}">
+		<view :style="[__style]" :class="___class">
+			<!-- 
+			 @slot 默认插槽
+			 -->
+			<slot></slot>
+		</view>
+	</view>
+</template>
+<style scoped>
+</style>

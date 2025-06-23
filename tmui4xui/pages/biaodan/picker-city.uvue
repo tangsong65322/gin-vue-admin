@@ -1,0 +1,58 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+		<!-- #ifdef MP-WEIXIN -->
+		<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+			<navigation-bar :background-color="xThemeConfigNavBgColor"
+				:front-color="xThemeConfigNavFontColor"></navigation-bar>
+		</page-meta>
+		<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">城市选择器 xPickerCity</x-text>
+			<x-text color="#999999"
+				class="mb-20">是x-picker-view封装的弹出式，城市数据已经封装好。如果想更换更多级或者1级啥的可见数据站点：https://github.com/uiwjs/province-city-china</x-text>
+
+			<x-picker-city :list="list" v-model:model-str="modelStr" v-model="modelValueIds">
+				<x-button :block="true">选择城市</x-button>
+			</x-picker-city>
+
+			<x-sheet color="info" dark-color="#333" :margin="['0','16']">
+				<x-text>
+					选中项：{{modelValueIds.join('-')}}
+				</x-text>
+				<x-text>
+					回显文本：{{modelStr}}
+				</x-text>
+			</x-sheet>
+			<x-button :block="true" @click="fuzhi">赋值</x-button>
+		</x-sheet>
+
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	import cityscode from "./level.min.uts"
+	import { X_PICKER_X_ITEM } from "@/uni_modules/tmx-ui/interface.uts"
+	export default {
+		data() {
+			return {
+				modelValueIds: [] as string[],
+				modelStr: "",
+				list: JSON.parseArray<X_PICKER_X_ITEM>(cityscode)
+			};
+		},
+		methods: {
+			fuzhi() {
+				this.modelValueIds = ['350000', '350600', '350626']
+				// this.modelStr = '北京市-市辖区-东城区'
+			}
+		},
+	}
+</script>
+
+<style lang="scss">
+
+</style>

@@ -1,0 +1,129 @@
+<script lang="ts">
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { checkIsCssUnit, getUnit } from "../../core/util/xCoreUtil.uts"
+	
+	/**
+	 * @name 骨架屏 xSkeleton
+	 * @page /pages/index/skeleton
+	 * @category 展示组件
+	 * @description 样式灵活多变。
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				myopacity: 1,
+				tid: 0
+			}
+		},
+		props: {
+			/**
+			 * 高，单位允许%，auto,'数字',rpx,px
+			 */
+			height: {
+				type: String,
+				default: '12'
+			},
+			/**
+			 * 宽，单位允许%，auto,'数字',rpx,px
+			 */
+			width: {
+				type: String,
+				default: "auto"
+			},
+			/**
+			 * 背景颜色
+			 */
+			color: {
+				type: String,
+				default: '#e4e4e4'
+			},
+			/**
+			 * 暗黑背景颜色
+			 */
+			darkColor: {
+				type: String,
+				default: '#323232'
+			},
+			/**
+			 * 圆角
+			 */
+			round: {
+				type: String,
+				default: "3"
+			},
+			/**
+			 * 动画间隔
+			 */
+			duration: {
+				type: String,
+				default: '900ms'
+			}
+		},
+		computed: {
+			_width() : string {
+				return checkIsCssUnit(this.width, xConfig.unit)
+			},
+			_height() : string {
+				return checkIsCssUnit(this.height, xConfig.unit)
+			},
+			_round() : string {
+				return checkIsCssUnit(this.round, xConfig.unit)
+			},
+			_color() : string {
+				if (xConfig.dark == 'dark') {
+					return getDefaultColor(this.darkColor)
+				}
+				return getDefaultColor(this.color)
+			}
+		},
+		mounted() {
+			let t = this
+			this.tid = setTimeout(function () {
+				t.myopacity = 0
+			}, 300);
+
+		},
+		beforeUnmount() {
+			clearTimeout(this.tid)
+		},
+		activated() {
+			// 兼容web
+			// #ifdef WEB
+			clearTimeout(this.tid)
+			let t = this
+			t.myopacity = 0
+			this.tid = setTimeout(function () {
+				t.myopacity = 0
+			}, 300);
+			// #endif
+		},
+		methods: {
+			animationEnd() {
+				this.myopacity = this.myopacity == 1 ? 0 : 1
+			}
+		}
+	}
+</script>
+<template>
+	<view ref="xSkeleton" class="xSkeleton" @transitionend="animationEnd" :style="{
+		backgroundColor:_color,
+		width:_width,
+		height:_height,
+		borderRadius:_round,
+		opacity:myopacity,
+		transitionDuration:duration
+	}"></view>
+</template>
+<style scoped>
+	.xSkeleton {
+		transition-timing-function: linear;
+		/* transition-duration: 900ms; */
+		transition-property: opacity;
+
+	}
+</style>

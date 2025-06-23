@@ -1,0 +1,155 @@
+import { Shape } from './shape.uts';
+import { CanvasRotateCenter, IShapeBoundRect, IShapeOptional, IShapeVector2d } from '../interface.uts';
+import { ICanvas } from '@/uni_modules/tmx-ui/core/canvas/ICanvas.uts';
+
+export class ILine extends Shape {
+	override type = 'ILine'
+	// 线条的起点和终点
+	
+
+	constructor(config: IShapeOptional, canvas: ICanvas) {
+		super(config, canvas);
+		// 更新宽高
+		this.updateDimensions();
+	}
+
+	// 设置起点
+	setStart(x: number, y: number): ILine {
+		this.pointStart.x = x;
+		this.pointStart.y = y;
+		this.updateDimensions();
+		this.needsUpdate = true;
+		return this;
+	}
+
+	// 设置终点
+	setEnd(x: number, y: number): ILine {
+		this.pointEnd.x = x;
+		this.pointEnd.y = y;
+		this.updateDimensions();
+		this.needsUpdate = true;
+		return this;
+	}
+
+	// 根据参考点旋转线条
+	rotateByPoint(isStartPoint: boolean, angle: number): ILine {
+		// 计算线条当前长度
+		const length = Math.sqrt(
+			Math.pow(this.pointEnd.x - this.pointStart.x, 2) +
+			Math.pow(this.pointEnd.y - this.pointStart.y, 2)
+		);
+
+		// 将角度转换为弧度，顺时针为正，逆时针为负
+		const radians = angle * Math.PI / 180;
+
+		if (isStartPoint) {
+			// 以起点为基准旋转
+			this.pointEnd.x = this.pointStart.x + length * Math.cos(radians);
+			this.pointEnd.y = this.pointStart.y + length * Math.sin(radians);
+		} else {
+			// 以终点为基准旋转
+			this.pointStart.x = this.pointEnd.x - length * Math.cos(radians);
+			this.pointStart.y = this.pointEnd.y - length * Math.sin(radians);
+		}
+
+		// 更新线条的包围盒尺寸
+		this.updateDimensions();
+		this.needsUpdate = true;
+		return this;
+	}
+
+	// 更新线条的包围盒尺寸
+	private updateDimensions(): void {
+		this.x = Math.min(this.pointStart.x, this.pointEnd.x);
+		this.y = Math.min(this.pointStart.y, this.pointEnd.y);
+		this.width = Math.abs(this.pointEnd.x - this.pointStart.x);
+		this.height = Math.abs(this.pointEnd.y - this.pointStart.y);
+	}
+
+	override getBoundRect(): IShapeBoundRect {
+		return {
+			x: this.x,
+			y: this.y,
+			width: this.width,
+			height: this.height
+		} as IShapeBoundRect;
+	}
+
+	override draw(ctx: CanvasRenderingContext2D) {
+		if (this.visible == false) return;
+		super.draw(ctx);
+
+		ctx.beginPath();
+		ctx.moveTo(this.pointStart.x, this.pointStart.y);
+		ctx.lineTo(this.pointEnd.x, this.pointEnd.y);
+		
+		
+		if (this.stroke != "") {
+			ctx.stroke();
+		}
+		ctx.restore();
+	}
+
+	// 获取两点之间的角度，以起点为基准，水平向右为0度，顺时针为正，逆时针为负
+	getAngle(): number {
+		// 直接使用起点和终点计算角度
+		const angle = Math.atan2(this.pointEnd.y - this.pointStart.y, this.pointEnd.x - this.pointStart.x);
+		
+		// 将弧度转换为角度，顺时针为正
+		return angle * (180 / Math.PI);
+	}
+	getAngleByPoints(start:IShapeVector2d,end:IShapeVector2d): number {
+		// 直接使用起点和终点计算角度
+		const angle = Math.atan2(start.y - end.y, end.x - start.x);
+		
+		// 将弧度转换为角度，顺时针为正，逆时针为负
+		return angle * (180 / Math.PI);
+	}
+
+	// 计算线条绕指定锚点的旋转角度
+	getAngleByAnchor(anchorX: number, anchorY: number, startX: number, startY: number, endX: number, endY: number): number {
+		// 计算向量1：从锚点到起点的向量
+		const vector1X = startX - anchorX;
+		const vector1Y = startY - anchorY;
+		
+		// 计算向量2：从锚点到终点的向量
+		const vector2X = endX - anchorX;
+		const vector2Y = endY - anchorY;
+		
+		// 使用向量的点积和叉积计算角度
+		const dotProduct = vector1X * vector2X + vector1Y * vector2Y;
+		const crossProduct = vector1X * vector2Y - vector1Y * vector2X;
+		
+		// 计算角度（弧度）
+		const angle = Math.atan2(crossProduct, dotProduct);
+		
+		// 将弧度转换为角度，并确保角度范围在-180到180度之间
+		return angle * (180 / Math.PI);
+	}
+
+	override isPointInPath(x: number, y: number, shapeId: string): boolean {
+		if (!this.visible || (shapeId != "" && shapeId != this.id)) return false;
+		
+		// 计算点到线段的距离
+		const lineLength = Math.sqrt(
+			Math.pow(this.pointEnd.x - this.pointStart.x, 2) + 
+			Math.pow(this.pointEnd.y - this.pointStart.y, 2)
+		);
+		
+		if (lineLength === 0) return false;
+		
+		const distance = Math.abs(
+			(this.pointEnd.y - this.pointStart.y) * x -
+			(this.pointEnd.x - this.pointStart.x) * y +
+			this.pointEnd.x * this.pointStart.y -
+			this.pointEnd.y * this.pointStart.x
+		) / lineLength;
+		
+		// 判断点是否在线段的范围内
+		const dotProduct = 
+			((x - this.pointStart.x) * (this.pointEnd.x - this.pointStart.x) +
+			(y - this.pointStart.y) * (this.pointEnd.y - this.pointStart.y)) / lineLength;
+		
+		return distance <= this.strokeWidth && dotProduct >= 0 && dotProduct <= lineLength;
+	}
+}

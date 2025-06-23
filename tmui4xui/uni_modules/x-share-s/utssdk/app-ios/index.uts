@@ -1,0 +1,44 @@
+import { UIActivity , UIActivityViewController , UIImage } from 'UIKit';
+import { CGRect } from 'CoreFoundation';
+import { URL , FileManager } from 'Foundation';
+/**
+ * ios端如何要分享文本和图片之外的文件，可能需要对应的目标应用sdk，比如微信需要微信的sdk
+ * 但很多应用不需要，比如我分享个pdf文件，大多应用是可以接收，但微信不行，必须要人家的sdk
+ * 图片不需要，可以给任何应用
+ * 文本不能微信，但其它应用可以，比如记事本，备忘录等等。
+ */
+
+
+/**
+ * title:分享的标题
+ * minType:分享的内容格式
+ * 文本：text/plain
+ * 图片：image/*
+ * 音频: audio/*
+ * 视频: video/*
+ * 任意文件: *//* ,注意不要//,只要单个/就行。编译器无法注释单个/
+* 
+*/
+export function xShare(title : string, minType : string, content ?: string, path ?: string) {
+	let items = [] as any[];
+	if(minType=='text/plain'){
+		items = [content];
+	}else if(minType=='image/*'&&path!=null){
+		items = [new UIImage(contentsOfFile = path!)]
+	}else{
+		let pfh = path! as string;
+		let filepath = UTSiOS.convert2AbsFullPath(pfh)
+		let dataURL = new URL(fileURLWithPath = filepath)
+		let data = UTSiOS.try(new Data(contentsOf = dataURL),"?")
+		if(data==null) return;
+		// items = [FileManager.default.contents(atPath =path!),new URL.init(fileURLWithPath=pfh)]
+		items = [data,new URL.init(fileURLWithPath=filepath)]
+	}
+	DispatchQueue.main.async(execute=():void => {
+		let activityViewController =new UIActivityViewController(activityItems = items,applicationActivities = nil)
+		UTSiOS.getCurrentViewController().present(activityViewController, animated = true, completion = () => {
+			console.log('分享成功。')
+		})
+	})
+	
+}

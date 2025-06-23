@@ -1,0 +1,221 @@
+<script lang="ts">
+	import { type PropType } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor, colorAddDeepen } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { XGRID_ITEM_INFO } from "../../interface.uts"
+
+	/**
+	 * @name 宫格子组件 xGridItem
+	 * @description 不可单独使用，请把放它在x-grid标签内。
+	 * @page /pages/index/grid
+	 * @category 导航组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				isHover: false
+			}
+		},
+		emits: [
+			/**
+			 * 项目点击时触发。
+			 */
+			'click'],
+		props: {
+			/**
+			 * 背景，默认为空值，读取父xGrid组件统一设置的背景
+			 * 如果这里提供了，以子组件为准。
+			 */
+			bgColor: {
+				type: String,
+				default: 'transparent'
+			},
+			/**
+			 * 图标
+			 */
+			icon: {
+				type: String,
+				default: ''
+			},
+			/**
+			 * 文字
+			 */
+			text: {
+				type: String,
+				default: ''
+			},
+			/**
+			 * 图标颜色，空值取父xGrid的值
+			 */
+			iconColor: {
+				type: String,
+				default: ''
+			},
+			/**
+			 * 文字亮系，空值取父xGrid的值
+			 */
+			textColor: {
+				type: String,
+				default: ''
+			},
+			/**
+			 * 文字暗黑颜色，空值取父xGrid的值
+			 */
+			textDarkColor: {
+				type: String,
+				default: ''
+			},
+			/**
+			 * 文字大小，空值取父xGrid的值
+			 */
+			fontSize: {
+				type: String,
+				default: ''
+			},
+			/**
+			 * 图标大小，空值取父xGrid的值
+			 */
+			iconSize: {
+				type: String,
+				default: ''
+			},
+			/**
+			 * 是否开启链接hover效果
+			 */
+			isLink: {
+				type: Boolean,
+				default: true
+			},
+			/**
+			 * url链接地址，如果填写，点击会跳转
+			 */
+			url: {
+				type: String,
+				default: ''
+			},
+		},
+		inject: {
+			xGridRows: {
+				type: Number,
+				default: 1
+			},
+			xGridHeight: {
+				type: String,
+				default: "0rpx"
+			},
+			xGridItemBgColor: {
+				type: String,
+				default: "transparent"
+			},
+			xGridItemGlobalProptype: {
+				type: Object as PropType<XGRID_ITEM_INFO>,
+				default: {
+					iconSize: '',
+					fontSize: '',
+					iconColor: '',
+					fontColor: '',
+					fontDarkColor:'',
+					darkIconColor: ''
+				} as XGRID_ITEM_INFO
+			}
+		},
+		computed: {
+			_xGridRows() : number {
+				return this.xGridRows
+			},
+			_xGridRowsBl() : string {
+				return (100 / this.xGridRows).toString() + '%'
+			},
+			_bgColor() : string {
+				if (this.bgColor == '') return this.xGridItemBgColor
+				return getDefaultColor(this.bgColor)
+			},
+			_hoverbgColor() : string {
+				if (!this.isLink && this.url == '') return this._bgColor
+				if (this.bgColor == '') return colorAddDeepen(this.xGridItemBgColor)
+				return colorAddDeepen(this.bgColor)
+			},
+
+			_text() : string {
+				return this.text;
+			},
+			_icon() : string {
+				return this.icon;
+			},
+			_iconColor() : string {
+				if (this.iconColor == "") {
+					if (xConfig.dark == 'dark') {
+						return this.xGridItemGlobalProptype.darkIconColor
+					}
+					return this.xGridItemGlobalProptype.iconColor
+				}
+				return getDefaultColor(this.iconColor);
+			},
+			_textColor() : string {
+				if (xConfig.dark == 'dark') {
+					if (this.textDarkColor == "") return this.xGridItemGlobalProptype.fontDarkColor==''?'#ffffff':this.xGridItemGlobalProptype.fontDarkColor
+					return this.textDarkColor
+				}
+				if (this.textColor == "") return this.xGridItemGlobalProptype.fontColor
+				return getDefaultColor(this.textColor);
+			},
+			_fontSize() : string {
+				if (this.fontSize == "") return this.xGridItemGlobalProptype.fontSize
+				return checkIsCssUnit(this.fontSize, 'rpx');
+			},
+			_iconSize() : string {
+				if (this.iconSize == "") return this.xGridItemGlobalProptype.iconSize
+				return checkIsCssUnit(this.iconSize, 'rpx');
+			}
+		},
+		methods: {
+			itemClick() {
+				if (this.url != '') {
+					uni.navigateTo({
+						url: this.url
+					})
+					return;
+				}
+				/**
+				 * 项目点击时触发。
+				 */
+				this.$emit('click')
+			}
+		},
+	}
+</script>
+<template>
+	<view @touchend="isHover = false" @touchcancel="isHover = false" @touchstart="isHover = true" @click="itemClick"
+		class="xGridItem"
+		:style="{width:_xGridRowsBl,height:xGridHeight,backgroundColor:isHover?_hoverbgColor:_bgColor}">
+		<!-- 
+		@slot 默认插槽内容
+		 -->
+		<slot>
+			<x-icon v-if="_icon" :name="_icon" :font-size="_iconSize" :color="_iconColor"
+				style="margin-bottom: 8px;"></x-icon>
+			<text :style="{
+				color:_textColor,
+				fontSize:_fontSize,
+				textAlign:'center'
+			}">{{_text}}</text>
+		</slot>
+		
+		
+	</view>
+</template>
+<style scoped>
+	.xGridItem {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		overflow: hidden;
+	}
+</style>

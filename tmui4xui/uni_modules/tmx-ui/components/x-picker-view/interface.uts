@@ -1,0 +1,9 @@
+	/**
+	 * 项目结构
+	 */
+	export type X_PICKER_X_ITEM = {
+		id : string,
+		title : string,
+		children : X_PICKER_X_ITEM[],
+		disabled : boolean,
+	}

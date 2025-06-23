@@ -1,0 +1,37 @@
+export const setClipboardData = (data : string):Promise<boolean>  => {
+	// 设置剪切板内容
+	return new Promise((resl,rejl)=>{
+		navigator.clipboard.writeText(data)
+			.then(() => {
+				resl(true)
+			})
+			.catch(err => {
+				rejl(false)
+				console.error('无法设置剪切板数据', err);
+			});
+	})
+}
+export const getClipboardData = ():Promise<string>  => {
+	let inputdom = document.createElement("input") as HTMLInputElement;
+	inputdom.style.setProperty('opacity', '0')
+	inputdom.style.setProperty('position', 'absolute')
+	document.body.appendChild(inputdom)
+	inputdom.focus();
+	document.execCommand('paste');
+	return new Promise((resl,rejl)=>{
+		if (!document.execCommand('paste')) {
+			navigator.clipboard.readText()
+				.then(text => {
+					resl(text)
+				})
+				.catch(err => {
+					rejl('没有权限')
+					console.error('无法读取剪切板内容: ', err);
+				});
+		} else {
+			resl(inputdom.value)
+		}
+		inputdom.remove()
+	})
+
+}

@@ -1,0 +1,17 @@
+import Dialog from "android.app.Dialog"
+import Context from 'android.content.Context'
+import { UTSAndroid } from "io.dcloud.uts";
+import FrameLayout from "android.widget.FrameLayout";
+class xOverflay {
+	
+	static show(){
+		let d = new Dialog(UTSAndroid.getUniActivity() as Context);
+		
+		let decorView = UTSAndroid.getUniActivity()!.window.decorView;
+		let frameContent = decorView.findViewById<FrameLayout>(android.R.id.content) as FrameLayout
+		// test
+		d.show();
+	}
+}
+
+export default xOverflay;

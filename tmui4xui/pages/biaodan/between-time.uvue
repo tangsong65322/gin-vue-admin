@@ -1,0 +1,58 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">时间区间选择 xBetweenTime</x-text>
+			<x-text color="#999999">快速的时间区间选择器，方便时间选择自动判断前后时间大小并校正。</x-text>
+		</x-sheet>
+		
+		<x-sheet>
+		
+			<x-between-time start="2020-1-9" end="2026-5-26" v-model="newdata" v-model:model-str="nowVal">
+				<x-button :block="true">打开时间</x-button>
+			</x-between-time>
+
+			<x-sheet :margin="['0','24']" color="#f5f5f5" dark-color="#333">
+				<x-text color="#999999">选中的值：{{newdata}}</x-text>
+				<x-text color="#999999">经format的值：{{nowVal}}</x-text>
+			</x-sheet>
+			<x-button skin='thin' :block="true" @click="newdata = ['2024-3-21','2026-1-13']">赋值</x-button>
+		</x-sheet>
+	
+		<x-sheet>
+			<x-text font-size="18" class="text-weight-b mb-20">设置快捷按钮</x-text>
+			<x-between-time :quick-date="['d','y','7','30','p1','p2']" start="2020-1-9" end="2026-5-26" v-model="newdata" v-model:model-str="nowVal">
+				<x-button :block="true">打开时间</x-button>
+			</x-between-time>
+		
+		</x-sheet>
+		
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script lang="ts">
+	export default {
+		data() {
+
+			return {
+				nowVal: "",
+				newdata:[] as string[]
+			};
+		},
+		methods: {
+
+		},
+	}
+</script>
+
+<style lang="scss">
+
+</style>

@@ -1,0 +1,478 @@
+<template>
+	<view class="xPickerVirtualList" ref="xPickerVirtualList">
+		<scroll-view
+			:show-scrollbar="false"
+			@scroll="onScroll" 
+			class="xPickerVirtualListScrollBody" 
+			direction="vertical"
+			:scroll-y="true"
+			:scroll-top="scrollTopTop"
+			:style="{ height: containerHeight + 'px', width: containerWidth + 'px' }"
+			@scrolltoupper="scrolltoupper"
+			@scrolltolower="scrolltolower"
+		>
+			<!-- 虚拟占位容器，用于撑开滚动高度 -->
+			<view class="xPickerVirtualListContainer" :style="{ height: totalHeight + 'px', paddingTop: offsetY + 'px' }">
+				<!-- 渲染可见的选项 -->
+				<view 
+					v-for="(item, index) in renderList" 
+					:key="startIndex + index"
+					:style="{height: itemHeight + 'px'}"
+					class="xPickerVirtualListItem"
+					@click="onItemClick(startIndex + index)"
+				>
+					<text class="xPickerVirtualListItemText" :style="{
+						fontSize: fontSize,
+						lineHeight: 1.1,
+						fontWeight: (startIndex + index) == selectedIndex ? 'bold' : 'inherit',
+						opacity: item.disabled ? 0.4 : ((startIndex + index) == selectedIndex ? 1 : 0.6),
+						color: isDark ? 'rgba(255,255,255,0.8)' : '#000000'
+					}">
+						{{item.title}}
+					</text>
+				</view>
+			</view>
+			
+			<!-- 选中指示器 -->
+			<view class="xPickerIndicator" :style="{
+				top: indicatorTop + 'px',
+				height: itemHeight + 'px',
+				backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+				borderRadius: '10px'
+			}"></view>
+		</scroll-view>
+	</view>
+</template>
+
+<script setup lang="ts">
+	import { getCurrentInstance, ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { checkIsCssUnit, getUnit, rpx2px } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { X_PICKER_X_ITEM } from "../../interface.uts"
+	
+	/**
+	 * Picker虚拟列表组件属性类型定义
+	 */
+	type xPickerVirtualListType = {
+		/** 项目高度，不可用auto,只能是数字（默认为px),带单位的rpx,px */
+		itemHeight: string,
+		/** 渲染显示多少个,它不是最终的渲染数量，是最少数量，因为内部还有个缓存数量 */
+		viewCount: number,
+		/** 数据列表 */
+		list: X_PICKER_X_ITEM[],
+		/** 缓冲区大小，在可视区域前后额外渲染的项目数量 */
+		bufferSize: number,
+		/** 是否启用虚拟滚动 */
+		enableVirtual: boolean,
+		/** 容器宽度 */
+		containerWidth: number,
+		/** 容器高度 */
+		containerHeight: number,
+		/** 当前选中的索引 */
+		selectedIndex: number,
+		/** 字体大小 */
+		fontSize: string,
+		/** 动画持续时间 */
+		duration: number
+	}
+	
+	/**
+	 * 容器尺寸类型定义
+	 */
+	type Bounds = {
+		width: number,
+		height: number
+	}
+	
+	/**
+	 * 虚拟列表渲染范围类型定义
+	 */
+	type RenderRange = {
+		startIndex: number,
+		endIndex: number,
+		offsetY: number
+	}
+	
+	/**
+	 * @name Picker虚拟列表 xPickerVirtualList
+	 * @description 专门为picker组件优化的虚拟列表，支持大量数据的高性能滚动选择
+	 */
+	defineOptions({name:"xPickerVirtualList"})
+	
+	const proxy = getCurrentInstance()?.proxy;
+	const xPickerVirtualList = ref<UniElement|null>(null)
+	
+	/**
+	 * 组件事件定义
+	 */
+	const emits = defineEmits<{
+		/** 选择变化事件 */
+		change: [index: number],
+		/** 滚动事件 */
+		scroll: [detail: UniScrollEventDetail]
+	}>()
+	
+	/**
+	 * 组件属性定义
+	 */
+	const props = withDefaults(defineProps<xPickerVirtualListType>(), {
+		itemHeight: "50",
+		viewCount: 5,
+		bufferSize: 2,
+		enableVirtual: true,
+		list: () => [] as X_PICKER_X_ITEM[],
+		containerWidth: 200,
+		containerHeight: 250,
+		selectedIndex: 0,
+		fontSize: "15",
+		duration: 350
+	})
+	
+	/** 当前滚动位置 */
+	const scrollTop = ref(0)
+	const scrollTopTop = ref(0)
+	
+	/** 滚动容器总高度 */
+	const scrollHeight = ref(0)
+	/** 容器的尺寸 */
+	const containerBounds = ref<Bounds>({ width: 0, height: 0 })
+	/** 是否已初始化 */
+	const isInitialized = ref(false)
+	/** 防抖定时器 */
+	let scrollTimer: number | null = null
+	/** 是否正在程序化滚动 */
+	const isProgrammaticScroll = ref(false)
+	
+	/**
+	 * 用户定义的项目高度（转换为px）
+	 */
+	const itemHeight = computed((): number => {
+		const heightval = checkIsCssUnit(props.itemHeight, xConfig.unit);
+		const unit = getUnit(heightval);
+		let realHeight = parseInt(heightval);
+		if (unit === 'rpx') {
+			realHeight = rpx2px(realHeight)
+		}
+		return realHeight;
+	})
+	
+	/**
+	 * 数据列表
+	 */
+	const _list = computed((): X_PICKER_X_ITEM[] => props.list)
+	
+	/**
+	 * 列表总高度
+	 */
+	const totalHeight = computed((): number => {
+		return _list.value.length * itemHeight.value;
+	})
+	
+	/**
+	 * 可视区域能显示的项目数量
+	 */
+	const visibleCount = computed((): number => {
+		if (props.containerHeight <= 0) return props.viewCount;
+		return Math.ceil(props.containerHeight / itemHeight.value);
+	})
+	
+	/**
+	 * 渲染范围计算
+	 */
+	const renderRange = computed((): RenderRange => {
+		if (!props.enableVirtual || _list.value.length == 0) {
+			return {
+				startIndex: 0,
+				endIndex: _list.value.length - 1,
+				offsetY: 0
+			};
+		}
+		
+		// 计算开始索引
+		const startIndex = Math.floor(scrollTop.value / itemHeight.value);
+		// 添加缓冲区
+		const bufferedStartIndex = Math.max(0, startIndex - props.bufferSize);
+		// 计算结束索引
+		const endIndex = Math.min(
+			_list.value.length - 1,
+			startIndex + visibleCount.value + props.bufferSize * 2
+		);
+		
+		// 计算偏移量
+		const offsetY = bufferedStartIndex * itemHeight.value;
+		
+		return {
+			startIndex: bufferedStartIndex,
+			endIndex,
+			offsetY
+		};
+	})
+	
+	/**
+	 * 开始索引
+	 */
+	const startIndex = computed((): number => renderRange.value.startIndex)
+	
+	/**
+	 * 结束索引
+	 */
+	const endIndex = computed((): number => renderRange.value.endIndex)
+	
+	/**
+	 * Y轴偏移量
+	 */
+	const offsetY = computed((): number => renderRange.value.offsetY)
+	
+	/**
+	 * 当前渲染的数据列表（通过可视计算切割得到的数据列表）
+	 */
+	const renderList = computed((): X_PICKER_X_ITEM[] => {
+		if (!props.enableVirtual) {
+			return _list.value;
+		}
+		return _list.value.slice(startIndex.value, endIndex.value + 1);
+	})
+	
+	/**
+	 * 是否为暗色主题
+	 */
+	const isDark = computed((): boolean => xConfig.dark == 'dark')
+	
+	/**
+	 * 指示器位置
+	 */
+	const indicatorTop = computed((): number => {
+		return (props.containerHeight - itemHeight.value) / 2;
+	})
+	
+	/**
+	 * 滚动事件处理
+	 */
+	function onScroll(evt: UniScrollEvent): void {
+		const detail = evt.detail
+		// 触发滚动事件
+		emits('scroll', detail);
+		
+		// 如果是程序化滚动，不处理选择逻辑
+		if (isProgrammaticScroll.value) {
+			return;
+		}
+		
+		// 优化scrollTop赋值
+		const newScrollTop = evt.detail.scrollTop;
+		const maxScrollTop = totalHeight.value - props.containerHeight;
+		
+		if (newScrollTop >= 0 && newScrollTop <= maxScrollTop && newScrollTop != scrollTop.value) {
+			scrollTop.value = newScrollTop;
+		} else if (newScrollTop < 0 && scrollTop.value != 0) {
+			scrollTop.value = 0;
+		} else if (newScrollTop > maxScrollTop && scrollTop.value != maxScrollTop) {
+			scrollTop.value = Math.max(0, maxScrollTop);
+		}
+		
+		scrollHeight.value = evt.detail.scrollHeight;
+		
+		// 防抖处理选择变化
+		if (scrollTimer != null) {
+			clearTimeout(scrollTimer!);
+		}
+		scrollTimer = setTimeout(() => {
+			checkSelection();
+		}, 100);
+	}
+	
+	/**
+	 * 检查当前选择
+	 */
+	function checkSelection(): void {
+		if (_list.value.length === 0 || isProgrammaticScroll.value) return;
+		
+		// 计算当前应该选中的索引
+		const centerY = scrollTop.value + props.containerHeight / 2;
+		const newSelectedIndex = Math.floor(centerY / itemHeight.value);
+		const clampedIndex = Math.max(0, Math.min(newSelectedIndex, _list.value.length - 1));
+		
+		// 检查是否禁用
+		let finalIndex = clampedIndex;
+		if (_list.value[clampedIndex] && _list.value[clampedIndex].disabled) {
+			// 寻找最近的非禁用项
+			for (let i = 1; i < _list.value.length; i++) {
+				const upIndex = clampedIndex - i;
+				const downIndex = clampedIndex + i;
+				
+				if (upIndex >= 0 && !_list.value[upIndex].disabled) {
+					finalIndex = upIndex;
+					break;
+				}
+				if (downIndex < _list.value.length && !_list.value[downIndex].disabled) {
+					finalIndex = downIndex;
+					break;
+				}
+			}
+		}
+		
+		if (finalIndex !== props.selectedIndex) {
+			emits('change', finalIndex);
+		}
+	}
+	
+	/**
+	 * 点击项目
+	 */
+	function onItemClick(index: number): void {
+		if (_list.value[index] && _list.value[index].disabled) {
+			return;
+		}
+		scrollToIndex(index);
+		emits('change', index);
+	}
+	
+	/**
+	 * 滚动到指定位置
+	 */
+	function scrollToIndex(index: number): void {
+		if (index < 0 || index >= _list.value.length) {
+			console.warn('滚动索引超出范围');
+			return;
+		}
+		
+		isProgrammaticScroll.value = true;
+		
+		// 计算目标滚动位置，使选中项居中
+		const targetScrollTop = index * itemHeight.value - (props.containerHeight - itemHeight.value) / 2;
+		const clampedScrollTop = Math.max(0, Math.min(targetScrollTop, totalHeight.value - props.containerHeight));
+		
+		scrollTop.value = clampedScrollTop;
+		scrollTopTop.value = clampedScrollTop - 1;
+		
+		nextTick(() => {
+			scrollTopTop.value = clampedScrollTop;
+			// 延迟重置程序化滚动标志
+			setTimeout(() => {
+				isProgrammaticScroll.value = false;
+			}, props.duration + 50);
+		});
+	}
+	
+	/**
+	 * 重置滚动位置
+	 */
+	function resetScroll(): void {
+		scrollTop.value = 0;
+		scrollTopTop.value = 0;
+	}
+	
+	function scrolltoupper(evt: UniScrollToUpperEvent) {
+		// 处理滚动到顶部
+	}
+	
+	function scrolltolower(evt: UniScrollToLowerEvent) {
+		// 处理滚动到底部
+	}
+	
+	/**
+	 * 监听选中索引变化
+	 */
+	watch(() => props.selectedIndex, (newIndex: number, oldIndex: number) => {
+		if (newIndex !== oldIndex && newIndex >= 0 && newIndex < _list.value.length) {
+			scrollToIndex(newIndex);
+		}
+	}, { immediate: true });
+	
+	/**
+	 * 监听列表数据变化
+	 */
+	watch(() => props.list, (newList: X_PICKER_X_ITEM[], oldList: X_PICKER_X_ITEM[]) => {
+		// 如果新列表为空，重置滚动位置
+		if (newList.length === 0) {
+			resetScroll();
+			return;
+		}
+		
+		// 如果是首次加载数据
+		if (oldList.length === 0 && newList.length > 0) {
+			resetScroll();
+			// 滚动到选中位置
+			nextTick(() => {
+				scrollToIndex(props.selectedIndex);
+			});
+		}
+	}, { deep: true });
+	
+	/**
+	 * 组件挂载时初始化
+	 */
+	onMounted(() => {
+		nextTick(() => {
+			if (props.selectedIndex >= 0 && props.selectedIndex < _list.value.length) {
+				scrollToIndex(props.selectedIndex);
+			}
+		});
+	});
+	
+	/**
+	 * 组件卸载时清理
+	 */
+	onBeforeUnmount(() => {
+		if (scrollTimer != null) {
+			clearTimeout(scrollTimer! as number);
+			scrollTimer = null;
+		}
+	});
+	
+	defineExpose({
+		/** 滚动到指定索引 */
+		scrollToIndex,
+		/** 重置滚动位置 */
+		resetScroll,
+		/** 获取当前渲染范围 */
+		getRenderRange: (): RenderRange => renderRange.value
+	});
+</script>
+
+<style lang="scss" scoped>
+	.xPickerVirtualList {
+		position: relative;
+		flex: 1;
+	}
+	
+	.xPickerVirtualListScrollBody {
+		position: relative;
+	}
+	
+	.xPickerVirtualListContainer {
+		position: relative;
+		width: 100%;
+	}
+	
+	.xPickerVirtualListItem {
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+		width: 100%;
+	}
+	
+	.xPickerVirtualListItemText {
+		margin: 0 6px;
+		width: 100%;
+		text-align: center;
+		/* #ifdef WEB */
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		text-overflow: ellipsis;
+		overflow: hidden;
+		word-break: break-all;
+		/* #endif */
+	}
+	
+	.xPickerIndicator {
+		position: absolute;
+		left: 2.5px;
+		right: 2.5px;
+		pointer-events: none;
+		z-index: 1;
+	}
+</style>

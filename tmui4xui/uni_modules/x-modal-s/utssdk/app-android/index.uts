@@ -1,0 +1,568 @@
+import LinearLayout from 'android.widget.LinearLayout';
+import Context from 'android.content.Context'
+import RelativeLayout from 'android.widget.RelativeLayout';
+import ViewGroup from 'android.view.ViewGroup';
+import View from 'android.view.View';
+import { X_MODAL_TYPE, X_MODAL_TYPE_PRIVATE, RGBA } from "../interface.uts"
+import Color from 'android.graphics.Color';
+import Gravity from 'android.view.Gravity';
+import GradientDrawable from 'android.graphics.drawable.GradientDrawable';
+import TextView from 'android.widget.TextView';
+import Typeface from 'android.graphics.Typeface';
+import TextUtils from 'android.text.TextUtils';
+import Uri from 'android.net.Uri';
+import Html from 'android.text.Html';
+
+import ObjectAnimator from 'android.animation.ObjectAnimator';
+import ValueAnimator from 'android.animation.ValueAnimator';
+import TimeInterpolator from 'android.animation.TimeInterpolator';
+import MotionEvent from 'android.view.MotionEvent';
+import { hexToRgb } from "../libs/color.uts"
+import { defaultConfig, configCover } from "../libs/config.uts"
+import ViewPropertyAnimator from 'android.view.ViewPropertyAnimator';
+import ScrollView from 'android.widget.ScrollView';
+import AccelerateDecelerateInterpolator from 'android.view.animation.AccelerateDecelerateInterpolator';
+// #ifdef UNI-APP-X
+import getCurrentPages from 'io.dcloud.uniapp.framework.getCurrentPages';
+import onReady from 'io.dcloud.uniapp.framework.onReady';
+import onUnload from 'io.dcloud.uniapp.framework.onUnload';
+import onShow from 'io.dcloud.uniapp.framework.onShow';
+// #endif
+import R from 'android.R';
+import Bundle from "android.os.Bundle";
+import Dialog from "android.app.Dialog";
+import WindowManager from "android.view.WindowManager";
+import Window from "android.view.Window";
+import ColorDrawable from "android.graphics.drawable.ColorDrawable";
+import LinkMovementMethod from 'android.text.method.LinkMovementMethod';
+import SpannableString from "android.text.SpannableString";
+import Spannable from "android.text.Spannable";
+import URLSpan from 'android.text.style.URLSpan';
+import ClickableSpan from 'android.text.style.ClickableSpan';
+import TextPaint from 'android.text.TextPaint'
+import WindowInsetsController from "android.view.WindowInsetsController";
+import WindowInsets from "android.view.WindowInsets";
+import Build from 'android.os.Build';
+import LayerDrawable from "android.graphics.drawable.LayerDrawable";
+
+
+
+
+let masker : null | RelativeLayout = null;
+let contentDom : null | LinearLayout = null;
+let maskDomId = 586
+let tid = 0
+let isClsoing = false
+function px2dp(n : number) : number {
+	const mets = UTSAndroid.getAppContext()!.resources!.getDisplayMetrics()
+	return mets.density * n
+}
+function setSpin(textView : TextView) {
+	try {
+		textView.clearAnimation();
+	} catch (e) {
+		//TODO handle the exception
+	}
+	let rotationStart = 0
+	let rotation = 360
+	let rotationSFD = 0.5
+	let rotationAnimator = ObjectAnimator.ofFloat(textView, "rotation", rotationStart.toFloat(), rotation.toFloat());
+	rotationAnimator.setDuration(1000);
+	class LinearInterpolator implements TimeInterpolator {
+		override  getInterpolation(input : Float) : Float {
+			return input;
+		}
+	}
+
+	rotationAnimator.setInterpolator(new LinearInterpolator());
+
+	rotationAnimator.setRepeatCount(ValueAnimator.INFINITE);
+	rotationAnimator.start();
+}
+let dialogModal : FullScreenDialogFragment | null = null;
+
+class FullScreenDialogFragment extends Dialog {
+	private mContext : Context;
+	private opts : X_MODAL_TYPE
+	constructor(context : Context, optsOwer : X_MODAL_TYPE) {
+		super(context, R.style.Theme_Translucent_NoTitleBar_Fullscreen);
+		this.mContext = context;
+		this.opts = optsOwer
+	}
+	override onCreate(savedInstanceState ?: Bundle) {
+		super.onCreate(savedInstanceState)
+		this.requestWindowFeature(Window.FEATURE_NO_TITLE)
+
+		// 设置窗口属性
+		let window = this.getWindow();
+		if (window != null) {
+			// 首先设置全屏标志
+			window.setFlags(
+				WindowManager.LayoutParams.FLAG_FULLSCREEN,
+				WindowManager.LayoutParams.FLAG_FULLSCREEN
+			);
+
+			// 设置布局参数为全屏
+			window.setLayout(
+				WindowManager.LayoutParams.MATCH_PARENT,
+				WindowManager.LayoutParams.MATCH_PARENT
+			);
+
+			// 设置背景透明
+			window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+
+			window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+			window.setGravity(Gravity.CENTER);
+
+			// 完整的沉浸式设置
+			let decorView = window.getDecorView();
+			let option = View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+			decorView.setSystemUiVisibility(option);
+			window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+			window.setStatusBarColor(Color.TRANSPARENT)
+			window.setNavigationBarColor(Color.TRANSPARENT)
+			window.setType(WindowManager.LayoutParams.TYPE_APPLICATION_PANEL)
+		}
+		_createModalView(this.getContext(), this.window!.decorView! as ViewGroup, this.opts)
+
+	}
+	override dismiss() {
+		super.dismiss()
+		contentDom = null;
+		isClsoing = false;
+		dialogModal = null;
+	}
+
+}
+
+
+export function close(call : () => void, isClose : boolean) {
+	UTSAndroid.getDispatcher("main").async(function (_) {
+		if (!isClose) return;
+		let mk = masker
+		if (mk != null) {
+			clearTimeout(tid)
+			try {
+				let s0 = (0).toFloat()
+				let s1 = (0).toFloat()
+				let maskAni = mk.animate() as ViewPropertyAnimator;
+				maskAni.alpha(s1)
+					.setDuration(300)
+					.setInterpolator(AccelerateDecelerateInterpolator())
+					.start()
+				if (contentDom != null) {
+					let ani = contentDom!.animate() as ViewPropertyAnimator;
+					ani.alpha(s0)
+						.scaleX(s1)
+						.scaleY(s1)
+						.setDuration(300)
+						.setInterpolator(AccelerateDecelerateInterpolator())
+						.start()
+					
+					tid = setTimeout(function () {
+						isClsoing = false
+						dialogModal?.dismiss()
+					
+						mk = null;
+						contentDom = null;
+						masker = null;
+						dialogModal = null;
+						
+					}, 300);
+				} else {
+					isClsoing = false;
+					dialogModal?.dismiss()
+					mk = null;
+					contentDom = null;
+					masker = null;
+					dialogModal = null;
+				}
+
+			} catch (e) {
+				//TODO handle the exception
+			}
+			call()
+		}
+	}, null)
+
+
+}
+function rgbToColorNumber(rgba : RGBA) : Int {
+	return Color.argb((rgba.a * 255).toInt(), rgba!.r.toInt(), rgba!.g.toInt(), rgba!.b.toInt())
+}
+
+function _clickLinksRender(contextText : TextView, config : X_MODAL_TYPE_PRIVATE) {
+	let spanned = Html.fromHtml(config.content)
+	if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M){
+		spanned = Html.fromHtml(config.content, Html.FROM_HTML_MODE_LEGACY)
+	}
+	const spannableString = new SpannableString(spanned);
+
+	function addLinksClick() {
+
+		// 获取所有的 URLSpan（对应 <a> 标签）
+		const urlSpans = spanned.getSpans(0, spanned.length, UTSAndroid.getJavaClass(URLSpan));
+
+		// 遍历每个 URLSpan 并用自定义的 ClickableSpan 替换
+		for (item in urlSpans) {
+			const urlSpan = item as URLSpan
+			const start = spanned.getSpanStart(urlSpan);
+			const end = spanned.getSpanEnd(urlSpan);
+
+			// 创建自定义的 ClickableSpan
+			class clickableSpan extends ClickableSpan {
+				constructor() {
+					super()
+				}
+				override onClick(wv : View) {
+					// 当链接被点击时触发
+					const url : string = urlSpan.getURL();
+					config.clickLink(url)
+					console.log(url)
+				}
+				override updateDrawState(ds : TextPaint) {
+					super.updateDrawState(ds);
+					ds.setColor(rgbToColorNumber(hexToRgb(config.linkFontColor)!)); // 设置链接颜色
+					ds.setUnderlineText(true); // 设置下划线
+				}
+			};
+
+			// 替换 URLSpan 为自定义的 ClickableSpan
+			spannableString.setSpan(new clickableSpan(), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+			// 移除原始的 URLSpan
+			spannableString.removeSpan(urlSpan);
+		}
+	}
+	addLinksClick()
+	contextText.setText(spannableString);
+	contextText.setMovementMethod(new LinkMovementMethod());
+}
+
+function _createModalView(context : Context, decorView : ViewGroup, opts : X_MODAL_TYPE) {
+
+	// 
+	let config = configCover(opts)
+	let titleHeight = 60;
+	let footerHeight = 74
+	let contentHeight = config.height;
+	let width = config.width;
+	let height = config.height
+
+	if (isClsoing) return;
+	let maskBgColorRgb = rgbToColorNumber(hexToRgb(config.maskBgColor)!);
+	let cancelColorRgb = rgbToColorNumber(hexToRgb(config.cancelColor)!);
+	let cancelBgColorRgb = rgbToColorNumber(hexToRgb(config.cancelBgColor)!);
+	let confirmBgColorRgb = rgbToColorNumber(hexToRgb(config.confirmBgColor)!);
+	let confirmColorRgb = rgbToColorNumber(hexToRgb(config.confirmColor)!);
+	let contentBgColorRgb = rgbToColorNumber(hexToRgb(config.contentBgColor)!);
+	let contentColorColorRgb = rgbToColorNumber(hexToRgb(config.contentColor)!);
+	let titleColorColorRgb = rgbToColorNumber(hexToRgb(config.titleColor)!);
+	let maskerDom = new RelativeLayout(context)
+	let maskerDomLayrPrams = new LinearLayout.LayoutParams(
+		ViewGroup.LayoutParams.MATCH_PARENT,
+		ViewGroup.LayoutParams.MATCH_PARENT
+	)
+
+	maskerDom.setLayoutParams(maskerDomLayrPrams)
+	maskerDom.setBackgroundColor(maskBgColorRgb)
+	maskerDom.setGravity(Gravity.CENTER)
+	maskerDom.setId((maskDomId).toInt())
+	maskerDom.setAlpha((0).toFloat())
+
+	// 内容容器
+	let container = new LinearLayout(context);
+	contentDom = container
+	container.setOrientation(LinearLayout.VERTICAL)
+	container.setGravity(Gravity.CENTER)
+
+	// 设置圆角背景
+	let bg = new GradientDrawable()
+	bg.setColor(contentBgColorRgb)
+	bg.setCornerRadius((px2dp(16)).toFloat())
+	container.setClipToOutline(true)
+	container.setBackground(bg)
+	let wpx = px2dp(config.width).toInt();
+	container.setLayoutParams(new LinearLayout.LayoutParams(wpx, ViewGroup.LayoutParams.WRAP_CONTENT))
+	let defaultNumScale = (0).toFloat()
+	container.setAlpha(defaultNumScale)
+	container.setScaleX(defaultNumScale)
+	container.setScaleY(defaultNumScale)
+	let titleDiv = new TextView(context)
+	let titleDivheight = px2dp(titleHeight).toInt();
+	titleDiv.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, titleDivheight))
+	titleDiv.setGravity(Gravity.CENTER)
+	titleDiv.setTextSize((18.0).toFloat())
+	titleDiv.setTextColor(titleColorColorRgb)
+	titleDiv.setText(config.title)
+
+	// 内容
+	let content = new ScrollView(context)
+	let contentDivheight = px2dp(contentHeight).toInt();
+	content.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, contentDivheight))
+
+	let contextText = new TextView(context);
+	if (config.contentAlign == 'center') {
+		contextText.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+		contextText.setGravity(Gravity.CENTER)
+		contextText.setMinHeight(contentDivheight)
+	} else {
+		contextText.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+	}
+	contextText.setTextSize((15.0).toFloat())
+	contextText.setTextColor(contentColorColorRgb)
+
+
+	_clickLinksRender(contextText, config)
+
+	let contentPadding = px2dp(16).toInt()
+	contextText.setPadding(contentPadding, 0, contentPadding, contentPadding)
+	
+	// 边线
+	const lineColor = rgbToColorNumber(hexToRgb(config.lineColor=='transparent'?'rgba(255,255,255,0)':config.lineColor)!)
+	let borderBottomView = new View(context);
+	borderBottomView.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1))
+	borderBottomView.setBackgroundColor(lineColor)
+	
+	// 竖向边线
+	let borderRightView = new View(context);
+	borderRightView.setLayoutParams(new LinearLayout.LayoutParams(1,ViewGroup.LayoutParams.MATCH_PARENT))
+	borderRightView.setBackgroundColor(lineColor)
+
+	// 底部容器
+	let footerDiv = new LinearLayout(context)
+	footerDiv.setOrientation(LinearLayout.HORIZONTAL)
+	footerDiv.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+
+	let footerDivPadding = px2dp(16).toInt()
+
+	if (config.isSplitBtn) {
+		footerDiv.setPadding(footerDivPadding, 0, contentPadding, footerDivPadding)
+	} else {
+		footerDiv.setPadding(0, 0, 0, 0)
+	}
+	
+	// 取消按钮
+	let btnheight = px2dp(50).toInt()
+	let cancelBtnBG = new GradientDrawable()
+	cancelBtnBG.setColor(cancelBgColorRgb)
+	if (config.isSplitBtn) {
+		cancelBtnBG.setCornerRadius((px2dp(50)).toFloat())
+	}
+	let confirmBtnBG = new GradientDrawable()
+	confirmBtnBG.setColor(confirmBgColorRgb)
+	if (config.isSplitBtn) {
+		confirmBtnBG.setCornerRadius((px2dp(50)).toFloat())
+	}
+	
+	let cancelDiv = new TextView(context);
+	cancelDiv.setLayoutParams(new LinearLayout.LayoutParams(0, btnheight, (1).toFloat()));
+	cancelDiv.setTextSize((16.0).toFloat());
+	cancelDiv.setTextColor(cancelColorRgb);
+	cancelDiv.setGravity(Gravity.CENTER);
+	
+	
+	
+	cancelDiv.setBackground(cancelBtnBG);
+	if (config.showCancel) {
+		if (config.cancelIcon != '') {
+			let assetManager = context!.getAssets();
+			let typeface = Typeface.createFromAsset(assetManager, "remixicon.ttf")
+			cancelDiv.setTypeface(typeface)
+			if (!TextUtils.isEmpty(config.cancelIcon)) {
+				let codePoint = Integer.parseInt(config.cancelIcon, 16);
+				let charArray = Character.toChars(codePoint);
+				let text = new String(charArray);
+				let str = config.cancelText != "" ? (" " + config.cancelText) : config.cancelText
+				cancelDiv.setText(text + str);
+			}
+		} else {
+			cancelDiv.setText(config.cancelText);
+		}
+		
+		
+	}
+
+
+
+	let confirmDiv = new TextView(context);
+	confirmDiv.setLayoutParams(new LinearLayout.LayoutParams(0, btnheight, (1).toFloat()));
+	confirmDiv.setTextSize((16.0).toFloat());
+	confirmDiv.setTextColor(confirmColorRgb);
+	confirmDiv.setGravity(Gravity.CENTER);
+	confirmDiv.setBackground(confirmBtnBG);
+
+	if (config.confirmIcon != '') {
+		let assetManager = context!.getAssets();
+		let typeface = Typeface.createFromAsset(assetManager, "remixicon.ttf")
+		confirmDiv.setTypeface(typeface)
+		if (!TextUtils.isEmpty(config.confirmIcon)) {
+			let codePoint = Integer.parseInt(config.confirmIcon, 16);
+			let charArray = Character.toChars(codePoint);
+			let text = new String(charArray);
+			let str = config.confirmText != "" ? (" " + config.confirmText) : config.confirmText
+			confirmDiv.setText(text + str);
+		}
+	} else {
+		confirmDiv.setText(config.confirmText);
+	}
+
+	let confirmDivPadding = px2dp(16).toInt()
+	let spaceDiv = new TextView(context);
+	spaceDiv.setLayoutParams(new LinearLayout.LayoutParams(confirmDivPadding, btnheight));
+
+
+
+	// 添加遮罩事件.
+	class MaskerDomClickListsner extends View.OnTouchListener {
+		firstX = 0
+		firstY = 0
+		type = ""
+		constructor(type : string) {
+			super();
+			this.type = type
+		}
+		override onTouch(view : View, event : MotionEvent) : Boolean {
+
+
+			let action = event.getAction()
+			let t = this;
+			if (action == MotionEvent.ACTION_DOWN) {
+				this.firstX = event.getX()
+				this.firstY = event.getY()
+			}
+			if (action == MotionEvent.ACTION_UP) {
+
+
+				// 检查是否是点击动作
+				if (event.getDownTime() - event.getEventTime() < 300) {
+					// event.getX() == this.firstX && event.getY() == this.firstY
+					// 下面是兼容三星S21-23机型
+					if (Math.abs(event.getX() - this.firstX) < 10 && Math.abs(event.getY() - this.firstY) < 10 && !isClsoing) {
+						isClsoing = true;
+
+						close(() => {
+
+							if (t.type == 'cancel') {
+								config.cancel()
+								config.close()
+							}
+							if (t.type == 'confirm') {
+								config.confirm()
+								config.close()
+							}
+							if (t.type == 'mask') {
+								config.close()
+
+							}
+						}, (t.type == 'mask' && config.clickMaskClose) || t.type != 'mask')
+					}
+				}
+			}
+			return true;
+		}
+	}
+	maskerDom.setOnTouchListener(new MaskerDomClickListsner('mask'))
+
+	// 内容容器事件
+	class containerDomClickListsner extends View.OnTouchListener {
+		constructor() {
+			super();
+		}
+		override onTouch(view : View, event : MotionEvent) : Boolean {
+			return true;
+		}
+	}
+	container.setOnTouchListener(new containerDomClickListsner())
+	// 取消事件
+	cancelDiv.setOnTouchListener(new MaskerDomClickListsner('cancel'))
+	// 确认按钮事件
+	confirmDiv.setOnTouchListener(new MaskerDomClickListsner('confirm'))
+
+
+	if (config.showCancel) {
+		footerDiv.addView(cancelDiv)
+		if (!config.isSplitBtn) {
+			footerDiv.addView(borderRightView)
+		}
+	}
+
+	if (config.isSplitBtn && config.showCancel) {
+		footerDiv.addView(spaceDiv)
+	}
+
+
+
+
+	footerDiv.addView(confirmDiv)
+
+
+	content.addView(contextText)
+
+	container.addView(titleDiv)
+	container.addView(content)
+	
+	
+	if (!config.isSplitBtn) {
+		container.addView(borderBottomView)
+	}
+	
+	container.addView(footerDiv)
+	maskerDom.addView(container)
+	decorView.addView(maskerDom!)
+
+	try {
+		let s0 = (0).toFloat()
+		let s1 = (1).toFloat()
+		container.setAlpha(s0)
+		container.setScaleX(s0)
+		container.setScaleY(s0)
+
+		// 遮罩渐变
+		const maskAni = maskerDom.animate() as ViewPropertyAnimator;
+		maskAni.alpha(s1)
+			.setDuration(350)
+			.setInterpolator(AccelerateDecelerateInterpolator())
+			.start()
+		let ani = container.animate() as ViewPropertyAnimator;
+		ani.alpha(s1)
+			.scaleX(s1)
+			.scaleY(s1)
+			.setDuration(350)
+			.setInterpolator(AccelerateDecelerateInterpolator())
+			.start()
+
+	} catch (e) {
+		console.error(e)
+		//TODO handle the exception
+	}
+
+	masker = maskerDom
+
+}
+
+function _showModal_(opts : X_MODAL_TYPE) {
+	
+	UTSAndroid.getDispatcher("main").async(function (_) {
+
+		dialogModal = new FullScreenDialogFragment(UTSAndroid.getUniActivity()!, opts)
+		dialogModal?.show()
+
+	}, null)
+}
+export function showModal(opts : X_MODAL_TYPE) {
+	dialogModal?.dismiss()
+	const pages = getCurrentPages();
+	if (pages.length > 0) {
+		const page = pages[pages.length - 1].vm!
+		const instance = page.$
+		if (page.$isReady) {
+			_showModal_(opts)
+		}
+		onUnload(() => {
+			close(() => { }, true)
+		}, instance)
+	} else {
+		_showModal_(opts)
+	}
+}
+

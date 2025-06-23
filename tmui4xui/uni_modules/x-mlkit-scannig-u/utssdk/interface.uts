@@ -1,0 +1,69 @@
+export type SCANNING_PHOTO_RESULT_BOUND = {
+	width:number,
+	height:number,
+	centerX:number,
+	centerY:number
+}
+
+export type SCANNING_PHOTO_RESULT = {
+	url:string,//图片地址
+	position:number[][][],
+	bounds:SCANNING_PHOTO_RESULT_BOUND[],
+	text:string[]
+}
+
+
+
+export type CAMERA_PHOTO_SIZE = {
+	width:number,
+	height:number
+}
+export	type CallFunType = (str:string[],type:'auto'|'click') => void;
+export	type CALL_BACK_TYPE_PRIVATE = (str:string[])=>void
+export	type AUTH_CALL_BACK_TYPE = (auth:boolean)=>void
+
+export type BARCODEFORMAT = 'AZTEC'
+		| 'CODABAR'
+		| 'CODE_39'
+		| 'CODE_93'
+		| 'CODE_128'
+		| 'DATA_MATRIX'
+		| 'EAN_8'
+		| 'EAN_13'
+		| 'ITF'
+		| 'MAXICODE'
+		| 'PDF_417'
+		| 'QR_CODE'
+		| 'RSS_14'
+		| 'RSS_EXPANDED'
+		| 'UPC_A'
+		| 'UPC_E'
+		| 'UPC_EAN_EXTENSION';
+		
+export type SCANNING_OPTIONS = {
+	width:number,
+	height:number,
+	//前置还是后置摄像头
+	cameraDevice:'FRONT'|'BACK',
+	/** 放大倍数1-10效果要看你的设备，并一定有用。越小视频越宽，越大视野越小。 */
+	zoom?:number,
+	// 是否连续扫码识别，相对的间隔如果是自动的话根据设备性能一般是50-300ms之间
+	// 默认为false即单次识别就停止需要手动继续识别
+	continuousScan?:boolean,
+	//识别成功后是否震动设备
+	vibatar?:boolean,
+	//单位毫秒，扫描识别间隔/及抓拍间隔
+	scanSpeedduration?:450,
+	//是否打开识别码的功能，暂不支持设置，默认就是识别功能，等我完善
+	scanningQrCode?:boolean,
+	//扫码成功后是否保存图片,暂未实现，等我完善
+	isSavePhoto?:boolean,
+	/**
+	 * 开识别条码的类型
+	 * 如果需要指定识别类型的条码时有用。比如快递单上有多个码制
+	 * 如果指定为条码，就可以避免识别二维码了。
+	 * ,暂不支持设置，等我完善
+	 */
+	qrCodeType?:BARCODEFORMAT|null,
+	flashMode:boolean
+}

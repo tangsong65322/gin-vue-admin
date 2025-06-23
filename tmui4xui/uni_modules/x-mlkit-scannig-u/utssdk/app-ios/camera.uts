@@ -1,0 +1,297 @@
+import { AVCaptureSession, AVCaptureDevice, AVMediaType, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureDeviceInput, AVCaptureInput, AVCaptureVideoDataOutput, AVCaptureConnection, AVCaptureVideoPreviewLayer, AVLayerVideoGravity, AVCaptureVideoOrientation } from 'AVFoundation';
+import { PHPhotoLibrary, PHAuthorizationStatus } from 'Photos';
+import { CMSampleBuffer, CMSampleBufferGetFormatDescription, CMFormatDescription, CMVideoFormatDescriptionGetDimensions } from 'CoreMedia';
+import { DispatchQueue } from "Dispatch"
+import { UIView, UIImage , UIApplication } from 'UIKit';
+import { CGRect, CGFloat } from 'CoreFoundation';
+import { Barcode, BarcodeScannerOptions, BarcodeFormat, BarcodeScanner, CMVideoDimensions } from "MLKitBarcodeScanning"
+import { VisionImage } from "MLKit"
+import { SCANNING_PHOTO_RESULT, CALL_BACK_TYPE_PRIVATE, SCANNING_PHOTO_RESULT_BOUND, SCANNING_PHOTO_RESULT_POS ,AUTH_CALL_BACK_TYPE} from '../interface.uts';
+import { NotificationCenter , NSNotification , Notification } from 'Foundation';
+import { Selector } from 'ObjectiveC';
+// 识别结果
+let scanResult = [] as Swift.Array<Barcode>
+// 视频宽
+let videoWidth = 0
+// 视频高
+let videoHeight = 0
+// let camera:xCamera|null = null;
+let barcodeOptions = BarcodeScannerOptions(formats = BarcodeFormat.all)
+class CaptureOutSessionBuffer implements AVCaptureVideoDataOutputSampleBufferDelegate {
+	onwerCamera:xCamera
+	constructor(dv:xCamera) {
+		this.onwerCamera = dv;
+		super()
+	}
+	captureOutput(output : AVCaptureOutput, @argumentLabel("didOutput") sampleBuffer : CMSampleBuffer, @argumentLabel("from") connection : AVCaptureConnection) {
+		let t = this;
+		DispatchQueue.main.async(execute=():void => {
+			
+			// console.log('图片捕捉正确')
+			let image = new VisionImage(buffer = sampleBuffer)
+			// 这里会直接影响到测量的起始点。下面是镜像，测量是图片左上为起始，但设备是竖向，因此计算时的x,y坐标其实是相对屏幕向右转下，x,y是反向的，因为是镜像
+			// 所以计算位置时，x,y是反的，宽和高也是相反的。
+			image.orientation = UIImage.Orientation.upMirrored
+			
+			// options=barcodeOptions
+			let barcodeScanner = new BarcodeScanner.barcodeScanner(options = barcodeOptions)
+			console.log(image)
+			barcodeScanner.process(image, completion = (features : Swift.Array<Barcode> | null, error) => {
+				if (features == null || error != null) {
+					return;
+				}
+				if (features!.length == 0 || scanResult.length>0) {
+					return;
+				}
+				scanResult = features!
+				let descVideo : CMFormatDescription | null = CMSampleBufferGetFormatDescription(sampleBuffer);
+				if (descVideo != null) {
+					let dimesionsize : CMVideoDimensions = CMVideoFormatDescriptionGetDimensions(descVideo!)
+					t.onwerCamera.videoBox_width= Number(dimesionsize.width)
+					t.onwerCamera.videoBox_height = Number(dimesionsize.height)
+				}
+				this.onwerCamera.pause()
+				
+				let listpos = [] as number[][][]
+				let bounedlist = [] as SCANNING_PHOTO_RESULT_BOUND[]
+				let rulstText = [] as string[]
+			
+				for (let i = 0; i < features!.length; i++) {
+					let barcode = features![i]
+					// 位置信息
+					let bounds = barcode.frame
+					// 坐标
+					let corners = barcode.cornerPoints
+					// 解析的内容
+					let rawValue = barcode.rawValue
+					let iminfo = {
+						width: Number(bounds.width),
+						height: Number(bounds.height),
+						centerX: Number(bounds.midX),
+						centerY: Number(bounds.midY)
+					} as SCANNING_PHOTO_RESULT_BOUND
+					let posinfo = [] as number[][]
+					for (pos in corners!) {
+						// pos是pointValue类型并返回CGPoint，其中有x,y
+						let ponit = pos.cgPointValue
+						posinfo.push([Number(ponit.x), Number(ponit.y)] as number[])
+					}
+					listpos.push(posinfo)
+					bounedlist.push(iminfo)
+					rulstText.push(rawValue == null ? '' : (rawValue!))
+			
+				}
+				let res = {
+					url: '',
+					position: listpos,
+					bounds: bounedlist,
+					text: rulstText
+				} as SCANNING_PHOTO_RESULT
+				
+				t.onwerCamera.createPointView(res)
+			})
+		})
+	
+		
+		
+	}
+}
+
+// 检查权限
+export function isCheckPermissions(callFun : null | AUTH_CALL_BACK_TYPE){
+	let realcall : AUTH_CALL_BACK_TYPE = (_ : boolean) => { };
+	if (callFun != null) {
+		let cllfunFun = callFun!;
+		realcall = cllfunFun
+	}
+	// 相册选取权限
+	PHPhotoLibrary.requestAuthorization((isok : PHAuthorizationStatus) => {
+		// 拒绝了相册选取权限。
+		if (isok != PHAuthorizationStatus.authorized) {
+			realcall(false)
+			return;
+		}
+		// 录像权限
+		AVCaptureDevice.requestAccess(for = AVMediaType.video, completionHandler = (isok2 : boolean) => {
+			if (!isok2) {
+				realcall(false)
+				return;
+			}
+		})
+		
+	})
+	
+	
+}
+
+export class xCamera {
+	// 父容器
+	parentView : UIView|null = null;
+	// 相机区域视图
+	cameraView : AVCaptureVideoPreviewLayer|null = null;
+	// 视频宽
+	videoBox_width = 0
+	// 视频高。
+	videoBox_height = 0
+	pointView = [] as UIView[]
+	// 默认的相机
+	captureDevice:AVCaptureDevice|null = null
+	// 捕获会话
+	captureSession:AVCaptureSession|null = null
+	// 输入相机设备
+	inputDevice : AVCaptureDeviceInput | null = null;
+	// 输出会话
+	captureOut = new AVCaptureVideoDataOutput();
+	// 图像捕捉事件代理。
+	captureOutDelegate : CaptureOutSessionBuffer|null = null ;
+	constructor(){
+		super();
+	}
+	
+	newCamraViewLayer(){
+		// 设置预览层绑定
+		// 下面的缩放会居中显示，因此左顶点可能在左上方
+		this.cameraView!.videoGravity = AVLayerVideoGravity.resizeAspectFill
+		this.cameraView!.connection!.videoOrientation = AVCaptureVideoOrientation.portrait
+		this.cameraView!.frame = this.parentView!.layer.bounds;
+		// 绑定渲染层。
+		this.parentView!.layer.addSublayer(this.cameraView!)
+	}
+	clearPointView(){
+		for (let i = 0; i < this.pointView.length; i++) {
+			let item = this.pointView[i];
+			item.removeFromSuperview();
+		}
+		this.pointView = [] as UIView[]
+	}
+	// 创建点。
+	createPointView (result : SCANNING_PHOTO_RESULT){
+		if (this.cameraView == null || this.parentView == null) return;
+		let realCgSize = this.cameraView!.frame as CGRect;
+		let realWidth = Number(realCgSize.width);
+		let realHeight = Number(realCgSize.height);
+		this.clearPointView();
+		// 计算视频和容器的宽高比
+		let videoAspectRatio = this.videoBox_width / this.videoBox_height
+		let containerAspectRatio = realWidth / realHeight
+		let ratio_real_width = 0
+		let ratio_real_height = 0
+		if (videoAspectRatio > containerAspectRatio) {
+			ratio_real_width = realWidth
+			// 视频的宽高比大于预览层的宽高比，宽为预览宽，但高会大于预览高从而被裁剪。
+			ratio_real_height = realHeight * videoAspectRatio
+		} else {
+			ratio_real_width = realWidth / videoAspectRatio
+			ratio_real_height = realHeight
+		}
+		
+		let pointSize = 30
+		for (let i = 0; i < result.bounds.length; i++) {
+			let text = result.text[i]
+			let bounds = result.bounds[i]
+			let pos = result.position[i];
+			let centerx = (pos[2][0] - pos[0][0]) / 2 + pos[0][0]
+			let centery = (pos[2][1] - pos[0][1]) / 2 + pos[0][1]
+			let diffTop = (realHeight - ratio_real_height) / 2
+			let diffLeft = (realWidth - ratio_real_width) / 2
+			let x = (ratio_real_width - ratio_real_width * (bounds.centerY / this.videoBox_height) - diffLeft - 15).toInt()
+	
+			let y = (ratio_real_height * (bounds.centerX / this.videoBox_width) + diffTop - 15).toInt()
+			// console.log(bounds.centerX,bounds.centerY,x,y,videoWidth,videoHeight,realWidth,realHeight,ratio_real_width,ratio_real_height)
+	
+			let rect = new CGRect(x = x, y = y, width = pointSize.toInt(), height = pointSize.toInt())
+			let pointViewSelf = new UIView();
+			pointViewSelf.layer.frame = rect;
+			pointViewSelf.backgroundColor = UTSiOS.colorWithString('#21d429');
+			pointViewSelf.layer.borderWidth = 2
+			pointViewSelf.layer.borderColor = UTSiOS.colorWithString('#FFFFFF').cgColor;
+			pointViewSelf.layer.cornerRadius = new CGFloat(pointSize / 2);
+			pointViewSelf.isUserInteractionEnabled = true;
+			// let onlick = new PointClickEvent((atext:string) => { 
+			// 	console.log("ok....",result.text)
+			// 	component!.__$$emit('clickQr',new Map<string,string>([["result",atext]]))
+			// },text);
+			// pointClickEvent.push(onlick)
+			// let tapGestureCancel = new UITapGestureRecognizer()
+			// tapGestureCancel.addTarget(pointClickEvent[pointClickEvent.length-1], action = new Selector("onclick"))
+			// pointViewSelf.addGestureRecognizer(tapGestureCancel)
+			
+			this.parentView!.addSubview(pointViewSelf)
+			
+			this.pointView.push(pointViewSelf)
+	
+		}
+	}
+	setView(view:UIView){
+		this.parentView = view;
+	}
+	oninit(){
+		this.captureDevice = AVCaptureDevice.default(for = AVMediaType.video)
+		this.captureSession = new AVCaptureSession();
+		this.captureSession!.sessionPreset = AVCaptureSession.Preset.low
+		
+		this.captureOutDelegate = new CaptureOutSessionBuffer(this)
+		
+		// 注册相机启动时的通知事件。
+		NotificationCenter.default.addObserver(this,selector = Selector("camreaOpeingStatus"),name=NSNotification.Name("didStartRunningNotification"),object = null)
+		// 新建设备的输入设备
+		this.inputDevice = UTSiOS.try(new AVCaptureDeviceInput(device = this.captureDevice!), "?")
+		if(this.inputDevice!=null){
+			// 添加输入到会话中。
+			this.captureSession!.addInput(this.inputDevice!)
+		}
+		
+		this.captureOut.alwaysDiscardsLateVideoFrames = true;
+		// 设置输出会话
+		this.captureOut.setSampleBufferDelegate(this.captureOutDelegate!, queue = DispatchQueue.global())
+		if (this.captureSession!.canAddOutput(this.captureOut)) {
+			this.captureSession!.addOutput(this.captureOut)
+			console.log("绑定输出层正确！")
+		}
+		let t = this;
+		DispatchQueue.main.async(execute=():void => {
+			t.cameraView = new AVCaptureVideoPreviewLayer(session = t.captureSession!)
+			// 设置预览层绑定
+			// 下面的缩放会居中显示，因此左顶点可能在左上方
+			t.cameraView!.videoGravity = AVLayerVideoGravity.resizeAspectFill
+			t.cameraView!.connection!.videoOrientation = AVCaptureVideoOrientation.portrait
+			t.cameraView!.frame = t.parentView!.layer.bounds;
+			// 绑定渲染层。
+			t.parentView!.layer.addSublayer(t.cameraView!)
+		})
+		
+		
+	}
+	@objc static camreaOpeingStatus(notification:Notification){
+		
+		console.log(notification,'启动了。')
+	}
+	open(){
+		this.clearPointView()
+		this.pause();
+		this.captureSession!.startRunning()
+		this.oninit();
+	}
+	stop(){
+		// 暂停预览。
+		this.pause()
+		// 移除通知。
+		NotificationCenter.default.removeObserver(this, name=NSNotification.Name("didStartRunningNotification"),object = null)
+		// 移除视频预览层。
+		this.cameraView!.removeFromSuperlayer()
+		// 移除点。
+		this.clearPointView()
+		if(this.inputDevice!=null){
+			this.captureSession!.removeInput(this.inputDevice!)
+		}
+		this.captureSession!.removeOutput(this.captureOut)
+		
+	}
+	pause(){
+		if(this.captureSession!.isRunning){
+			this.captureSession!.stopRunning()
+			
+		}
+		this.cameraView!.removeFromSuperlayer()
+	}
+}

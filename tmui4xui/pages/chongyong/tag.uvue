@@ -1,0 +1,74 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">标签 Tag</x-text>
+			<x-text color="#999999" >和按钮类似，不同的是标签是根据内容自动增长宽。布局请布局在flex容器中。</x-text>
+		</x-sheet>
+
+		<x-sheet class="flex flex-row">
+			<x-tag size="mini" class="mb-12 mr-8">标签</x-tag>
+			<x-tag size="small" class="mb-12 mr-8">标签</x-tag>
+			<x-tag size="mdeium" class="mb-12 mr-8">标签</x-tag>
+			<x-tag size="normal" class="mb-12 mr-8">标签</x-tag>
+			<x-tag size="large" class="mb-12">标签</x-tag>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b">预设 Skin</x-text>
+		</x-sheet>
+		<x-sheet class="flex flex-row">
+			<x-tag skin="default" class="mb-12 mr-8">主标签</x-tag>
+			<x-tag skin="outline" class="mb-12 mr-8">镂空</x-tag>
+			
+			<x-tag skin="dashed" class="mb-12 mr-8">虚线</x-tag>
+			<x-tag darkBgColor="#222222" darkBorderColor="#373737"  skin="thin" class="mb-12">浅色主题标签</x-tag>
+			<x-tag skin="text" class="mb-12">文本</x-tag>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b">状态 Status</x-text>
+		</x-sheet>
+		<x-sheet class="flex flex-row">
+			<x-tag size="mdeium" class="mb-12 mr-8" color="success">成功</x-tag>
+			<x-tag class="mb-12 mr-8">主题色</x-tag>
+			<x-tag size="normal" class="mb-12 mr-8" color="warn">警告</x-tag>
+			<x-tag size="large" class="mb-12 mr-8" color="danger">危险</x-tag>
+			<x-tag color="error" size="large" class="mb-12 mr-8">自定颜色</x-tag>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b">图标及渐变 Icon</x-text>
+		</x-sheet>
+		<x-sheet class="flex flex-row">
+			<x-tag :border="0" :round="66" :linearGradient="['left','#063CFF','#FF3F3F']" icon="checkbox-circle-line"
+				size="mdeium" class="mb-12 mr-8" status="success">图标</x-tag>
+			<x-tag :border="0" :round="66" :linearGradient="['right','#FF896D','#D02020']" icon="lock-2-line"
+				size="normal" class="mb-12 mr-8" status="warn">图标</x-tag>
+			<x-tag :border="0" :round="66" :linearGradient="['right','#00B960','#00552C']" icon="shield-user-line"
+				size="large" class="mb-12 mr-8" status="danger">图标</x-tag>
+			<x-tag :border="0" :round="66" :linearGradient="['right','#FFDC99','#FF62C0']" icon="upload-cloud-line"
+				color="red" size="large" class="mb-12 mr-8">图标</x-tag>
+		</x-sheet>
+		<view style="height:100px"></view>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+
+			};
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

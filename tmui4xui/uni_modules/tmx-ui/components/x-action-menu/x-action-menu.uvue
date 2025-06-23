@@ -1,0 +1,639 @@
+<script lang="ts">
+
+	import { colors, getDefaultColor, getDefaultColorObj, getTextColorObj, getThinColorObj, setTextColorLightByDark } from "../../core/util/xCoreColorUtil.uts"
+	import { toFillMarginAr, checkIsCssUnit,getUnit,getUid } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { PropType } from 'vue'
+	import { XACTION_MENU_ITEM_INFO } from "../../interface.uts"
+
+	/**
+	 * 内部使用：动作菜单项目类型
+	 */
+	type XACTION_MENU_ITEM_INFO_PRIVATE = {
+		iconSize : string,
+		fontSize : string,
+		iconColor : string,
+		fontColor : string,
+		icon : string,
+		disabled : boolean,
+		id : string,
+		text : string,
+	}
+	/**
+	 * @name 动作菜单面板 xActionMenu
+	 * @page /pages/index/action-menu
+	 * @category 反馈组件
+	 * @description 从底部弹出来的操作菜单。
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				_width: 0,
+				_height: 0,
+				showOverflay: false,
+				element: null as Element | null,
+				elementWrap: null as Element | null,
+				//是否动画中
+				actioning: false,
+				status: "",
+				id: "xActionMenu" + getUid(),
+				wrapId: "xActionMenuWrap" + getUid(),
+				first: true,
+				tid: 0,
+				windtop: 0,
+				nowClickIndex:-1,
+				clienEventType:'',
+				// #ifdef H5
+				targetToPage:"uni-app",
+				// #endif
+			}
+		},
+		emits: [
+			/**
+			 * 取消时触发
+			 */
+			'cancel',
+			/**
+			 * 点击遮罩事件
+			 */
+			'click',
+			/**
+			 * 关闭是触发
+			 */
+			'close',
+			/**
+			 * 打开时触发
+			 */
+			'open',
+			/**
+			 * 打开前执行
+			 */
+			'beforeOpen',
+			/**
+			 * 关闭前执行
+			 */
+			'beforeClose',
+			/**
+			 * 等同v-model:show
+			 */
+			'update:show',
+			/**
+			 * 项目被点击时触发
+			 * @param {Number} index - 项目索引
+			 */
+			'item-click'],
+		props: {
+			/**
+			 * 自定义遮罩样式
+			 */
+			customStyle: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 标题
+			 */
+			title: {
+				type: String,
+				default: "标题"
+			},
+
+			/**
+			 * 是否显示标题
+			 */
+			showTitle: {
+				type: Boolean,
+				default: true
+			},
+			/**
+			 * 是否显示关闭
+			 */
+			showClose: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 遮罩是否允许点击被关闭
+			 */
+			overlayClick: {
+				type: Boolean,
+				default: true
+			},
+			/**
+			 * 选项点击时，是否允许关闭弹层。
+			 */
+			cellClickClose:{
+				type:Boolean,
+				default:true
+			},
+			/**
+			 * 显示可v-model:show双向绑定
+			 */
+			show: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 显示取消按钮
+			 */
+			showCancel: {
+				type: Boolean,
+				default: true
+			},
+
+			/**
+			 * 动画时间
+			 */
+			duration: {
+				type: Number,
+				default: 350
+			},
+
+			/**
+			 * 打开方向为上和下时的圆角
+			 * 空值时，取全局配置的圆角。注意是取drawer的圆角，统一弹层的圆角
+			 */
+			round: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 弹层最大的高度值，默认为屏幕的可视高
+			 * 提供值时不能为百分比，可以是px,rpx单位数字。如果你不带单位，默认转换为rpx单位。
+			 */
+			maxHeight: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 菜单条目
+			 */
+			list: {
+				type: Array as PropType<XACTION_MENU_ITEM_INFO[]>,
+				default: () : XACTION_MENU_ITEM_INFO[] => [] as XACTION_MENU_ITEM_INFO[]
+			},
+			/**
+			 * 弹层的层，两边是否留空白间隙，包括底部。
+			 */
+			space: {
+				type: Boolean,
+				default: true
+			},
+			/**
+			 * 打开dom的延迟量，如果你打开 弹窗在ios正常。
+			 * 请不要修改此值。如果遇到打不开，或者 打开 后没动画，关闭不了等可能是sdk bug导致 
+			 * 此时需要加大值来避免。具体加多少以你弹窗内的节点复杂度有关，需要你自行压力测试。
+			 * 此值仅在ios下生效。
+			 */
+			watiDuration:{
+				type: Number,
+				default: 120
+			}
+
+		},
+		watch: {
+			show(_newval : boolean) {
+				if (_newval) {
+					this.showAlert()
+				} else {
+					this.closeAlert()
+				}
+			},
+
+		},
+		computed: {
+			_customStyle() : string {
+				return this.customStyle
+			},
+			_show() : boolean {
+				return this.show
+			},
+
+			_showClose() : boolean {
+				return this.showClose
+			},
+			_duration() : number {
+				return this.duration
+			},
+			_cellClickClose() : boolean {
+				return this.cellClickClose
+			},
+			_title() : string {
+				return this.title
+			},
+			_showTitle() : boolean {
+				return this.showTitle
+			},
+			_round() : string {
+				let round = this.round;
+				if (round == "") {
+					round = xConfig.drawerRadius
+				}
+				let radius = checkIsCssUnit(round, xConfig.unit);
+				if (!this._space) {
+
+					return `${radius} ${radius} 0px 0px`
+				}
+				return `${radius}`
+			},
+
+			_space() : boolean {
+				return this.space;
+			},
+			_maxHeight() : string {
+				if (this.maxHeight == "") return "80%"
+				return checkIsCssUnit(this.maxHeight,xConfig.unit);
+			},
+			_showCancel() : boolean {
+				return this.showCancel
+			},
+
+			_list() : XACTION_MENU_ITEM_INFO_PRIVATE[] {
+				return this.list.map((el : XACTION_MENU_ITEM_INFO) : XACTION_MENU_ITEM_INFO_PRIVATE => {
+					let psd = el.disabled == null ? false : (el.disabled!)
+					let defaultSize = this.getFontSize('16');
+					let temiconcolor = el.iconColor != null ? getDefaultColor(el.iconColor as string) : '#333333';
+					let temfontcolor = el.iconColor != null ? getDefaultColor(el.iconColor as string) : '#333333';
+					let iconColor = xConfig.dark=='dark'?setTextColorLightByDark(temiconcolor):temiconcolor;
+					let fontColor = xConfig.dark=='dark'?setTextColorLightByDark(temfontcolor):temfontcolor;
+					return {
+						iconSize: el.iconSize != null ? (this.getFontSize(el.iconSize!)) : defaultSize,
+						icon: el.icon != null ? (el.icon!) : '',
+						fontSize: el.fontSize != null ? (this.getFontSize(el.fontSize!)) :defaultSize,
+						iconColor: iconColor,
+						fontColor: fontColor,
+						disabled: psd,
+						id: el.id,
+						text: el.text,
+					} as XACTION_MENU_ITEM_INFO_PRIVATE
+				})
+			},
+			_animationFun() : string {
+				return xConfig.animationFun
+			},
+			__height() : string {
+				let h = '100%';
+				// #ifdef WEB
+				h = `calc(100% - ${this.windtop}px)`
+				// #endif
+
+				return h;
+			},
+			_bgColor():string{
+				return xConfig.dark=='dark'?xConfig.sheetDarkColor:"#f5f5f5"
+			},
+			_cellBgColor():string{
+				return xConfig.dark=='dark'?xConfig.inputDarkColor:"#ffffff"
+			}
+		},
+
+		mounted() {
+			let t = this;
+			let sys = uni.getWindowInfo()
+			// #ifndef APP
+			this._width = sys.windowWidth
+			this._height = sys.windowHeight;
+			this.windtop = sys.windowTop;
+			// #endif
+			// #ifdef APP
+			this._width = sys.windowWidth
+			this._height = sys.windowHeight + 44;
+			// #endif
+			
+			// #ifdef H5
+			this.targetToPage = "uni-page"
+			// #endif
+			
+			if (this._show) {
+				this.tid = setTimeout(() => {
+					t.showAlert();
+				}, 50)
+			}
+		},
+		beforeUnmount() {
+			clearTimeout(this.tid)
+		},
+		methods: {
+			getFontSize(size:string) : string {
+				let fontSize = checkIsCssUnit(size, xConfig.unit);
+				if(xConfig.fontScale==1) return fontSize;
+				let sizeNumber = parseInt(fontSize)
+				if(isNaN(sizeNumber)){
+					sizeNumber = 14
+				}
+				return (sizeNumber*xConfig.fontScale).toString() + getUnit(fontSize)
+			},
+			itemClick(index : number, disabled : boolean) {
+				if (this.actioning || disabled || this.status == 'close') return;
+				this.nowClickIndex = index;
+				if(!this._cellClickClose) return;
+				this.clienEventType = 'click'
+				this.closeAlert()
+			},
+			overflayMoveTouch(evt : TouchEvent) {
+				evt.preventDefault();
+			},
+			onClickOverflowy(evt : Event) {
+				evt.stopPropagation()
+
+				this.$emit("click")
+				if (!this.overlayClick) return;
+				this.onCancel();
+			},
+			closeAlert() {
+				// ios渲染有时会造成无法触发onEnd事件，导致无法关闭。这是ios渲染的bug造成，无力修复，已向官方反馈
+				// 但这牵涉到底层问题。一时无法修复，故在ios特殊处理。后期修复，需要删除此值。
+				// #ifdef APP-IOS
+				this.actioning = false;
+				// #endif
+				
+				if (this.actioning || this.status == 'close') return;
+				this.actioning = true;
+				this.status = 'close'
+
+				/**
+				 * 关闭前执行
+				 */
+				this.$emit('beforeClose')
+
+				this.setStyleAni();
+			},
+			showAlert() {
+
+				if (this.actioning) return;
+				if (this.status == 'open') return;
+				this.showOverflay = true;
+				this.actioning = true;
+				this.status = 'open'
+				/**
+				 * 打开前执行
+				 */
+				this.$emit('beforeOpen')
+				this.setStyleAni();
+			},
+			setStyleAni() {
+				let t = this;
+				let watiDuration = 60;
+				// #ifdef APP-IOS
+				watiDuration = t.watiDuration
+				// #endif
+				try {
+					if (this.status == 'open') {
+						this.showOverflay = true;
+						clearTimeout(this.tid)
+						this.tid = setTimeout(function () {
+							t.element = uni.getElementById(t.id as string) as Element | null
+							t.elementWrap = uni.getElementById(t.wrapId as string) as Element | null;
+							if (t.element == null || t.elementWrap == null) return;
+							t.element!.style.setProperty("transition-duration", t._duration.toString() + 'ms')
+							t.elementWrap!.style.setProperty("transition-duration", t._duration.toString() + 'ms')
+							t.element!.style.setProperty('opacity', 1)
+							t.elementWrap!.style.setProperty('transform', `translate(0%,${t._space ? -24 : 0}rpx)`)
+
+						}, watiDuration);
+					} else if (t.status == 'close') {
+						t.element!.style.setProperty("transition-duration", t._duration.toString() + 'ms')
+						t.elementWrap!.style.setProperty("transition-duration", t._duration.toString() + 'ms')
+
+						t.element!.style.setProperty('opacity', 0)
+						t.elementWrap!.style.setProperty('transform', `translate(0%,100%)`)
+					}
+				} catch (e) {
+					//TODO handle the exception
+				}
+			},
+			openDrawer() {
+				this.showAlert();
+			},
+			onEnd() {
+
+				this.actioning = false;
+				if (this.status == 'close') {
+					this.showOverflay = false;
+					/**
+					 * 关闭时执行
+					 */
+					this.$emit('close')
+					/**
+					 * 等同v-model:show
+					 */
+					this.$emit('update:show', false)
+					if(this.clienEventType == 'click'){
+						/**
+						 * 项目被点击。由于安卓端动画关闭前触发,会触发view渲染异常.导致动画失败.从而造成,下个页面返回时,上页无法执行结束.
+						 * @param index {number} 当前项目索引。
+						 */
+						this.$emit('item-click', this.nowClickIndex)
+						this.clienEventType = ''
+					}
+					
+					
+				} else {
+					/**
+					 * 打开执行的事件
+					 */
+					this.$emit('open')
+					this.nowClickIndex = -1
+				}
+			},
+			overTouch(evt:UniTouchEvent){
+				// #ifdef WEB
+				evt.preventDefault()
+				// #endif
+				// #ifdef APP
+				evt.stopPropagation()
+				// #endif
+			},
+			onCancel(){
+				this.closeAlert();
+				this.$emit('cancel')
+			}
+		},
+	}
+</script>
+<template>
+	<view>
+		<view @click="openDrawer" >
+			<!--
+			@slot 标签触发显示遮罩，免于使用变量控制
+			@prop {Boolean} show - 当前是否已显示
+			-->
+			<slot name="trigger" :show="show"></slot>
+		</view>
+
+		<view @click="onClickOverflowy" ref="onClickOverflowy" @touchmove="overTouch" v-if="showOverflay"  :id="id"
+			class="xActionMenuWrap xActionMenuWrap_bottom"
+			:style="[{width:'100%',top:windtop+'px',height:__height,'transition-timing-function':_animationFun},_customStyle]">
+			<!-- @touchmove="overflayMoveTouch" -->
+			<view @transitionend="onEnd" @click.stop="" :class="[_space?'onOpenSpace':'']" 
+				class="xActionMenuWrapContent xActionMenuWrapContent_bottom" ref="xActionMenuWrapContent" :id="wrapId" :style="{
+				borderRadius:_round,
+				'transition-timing-function':_animationFun,
+				backgroundColor:_bgColor
+				}">
+				<x-icon v-if="_showClose" class="xActionMenuXclose" @click="closeAlert" color="#dcdcdc" font-size="21"
+					name="close-circle-fill"></x-icon>
+				<view>
+					<view v-if="_showTitle" class="xActionMenuTitleBox" :style="{backgroundColor:_cellBgColor}">
+						<!-- 
+						 @slot 标题插槽
+						 @prop {Boolean} show - 当前是否已显示
+						 -->
+						<slot name="title" :show="show">
+							<text class="xActionMenutitleBox">{{_title}}</text>
+						</slot>
+					</view>
+				</view>
+				<view class="xActionMenuWrapContentBox" :style="{maxHeight:_maxHeight!=''?_maxHeight:'100%'}">
+
+					<scroll-view :style="
+					{
+						flex:1,backgroundColor:_bgColor
+					}
+					" :scroll-y="true" :rebound="false">
+						<!--
+						@slot 默认插槽
+						@prop {Boolean} show - 当前是否已显示
+						-->
+						<slot name="default" >
+							<view v-for="(item,index) in _list" :key="index" @click="itemClick(index,item.disabled)"
+								:style="{backgroundColor:_cellBgColor,opacity:item.disabled?'0.5':'1'}"
+								class="xActionMenuItem" :hover-class="item.disabled?'':'xActionMenuHover'"
+								hover-stay-time="100" hover-start-time="10">
+								<x-icon v-if="item.icon!=''" :color="item.iconColor" :name="item.icon"
+									:style="{'margin-right': '10rpx'}"></x-icon>
+								<text class="xActionText" :style="{fontSize:item.fontSize,color:item.fontColor}">{{item.text}}</text>
+							</view>
+						</slot>
+					</scroll-view>
+				</view>
+
+				<view @click="onCancel" hover-class="xActionMenuHover" :style="{backgroundColor:_cellBgColor}" hover-stay-time="100" hover-start-time="10"
+					v-if="_showCancel" class="xActionMenuFooter">
+					<x-text font-size='16' class="xActionMenuFooterText">取消</x-text>
+				</view>
+			</view>
+
+
+		</view>
+
+	</view>
+</template>
+<style>
+	.xActionText{
+		lines: 1;
+		
+	}
+	.xActionMenuWrapContentBox {
+		display: flex;
+		flex-direction: column;
+		flex: 1;
+		
+	}
+
+	.xActionMenuItem {
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+		height: 50px;
+		margin-bottom: 1px;
+	
+
+	}
+
+	.xActionMenuFooter {
+		width: 100%;
+		margin-top: 8px;
+		/* background-color: #ffffff; */
+		height: 50px;
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.xActionMenuHover {
+		/* background-color: #f7f7f7; */
+	}
+
+	.xActionMenuFooterText {
+		font-size: 16px;
+		color: #333333;
+		text-align: center;
+	}
+
+	.xActionMenuXclose {
+		position: absolute;
+		right: 12px;
+		top: 6px;
+		z-index: 100;
+	}
+
+	.xActionMenuTitleBox {
+		height: 44px;
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+	
+		margin-bottom: 4px;
+	}
+
+	.xActionMenutitleBox {
+		max-width: 175px;
+		overflow: hidden;
+		lines: 1;
+		text-overflow: ellipsis;
+		font-size: 14px;
+		color: #888888;
+	}
+
+	.xActionMenuWrap_bottom {
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		align-items: flex-end;
+		
+	}
+
+
+	.xActionMenuWrapContent {
+		transition-duration: 350ms;
+		transition-property: transform;
+		/* background-color: #f5f5f5; */
+		display: flex;
+		flex-direction: column;
+		max-width: 500px;
+		flex: 1;
+	}
+
+	.onOpenSpace {
+		margin: 0 16px;
+	}
+
+	.xActionMenuWrapContent_bottom {
+		transform: translate(0%, 100%);
+		/* #ifndef APP */
+		overflow: hidden;
+		/* #endif */
+	}
+
+
+	.xActionMenuWrap {
+		background-color: rgba(0, 0, 0, 0.35);
+		opacity: 0;
+		position: fixed;
+		z-index: 1100;
+		left: 0;
+		top: 0px;
+		transition-duration: 350ms;
+		transition-property: opacity;
+		
+		
+	}
+</style>

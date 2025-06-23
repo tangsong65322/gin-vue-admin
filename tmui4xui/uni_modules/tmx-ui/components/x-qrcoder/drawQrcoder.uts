@@ -1,0 +1,102 @@
+import { GenerateFrameResult, XQrcoderProps } from "./interface.uts"
+import { generateFrame } from "./qrcode.uts"
+export function drawQrcode(opts : XQrcoderProps, img : any | null = null) {
+	let fo = generateFrame(opts.text, opts.ecc)
+	let points = fo.frameBuffer
+	let width = fo.width
+	let px = opts.size / width
+	let borderWidth = 0
+	const ctx = opts.ctx;
+
+	// 绘制背景
+	ctx.fillStyle = opts.background
+	ctx.fillRect(0, 0, opts.size, opts.size)
+
+	// 判断是否是定位点的函数
+	function isPositionDetectionPattern(i : number, j : number, width : number) : boolean {
+		// 左上角
+		if (i < 7 && j < 7) return true;
+		// 右上角
+		if (i > width - 8 && j < 7) return true;
+		// 左下角
+		if (i < 7 && j > width - 8) return true;
+		return false;
+	}
+	let dot = px * 0.1
+	for (let i = 0; i < width; i++) {
+		for (let j = 0; j < width; j++) {
+			if (points[j * width + i] > 0) {
+				// 设置颜色，如果是定位点则使用pdColor，否则使用foreground
+				let pdColor = opts?.pdColor??opts.foreground
+				// let pdColor = "red"
+				const isPostion = isPositionDetectionPattern(i, j, width);
+				ctx.fillStyle = isPostion ? pdColor : opts.foreground;
+				
+				if (isPostion) {
+					ctx.fillRect(borderWidth + px * i, borderWidth + px * j, px, px)
+				} else {
+					if (opts.mode == 'line') {
+						ctx.fillRect(borderWidth + px * i, borderWidth + px * j, px, px / 2)
+					} else if (opts.mode == 'circular') {
+						ctx.beginPath()
+						let rx = borderWidth + px * i + px / 2 - dot
+						let ry = borderWidth + px * j + px / 2 - dot
+						ctx.arc(rx, ry, px / 2 - dot, 0, 2 * Math.PI)
+						ctx.fill()
+						ctx.closePath()
+					} else if (opts.mode == 'rectSmall') {
+					
+						ctx.fillRect(borderWidth + px * i + dot, borderWidth + px * j + dot, px - dot*2, px - dot*2)
+					} else {
+						ctx.fillRect(borderWidth + px * i, borderWidth + px * j, px, px)
+					}
+				}
+
+
+
+
+
+			}
+		}
+	}
+
+	if (opts.logo != '') {
+		// #ifdef APP||WEB
+		let images = new Image(opts.logoSize, opts.logoSize)
+		images.src = opts.logo
+		console.log(opts.logo)
+		images.onload = () => {
+
+			uni.getImageInfo({
+				src: opts.logo,
+				success: (res) => {
+					ctx.save()
+					ctx.fillStyle = "#fff"
+					let centerx = (opts.size - opts.logoSize) / 2;
+					ctx.fillRect(centerx, centerx, opts.logoSize, opts.logoSize)
+					ctx.drawImage(images, 0, 0, res.width, res.height, centerx + 3, centerx + 3, opts.logoSize - 6, opts.logoSize - 6)
+					ctx.restore()
+				}
+			})
+		}
+		// #endif
+		// #ifdef MP-WEIXIN
+		img.src = opts.logo
+		img.onload = () => {
+			uni.getImageInfo({
+				src: opts.logo,
+				success: (res) => {
+					ctx.save()
+					ctx.fillStyle = "#fff"
+					let centerx = (opts.size - opts.logoSize) / 2;
+					ctx.fillRect(centerx, centerx, opts.logoSize, opts.logoSize)
+					ctx.drawImage(img, 0, 0, res.width, res.height, centerx + 3, centerx + 3, opts.logoSize - 6, opts.logoSize - 6)
+					ctx.restore()
+				}
+			})
+		}
+		// #endif
+
+
+	}
+}

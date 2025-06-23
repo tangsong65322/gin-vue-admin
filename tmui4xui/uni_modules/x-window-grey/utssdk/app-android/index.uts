@@ -1,0 +1,27 @@
+import Paint from 'android.graphics.Paint';
+import ColorMatrix from 'android.graphics.ColorMatrix';
+import ColorMatrixColorFilter from 'android.graphics.ColorMatrixColorFilter';
+import View from 'android.view.View';
+import ViewGroup from 'android.view.ViewGroup';
+export function setWindowGrey(ele:any|null=null) {
+	let paint = new Paint()
+	let colorMatrix = new ColorMatrix()
+	colorMatrix.setSaturation((0).toFloat())
+	let decorView = UTSAndroid.getUniActivity()!.window.decorView as ViewGroup
+	
+	paint.setColorFilter(new ColorMatrixColorFilter(colorMatrix))
+
+	decorView.setLayerType(View.LAYER_TYPE_HARDWARE,paint)
+}
+export function removeWindowGrey(ele:any|null=null) {
+	let paint = new Paint()
+	let colorMatrix = new ColorMatrix()
+	colorMatrix.setSaturation((1).toFloat())
+	let decorView = UTSAndroid.getUniActivity()!.window.decorView as ViewGroup
+	paint.setColorFilter(new ColorMatrixColorFilter(colorMatrix))
+	
+	decorView.setLayerType(View.LAYER_TYPE_HARDWARE,paint)
+}
+
+
+

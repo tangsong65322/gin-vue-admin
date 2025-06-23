@@ -1,0 +1,583 @@
+<script lang="ts">
+	import { type PropType } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit, getUnit } from "../../core/util/xCoreUtil.uts"
+	import { xAnimate } from "../../core/util/xAnimate.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { XANIMATE_OPIONS } from "../../interface.uts"
+	type dDrect = { x : number, y : number, width : number, height : number, space : number }
+	/**
+	 * @name 评分 xRate
+	 * @description 评分组件，只读和禁用等属性
+	 * @page /pages/index/rate
+	 * @category 表单组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | x | ☑️ | 4.14+ | 1.0.0 |
+	 */
+	export default {
+		data() {
+			return {
+				score: 0,
+				xani: null as xAnimate | null,
+				clickStartIndex: -1,
+				//0未选中，1左，2右
+				clickStartStatus: 0,
+				isWEBPC: false,
+				// #ifdef WEB
+				xRateWebId: "xrateUid-" + Math.random().toString(16).substring(2),
+				// #endif
+				_x: 0,
+				_y: 0,
+				_isMove: false,
+				_parentBounds: { x: 0, y: 0, width: 0, height: 0,space:0 } as dDrect,
+				_isWEBmoveSelecteIndex: -1
+			}
+		},
+		emits: [
+			/**
+			 * 评分变换时触发
+			 * @param {number} score - 评分
+			 */
+			'change',
+			'update:modelValue'
+		],
+		props: {
+			/**
+			 * 当前分值，等同v-model
+			 */
+			modelValue: {
+				type: Number,
+				default: 0
+			},
+			/**
+			 * 最大评分数量
+			 */
+			count: {
+				type: Number,
+				default: 5
+			},
+			/**
+			 * 选中的颜色，默认空值取全局值
+			 */
+			color: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 未选中的颜色
+			 */
+			unColor: {
+				type: String,
+				default: "#cacaca"
+			},
+			/**
+			 * 未选中的暗黑背景颜色
+			 * 空时取InputDark表单颜色
+			 */
+			darkUnColor: {
+				type: String,
+				default: "#8b8b8b"
+			},
+			/**
+			 * 尺寸
+			 */
+			size: {
+				type: String,
+				default: "21"
+			},
+			/**
+			 * 间隙
+			 */
+			space: {
+				type: String,
+				default: "4"
+			},
+			/**
+			 * 选中的图标
+			 */
+			icon: {
+				type: String,
+				default: "star-fill"
+			},
+			/**
+			 * 未选中的图标
+			 */
+			unicon: {
+				type: String,
+				default: "star-line"
+			},
+			/**
+			 * 是否只读状态
+			 */
+			readonly: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 是否禁用状态
+			 */
+			disabled: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 是否显示右侧评分值
+			 */
+			showScore: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 右侧文本分值文本的字号
+			 */
+			fontSize: {
+				type: String,
+				default: "14"
+			},
+			/**
+			 * 是否开启半星
+			 * 开启半星后，自定的unicon和icon失效。
+			 */
+			half: {
+				type: Boolean,
+				default: false
+			}
+		},
+		watch: {
+			modelValue(newvalue : number) {
+				if (newvalue == this.score) return;
+				this.score = this.modelValue;
+				if (this.half) {
+					this.setDefaultHalfStatus()
+				}
+			}
+		},
+		computed: {
+			_disabled() : boolean {
+				return this.disabled
+			},
+			_readonly() : boolean {
+				return this.readonly
+			},
+			_count() : number {
+				return this.count;
+			},
+			_size() : string {
+				return this.size;
+			},
+			_sizeUnUnit() : number {
+				let fontSize = checkIsCssUnit(this.size, xConfig.unit);
+				let sizeNumber = parseInt(fontSize)
+				const unit = getUnit(fontSize);
+				if (isNaN(sizeNumber)) {
+					sizeNumber = 21
+				}
+				if (unit == 'rpx') {
+					sizeNumber = uni.rpx2px(sizeNumber)
+				}
+				return sizeNumber;
+			},
+			_fontSize() : string {
+				let fontSize = checkIsCssUnit(this.fontSize, xConfig.unit);
+				if (xConfig.fontScale == 1) return fontSize;
+				let sizeNumber = parseInt(fontSize)
+				if (isNaN(sizeNumber)) {
+					sizeNumber = 14
+				}
+				return (sizeNumber * xConfig.fontScale).toString() + getUnit(fontSize)
+			},
+
+			_space() : string {
+				return checkIsCssUnit(this.space, xConfig.unit);
+			},
+			_color() : string {
+				if (this.color == "") return getDefaultColor(xConfig.color)
+				return getDefaultColor(this.color);
+			},
+			_unColor() : string {
+				if (xConfig.dark == 'dark') {
+					if (this.darkUnColor == '') {
+						return getDefaultColor(xConfig.inputDarkColor);
+					} else {
+						return getDefaultColor(this.darkUnColor);
+					}
+				}
+				return getDefaultColor(this.unColor);
+			},
+			_showScore() : boolean {
+				return this.showScore;
+			},
+		},
+		mounted() {
+			this.score = this.modelValue;
+			if (this.half) {
+				this.setDefaultHalfStatus()
+			}
+		},
+		beforeMount() {
+			this.isWEBPC = this.isPcMouse()
+		},
+		beforeUnmount() {
+			if (this.xani != null) {
+				this.xani!.stop();
+				this.xani = null;
+			}
+		},
+		methods: {
+			isPcMouse() : boolean {
+				let ispc = false;
+				// #ifdef WEB
+				ispc = !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+				// #endif
+				return ispc;
+			},
+			setDefaultHalfStatus() {
+				if (this.score == 0) return;
+				this.clickStartIndex = this.score
+				let fillCount = Math.ceil(this.score);
+				this.clickStartStatus = this.score == (fillCount - 0.5) ? 1 : 2;
+			},
+			isSelected(index : number) : boolean {
+				if (this.half) {
+					return this.score >= index - 0.5
+				}
+				return this.score >= index
+			},
+			isSelectedHalf(index : number) : string {
+				if (this.score > index) {
+					return 'star-fill'
+				}
+				if (this.score < index - 0.5) {
+					return 'star-line'
+				}
+
+				if (this.clickStartStatus == 1) {
+					return 'star-half-fill'
+				}
+				if (this.clickStartStatus == 2) {
+					return 'star-fill'
+				}
+				return 'star-line'
+			},
+			onClickHalf(index : number, type : number) {
+				if (this._readonly || this._disabled) return;
+
+				this.score = type == 1 ? index - 0.5 : index;
+
+				this.clickStartStatus = type
+				this.setUpdate(index)
+			},
+			onClick(index : number) {
+				if (this._readonly || this._disabled) return;
+				this.score = index;
+				this.setUpdate(index)
+				this.clickStartIndex = index;
+
+			},
+			setUpdate(index : number) {
+				/**
+				 * 同步当前分值，等同v-model 
+				 * @param {number} score 评分
+				 */
+				this.$emit('update:modelValue', this.score);
+				/**
+				 * 评分变换时触发
+				 * @param {number} score 评分
+				 */
+				this.$emit('change', this.score);
+				let el = this.$refs['rate-' + index.toString()];
+				let eles = el as UniElement[]
+
+				if (this.xani != null) {
+					this.xani!.stop();
+				}
+				if (eles.length > 0) {
+					this.xani = new xAnimate(eles[0], { duration: 250, isDescPlay: true } as XANIMATE_OPIONS)
+					this.xani!.attr('scale', '1', '1.2', false)
+					this.xani!.attr('scale', '1.2', '1', false)
+						.play()
+				}
+			},
+
+
+
+			// #ifdef WEB
+			async _msStart(evt : MouseEvent) {
+				if (!this.isWEBPC) return;
+				let ele = this.$refs['xRateWrap'] as UniElement | null;
+				if (ele == null) return;
+				// @ts-ignore
+				window.xRateId = this.xRateWebId
+				this._isMove = true;
+				// @ts-ignore
+				this._x = evt.clientX
+				// @ts-ignore
+				this._y = evt.clientY
+				let bounds = await ele.getBoundingClientRectAsync()
+				if (bounds != null) {
+					this._parentBounds = {
+						x: bounds.left,
+						y: bounds.top,
+						width: bounds.width,
+						height: bounds.height,
+						space: (bounds.width - this._count * this._sizeUnUnit) / (this._count - 1)
+					} as dDrect
+				}
+			},
+			_msMove(evt : MouseEvent) {
+				// @ts-ignore
+				if (!this.isWEBPC || !this._isMove || window.xRateId != this.xRateWebId) return;
+				if (this._readonly || this._disabled) return;
+				
+				// @ts-ignore
+				let diffx = evt.clientX - this._parentBounds.x
+				// @ts-ignore
+				let diffy = evt.clientY - this._parentBounds.y
+				
+				// 计算当前鼠标位置对应的星星索引
+				// 每个星星的宽度 = 星星尺寸 + 间距
+				const starWidth = this._sizeUnUnit + this._parentBounds.space;
+				
+				// 计算当前鼠标在第几个星星上
+				let currentIndex = Math.ceil(diffx / starWidth);
+				
+				// 边界处理
+				if (currentIndex < 1) currentIndex = 1;
+				if (currentIndex > this._count) currentIndex = this._count;
+				
+				// 如果开启半星，需要判断是左半部分还是右半部分
+				if (this.half) {
+					// 计算鼠标在当前星星内的位置
+					const posInStar = diffx - (currentIndex - 1) * starWidth;
+					// 判断是左半部分还是右半部分
+					const isLeft = posInStar <= (this._sizeUnUnit / 2);
+					
+					// 设置评分和状态
+					this.score = isLeft ? currentIndex - 0.5 : currentIndex;
+					this.clickStartStatus = isLeft ? 1 : 2;
+				} else {
+					// 不开启半星，直接设置整星评分
+					this.score = currentIndex;
+				}
+				
+				// 更新索引
+				this.clickStartIndex = currentIndex;
+				this._isWEBmoveSelecteIndex = currentIndex;
+				
+				// 触发更新事件
+				this.$emit('update:modelValue', this.score);
+			},
+			_msEnd(evt : MouseEvent) {
+				if (!this.isWEBPC) return;
+				this._isMove = false;
+				// @ts-ignore
+				window.xRateId = '';
+				
+				// 如果有评分变化，触发change事件
+				if (this._isWEBmoveSelecteIndex > 0 && !this._readonly && !this._disabled) {
+					this.$emit('change', this.score);
+					
+					// 添加动画效果
+					let el = this.$refs['rate-' + this._isWEBmoveSelecteIndex.toString()];
+					let eles = el as UniElement[]
+
+					if (this.xani != null) {
+						this.xani!.stop();
+					}
+					if (eles.length > 0) {
+						this.xani = new xAnimate(eles[0], { duration: 250, isDescPlay: true } as XANIMATE_OPIONS)
+						this.xani!.attr('scale', '1', '1.2', false)
+						this.xani!.attr('scale', '1.2', '1', false)
+							.play()
+					}
+				}
+				
+				// 重置移动选择索引
+				this._isWEBmoveSelecteIndex = -1;
+			},
+			// #endif
+
+			
+			_msMStart(evt : UniTouchEvent) {
+				if (this._readonly || this._disabled || this.isWEBPC) return;
+				
+				let ele = this.$refs['xRateWrap'] as UniElement | null;
+				if (ele == null) return;
+				
+				this._isMove = true;
+				
+				// 获取触摸点坐标
+				if (evt.touches.length > 0) {
+					this._x = evt.touches[0].clientX;
+					this._y = evt.touches[0].clientY;
+				}
+					
+				// 异步获取组件位置信息
+				ele.getBoundingClientRectAsync()!.then(bounds => {
+					if (bounds != null) {
+						this._parentBounds = {
+							x: bounds.left,
+							y: bounds.top,
+							width: bounds.width,
+							height: bounds.height,
+							space: (bounds.width - this._count * this._sizeUnUnit) / (this._count - 1)
+						} as dDrect
+					}
+				});
+			},
+			_msMMove(evt : UniTouchEvent) {
+				if (!this._isMove || this._readonly || this._disabled || this.isWEBPC) return;
+				
+				// 获取触摸点坐标
+				if (evt.touches.length > 0) {
+					let diffx = evt.touches[0].clientX - this._parentBounds.x;
+					
+					// 计算当前触摸位置对应的星星索引
+					const starWidth = this._sizeUnUnit + this._parentBounds.space;
+					
+					// 计算当前触摸在第几个星星上
+					let currentIndex = Math.ceil(diffx / starWidth);
+					
+					// 边界处理
+					if (currentIndex < 1) currentIndex = 1;
+					if (currentIndex > this._count) currentIndex = this._count;
+					
+					// 如果开启半星，需要判断是左半部分还是右半部分
+					if (this.half) {
+						// 计算触摸在当前星星内的位置
+						const posInStar = diffx - (currentIndex - 1) * starWidth;
+						// 判断是左半部分还是右半部分
+						const isLeft = posInStar <= (this._sizeUnUnit / 2);
+						
+						// 设置评分和状态
+						this.score = isLeft ? currentIndex - 0.5 : currentIndex;
+						this.clickStartStatus = isLeft ? 1 : 2;
+					} else {
+						// 不开启半星，直接设置整星评分
+						this.score = currentIndex;
+					}
+				
+					// 更新索引
+					this.clickStartIndex = currentIndex;
+					this._isWEBmoveSelecteIndex = currentIndex;
+					
+					// 触发更新事件
+					this.$emit('update:modelValue', this.score);
+				}
+			},
+			_msMEnd(evt : UniTouchEvent) {
+				this._isMove = false;
+				
+				// 如果有评分变化，触发change事件
+				if (this._isWEBmoveSelecteIndex > 0 && !this._readonly && !this._disabled) {
+					this.$emit('change', this.score);
+					
+					// 添加动画效果
+					let el = this.$refs['rate-' + this._isWEBmoveSelecteIndex.toString()];
+					let eles = el as UniElement[]
+
+					if (this.xani != null) {
+						this.xani!.stop();
+					}
+					if (eles.length > 0) {
+						this.xani = new xAnimate(eles[0], { duration: 250, isDescPlay: true } as XANIMATE_OPIONS)
+						this.xani!.attr('scale', '1', '1.2', false)
+						this.xani!.attr('scale', '1.2', '1', false)
+							.play()
+					}
+				}
+				
+				// 重置移动选择索引
+				this._isWEBmoveSelecteIndex = -1;
+			},
+			
+		},
+
+	}
+</script>
+<template>
+	<view class="xRate" :style="{opacity:_disabled?0.7:1}">
+
+		<view ref="xRateWrap" class="xRateWrap" 
+			<!-- #ifdef WEB -->
+			@mouseenter="_msStart"
+			@mousemove="_msMove"
+			@mouseleave="_msEnd"
+			<!-- #endif -->
+
+			
+			@touchstart="_msMStart"
+			@touchmove="_msMMove"
+			@touchend="_msMEnd"
+		
+
+			>
+			<template v-if="!half">
+				<view :ref="'rate-'+index" v-for="index in _count" :key="index">
+					<x-icon @click=" onClick(index)" :style="{marginRight:index==_count?'0rpx' : _space}"
+						:font-size="_size" :color="isSelected(index)?_color:_unColor"
+						:dark-color="isSelected(index)?_color:_unColor" :name="isSelected(index)?icon:unicon"></x-icon>
+				</view>
+			</template>
+
+			<!-- 开启半星 -->
+			<template v-if="half">
+				<view :ref="'rate-'+index" v-for="index in _count" :key="index" style='position:relative'>
+					<x-icon :style="{marginRight:index==_count?'0rpx' : _space,marginLeft:index==0?'0rpx' : _space}"
+						:font-size="_size" :color="isSelected(index)?_color:_unColor"
+						:dark-color="isSelected(index)?_color:_unColor" :name="isSelectedHalf(index)"></x-icon>
+					<view @click="onClickHalf(index,1)" class="xRateLeft"></view>
+					<view @click="onClickHalf(index,2)" class="xRateRight"></view>
+				</view>
+			</template>
+		</view>
+
+		<!-- 
+		@slot 文本分值的右侧插槽
+		@prop {number} score - 当前分值
+		 -->
+		<slot name="score" :score="score">
+			<text class="xRateText" v-if="_showScore" :style="{color:_color,fontSize:_fontSize}">
+				{{score.toFixed(1)}}
+			</text>
+		</slot>
+	</view>
+</template>
+<style scoped>
+	.xRateText {
+		margin-left: 10px;
+	}
+
+	.xRateLeft {
+		position: absolute;
+		width: 50%;
+		height: 100%;
+		top: 0px;
+		left: 0px
+	}
+
+	.xRateRight {
+		position: absolute;
+		width: 50%;
+		height: 100%;
+		top: 0px;
+		right: 0px
+	}
+
+	.xRate {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: flex-start;
+	}
+
+	.xRateWrap {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: flex-start;
+	}
+</style>

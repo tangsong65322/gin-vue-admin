@@ -1,0 +1,299 @@
+<script lang="ts">
+	import { PropType } from "vue"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	/**
+	 * @name 角标 xBadge
+	 * @page /pages/index/badge
+	 * @category 展示组件
+	 * @description 角标
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				padding: '4px 4px',
+				test: new Map<string, string>([['border', '2px solid red'], ['background-color', 'green']])
+			}
+		},
+		props: {
+			/**
+			 * 文字大小，可数字或者带单位
+			 */
+			fontSize: {
+				type: String,
+				default: "9"
+			},
+			/**
+			 * 背景颜色，合法和颜色值及主题名称
+			 */
+			bgColor: {
+				type: String,
+				default: "error"
+			},
+			/**
+			 * 文字颜色，合法和颜色值及主题名称
+			 */
+			fontColor: {
+				type: String,
+				default: "white"
+			},
+			/**
+			 * 是否显示为点，优先级小于count,label
+			 */
+			dot: {
+				type: Boolean,
+				default: true
+			},
+			/**
+			 * 是否显示为文本数字，优先级小于label
+			 */
+			count: {
+				type: Number,
+				default: 0
+			},
+			/**
+			 * 为数字时大于此值显示+号
+			 */
+			maxCount: {
+				type: Number,
+				default: 99
+			},
+			/**
+			 * 是否显示为文本，优先级最大
+			 */
+			label: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 位置
+			 */
+			position: {
+				type: String as PropType<"right" | "left" | "bottomLeft" | "bottomRight" | 'top' | 'bottom'>,
+				default: "right"
+			},
+			/**
+			 * 偏移
+			 */
+			offset: {
+				type: Array as PropType<number[]>,
+				default: () : number[] => [0, 0] as number[],
+				validator(val : number[]) : boolean {
+					if (val.length == 0 || val.length == 2) return true
+					console.error("x:必须是长度为2的数字数组参数或者空数组")
+					return false
+				}
+			}
+
+		},
+
+		watch: {
+			label() {
+				let t = this;
+				this.$nextTick(() => {
+					t.getNodeInfo();
+				})
+			},
+			count() {
+				let t = this;
+				this.$nextTick(() => {
+					t.getNodeInfo();
+				})
+			},
+			position() {
+				let t = this;
+				this.$nextTick(() => {
+					t.getNodeInfo();
+				})
+			},
+			offset() {
+				let t = this;
+				this.$nextTick(() => {
+					t.getNodeInfo();
+				})
+			}
+		},
+		mounted() {
+			this.getNodeInfo();
+		},
+		computed: {
+			_offset() : number[] {
+				return this.offset;
+			},
+			_isDot() : boolean {
+				if (this.label != "" || this.count > 0 || !this.dot) return false;
+				return true;
+			},
+			_cStyles() : Map<string, string>[] {
+
+				let trs = ''
+				if (this.position == 'right') {
+					trs = 'translate(50%, -50%)'
+				} else if (this.position == 'left') {
+					trs = 'translate(-50%, -50%)'
+				} else if (this.position == 'bottomLeft') {
+					trs = 'translate(-50%, 50%)'
+				} else if (this.position == 'bottomRight') {
+					trs = 'translate(50%, 50%)'
+				} else if (this.position == 'top') {
+					trs = 'translate(0%, -50%)'
+				} else if (this.position == 'bottom') {
+					trs = 'translate(0%, 50%)'
+				}
+				let top = ''
+				let bottom = ''
+				let left = ''
+				let right = ''
+				if (this.position == 'top') {
+					top = '0px'
+					left = 'auto'
+					right = 'auto'
+				} else if (this.position == 'bottom') {
+					bottom = '0px'
+					left = 'auto'
+					right = 'auto'
+				} else if (this.position == 'right') {
+					top = this._offset[1].toString() + 'px'
+					right = this._offset[0].toString() + 'px'
+				} else if (this.position == 'left') {
+					top = '0px'
+					left = '0px'
+				} else if (this.position == 'bottomLeft') {
+					bottom = '0px'
+					left = '0px'
+				} else if (this.position == 'bottomRight') {
+					bottom = '0px'
+					right = '0px'
+				}
+
+				let dotMapCs = new Map<string, string>()
+				dotMapCs.set("background", getDefaultColor(this.bgColor))
+				dotMapCs.set("left", left)
+				dotMapCs.set("right", right)
+				dotMapCs.set("top", top)
+				dotMapCs.set("bottom", bottom)
+				dotMapCs.set("transform", trs)
+
+				let labelMapCs = new Map<string, string>()
+
+				labelMapCs.set("background", getDefaultColor(this.bgColor))
+				labelMapCs.set("left", left)
+				labelMapCs.set("right", right)
+				labelMapCs.set("top", top)
+				labelMapCs.set("bottom", bottom)
+				labelMapCs.set("transform", trs)
+				labelMapCs.set("visibility", this._label == "" ? "hidden" : "visible")
+
+				let t = this;
+
+				this.$nextTick(() => {
+					t.getNodeInfo();
+				})
+
+				return [dotMapCs, labelMapCs] as Map<string, string>[]
+
+			},
+			_fontColor():string{
+				return getDefaultColor(this.fontColor)
+			},
+			_fontSize():string{
+				return checkIsCssUnit(this.fontSize, xConfig.unit)
+			},
+			_label() : string {
+				if (this.label != "") return this.label;
+				if (this.count > 0 && this.count <= this.maxCount) return this.count.toString();
+				if (this.count <= 0) return ""
+				return this.maxCount!.toString() + "+"
+			}
+		},
+		methods: {
+			getNodeInfo() {
+				let t = this;
+				uni.createSelectorQuery().in(this)
+					.select(".xBadge-countAndLabel")
+					.boundingClientRect().exec((ret) => {
+						if(ret.length==0) return;
+						let nodeinfo = ret[0] as NodeInfo
+						if(nodeinfo==null) return;
+						let width = nodeinfo.width as number
+						let height = nodeinfo.height as number
+						let max = Math.max(width, height)
+						let px = Math.ceil(max / 2);
+						// let py = max / 2;
+						t.padding = `${px}px ${px}px`;
+					})
+			}
+		},
+	}
+</script>
+<template>
+	<view class="xBadge" :style='{padding:padding}'>
+		<view class="xBadgeWrap">
+			<text :style='_cStyles[0]!' class="xBadge-dot" :class="[_isDot?'noneShow':'nonex']"></text>
+			<view id="xBadge-countAndLabel" class="xBadge-countAndLabel" :class="[_isDot?'nonex':'noneShow']"
+				:style='_cStyles[1]!'>
+				<text class="xBadge-countAndLabelText"
+					:style='{color:_fontColor,fontSize:_fontSize}'>{{_label}}</text>
+			</view>
+
+			<!-- 
+			 @slot 默认内容区域,你的正常内容放置在标签内
+			 -->
+			<slot></slot>
+		</view>
+	</view>
+</template>
+<style>
+	.xBadge {
+		overflow: visible;
+	}
+
+	.xBadge-countAndLabel {
+		position: absolute;
+		z-index: 3;
+		border-radius: 100px;
+		/* min-width: 16px; */
+		padding: 0rpx 4px;
+
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.xBadge-countAndLabelText {
+		line-height: 1.5;
+		text-align: center;
+	}
+
+	.xBadge-dot {
+		position: absolute;
+
+		width: 6px;
+		height: 6px;
+		border-radius: 18px;
+		z-index: 3;
+		opacity: 0;
+	}
+
+	.noneShow {
+		opacity: 1;
+	}
+
+	.nonex {
+		opacity: 0;
+	}
+
+	.xBadgeWrap {
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+		overflow: visible;
+		position: relative;
+	}
+</style>

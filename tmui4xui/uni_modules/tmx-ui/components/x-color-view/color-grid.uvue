@@ -1,0 +1,229 @@
+<template>
+	<view class="colorViewGridBox" ref="colorViewGridBoxRef" :style="{minHeight:boxHeight+'px'}">
+
+		<view class="colorViewGridBoxGrid"
+			:style="{width:gridWidth+'px',height:gridHeight+'px',top:barTop+'px',left:barLeft+'px'}"></view>
+		<canvas :id="canvasUid" @touchstart.stop="mStart" @touchmove.stop="mMove" @touchend="mEnd" @touchcancel="mEnd"
+			v-if="isInitDom" ref="canvas" :style="{width:boxWidth+'px',height:boxHeight+'px'}" <!-- #ifdef WEB -->
+			@mousedown="mmStart"
+			<!-- #endif -->
+
+			></canvas>
+	</view>
+</template>
+
+<script lang="ts" setup>
+	import { ref, getCurrentInstance } from "vue"
+	import { hexToRgb, hslToRgb, hslaToRgbCss, rgbToHex, rgbToHexNoAlpha } from "../../core/util/xCoreColorUtil.uts";
+	const emits = defineEmits<{
+		/**
+		 * 值变化时触发。
+		 * @param {string} hexstr - 当前的颜色值
+		 */
+		(e : 'change', hexstr : string) : void,
+	}>()
+
+	const proxy = getCurrentInstance()?.proxy
+	const canvas = ref<UniCanvasElement | null>(null)
+	const colorViewGridBoxRef = ref<UniCanvasElement | null>(null)
+	let tid = 0;
+	let gridWidth = ref(0)
+	let gridHeight = ref(0)
+	let boxWidth = ref(0)
+	let boxHeight = ref(250)
+	let isInitDom = ref(false)
+	let colosXYData = [] as string[][]
+	let barLeft = ref(0)
+	let barTop = ref(0)
+	let windTop = uni.getWindowInfo().windowTop
+	const isMoving = ref(false)
+	let xColorviewEventId = ''
+	const canvasUid = 'xColorView_' + Math.random().toString(16).substring(4, 8)
+	const drawBlackWhite = (ctx : CanvasRenderingContext2D) => {
+		let colors = [] as string[]
+		for (let i = 0; i < 12; i++) {
+			let blv = (11 - i) / 11 * 100
+			let l = Math.floor(blv)
+			let rgba = hslToRgb({ h: 0, s: 0, l: l, a: 1 } as UTSJSONObject)
+			let color = rgbToHexNoAlpha(rgba)
+			ctx.fillStyle = color
+			ctx.fillRect(i * gridWidth.value, 0, gridWidth.value, gridHeight.value)
+			colors.push(color)
+		}
+		colosXYData.push(colors)
+	}
+	const drawHsla = (ctx : CanvasRenderingContext2D) => {
+		let colorsx = new Array<string[]>()
+		for (let i = 0; i < 9; i++) {
+			let colorsB = [] as string[]
+			for (let j = 0; j < 12; j++) {
+				colorsB.push('')
+			}
+			colorsx.push(colorsB)
+		}
+		for (let i = 0; i < 12; i++) {
+			for (let j = 1; j < 10; j++) {
+				let blv = (j + 0.2) / 10 * 100
+				let l = Math.floor(blv)
+				let rgba = hslToRgb({ h: i * 25 + 180, s: 100 - blv * 0.65, l: l, a: 1 } as UTSJSONObject)
+				let color = rgbToHexNoAlpha(rgba)
+				ctx.fillStyle = color
+				ctx.fillRect(i * gridWidth.value, j * gridHeight.value, gridWidth.value, gridHeight.value)
+				colorsx[j - 1][i] = color
+
+			}
+		}
+		colosXYData.push(...colorsx)
+	}
+	const getInitDraw = () => {
+		uni.createCanvasContextAsync({
+			id: canvasUid,
+			component: proxy,
+			success(context) {
+				let ctx = context.getContext('2d')!;
+				let canvas = ctx.canvas
+				let dpr = uni.getWindowInfo().pixelRatio
+				canvas.width = canvas.offsetWidth * dpr
+				canvas.height = canvas.offsetHeight * dpr
+				ctx.scale(dpr, dpr)
+				gridWidth.value = canvas.offsetWidth / 12
+				gridHeight.value = canvas.offsetHeight / 10
+				drawBlackWhite(ctx)
+				drawHsla(ctx)
+
+			},
+			fail(err) {
+				console.error(err)
+				uni.showToast({ title: '错误', icon: 'none' })
+			}
+		})
+
+	}
+	let nowselectedStr = ref('')
+	const colorViewGridBox = ref<NodeInfo | null>(null)
+	const setPostion = (x : number, y : number) => {
+		let node = colorViewGridBox.value!;
+		// #ifdef MP
+		if(!node?.left){
+			node.left = 0
+		}
+		if(!node?.top){
+			node.top = 0
+		}
+		// #endif
+		let _x = x - node.left!;
+		let _y = y - node.top! - windTop;
+
+		let pos_x = Math.ceil(_x / gridWidth.value)
+		pos_x = Math.max(1, Math.min(12, pos_x))
+		let pos_y = Math.ceil(_y / gridHeight.value)
+		pos_y = Math.max(1, Math.min(10, pos_y))
+
+		let xystr = colosXYData[pos_y - 1][pos_x - 1]
+		barLeft.value = (pos_x - 1) * gridWidth.value
+		barTop.value = (pos_y - 1) * gridHeight.value
+		if (nowselectedStr.value == xystr) return;
+		nowselectedStr.value = xystr
+
+		emits('change', xystr)
+	}
+	const mStart = (evt : UniTouchEvent) => {
+		evt.preventDefault()
+		isMoving.value = true
+
+		uni.createSelectorQuery()
+			.in(proxy)
+			.select('.colorViewGridBox')
+			.boundingClientRect()
+			.exec(nodes => {
+				let node = nodes[0] as NodeInfo;
+		
+				colorViewGridBox.value = node
+				setPostion(evt.changedTouches[0].clientX, evt.changedTouches[0].clientY)
+			})
+
+	}
+	const mMove = (evt : UniTouchEvent) => {
+		if (!isMoving.value) return;
+		// #ifdef MP-WEIXIN||WEB
+		evt.stopPropagation()
+		evt.preventDefault()
+		// #endif
+		setPostion(evt.changedTouches[0].clientX, evt.changedTouches[0].clientY)
+	}
+	const mEnd = (evt : UniTouchEvent) => {
+		if (!isMoving.value) return;
+		isMoving.value = false
+	}
+
+	// #ifdef WEB
+	const mmStart = (evt : UniMouseEvent) => {
+		isMoving.value = true;
+		xColorviewEventId = Math.random().toString(16).substring(2, 16)
+		setPostion(evt.clientX, evt.clientY)
+	}
+	const mmMove = (evt : UniMouseEvent) => {
+		if (!isMoving.value) return
+		setPostion(evt.clientX, evt.clientY)
+	}
+	const mmEnd = (evt : UniMouseEvent) => {
+		if (!isMoving.value) return
+		isMoving.value = false;
+		xColorviewEventId = ''
+	}
+
+	document.body.addEventListener('mousemove', mmMove)
+	document.body.addEventListener('mouseup', mmEnd)
+	document.body.addEventListener('mouseleave', mmEnd)
+	// #endif
+
+
+	onBeforeUnmount(() => {
+		clearTimeout(tid)
+		// #ifdef WEB
+		document.body.removeEventListener('mousemove', mmMove)
+		document.body.removeEventListener('mouseup', mmEnd)
+		document.body.removeEventListener('mouseleave', mmEnd)
+		// #endif
+	})
+	onMounted(() => {
+		clearTimeout(tid)
+		uni.createSelectorQuery()
+			.in(proxy)
+			.select('.colorViewGridBox')
+			.boundingClientRect()
+			.exec(nodes => {
+				let node = nodes[0] as NodeInfo;
+				colorViewGridBox.value = node
+				boxHeight.value = Math.min(Math.max(250, node.width!), 250)
+				boxWidth.value = Math.max(Math.max(node.width!, 250), 250)
+				isInitDom.value = true;
+				tid = setTimeout(function () {
+					getInitDraw();
+				}, 80);
+			})
+
+	})
+</script>
+
+<style scoped>
+	.colorViewGridBox {
+		position: relative;
+		border-radius: 6px;
+		overflow: hidden;
+		margin-top: 8px;
+		/* #ifdef WEB */
+		cursor: cell;
+		/* #endif */
+	}
+
+	.colorViewGridBoxGrid {
+		position: absolute;
+		border: 2px solid rgba(255, 255, 255, 0.6);
+		z-index: 3;
+		pointer-events: none;
+		/* #ifdef MP||WEB */
+		box-sizing: border-box;
+		/* #endif */
+	}
+</style>

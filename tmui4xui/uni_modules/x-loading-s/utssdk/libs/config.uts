@@ -1,0 +1,33 @@
+import { XLOADINGS_TYPE, XLOADINGS_TYPE_PRIVATE } from "../interface.uts"
+export const defaultConfig = {
+	iconColor:'rgb(5,121,255)',
+	contentBgColor:'rgba(255,255,255,1)',
+	maskBgColor:'rgba(0,0,0,0.6)',
+	iconSize:36,
+	iconCode:'EEC4',
+	title:'',
+	titleSize:12,
+	titleColor:'#a0a1a7',
+	size:100
+} as XLOADINGS_TYPE_PRIVATE
+
+export function configCover(opts : XLOADINGS_TYPE) : XLOADINGS_TYPE_PRIVATE {
+	let iconColor = opts.iconColor != null ? (opts.iconColor!) : defaultConfig.iconColor;
+	let contentBgColor = opts.contentBgColor != null ? (opts.contentBgColor!) : defaultConfig.contentBgColor;
+	let maskBgColor = opts.maskBgColor != null ? (opts.maskBgColor!) : defaultConfig.maskBgColor;
+	let iconSize = opts.iconSize != null ? (opts.iconSize!) : defaultConfig.iconSize;
+	let iconCode = opts.iconCode != null ? (opts.iconCode!) : defaultConfig.iconCode;
+	let title = opts.title != null ? (opts.title!) : defaultConfig.title;
+	let titleSize = opts.titleSize != null ? (opts.titleSize!) : defaultConfig.titleSize;
+	let titleColor = opts.titleColor != null ? (opts.titleColor!) : defaultConfig.titleColor;
+	let size = opts.size != null ? (opts.size!) : defaultConfig.size;
+	
+	return {
+		iconColor,
+		contentBgColor,
+		maskBgColor,
+		iconSize,
+		iconCode,title,titleSize,titleColor,size
+	} as XLOADINGS_TYPE_PRIVATE
+}
+

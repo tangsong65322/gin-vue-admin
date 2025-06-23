@@ -1,0 +1,71 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+	<x-sheet>
+		<x-text font-size="18" class=" text-weight-b mb-8">SSE</x-text>
+		<x-text color="#999999">服务器单向连接</x-text>
+	</x-sheet>
+		<x-sheet>
+			<x-text class="mb-18">
+				{{connecting==0?'待连接':''}}
+				{{connecting==1?'连接中':''}}
+				{{connecting==2?'连接成功':''}}
+				{{connecting==3?'断开连接':''}}
+			</x-text>
+			<x-button class="mb-12" :loading="connecting==1" :disabled="connecting!=0&&connecting!=3" @click="connect" :block="true">打开连接</x-button>
+			<x-button :disabled="connecting!=2" :loading="connecting==1" @click="close" :block="true">断开</x-button>
+			<view class="mt-12"><x-text>收到的消息:{{message}}</x-text></view>
+		</x-sheet>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script setup>
+	import {SSEClientApp} from '@/uni_modules/x-sse-s';
+	const connecting = ref(0);
+
+	const sse = new SSEClientApp({
+		url:"https://tmui.design:8000/sse",
+		header:{"token":"token","password":"password"}
+	})
+	const message = ref<string[]>([])
+	sse.onClosed(()=>{
+		connecting.value = 3
+	})
+	sse.onError(()=>{
+		connecting.value = 3
+	})
+	sse.onOpen(()=>{
+		connecting.value = 2
+	})
+	sse.onMessage((data:string)=>{
+		message.value.push(data)
+	})
+	const connect = ()=>{
+		connecting.value = 1
+		// #ifdef APP-IOS
+		// 截止hbx sdk4.66 ios要传递header只能在这传递。其它端在构造的时候就能传递。
+		//等官方修复后，可以不用在这传递，直接在构造实例那传递header就行。
+		sse.connect({"token":"token","password":"password"})
+		// #endif
+		// #ifndef APP-IOS
+		sse.connect()
+		// #endif
+	}
+	const close = ()=>{
+		message.value = [] as string[]
+		sse.disconnect()
+	}
+	
+</script>
+
+<style>
+
+</style>

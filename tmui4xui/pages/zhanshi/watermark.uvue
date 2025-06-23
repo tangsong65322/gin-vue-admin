@@ -1,0 +1,34 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">水印 Watermark</x-text>
+			<x-text color="#999999" >可以控制，颜色，内容，但不支持图片。和uniapp x不支持图片有关系。</x-text>
+		</x-sheet>
+
+		<x-watermark :label="label"></x-watermark>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+				label: "XUI DESIGN"
+			};
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

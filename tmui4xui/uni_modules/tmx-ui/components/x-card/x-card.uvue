@@ -1,0 +1,313 @@
+<script lang="ts">
+	import { type PropType } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+
+	/**
+	 * 
+	 * @name 卡片 xCard
+	 * @page /pages/index/card
+	 * @category 展示组件
+	 * @description 圆角，主题可统一全局配置风格。
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+
+			}
+		},
+		emits: [
+			/**
+			 * 卡片被点击
+			 */
+			'click',
+			/**
+			 * 右边状态小图标被点击
+			 */
+			'status',
+			/**
+			 * 底部按钮被点击
+			 * @@param {number} index - 按钮索引值 
+			 */
+			'action'
+		],
+		props: {
+			/**
+			 * 内容的内边距。
+			 */
+			padding: {
+				type: String,
+				default: "16"
+			},
+			/**
+			 * 标题文字大小
+			 */
+			titleSize: {
+				type: String,
+				default: "18"
+			},
+			/**
+			 * 按钮颜色
+			 */
+			btnColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 标题颜色
+			 */
+			color: {
+				type: String,
+				default: "#333333"
+			},
+			/**
+			 * 背景颜色
+			 */
+			bgColor: {
+				type: String,
+				default: "#ffffff"
+			},
+			/**
+			 * 暗黑背景颜色，如果为空，取sheetDarkColor
+			 */
+			darkBgColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 底部按钮数组。
+			 * 如果不满意风格布局请使用插槽footer来布局
+			 */
+			btns: {
+				type: Array as PropType<string[]>,
+				default: () : string[] => [] as string[]
+			},
+			/**
+			 * 副标题
+			 */
+			subtitle: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 标题
+			 */
+			title: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 右边的小图标，如果你是想显示状态，日期请使用对应插槽
+			 */
+			statusIcon: {
+				type: String,
+				default: "more-fill"
+			},
+			/**
+			 * 中间内容。如果有大量内容
+			 * 请直接在默认插槽(标签内)内布局
+			 */
+			content: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 头部图片地址。
+			 */
+			image: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 头图片高度
+			 */
+			imageHeight: {
+				type: String,
+				default: "150"
+			},
+			/**
+			 * 圆角请不要动态更改此会，默认为空
+			 * 取全局设置的风格值。
+			 */
+			round: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 请不要动态更改些投影值
+			 */
+			shadow: {
+				type: String,
+				default: "0 3px 10px rgba(0, 0, 0, 0.05)"
+			},
+			btnSize: {
+				type: String as PropType<"mini" | "small" | "normal" | "large">,
+				default: "small"
+			}
+		},
+		computed: {
+			_image() : string {
+				return this.image
+			},
+			_round() : string {
+				if (this.round == "") return checkIsCssUnit(xConfig.cardRound, xConfig.unit)
+				return checkIsCssUnit(this.round, xConfig.unit)
+			},
+			_imageHeight() : string {
+				return checkIsCssUnit(this.imageHeight, xConfig.unit)
+			},
+			_padding() : string {
+				return checkIsCssUnit(this.padding, xConfig.unit)
+			},
+			_titleSize() : string {
+				return this.titleSize
+			},
+			_color() : string {
+				return getDefaultColor(this.color)
+			},
+			_bgColor() : string {
+				if(xConfig.dark=='dark'){
+					if(this.darkBgColor!='') return getDefaultColor(this.darkBgColor)
+					return  getDefaultColor(xConfig.sheetDarkColor)
+				}
+				return getDefaultColor(this.bgColor)
+			},
+
+			_btnColor() : string {
+				if (this.btnColor == "") return getDefaultColor(xConfig.color)
+				return getDefaultColor(this.btnColor)
+			},
+			_btns() : string[] {
+				return this.btns;
+			},
+			_subtitle() : string {
+				return this.subtitle;
+			},
+			_title() : string {
+				return this.title;
+			},
+			_statusIcon() : string {
+				return this.statusIcon;
+			},
+			_content() : string {
+				return this.content;
+			},
+
+		},
+		methods: {
+			actionClick(index : number) {
+				this.$emit('action', index)
+			},
+			statusClick() {
+				this.$emit('status')
+			},
+			onClick() {
+				this.$emit('click')
+			}
+		}
+	}
+</script>
+<template>
+	<view @click="onClick" class="xCard" :style="{borderRadius:_round,boxShadow: shadow,backgroundColor:_bgColor}">
+		<!-- 
+		 @slot 图片插槽
+		 -->
+		<slot name="image">
+			<image :style="{width:'100%',height:_imageHeight,borderRadius:`${_round} ${_round} 0px 0px`}" :src="_image"
+				v-if="_image!=''"></image>
+		</slot>
+		<view :style="{padding:_padding}">
+			<view class="xCardHeader">
+				<!-- 
+				 @slot 标题插槽
+				 -->
+				<slot name="title">
+					<view v-if="_title!=''">
+						<x-text :color="_color" :font-size="_titleSize" class="xCardTitle">{{_title}}</x-text>
+					</view>
+				</slot>
+				<!-- 
+				 @slot 状态右边小图标插槽
+				 -->
+				<slot name="statusIcon">
+					<view @click.stop="statusClick" v-if="_statusIcon!=''" style="padding: 0rpx 0rpx 0rpx 16px;">
+						<x-icon :font-size="_titleSize" :name="_statusIcon"></x-icon>
+					</view>
+				</slot>
+			</view>
+			<view class="xCardSubtitle">
+				<!-- 
+				 @slot 副标题插槽
+				 -->
+				<slot name="subtitle">
+					<x-text  font-size="12" v-if="_subtitle!=''" class="xCardSubtitleText">
+						{{subtitle}}
+					</x-text>
+				</slot>
+			</view>
+			<!--
+			 @slot 默认内容插槽
+			 -->
+			<slot>
+				<x-text :color="_color" font-size="16" v-if="_content!=''" class="xCardContent">
+					{{_content}}
+				</x-text>
+			</slot>
+			<!-- 
+			 @slot 底部插槽
+			 -->
+			<slot name="footer">
+				<view class="xCardFooter" v-if="_btns.length>0">
+					<x-button round="6" @click.stop="actionClick(index)" v-for="(item,index) in _btns" :key="index"
+						:style="{marginRight:(index!=_btns.length-1)?'12px':'0px'}" :color="_btnColor"
+						:size="btnSize">{{item}}</x-button>
+				</view>
+			</slot>
+		</view>
+	</view>
+</template>
+<style scoped>
+	.xCardContent {
+		font-size: 14px;
+		line-height: 1.4;
+		opacity: 0.8;
+	}
+
+	.xCardFooter {
+		display: flex;
+		justify-content: flex-end;
+		flex-direction: row;
+		flex-wrap: wrap;
+		align-items: flex-start;
+		margin-top: 16px;
+	}
+
+	.xCardSubtitle {}
+
+	.xCardSubtitleText {
+		font-size: 13px;
+		opacity: 0.7;
+		padding: 12rpx 0rpx 24rpx 0rpx;
+	}
+
+	.xCardHeader {
+		display: flex;
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+	}
+
+	.xCardTitle {
+		font-weight: bold;
+	}
+
+	.xCard {
+		/* box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1); */
+	}
+</style>

@@ -1,0 +1,333 @@
+
+export type xSIZE = {
+	width : number,
+	height : number,
+	top : number,
+	left : number
+}
+export type xImageInfo = {
+	width : number,
+	height : number,
+	top : number,
+	left : number,
+	src : string,
+}
+export type xSIZEiMage = {
+	width : number,
+	height : number,
+	top : number,
+	left : number,
+	scale : number
+}
+export type xPOINT = {
+	x : number,
+	y : number
+}
+export type xCalculatePinchZoomOpts = {
+	initialPoints : xPOINT[],
+	currentPoints : xPOINT[],
+	originWidth : number,    // 原始图片宽度 
+	originHeight : number,   // 原始图片高度
+	cropWidth : number,      // 裁剪框宽度
+	cropHeight : number,
+	initialScale : number,
+	width : number,
+	height : number,
+	top : number,
+	left : number,
+	scale : number
+}
+export function alignImageToFrame(imageParams : xSIZEiMage, frameParams : xSIZE) : xSIZE {
+	const {
+		width: imgWidth,
+		height: imgHeight,
+		top: imgTop,
+		left: imgLeft
+	} = imageParams;
+
+	const {
+		width: frameWidth,
+		height: frameHeight,
+		top: frameTop,
+		left: frameLeft
+	} = frameParams;
+
+	// 图片是否完全覆盖框（修改为严格大于）
+	const isWidthCovered = imgWidth > frameWidth;
+	const isHeightCovered = imgHeight > frameHeight;
+
+	// 当图片宽高都大于框时，保持自由拖动
+	// 同时图片确保覆盖住裁剪框.
+	if (isWidthCovered
+		&& isHeightCovered
+		&& imgLeft < frameLeft
+		&& imgTop < frameTop
+		&& (imgLeft + imgWidth) > (frameLeft + frameWidth)
+		&& (imgTop + imgHeight) > (frameTop + frameHeight)
+	) {
+		return {
+			width: imgWidth,
+			height: imgHeight,
+			top: imgTop,
+			left: imgLeft
+		};
+	}
+
+	let newTop = imgTop;
+	let newLeft = imgLeft;
+
+	// 图片的左侧是不是小于框的右侧
+	let isMinLeft = imgLeft < frameLeft
+	let isMaxRight = imgLeft + imgWidth > frameLeft + frameWidth
+	let isMinTop = imgTop < frameTop
+	let isMaxTop = imgTop + imgHeight > frameTop + frameHeight
+	// 水平对齐逻辑（反向对齐）,如果越过左边了要左对齐,
+	if (imgLeft < frameLeft && !isMaxRight) {
+		// 图片左侧越界，靠右对齐
+		newLeft = frameLeft + frameWidth - imgWidth;
+	} else if (imgLeft + imgWidth > frameLeft + frameWidth && !isMinLeft) {
+		// 图片右侧越界，靠左对齐
+		newLeft = frameLeft;
+	}
+
+	// 垂直对齐逻辑（反向对齐）
+	if (imgTop < frameTop && !isMaxTop) {
+		// 图片顶部越界，靠底对齐
+		newTop = frameTop + frameHeight - imgHeight;
+
+	} else if (imgTop + imgHeight > frameTop + frameHeight && !isMinTop) {
+		// 图片底部越界，靠顶对齐
+		newTop = frameTop;
+	}
+
+	return {
+		width: imgWidth,
+		height: imgHeight,
+		top: newTop,
+		left: newLeft
+	};
+}
+function scaleImageToFitFrame(imageParams : xImageInfo, frameParams : xSIZE) : xSIZEiMage {
+	// 解构图片和裁剪框的参数
+	const {
+		width: imgWidth,
+		height: imgHeight,
+		top: imgTop = 0,
+		left: imgLeft = 0
+	} = imageParams;
+
+	const {
+		width: frameWidth,
+		height: frameHeight,
+		top: frameTop = 0,
+		left: frameLeft = 0
+	} = frameParams;
+
+	// 计算宽高比
+	const imgRatio = imgWidth / imgHeight;
+	const frameRatio = frameWidth / frameHeight;
+
+	let newWidth = 0
+	let newHeight = 0
+	let scale = 1
+
+	// 确保填充整个裁剪框
+	if (imgRatio > frameRatio) {
+		// 以高度为基准缩放
+		newHeight = frameHeight;
+		newWidth = newHeight * imgRatio;
+		scale = newHeight / imgHeight;
+
+		// 如果宽度不够，再次调整
+		if (newWidth < frameWidth) {
+			newWidth = frameWidth;
+			newHeight = newWidth / imgRatio;
+			scale = newWidth / imgWidth;
+		}
+	} else {
+		// 以宽度为基准缩放
+		newWidth = frameWidth;
+		newHeight = newWidth / imgRatio;
+		scale = newWidth / imgWidth;
+
+		// 如果高度不够，再次调整
+		if (newHeight < frameHeight) {
+			newHeight = frameHeight;
+			newWidth = newHeight * imgRatio;
+			scale = newHeight / imgHeight;
+		}
+	}
+
+	// 计算最终定位（考虑裁剪框和图片的初始偏移）
+	const top = frameTop + (frameHeight - newHeight) / 2 - imgTop * scale;
+	const left = frameLeft + (frameWidth - newWidth) / 2 - imgLeft * scale;
+
+	return {
+		width: newWidth,  // 新的图片宽度
+		height: newHeight,  // 新的图片高度
+		top,  // 垂直方向偏移
+		left,  // 水平方向偏移
+		scale  // 缩放比例
+	} as xSIZEiMage;
+}
+export function translateScalePosition(orimg : xImageInfo, img : xSIZEiMage, mask : xSIZE, parent : xSIZE) {
+	let scaleinfo = scaleImageToFitFrame(orimg, mask)
+	img.width = scaleinfo.width
+	img.height = scaleinfo.height
+	img.top = scaleinfo.top
+	img.left = scaleinfo.left
+	img.scale = scaleinfo.scale
+}
+
+export function calculatePinchZoom(options : xCalculatePinchZoomOpts) : xSIZEiMage {
+	const {
+		initialPoints,  // 初始双指坐标 [{x, y}, {x, y}]
+		currentPoints,  // 当前双指坐标 [{x, y}, {x, y}]
+		originWidth,    // 原始图片宽度 
+		originHeight,   // 原始图片高度
+		cropWidth,      // 裁剪框宽度
+		cropHeight,     // 裁剪框高度
+		width,          // 当前图片宽度
+		height,         // 当前图片高度
+		top,            // 图片当前顶部位置
+		left,           // 图片当前左侧位置
+		scale,          // 当前缩放比例
+		initialScale    // 初始缩放比例
+	} = options;
+
+	// 阻尼系数,0-1之间,越大越快,越小缩放越慢.
+	const DAMPING_FACTOR = 0.45;
+
+	// 计算初始和当前双指距离
+	const getDistance = (points : xPOINT[]) : number => {
+		const p1 = points[0];
+		const p2 = points[1];
+		return Math.sqrt(
+			Math.pow(p2.x - p1.x, 2) +
+			Math.pow(p2.y - p1.y, 2)
+		);
+	};
+
+	// 计算双指中心点
+	const getCenter = (points : xPOINT[]) : xPOINT => {
+		const p1 = points[0];
+		const p2 = points[1];
+		return {
+			x: (p1.x + p2.x) / 2,
+			y: (p1.y + p2.y) / 2
+		} as xPOINT;
+	};
+
+	const initialDistance = getDistance(initialPoints);
+	const currentDistance = getDistance(currentPoints);
+	if (initialDistance == currentDistance) return {
+		width,
+		height,
+		left,
+		top,
+		scale
+	} as xSIZEiMage;
+	// 计算缩放比例（加入阻尼）
+	const rawScaleChange = currentDistance / initialDistance;
+	const dampedScaleChange = 1 + (rawScaleChange - 1) * DAMPING_FACTOR;
+	let newScale = scale * dampedScaleChange;
+
+	// 计算最小宽高（确保至少覆盖裁剪框）
+	const minWidth = Math.max(cropWidth, originWidth * initialScale);
+	const minHeight = Math.max(cropHeight, originHeight * initialScale);
+
+	// 计算最大宽高
+	const maxWidth = originWidth * 3;
+	const maxHeight = originHeight * 3;
+
+	// 限制缩放范围
+	const MIN_SCALE = initialScale;
+	const MAX_SCALE = 3;
+
+	// 判断是否超过最大缩放限制
+	if (newScale > MAX_SCALE) {
+		return {
+			width: maxWidth,
+			height: maxHeight,
+			left,
+			top,
+			scale: MAX_SCALE
+		} as xSIZEiMage;
+	}
+	if (newScale < MIN_SCALE) {
+		return {
+			width: minWidth,
+			height: minHeight,
+			left,
+			top,
+			scale: MIN_SCALE
+		} as xSIZEiMage;
+	}
+
+	// 计算新的图片宽高
+	const newWidth = Math.max(minWidth, Math.min(originWidth * newScale, maxWidth));
+	const newHeight = Math.max(minHeight, Math.min(originHeight * newScale, maxHeight));
+
+	// 计算缩放中心点
+	const initialCenter = getCenter(initialPoints);
+	const currentCenter = getCenter(currentPoints);
+
+	// 计算偏移量（同样应用阻尼）
+	const rawOffsetX = (initialCenter.x - left) * (dampedScaleChange - 1);
+	const rawOffsetY = (initialCenter.y - top) * (dampedScaleChange - 1);
+
+	// 计算新的位置
+	const newLeft = left - rawOffsetX;
+	const newTop = top - rawOffsetY;
+
+	return {
+		width: newWidth,
+		height: newHeight,
+		left: newLeft,
+		top: newTop,
+		scale: newScale
+	} as xSIZEiMage;
+}
+
+// 根据裁剪框的缩放后的大小,与原始大小的缩放比,确定图片的当前大小的缩放比与位置
+export function maskRatioScaleToPhotoSizePosition (oldMaskSize:xSIZEiMage,newMaskSize:xSIZE,oldimg:xImageInfo,nowImgPosSize:xSIZEiMage,index:number){
+	
+	
+	
+	
+	let difflen = oldMaskSize.width - newMaskSize.width
+	let scale2 = difflen/oldMaskSize.width
+	let nwdifflen = scale2*nowImgPosSize.width
+	let scale = nwdifflen / oldimg.width
+	if(nowImgPosSize.scale + scale>3){
+		scale = 3-nowImgPosSize.scale
+	}
+	let diffx = oldimg.width*scale
+	let diffy = oldimg.height*scale
+	
+	
+	let newWidth = nowImgPosSize.width + diffx
+	let newHeight = nowImgPosSize.height + diffy
+	nowImgPosSize.width = newWidth
+	nowImgPosSize.height = newHeight
+	
+	// 左上角,应该是左上放大.
+	if(index == 0){
+		nowImgPosSize.left = nowImgPosSize.left - diffx
+		nowImgPosSize.top = nowImgPosSize.top - diffy
+	}
+	if(index == 1){
+		// nowImgPosSize.left = nowImgPosSize.left - diffx
+		nowImgPosSize.top = nowImgPosSize.top - diffy
+	}
+	if(index == 3){
+		nowImgPosSize.left = nowImgPosSize.left - diffx
+		// nowImgPosSize.top = nowImgPosSize.top - diffy
+	}
+	
+	newMaskSize.width = oldMaskSize.width
+	newMaskSize.height = oldMaskSize.height
+	newMaskSize.left = oldMaskSize.left
+	newMaskSize.top = oldMaskSize.top
+	nowImgPosSize.scale = nowImgPosSize.scale + scale
+}

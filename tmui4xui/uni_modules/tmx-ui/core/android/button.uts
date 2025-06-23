@@ -1,0 +1,259 @@
+import Context from 'android.content.Context'
+import LinearLayout from 'android.widget.LinearLayout';
+import ViewGroup from 'android.view.ViewGroup';
+import View from 'android.view.View';
+import TextView from 'android.widget.TextView';
+import ImageView from 'android.widget.ImageView';
+import Gravity from 'android.view.Gravity';
+import Color from 'android.graphics.Color';
+import Activity from 'android.app.Activity';
+import { ref} from "vue"
+import TextUtils from 'android.text.TextUtils';
+import GradientDrawable from 'android.graphics.drawable.GradientDrawable'
+import MotionEvent from 'android.view.MotionEvent';
+import Typeface from 'android.graphics.Typeface';
+import {hexToRgb,getDefaultColor,toFillMarginAr,colorGetHover,colorGetThint} from "../util/xCoreColorUtil.uts"
+import {getUid,dp2px} from "../util/xCoreUtil.uts"
+
+import xLinearView from "./linearView.uts";
+import xCardView from "./cardView.uts";
+import xIcon from "./icon.uts";
+import xText from "./text.uts";
+
+class xButton {
+	view:xLinearView;
+	textLayer:xText;
+	iconLayer:xIcon;
+	bgLayer:xCardView;
+	wrapLinear:xLinearView;
+	width:number = 180;
+	heigth:number = 64;
+	private _backgroundColor = "primary";
+	status = 'default';//default,success,warn,danger
+	type = 'primary';//normal,primary,secondary,dashed,outlin,text
+	
+	constructor(context : Context){
+		let boxLinear = new xLinearView(context)
+		let wrapLinear = new xLinearView(context)
+		let bgView = new xCardView(context)
+		let iconView = new xIcon(context)
+		let laberView = new xText(context)
+		
+		boxLinear.setLayoutParams(this.width.toInt(),this.heigth.toInt(),0)
+		boxLinear.setAlign(Gravity.CENTER)
+		
+		
+		
+		wrapLinear.setLayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT,0)
+		wrapLinear.setAlign(Gravity.CENTER_VERTICAL|Gravity.CENTER)
+		
+		bgView.setRadius(6);
+		
+		iconView.setFontColor("white").setFontSize(18)
+		laberView.setBackgroundColor('transparent').setFontColor("white").setFontSize(16)
+		laberView.setLayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,ViewGroup.LayoutParams.WRAP_CONTENT,0)
+		
+		
+		wrapLinear.append(iconView.getView(),laberView.getView())
+		bgView.append(wrapLinear.getView() as View)
+		boxLinear.append(bgView.getView() as View)
+		
+		this.textLayer = laberView;
+		this.wrapLinear = wrapLinear;
+		this.bgLayer = bgView;
+		this.iconLayer = iconView;
+		this.view = boxLinear;
+		this._setBackgroundColor('','up')
+		bgView.setTouchStart((event : MotionEvent):void=>{
+			this._setBackgroundColor('','down')
+		}).setTouchEnd((event : MotionEvent):void=>{
+			this._setBackgroundColor('','up')
+		})
+		
+	}
+	/**
+	 * type:
+	 * auto:按钮宽度自动为内容宽，w宽度失效。
+	 * block:按钮宽度自动为父级宽，w宽度失效。
+	 * ''：空值，取w,h为按钮宽和高。
+	 * 'mini':44,24,10
+	 * 'small':64,32,12
+	 * 'medium':180,64,15
+	 * 'large':220,76,16
+	 */
+	setSize(w:number,h:number,type= ''):xButton{
+		if(type =='auto'){
+			this.width = w;
+			this.heigth = h;
+			this.view.setLayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,this.heigth.toInt(),0)
+		}else if(type =='mini'){
+			this.heigth = 28;
+			this.view.setLayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,this.heigth.toInt(),0)
+			// this.bgLayer.setLayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,this.heigth.toInt(),0)
+			
+			
+			
+			this.setFontSize(10)
+		}else if(type =='small'){
+			this.width = 64;
+			this.heigth = 32;
+			this.view.setLayoutParams(this.width.toInt(),this.heigth.toInt(),0)
+		}else if(type =='medium'||type==''){
+			this.width = 180;
+			this.heigth = 64;
+			this.view.setLayoutParams(this.width.toInt(),this.heigth.toInt(),0)
+		}else if(type =='large'){
+			this.width = 220;
+			this.heigth = 76;
+			this.view.setLayoutParams(this.width.toInt(),this.heigth.toInt(),0)
+		}
+		
+		return this;
+	}
+	//primary,secondary,dashed,outlin,text
+	setType(str:string):xButton{
+		this.type = str;
+		this._setBackgroundColor('','up')
+		return this;
+	}
+	//primary,secondary,dashed,outlin,text
+	setStatus(str:string):xButton{
+		this.status = str;
+		this._setBackgroundColor('','up')
+		return this;
+	}
+	setDisabled(dis:boolean) : xButton{
+		this.bgLayer.setDisabled(dis);
+		this._setBackgroundColor("#A5A5A5",'down')
+		return this;
+	}
+	setLabel(str:string):xButton{
+		let label = this.textLayer as xText;
+		label.setText(str);
+		return this;
+	}
+	setRadius(radius:number):xButton{
+		let bgView = this.bgLayer as xCardView;
+		bgView.setRadius(radius);
+		return this;
+	}
+	
+	setClick(fun?:(event: MotionEvent)=>void) : xButton{
+		if(typeof fun !== 'undefined'){
+			this.bgLayer.setClick(fun)
+		}
+		return this;
+	}
+	
+	setIcon(name:string):xButton{
+		let iconLayer = this.iconLayer as xIcon;
+		let label = this.textLayer as xText;
+		iconLayer.setIcon(name);
+		label.setPadding([10,0,0,0])
+		return this;
+	}
+	setFontSize(size:number):xButton{
+		let label = this.textLayer as xText;
+		let iconLayer = this.iconLayer as xIcon;
+		label.setFontSize(size.toInt())
+		iconLayer.setFontSize(size.toInt())
+		return this;
+	}
+	
+	setFontColor(str:string):xButton{
+		let label = this.textLayer as xText;
+		let iconLayer = this.iconLayer as xIcon;
+		label.setFontColor(str)
+		iconLayer.setFontColor(str)
+		return this;
+	}
+	setBorder(w?:number,colorStr?:string,dashed?:boolean):xButton{
+		this.bgLayer.setBorder(w,colorStr,dashed)
+		return this;
+	}
+	private _setBackgroundColor(str:string,clickStatus:string):xButton{
+		let cr = this._backgroundColor;
+		
+		let fontColor = ""
+		if(str !=''){
+			cr = str;
+		}else{
+			if(this.status==""||this.status=="default"){
+				cr = 'primary'
+			}else if(this.status == 'success'){
+				cr = 'green'
+			}else if(this.status == 'warn'){
+				cr = 'orange'
+			}else if(this.status == 'danger'){
+				cr = 'red'
+			}else if(this.status == 'normal'){
+				cr = '#D8D8D8'
+				fontColor = '#333333'
+			}
+		}
+		
+		
+		let lightColor = colorGetThint(cr);
+		let defaultColor = colorGetHover(cr);
+
+		if(clickStatus=='down'){
+			if(this.type == 'primary' || this.type==""){
+				this.bgLayer.setBackgroundColor(defaultColor.getString("hover")!);
+				
+			}else if(this.type == 'secondary'){
+				this.setFontColor(cr)
+				this.bgLayer.setBackgroundColor(lightColor.getString("hover")!);
+			}else if(this.type == 'outline'){
+				this.setFontColor(cr)
+				this.bgLayer.setBackgroundColor('transparent');
+				this.setBorder(1,cr,false)
+			}else if(this.type == 'dashed'){
+				this.setFontColor(cr)
+				this.bgLayer.setBackgroundColor(lightColor.getString("hover")!);
+				this.setBorder(1,cr,true)
+			}else if(this.type == 'text'){
+				this.setFontColor(defaultColor.getString("hover")!)
+				this.bgLayer.setBackgroundColor('transparent');
+			}
+		}else if(clickStatus=='up'){
+			if(this.type == 'primary' || this.type==""){
+				this.bgLayer.setBackgroundColor(defaultColor.getString("default")!);
+			}else if(this.type == 'secondary'){
+				this.setFontColor(cr)
+				this.bgLayer.setBackgroundColor(lightColor.getString("default")!);
+			}else if(this.type == 'outline'){
+				this.setFontColor(cr)
+				this.bgLayer.setBackgroundColor('transparent');
+				this.setBorder(1,cr,false)
+			}else if(this.type == 'dashed'){
+				this.setFontColor(cr)
+				this.bgLayer.setBackgroundColor(lightColor.getString("default")!);
+				this.setBorder(1,cr,true)
+			}else if(this.type == 'text'){
+				this.setFontColor(cr)
+				this.bgLayer.setBackgroundColor('transparent');
+			}
+		}
+		
+		if(fontColor!=''){
+			this.setFontColor(fontColor)
+		}
+		
+		
+		return this;
+	}
+	
+	setBackgroundColor(str:string):xButton{
+		this.bgLayer.setBackgroundColor(str);
+		this._backgroundColor = str;
+		return this;
+	}
+	
+	getView():View{
+		return this.view.getView() as View;
+	}
+	
+	
+}
+
+export default xButton;

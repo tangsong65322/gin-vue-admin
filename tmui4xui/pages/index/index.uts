@@ -1,0 +1,1131 @@
+export type INDEXITEMINFO = {
+	url : string,
+	icon : string,
+	title : string,
+	iconColor : string,
+	label : string,
+	labelColor : string,
+	dot ?: boolean
+
+}
+export type INDEXITEMINFO_AR = {
+	title : string,
+	color : string,
+	children : Array<INDEXITEMINFO>
+}
+export const listdata = [
+	{
+		title: "常用组件",
+		color: "primary",
+		children: [
+			{
+				url: "/pages/chongyong/text",
+				icon: "font-size-2",
+				title: "文本",
+				iconColor: "primary",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/chongyong/button",
+				icon: "scroll-to-bottom-line",
+				title: "按钮",
+				iconColor: "primary",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/chongyong/icon",
+				icon: "trademark-line",
+				title: "图标",
+				iconColor: "red",
+				label: "2800+",
+				labelColor: "red"
+			},
+			{
+				url: "/pages/chongyong/sheet",
+				icon: "rectangle-line",
+				title: "容器",
+				iconColor: "green",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/chongyong/row",
+				icon: "layout-masonry-line",
+				title: "布局",
+				iconColor: "primary",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/chongyong/tag",
+				icon: "pantone-line",
+				title: "标签",
+				iconColor: "blue",
+				label: "",
+				labelColor: ""
+			}
+
+		] as INDEXITEMINFO[]
+	} as INDEXITEMINFO_AR,
+	{
+		title: "表单组件",
+		color: "red",
+		children: [
+			{
+				url: "/pages/biaodan/editor",
+				icon: "calendar-event-line",
+				title: "富文本编辑器",
+				iconColor: "orange",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/biaodan/calendar-multiple",
+				icon: "calendar-event-line",
+				title: "日历多选",
+				iconColor: "orange",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/biaodan/between-time",
+				icon: "map-pin-time-line",
+				title: "时间区间",
+				iconColor: "orange",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/biaodan/upload-file",
+				icon: "file-word-line",
+				title: "文件选择",
+				iconColor: "orange",
+				label: "",
+				labelColor: "",
+				dot: false
+			},
+			{
+				url: "/pages/biaodan/picker-city",
+				icon: "building-line",
+				title: "城市选择",
+				iconColor: "orange",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/biaodan/tree",
+				icon: "node-tree",
+				title: "树",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/biaodan/picker-selected",
+				icon: "menu-search-line",
+				title: "搜索选择",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/biaodan/calendar-view",
+				icon: "calendar-todo-fill",
+				title: "日历",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/biaodan/form",
+				icon: "insert-row-bottom",
+				title: "表单",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/biaodan/input-tag",
+				icon: "attachment-2",
+				title: "标签输入框",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/biaodan/input-number",
+				icon: "emphasis-cn",
+				title: "数字输入框",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/biaodan/input",
+				icon: "emphasis-cn",
+				title: "输入框",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/biaodan/keyboard",
+				icon: "keyboard-line",
+				title: "键盘",
+				iconColor: "orange",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/biaodan/stepper",
+				icon: "add-box-line",
+				title: "步进器",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/biaodan/slider",
+				icon: "ruler-line",
+				title: "滑块",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/biaodan/rate",
+				icon: "star-half-line",
+				title: "评分",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/biaodan/picker-time",
+				icon: "time-line",
+				title: "时间选择器",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/biaodan/cascader",
+				icon: "git-branch-line",
+				title: "级联器",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/biaodan/picker-date",
+				icon: "calendar-event-line",
+				title: "日期选择器",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/biaodan/picker-view",
+				icon: "order-play-line",
+				title: "选择器容器",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/biaodan/picker",
+				icon: "play-list-add-line",
+				title: "选择器",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/biaodan/upload-media",
+				icon: "gallery-upload-line",
+				title: "媒体上传",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/biaodan/checkbox",
+				icon: "checkbox-line",
+				title: "多选框",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/biaodan/radio",
+				icon: "radio-button-line",
+				title: "单选框",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/biaodan/switch",
+				icon: "toggle-line",
+				title: "开关",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			}
+
+		] as INDEXITEMINFO[]
+	} as INDEXITEMINFO_AR,
+	{
+		title: "导航组件",
+		color: "red",
+		children: [
+			{
+				url: "/pages/daohang/weekbar",
+				icon: "calendar-2-fill",
+				title: "时间周",
+				iconColor: "orange",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/daohang/pagination",
+				icon: "page-separator",
+				title: "翻页器",
+				iconColor: "orange",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/daohang/sticky",
+				icon: "menu-5-line",
+				title: "粘性布局",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/daohang/search",
+				icon: "search-line",
+				title: "搜索栏",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/daohang/navbar",
+				icon: "align-justify",
+				title: "标题导航",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/daohang/tabbar",
+				icon: "vip-diamond-line",
+				title: "底部导航",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/daohang/slider-menu",
+				icon: "list-indefinite",
+				title: "侧边菜单",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/daohang/slider-tree",
+				icon: "expand-right-line",
+				title: "侧边分类",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/daohang/tabs",
+				icon: "expand-left-right-line",
+				title: "标签导航",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/daohang/indexbar",
+				icon: "sort-desc",
+				title: "索引",
+				iconColor: "orange",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/daohang/backtop",
+				icon: "dashboard-line",
+				title: "返回顶部",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/daohang/grid",
+				icon: "dashboard-line",
+				title: "宫格",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/daohang/radio-button",
+				icon: "cloud-line",
+				title: "单选按钮",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			}
+
+		] as INDEXITEMINFO[]
+	} as INDEXITEMINFO_AR,
+	{
+		title: "展示组件",
+		color: "orange",
+		children: [
+			
+			{
+				url: "/pages/zhanshi/virtual-list",
+				icon: "account-circle-fill",
+				title: "虚拟列表",
+				iconColor: "red",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/zhanshi/avatar-group",
+				icon: "account-circle-fill",
+				title: "头像组",
+				iconColor: "red",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/zhanshi/alert",
+				icon: "alert-line",
+				title: "警告",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/zhanshi/link",
+				icon: "links-line",
+				title: "链接",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/zhanshi/scrollx",
+				icon: "contract-left-right-line",
+				title: "横向滚动",
+				iconColor: "primary",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/zhanshi/skeleton",
+				icon: "bar-chart-horizontal-fill",
+				title: "骨架屏",
+				iconColor: "primary",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/zhanshi/markdown",
+				icon: "font-size-2",
+				title: "富文本",
+				iconColor: "primary",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+
+			{
+				url: "/pages/zhanshi/waterfall",
+				icon: "layout-column-line",
+				title: "瀑布流",
+				iconColor: "orange",
+				label: "",
+				labelColor: "",
+				dot: true
+
+			},
+			{
+				url: "/pages/zhanshi/image-group",
+				icon: "file-image-line",
+				title: "图集",
+				iconColor: "orange",
+				label: "",
+				labelColor: "",
+				dot: false
+			},
+			{
+				url: "/pages/zhanshi/table",
+				icon: "grid-line",
+				title: "表格",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/zhanshi/card",
+				icon: "archive-2-line",
+				title: "卡片",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/zhanshi/more",
+				icon: "draggable",
+				title: "查看更多",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/zhanshi/swiper",
+				icon: "exchange-line",
+				title: "轮播",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/zhanshi/countdown",
+				icon: "map-pin-time-line",
+				title: "倒计时",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/zhanshi/circle-progress",
+				icon: "at-fill",
+				title: "圆形进度环",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/zhanshi/collapse",
+				icon: "barricade-line",
+				title: "折叠面板",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/zhanshi/empty",
+				icon: "star-smile-line",
+				title: "空状态",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+
+			{
+				url: "/pages/zhanshi/watermark",
+				icon: "windy-line",
+				title: "水印",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/zhanshi/divider",
+				icon: "subtract-line",
+				title: "分割线",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/zhanshi/text-cloud",
+				icon: "cloud-line",
+				title: "词云",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/zhanshi/steps",
+				icon: "skip-right-line",
+				title: "步骤条",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/zhanshi/image",
+				icon: "landscape-line",
+				title: "图片",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/zhanshi/cell",
+				icon: "file-list-line",
+				title: "列表",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/zhanshi/badge",
+				icon: "notification-badge-line",
+				title: "角标",
+				iconColor: "majorelleblue",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/zhanshi/notice",
+				icon: "notification-line",
+				title: "通知栏",
+				iconColor: "green",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/zhanshi/progress",
+				icon: "bar-chart-grouped-line",
+				title: "进度条",
+				iconColor: "red",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/zhanshi/rolling-number",
+				icon: "emoji-sticker-line",
+				title: "数字翻滚",
+				iconColor: "red",
+				label: "",
+				labelColor: ""
+			}
+
+		] as INDEXITEMINFO[]
+	} as INDEXITEMINFO_AR,
+
+	{
+		title: "反馈组件",
+		color: "error",
+		children: [
+			{
+				url: "/pages/fankui/view-tofull",
+				icon: "fullscreen-exit-line",
+				title: "动态全屏",
+				iconColor: "australiangold",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/fankui/drag",
+				icon: "drag-move-line",
+				title: "拖拽排序",
+				iconColor: "australiangold",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/fankui/action-modal",
+				icon: "chat-smile-2-line",
+				title: "底部对话框",
+				iconColor: "australiangold",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/fankui/float-button",
+				icon: "cursor-line",
+				title: "浮球",
+				iconColor: "australiangold",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/fankui/msg-notice",
+				icon: "chat-2-line",
+				title: "消息通知",
+				iconColor: "australiangold",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/fankui/barrage",
+				icon: "wechat-line",
+				title: "弹幕",
+				iconColor: "australiangold",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/fankui/action-menu",
+				icon: "upload-line",
+				title: "动作菜单",
+				iconColor: "australiangold",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/fankui/float-drawer",
+				icon: "reactjs-fill",
+				title: "浮动面板",
+				iconColor: "australiangold",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/fankui/pull-refresh",
+				icon: "loader-2-line",
+				title: "下拉刷新",
+				iconColor: "australiangold",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/fankui/loading",
+				icon: "artboard-2-line",
+				title: "加载",
+				iconColor: "australiangold",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/fankui/snackbar",
+				icon: "snapchat-line",
+				title: "消息条",
+				iconColor: "australiangold",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/fankui/dropdown-menu",
+				icon: "menu-5-line",
+				title: "下拉菜单",
+				iconColor: "australiangold",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/fankui/drawer",
+				icon: "chat-3-line",
+				title: "抽屉",
+				iconColor: "australiangold",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/fankui/modal",
+				icon: "chat-smile-2-line",
+				title: "对话框",
+				iconColor: "red",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/fankui/switch-slider",
+				icon: "archive-2-line",
+				title: "左滑操作栏",
+				iconColor: "red",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/fankui/overlay",
+				icon: "ancient-pavilion-line",
+				title: "遮罩",
+				iconColor: "moroccanblue",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/fankui/popover",
+				icon: "verified-badge-line",
+				title: "汽泡菜单",
+				iconColor: "red",
+				label: "",
+				labelColor: ""
+			}
+
+		] as INDEXITEMINFO[]
+	} as INDEXITEMINFO_AR,
+
+	{
+		title: "其它组件",
+		color: "error",
+		children: [
+			{
+				url: "/pages/qita/tree-flat",
+				icon: "crop-line",
+				title: "思维导图",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			
+			{
+				url: "/pages/qita/image-resizer",
+				icon: "crop-line",
+				title: "图片裁剪",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/qita/color-view",
+				icon: "color-filter-ai-line",
+				title: "颜色选择",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/qita/mention",
+				icon: "at-line",
+				title: "提及",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/qita/slide-verify",
+				icon: "pass-valid-line",
+				title: "滑动验证",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/qita/money",
+				icon: "exchange-cny-fill",
+				title: "金额栅格",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/qita/code-input",
+				icon: "brackets-line",
+				title: "验证码",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: "",
+				dot: false
+			},
+			{
+				url: "/pages/qita/echart",
+				icon: "bar-chart-2-line",
+				title: "图表",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/qita/qrcoder",
+				icon: "qr-code-line",
+				title: "二维码",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/qita/barcode",
+				icon: "barcode-line",
+				title: "条形码",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/qita/animation",
+				icon: "drag-drop-line",
+				title: "动画",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/qita/sign-board",
+				icon: "sketching",
+				title: "签名板",
+				iconColor: "orange",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/qita/finger",
+				icon: "drag-move-fill",
+				title: "手势库",
+				iconColor: "red",
+				label: "",
+				labelColor: ""
+			}
+
+		] as INDEXITEMINFO[]
+	} as INDEXITEMINFO_AR,
+
+	{
+		title: "Library",
+		color: "error",
+		children: [
+			{
+				url: "/pages/libs/canvas",
+				icon: "brush-line",
+				title: "ICanvas",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/libs/xTween",
+				icon: "filter-3-line",
+				title: "xTween",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/libs/xrequest",
+				icon: "drag-drop-line",
+				title: "xRequest",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/libs/xanimate",
+				icon: "drag-drop-line",
+				title: "xAnimate",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: ""
+			},
+			{
+				url: "/pages/libs/xdate",
+				icon: "drag-drop-line",
+				title: "xDate",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: ""
+			}
+		] as INDEXITEMINFO[]
+	} as INDEXITEMINFO_AR,
+	{
+		title: "UTSApi",
+		color: "error",
+		children:[
+			
+			// #ifdef APP||WEB
+			{
+				url: "/pages/utsapi/xsse",
+				icon: "brush-line",
+				title: "SSE",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/utsapi/sqlite",
+				icon: "brush-line",
+				title: "sqlite",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			// #endif
+			
+			// #ifdef APP
+			{
+				url: "/pages/utsapi/facedetection",
+				icon: "brush-line",
+				title: "facedetection",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/utsapi/screenshot",
+				icon: "brush-line",
+				title: "screenshot",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/utsapi/share",
+				icon: "brush-line",
+				title: "share",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			// #endif
+			// #ifndef MP
+			{
+				url: "/pages/utsapi/xtips",
+				icon: "brush-line",
+				title: "xtips",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/utsapi/ocr",
+				icon: "brush-line",
+				title: "ocr",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			// #endif
+			{
+				url: "/pages/utsapi/xmodal",
+				icon: "brush-line",
+				title: "xModalS",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/utsapi/xloadings",
+				icon: "brush-line",
+				title: "xLoadingS",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/utsapi/xtoast",
+				icon: "brush-line",
+				title: "xToast",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/utsapi/xanimations",
+				icon: "brush-line",
+				title: "xAnimationS",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/utsapi/xmqtt",
+				icon: "brush-line",
+				title: "xMqtt",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/utsapi/scan",
+				icon: "brush-line",
+				title: "扫码xScan",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/utsapi/xcamrea",
+				icon: "brush-line",
+				title: "相机Camrea",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/utsapi/clipboard",
+				icon: "brush-line",
+				title: "clipboard",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/utsapi/arrbufftobase64",
+				icon: "brush-line",
+				title: "arrbufftobase64",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/utsapi/xcrypto",
+				icon: "brush-line",
+				title: "xcrypto",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: "",
+				dot: true
+			},
+			{
+				url: "/pages/utsapi/other",
+				icon: "brush-line",
+				title: "other",
+				iconColor: "indianyellow",
+				label: "",
+				labelColor: "",
+				dot: true
+			}
+		]
+	} as INDEXITEMINFO_AR
+
+] as INDEXITEMINFO_AR[]
+

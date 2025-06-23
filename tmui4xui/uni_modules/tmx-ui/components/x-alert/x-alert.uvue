@@ -1,0 +1,389 @@
+<template>
+	<view v-if="showAlert" @click="onclickbar" class="xAlert" :style="_styleMap.bgStyle">
+		<!-- 
+		 @slot 左边图标插槽
+		 -->
+		<slot name="left">
+			<view class="xAlertLeft">
+				<x-icon :font-size="props.iconSize" :color="(_styleMap.textStyle.get('color')! as string)"
+					:dark-color="(_styleMap.textStyle.get('color')! as string)" :name="_iconName"></x-icon>
+			</view>
+		</slot>
+		<view class="xAlertContent">
+			<text :style="_styleMap.textStyle">
+				<!-- 
+				 @slot 默认插槽内容
+				 -->
+				<slot></slot>
+			</text>
+		</view>
+		<view @click="closeAlert" v-if="_showClose" class="xAlertRight">
+			<x-icon :font-size="props.iconSize" :color="(_styleMap.textStyle.get('color')! as string)"
+				:dark-color="(_styleMap.textStyle.get('color')! as string)" :name="props.closeIcon"></x-icon>
+		</view>
+	</view>
+</template>
+
+<script setup lang="ts">
+
+	import { computed, ref, onMounted } from "vue"
+	import { xDate } from "../../core/util/xDate.uts"
+	import { checkIsCssUnit, getUnit, fillArrayCssValue, fillArrayCssValueByround,fillArrayCssValueBycolor } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor, getDefaultColorObj, getThinColorObj } from "../../core/util/xCoreColorUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	type styleMapType = {
+		textStyle : Map<string, string>,
+		bgStyle : Map<string, string>
+	}
+	/**
+	 * @name 警告 xAlert
+	 * @page /pages/index/alert
+	 * @category 展示组件
+	 * @description 样式丰富常用警告提醒
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	defineOptions({ name: "xAlert" })
+	const emits = defineEmits([
+		/**
+		 * 关闭时触发
+		 */
+		"close",
+		/**
+		 * 组件被点击时触发
+		 */
+		"click"
+	])
+	const props = defineProps({
+		/**
+		 * 类型
+		 * warn:警告
+		 * success:成功
+		 * error:错误
+		 * info:信息
+		 * primary:正常主题
+		 */
+		status: {
+			type: String,
+			default: "primary"
+		},
+		/**
+		 * 警告图标,不填写取status默认图标
+		 * 填写以填写为准
+		 */
+		icon: {
+			type: String,
+			default: ""
+		},
+		/**
+		 * 警告图标大小
+		 */
+		iconSize: {
+			type: String,
+			default: "20"
+		},
+		closeIcon:{
+			type: String,
+			default: "close-line"
+		},
+		/**
+		 * 显示还是隐藏关闭按钮
+		 */
+		showClose:{
+			type:Boolean,
+			default:true
+		},
+		/**
+		 * 文字大小
+		 */
+		fontSize: {
+			type: String,
+			default: "15"
+		},
+		/**
+		 * 主题色，如果不填写以status为准
+		 */
+		color: {
+			type: String,
+			default: ""
+		},
+		/**
+		 * 文字颜色，如果不填写以status为准
+		 */
+		fontColor: {
+			type: String,
+			default: ""
+		},/**
+		 * 暗黑主题颜色，如果不填写自动计算
+		 */
+		darkColor: {
+			type: String,
+			default: ""
+		},
+		/**
+		 * 暗黑文字颜色，如果不填写自动计算
+		 */
+		fontDarkColor: {
+			type: String,
+			default: ""
+		},
+		/**
+		 * 它是建立在你没有提供color时才有效。
+		 * 如果提供了color是以你color为背景最终色。
+		 * thin浅色模式，
+		 * normal标准背景色
+		 */
+		skin: {
+			type: String,
+			default: "thin"
+		},
+		/**
+		 * 圆角
+		 * 数组数字时
+		 * [全部]
+		 * [顶左，顶右，底右，底左]
+		 * [顶左，底右]
+		 * [顶左，顶右，底右]
+		 * 空数组时取全局值
+		 */
+		"round": {
+			type: Array as PropType<string[]>,
+			default: () : string[] => []
+		},
+		/**
+		 * 边线
+		 * 数组数字时
+		 * 数组数字时
+		 * [全部]
+		 * [左，上，右，下]
+		 * [左右，上下]
+		 * [左，上，右]
+		 * 空数组时取全局值
+		 */
+		"border": {
+			type: Array as PropType<string[]>,
+			default: () : string[] => []
+		},
+		/**
+		 * 边框颜色
+		 * 格式同border边线。
+		 * 空数组时取全局值
+		 */
+		"borderColor": {
+			type: Array as PropType<string[]>,
+			default: () : string[] => []
+		},
+		/**
+		 * 如果不填写，自动计算
+		 */
+		darkBorderColor: {
+			type: Array as PropType<string[]>,
+			default: () : string[] => []
+		},
+		/**
+		 * 边线类型，默认solid,可以为none
+		 */
+		"borderStyle": {
+			type: String,
+			default: 'solid'
+		},
+		/**
+		 * 间隙[x]全部,[x,x]左右，上下,[x,x,x]左上右,[x,x,x,x]左上右下
+		 * 空数组时取全局值
+		 */
+		"margin": {
+			type: Array as PropType<string[]>,
+			default: () : string[] => ['16', '0', '16', '16'] as string[]
+		},
+		/**
+		 * 内间隙[x]全部,[x,x]左右，上下,[x,x,x]左上右,[x,x,x,x]左上右下
+		 * 空数组时取全局值
+		 */
+		"padding": {
+			type: Array as PropType<string[]>,
+			default: () : string[] => ['16', '12'] as string[]
+		},
+		/**
+		 * 自定义高度，可以是数字，单位或者百分比,auto
+		 */
+		"height": {
+			type: String,
+			default: "auto"
+		},
+		/**
+		 * 宽，单位合法即可数字，字符串带单位，百分比,auto
+		 */
+		"width": {
+			type: String,
+			default: "auto"
+		},
+	})
+	
+	const showAlert = ref(true)
+	const _color = computed(() : string => {
+
+		let tcolor = props.color;
+		if (tcolor == '') {
+			tcolor = props.status;
+		}
+		if (xConfig.dark == 'dark' && props.darkColor != '') {
+			tcolor = props.darkColor
+		}
+		let color = getDefaultColor(tcolor)
+
+		return color;
+	})
+	const _fontColor = computed(() : string => {
+		let tcolor = props.fontColor;
+		if (xConfig.dark == 'dark' && props.fontDarkColor != '') {
+			tcolor = props.fontDarkColor
+		}
+		return tcolor;
+	})
+	const _isDark = computed(() : boolean => xConfig.dark == 'dark')
+	const _showClose= computed(() : boolean => props.showClose)
+	const _fontSize = computed(() : string => {
+		let fontSize = checkIsCssUnit(props.fontSize, xConfig.unit);
+		if (xConfig.fontScale == 1) return fontSize;
+		let sizeNumber = parseInt(fontSize)
+		if (isNaN(sizeNumber)) {
+			sizeNumber = 16
+		}
+		return (sizeNumber * xConfig.fontScale).toString() + getUnit(fontSize)
+	})
+	const _margin = computed(() : string => {
+		if (props.margin.length == 0) {
+			let par = fillArrayCssValue(xConfig.sheetMargin)
+			if (par.length == 0) return "0px 0px 0px 0px";
+			return par.join(" ")
+		}
+		let ar : string[] = fillArrayCssValue(props.margin as string[])
+		if (ar.length == 0) return "0px 0px 0px 0px";
+		return ar.join(" ")
+	})
+	const _padding = computed(() : string => {
+		if (props.padding.length == 0) {
+			let par = fillArrayCssValue(xConfig.sheetMargin)
+			if (par.length == 0) return "0px 0px 0px 0px";
+			return par.join(" ")
+		}
+		let ar : string[] = fillArrayCssValue(props.padding as string[])
+		if (ar.length == 0) return "0px 0px 0px 0px";
+		return ar.join(" ")
+	})
+
+	const _round = computed(() : string => {
+		if (props.round.length == 0) {
+			let par = fillArrayCssValueByround(xConfig.sheetRadius)
+			if (par.length == 0) return "0px 0px 0px 0px";
+			return par.join(" ")
+		}
+		let ar : string[] = fillArrayCssValueByround(props.round as string[])
+		if (ar.length == 0) return "0px 0px 0px 0px";
+		return ar.join(" ")
+	})
+	
+	const _border = computed(() : string => {
+		let ar : string[] = fillArrayCssValue(props.border as string[])
+		if (ar.length == 0) return "0px 0px 0px 0px";
+		return ar.join(" ")
+	})
+	const _borderColor = computed(() : string => {
+	
+		let bordercolor = props.borderColor as string[];
+		if (xConfig.dark == 'dark') {
+			bordercolor = props.darkBorderColor.length == 0 ? xConfig.sheetDarkBorderColor : props.darkBorderColor
+		}
+		let ar : string[] = fillArrayCssValueBycolor(bordercolor as string[])
+		if (ar.length == 0) return "transparent transparent transparent transparent";
+		return ar.join(" ")
+	})
+	
+	const _iconName = computed(():string=>{
+		const iconsmap = new Map<string, string>([
+			['warn','alert-line'],
+			['success','check-double-line'],
+			['error','close-circle-line'],
+			['info','information-2-line'],
+			['primary','notification-line'],
+		])
+		let dicon = iconsmap.get(props.status)
+		return props.icon==''?(dicon==null?'':dicon!):props.icon
+	})
+
+	const _styleMap = computed(() : styleMapType => {
+		let bgStylemap = new Map<string, string>()
+		let textStylemap = new Map<string, string>()
+		let colorObj = getDefaultColorObj(_color.value, _color.value)
+
+		if (props.skin == 'thin') {
+			colorObj = getThinColorObj(_color.value, _color.value, _isDark.value)
+		}
+		let defaultObj : UTSJSONObject = colorObj.getJSON("default")!
+		bgStylemap.set("backgroundColor", defaultObj.getString("background")!)
+		bgStylemap.set("margin", _margin.value)
+		bgStylemap.set("padding", _padding.value)
+		bgStylemap.set("border-radius", _round.value)
+		bgStylemap.set("border-width", _border.value)
+		bgStylemap.set("height", checkIsCssUnit(props.height,xConfig.unit))
+		bgStylemap.set("width", checkIsCssUnit(props.width,xConfig.unit))
+		
+		bgStylemap.set("border-style", props.borderStyle)
+		if(props.borderColor.length>0){
+			bgStylemap.set("border-color", _borderColor.value)
+		}else{
+			bgStylemap.set("border-color", getDefaultColor(_color.value))
+		}
+		
+		
+		if (_fontColor.value == '') {
+			textStylemap.set("color", defaultObj.getString("fontColor")!)
+		} else {
+			textStylemap.set("color", _fontColor.value)
+		}
+		textStylemap.set("font-size", _fontSize.value)
+		return {
+			bgStyle: bgStylemap,
+			textStyle: textStylemap
+		} as styleMapType;
+	})
+	
+	const closeAlert = ()=>{
+		emits('close')
+		showAlert.value = false
+	}
+	const onclickbar = ()=>{
+		emits('click')
+	}
+	
+</script>
+
+<style>
+	.xAlert {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: flex-start;
+
+	}
+
+	.xAlertContent {
+		flex: 1;
+	}
+
+	.xAlertLeft {
+		margin-right: 8rpx;
+	}
+
+	.xAlertLeft {
+		flex-shrink: 0;
+		padding-right: 6px;
+	}
+
+	.xAlertRight {
+		flex-shrink: 0;
+		padding-left: 20px;
+	}
+</style>

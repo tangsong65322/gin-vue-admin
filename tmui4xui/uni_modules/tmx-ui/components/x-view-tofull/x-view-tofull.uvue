@@ -1,0 +1,252 @@
+<script lang="ts">
+	import {PropType} from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	
+	/**
+	 * @name 动态全屏 xViewTofull
+	 * @page /pages/index/view-tofull
+	 * @category 展示组件
+	 * @description 动态全屏，点击某一区域时，让该内容自动全屏展开，关闭时，回落到原位置，场景比如：视频播放，详情等不想开新页面的时候非常有用。
+	 * 如果想完全全屏，可以自定义导航栏和自定义关闭按钮实现。web端使用时注意：不能套在父组件设置了css transform属性里面，否则错乱。
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				nodeeleinfo:null as null|NodeInfo,
+				opeing:false,
+				opened:false,
+				isCloseing:false,
+				showCloseBtn:false,
+				showPlace:false,
+				zIndex: 50,
+				opeingZindex:false
+			}
+		},
+		props:{
+			
+			/**
+			 * 全屏弹出来时的背景色。
+			 */
+			bgColor:{
+				type:String,
+				default:'#ffffff'
+			},
+			/**
+			 * 全屏弹出来时的暗黑背景色。
+			 * 默认为空，取全局的暗黑背景
+			 */
+			darkBgColor:{
+				type:String,
+				default:''
+			},
+			/**
+			 * 展开时的动画时长，单位ms
+			 */
+			duration:{
+				type:Number,
+				default:300
+			},
+			/**
+			 * 是否显示关闭按钮
+			 * 你可以关闭，通过ref来关闭。
+			 * 如果要全屏可以自定义导航栏。
+			 */
+			showClose:{
+				type:Boolean,
+				default:true
+			}
+		},
+		computed:{
+			
+			_bgColor():string{
+				if(xConfig.dark == 'dark'){
+					if(this.darkBgColor==""){
+						return getDefaultColor(xConfig.backgroundColorContentDark)
+					}
+					return getDefaultColor(this.darkBgColor)
+				}
+				return getDefaultColor(this.bgColor)
+			},
+			_boxMapStyle():Map<string,any>{
+				let stylemap = new Map<string,any>()
+				let w = this.nodeeleinfo?.width??0;
+				let h = this.nodeeleinfo?.height??0;
+				stylemap.set('width',w+'px')
+				stylemap.set('height',h+'px')
+				return stylemap;
+			}
+		},
+		methods: {
+			onClick(){
+				this.open()
+			},
+			
+			getNodeinfo(){
+				let _this = this;
+				if(_this.opened||_this.opeing) return;
+				_this.opened = false
+				
+				uni.createSelectorQuery()
+				.in(this)
+				.select(".xViewToFull")
+				.boundingClientRect()
+				.exec((result)=>{
+					let node = result[0] as NodeInfo
+					_this.nodeeleinfo = node!;
+					_this.setOpens()
+					_this.showPlace = true;
+					
+				})
+			},
+			setOpens(){
+				let _this = this;
+				let ele = this.$refs['xViewToFullBlock'] as UniElement|null;
+				if(ele==null) return;
+				this.opeing = true;
+				let el = ele! as UniElement;
+				let top = 0
+				let sys= uni.getWindowInfo()
+				// #ifdef WEB
+				top = 44
+				// #endif
+			
+				this.isCloseing = false;
+				el.style.setProperty('width',this.nodeeleinfo!.width!+'px')
+				el.style.setProperty('height',this.nodeeleinfo!.height!+'px')
+				el.style.setProperty('left',this.nodeeleinfo!.left!+'px')
+				el.style.setProperty('top',this.nodeeleinfo!.top!+'px')
+				// el.style.setProperty('z-index','88')
+				
+				setTimeout(()=>{
+					el.style.setProperty('position','fixed')
+					el.style.setProperty('transition-duration',this.duration+'ms')
+					el.style.setProperty('left','0px')
+					el.style.setProperty('top',top+'px')
+					el.style.setProperty('width',sys.windowWidth+'px')
+					el.style.setProperty('height',sys.windowHeight+'px')
+					el.style.setProperty('background-color',_this._bgColor)
+					
+				},50)
+			},
+			/**
+			 * 手动打开弹层
+			 * @public
+			 */
+			open(){
+				this.opeingZindex=true;
+				this.getNodeinfo()
+			},
+			/**
+			 * 手动ref调用关闭弹层。
+			 * @public
+			 */
+			close() {
+				this.opeingZindex=false;
+				let _this = this;
+				if(!_this.opened||_this.opeing) return;
+				let ele = this.$refs['xViewToFullBlock'] as UniElement|null;
+				if(ele==null) return;
+				let el = ele! as UniElement;
+				this.isCloseing = true;
+				this.showCloseBtn = false;
+				let top = 0
+				// #ifdef WEB
+				top = 44
+				// #endif
+				el.style.setProperty('width',this.nodeeleinfo!.width!+'px')
+				el.style.setProperty('height',this.nodeeleinfo!.height!+'px')
+				el.style.setProperty('left',this.nodeeleinfo!.left!+'px')
+				el.style.setProperty('top',(this.nodeeleinfo!.top!+top)+'px')
+				
+			},
+			closeAniEnd(){
+				if(this.opeing){
+					this.opeing = false;
+					this.opened = true;
+					this.isCloseing = false;
+					this.showCloseBtn = true;
+				}
+				if(!this.isCloseing) return;
+				this.isCloseing = false;
+				this.opeing = false;
+				this.opened = false;
+				let _this = this;
+				let ele = this.$refs['xViewToFullBlock'] as UniElement|null;
+				if(ele==null) return;
+				let el = ele! as UniElement;
+				el.style.setProperty('transition-duration','0ms')
+				el.style.setProperty('position','static')
+				
+				el.style.setProperty('top','0px')
+				el.style.setProperty('left','0px')
+				el.style.setProperty('background-color','transparent')
+				this.showPlace = false;
+				this.opeingZindex=false;
+			}
+		}
+	}
+</script>
+<template>
+	<view  class="xViewToFull">
+		
+		<view 
+			@click="onClick" 
+			@transitionend="closeAniEnd" 
+			ref="xViewToFullBlock" 
+			class="xViewToFullBlock"
+			:style="{zIndex:opeingZindex?(zIndex+1):zIndex}"
+		 >
+			
+			<view v-if="showCloseBtn&&showClose" @click.stop="close" class="xViewToFullClose">
+				<!-- 
+				 @slot 关闭按钮插槽
+				 @prop {boolean} opened - 是否打开状态
+				 -->
+				<slot name="close" :opened="opened">
+					<x-icon font-size="24" name="close-circle-line"></x-icon>
+				</slot>
+			</view>
+			<!--
+			 @slot 默认内容插槽
+			 @prop {boolean} opened - 是否打开状态
+			 -->
+			<slot :opened="opened"></slot>
+		</view>
+		
+		<view class="xViewToFullPlace" v-if="showPlace" :style="_boxMapStyle"></view>
+	</view>
+</template>
+<style>
+.xViewToFullBlock{
+	transition-duration: 0ms;
+	transition-property: width,left,top,width,height,opacity;
+	transition-timing-function: cubic-bezier(.42,.38,.15,.93);
+	left: 0px;
+	top:0px;
+	position: relative;
+	/* #ifdef MP */
+	box-sizing: border-box;
+	overflow: hidden;
+	/* #endif */
+}
+.xViewToFullPlace{
+	
+}
+.xViewToFullClose{
+	display: flex;
+	flex-direction: row;
+	justify-content: center;
+	align-items: center;
+	position: absolute;
+	right: 16px;
+	top:16px;
+	z-index: 8;
+}
+</style>

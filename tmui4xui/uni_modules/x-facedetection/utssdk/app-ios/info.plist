@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+	<key>NSCameraUsageDescription</key>
+	<string>我们需要您的相机权限来拍照或录像。</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>需要使用你的相册进行选择视频及图片</string>
+  </dict>
+</plist>

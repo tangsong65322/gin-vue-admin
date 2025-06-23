@@ -1,0 +1,144 @@
+import { Shape } from './shape.uts';
+import { ICanvas } from '@/uni_modules/tmx-ui/core/canvas/ICanvas.uts';
+import { IShapeBoundRect, IShapeOptional } from '../interface.uts';
+
+export class ISector extends Shape {
+	constructor(config : IShapeOptional,canvas:ICanvas) {
+		super(config,canvas);
+		this.radius = config?.radius ?? 30;
+		this.startAngle = config?.startAngle ?? 0;
+		this.endAngle = config?.endAngle ?? 90;
+		this.type = "ISector"
+	}
+
+	setRadius(value : number) : ISector {
+		this.radius = value;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	override getBoundRect() : IShapeBoundRect {
+		const w = this.radius * 2;
+		return {
+			x: this.x,
+			y: this.y,
+			width: w,
+			height: w
+		} as IShapeBoundRect;
+	}
+
+	override setWidth(value : number) : ISector {
+		this.height = value;
+		this.width = value;
+		this.radius = value / 2
+		this.needsUpdate = true;
+		return this;
+	}
+
+	override setHeight(value : number) : ISector {
+		this.height = value;
+		this.width = value;
+		this.radius = value / 2
+		this.needsUpdate = true;
+		return this;
+	}
+
+	override draw(ctx : CanvasRenderingContext2D) {
+		if (this.visible == false) return;
+		super.draw(ctx);
+		ctx.beginPath();
+		// 将角度转换为弧度
+		const startRad = this.startAngle * Math.PI / 180;
+		const endRad = this.endAngle * Math.PI / 180;
+		// 如果有填充色，先移动到圆心，绘制扇形
+		if (this.fill !== "") {
+			ctx.moveTo(this.x, this.y);
+		}
+		// 绘制圆弧
+		ctx.arc(this.x, this.y, this.radius, startRad, endRad, false);
+		// 如果有填充色，连接回圆心形成扇形
+		if (this.fill != "") {
+			ctx.lineTo(this.x, this.y);
+		}
+		ctx.closePath();
+		if (this.fill != "") {
+			ctx.fill();
+		}
+		if (this.stroke != "") {
+			ctx.stroke();
+		}
+		ctx.restore();
+	}
+	
+	override isPointInPath(x: number, y: number, shapeId: string): boolean {
+		if (!this.visible || (shapeId != "" && shapeId != this.id)) return false;
+		
+		// 计算实际点击位置（考虑偏移量）
+		const realX = x - (this.offsetX) - this.x;
+		const realY = y - (this.offsetY) - this.y;
+		
+		// 如果有旋转，先进行反向旋转变换
+		let finalX = realX;
+		let finalY = realY;
+		if (this.rotation != 0) {
+			const angle = -this.rotation * Math.PI / 180;
+			const cos = Math.cos(angle);
+			const sin = Math.sin(angle);
+			let centerX = 0;
+			let centerY = 0;
+			
+			// 根据不同的旋转中心点设置centerX和centerY
+			switch(this.rotateCenter) {
+				case 'topLeft':
+					centerX = 0;
+					centerY = 0;
+					break;
+				case 'topRight':
+					centerX = this.width;
+					centerY = 0;
+					break;
+				case 'bottomLeft':
+					centerX = 0;
+					centerY = this.height;
+					break;
+				case 'bottomRight':
+					centerX = this.width;
+					centerY = this.height;
+					break;
+				case 'center':
+				default:
+					centerX = this.width/2;
+					centerY = this.height/2;
+					break;
+			}
+			
+			const dx = realX - centerX;
+			const dy = realY - centerY;
+			finalX = centerX + dx * cos - dy * sin;
+			finalY = centerY + dx * sin + dy * cos;
+		}
+		
+		// 计算点到圆心的距离
+		const distance = Math.sqrt(finalX * finalX + finalY * finalY);
+		
+		// 如果点击位置超出半径范围，则不在扇形内
+		if (distance > this.radius * this.scaleX) return false;
+		
+		// 计算点击位置的角度（弧度）
+		let angle = Math.atan2(finalY, finalX) * 180 / Math.PI;
+		// 将角度转换为0-360度范围
+		angle = (angle + 360) % 360;
+		
+		// 将起始角度和结束角度标准化到0-360度范围
+		let start = (this.startAngle + 360) % 360;
+		let end = (this.endAngle + 360) % 360;
+		
+		// 处理跨越0度线的情况
+		if (end < start) {
+			return angle >= start || angle <= end;
+		}
+		
+		// 判断点击角度是否在扇形角度范围内
+		return angle >= start && angle <= end;
+	}
+}

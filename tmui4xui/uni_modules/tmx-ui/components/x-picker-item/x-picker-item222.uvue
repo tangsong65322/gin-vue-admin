@@ -1,0 +1,305 @@
+<script lang="ts">
+	import { PropType } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit, rpx2px,getUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	// import pickerItem from './picker-item.uvue'
+	import { PICKER_ITEM_INFO,X_PICKER_X_ITEM } from "../../interface.uts"
+	import { findNodeById, findParentNode } from "../x-picker-view/util.uts"
+	import xPickerVirtualList from './x-picker-virtual-list.uvue'
+	
+	/**
+	 * @name 选择容器子节点 xPickerViewItem
+	 * @description xPickerView内部子组件，不可引用
+	 * @page /pages/index/picker-view
+	 * @category 表单组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		components: {
+			'x-picker-virtual-list': xPickerVirtualList
+		},
+		data() {
+			return {
+				boxHeight: 0,
+				id: ('xPickerItem-' + getUid()) as string,
+				nowCurrentIndex: [0],
+				tid: 0,
+				tid2:0,
+				tid3:3,
+			}
+		},
+		emits: ['changeDeep', 'countChange'],
+		props: {
+			cellHeight: {
+				type: String,
+				default: '60'
+			},
+			duration: {
+				type: Number,
+				default: 350
+			},
+			list: {
+				type: Array as PropType<X_PICKER_X_ITEM[]>,
+				default: () : X_PICKER_X_ITEM[] => [] as X_PICKER_X_ITEM[]
+			},
+			wrapWight: {
+				type: Number,
+				default: 0
+			},
+			parentIndex: {
+				type: Number,
+				default: 0
+			},
+			selectedIndex: {
+				type: Array as PropType<number[]>,
+				default: () : number[] => [] as number[]
+			},
+			cellUnits: {
+				type: Array as PropType<string[]>,
+				default: () : string[] => [] as string[]
+			},
+			unitsFontSize:{
+				type:String,
+				default:'12'
+			},
+			fontSize: {
+				type: String,
+				default: "15"
+			}
+		},
+		mounted() {
+			let t = this;
+			this.pushDeepCount(this.parentIndex)
+			t.setNowCurrentIndex(false)
+			
+		},
+		beforeUnmount() {
+			clearTimeout(this.tid)
+			clearTimeout(this.tid2)
+			clearTimeout(this.tid3)
+		},
+		computed: {
+		
+			_fontSize() : string {
+				let fontSize = checkIsCssUnit(this.fontSize, xConfig.unit)
+				
+				if(xConfig.fontScale==1) return fontSize;
+				let sizeNumber = parseInt(fontSize)
+				if(isNaN(sizeNumber)){
+					sizeNumber = 16
+				}
+				return (sizeNumber*xConfig.fontScale).toString() + getUnit(this.fontSize)
+			},
+			_parentIndex() : number {
+				return this.parentIndex
+			},
+
+			_cellHeight() : string {
+				return checkIsCssUnit(this.cellHeight, xConfig.unit)
+			},
+			_boxHeight() : number {
+				let p = parseInt(this.cellHeight);
+				if (this.cellHeight.lastIndexOf('rpx') > -1) {
+					p = rpx2px(p);
+				}
+				return p
+			},
+
+			_totalHeight() : number {
+				return (Math.max(1, this._list.length) + 4) * this._boxHeight
+			},
+
+			_wrapWight() : number {
+				return this.wrapWight
+			},
+			_selectedIndex() : number[] {
+				
+				return this.selectedIndex
+			},
+
+
+			_unitsName() : string {
+				if (this.cellUnits.length == 0) return ""
+				if (this.cellUnits.length < this._parentIndex) return ""
+				return this.cellUnits[this._parentIndex]! as string
+			},
+			_cellUnits() : string[] {
+				return this.cellUnits as string[]
+			},
+			dataList() : X_PICKER_X_ITEM[] {
+				return this.list.slice(0)
+			},
+			_list(): X_PICKER_X_ITEM[] {
+				return this.list.slice(0)
+			},
+			_nowChildren(): X_PICKER_X_ITEM[] {
+				let index = Math.max(0,Math.min(this.nowCurrentIndex[0],this._list.length-1))
+				if(this._list.length==0&&index>this._list.length-1) return [] as X_PICKER_X_ITEM[]
+				let item = this._list[index];
+				
+				return item.children
+			},
+			_isDark():boolean{
+				return xConfig.dark=='dark'
+			}
+		},
+		watch: {
+			list(){
+				let t = this;
+				t.setNowCurrentIndex(true)
+			},
+			selectedIndex(newvaluse : string[]) {
+				let t = this;
+				t.setNowCurrentIndex(false)
+			}
+		},
+		methods: {
+			setNowCurrentIndex(isTmChange:boolean){
+				let t = this;
+				clearTimeout(this.tid3)
+				// #ifdef MP-WEIXIN
+				this.tid3 = setTimeout(function() {
+					t.nowCurrentIndex = [t.getIndexByid()] as number[]
+					if(isTmChange){
+						t.mchange(t.nowCurrentIndex)
+					}
+				}, 15);
+				// #endif
+				// #ifndef MP-WEIXIN
+				t.nowCurrentIndex = [t.getIndexByid()] as number[]
+				if(isTmChange){
+					t.mchange(t.nowCurrentIndex)
+				}
+				// #endif
+			},
+			getIndexByid():number{
+				let index = 0
+				
+				if(this._selectedIndex.length==0) return index;
+				if(this.parentIndex>this._selectedIndex.length) return index
+				
+				index = this._selectedIndex[this.parentIndex]
+				
+				index = Math.max(0,Math.min(index,this._list.length-1))
+				return index;
+			},
+			getIdByindex():string|null{
+				let id = null;
+				if(this._list.length==0) return id
+				if(this.nowCurrentIndex.length==0) return id;
+				let index = Math.max(0,Math.min(this.nowCurrentIndex[0],this._list.length-1))
+				return this._list[index].id
+				
+			},
+			mchange(indexs : number[]) {
+			
+				let index = indexs[0];
+				let parentIndex = this.parentIndex;
+				let ids = this._selectedIndex.slice(0)
+				
+				
+				
+				if(parentIndex<=ids.length-1){
+					ids.splice(parentIndex,1,index)
+				}else{
+					for(let i=0;i<this.parentIndex;i++){
+						ids.push(0)
+					}
+					ids.push(index)
+					
+				}
+				
+				this.$emit("changeDeep", ids)
+			},
+			change(s : number[]) {
+				this.$emit("changeDeep", s)
+			},
+			
+			pushDeepCount(n:number){
+				
+				this.$emit("countChange", n)
+			},
+			onVirtualListChange(index: number) {
+				if (this._list.length == 0) return;
+				index = Math.max(0, Math.min(index, this._list.length - 1));
+				let item = this._list[index];
+				
+				if (item.disabled) {
+					// 寻找最近的非禁用项
+					for (let i = 1; i < this._list.length; i++) {
+						const upIndex = index - i;
+						const downIndex = index + i;
+						
+						if (upIndex >= 0 && !this._list[upIndex].disabled) {
+							index = upIndex;
+							break;
+						}
+						if (downIndex < this._list.length && !this._list[downIndex].disabled) {
+							index = downIndex;
+							break;
+						}
+					}
+				}
+				
+				this.nowCurrentIndex = [index];
+				this.mchange([index]);
+			}
+
+			
+
+		},
+	}
+</script>
+<template>
+	<view>
+		<view class="xPickerViewUnit" v-if="_unitsName!=''">
+			<x-text :font-size="unitsFontSize" class="xPickerViewUnitText">{{_unitsName}}</x-text>
+		</view>
+		<view class="xPickerView">
+			<view style="padding: 0 2.5px;">
+				<x-picker-virtual-list
+				:list="_list"
+				:selectedIndex="nowCurrentIndex[0]"
+				:containerWidth="_wrapWight-5"
+				:containerHeight="250"
+				:itemHeight="_cellHeight"
+				:fontSize="_fontSize"
+				:duration="duration"
+				:enableVirtual="_list.length > 100"
+				@change="onVirtualListChange"
+			></x-picker-virtual-list>
+			</view>
+
+			<x-picker-item @countChange="pushDeepCount" :font-size="_fontSize" :cellUnits="_cellUnits" @changeDeep="change" :selectedIndex="_selectedIndex"
+				:wrapWight="_wrapWight" :parentIndex="_parentIndex+1" v-if="_nowChildren.length>0" :list="_nowChildren"
+				:cell-height="_cellHeight">
+			</x-picker-item>
+		</view>
+	</view>
+
+
+</template>
+<style>
+	.xPickerViewUnit {
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		padding: 8px;
+	}
+
+	.xPickerViewUnitText {
+		font-size: 12px;
+		color: #888;
+		font-weight: bold;
+	}
+
+	.xPickerView {
+		display: flex;
+		flex-direction: row;
+	}
+</style>

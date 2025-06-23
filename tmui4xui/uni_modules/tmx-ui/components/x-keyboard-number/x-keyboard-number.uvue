@@ -1,0 +1,414 @@
+<script lang="ts">
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { checkIsCssUnit,getUnit } from "../../core/util/xCoreUtil.uts"
+	/**
+	 * @name 数字键盘 xKeyboardNumber
+	 * @description 数字键盘,如果你要密码键盘见x-keyboard
+	 * @page /pages/index/keyboard
+	 * @category 表单组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				show: false,
+				nowValue: "",
+				numbList: [
+					['1', '2', '3'],
+					['4', '5', '6'],
+					['7', '8', '9'],
+					["00", "0", "."]
+				],
+				numbList2: [
+					['1', '2', '3'],
+					['4', '5', '6'],
+					['7', '8', '9']
+				],
+				tid: 0
+			}
+		},
+		emits: [
+			/**
+			* 值变化时触发
+			* @param {string} value - 当前值
+			*/
+			'change',
+			/**
+			 * 变量控制打开状态
+			 * 等同v-model:model-show
+			 */
+			'update:modelShow',
+			/**
+			* 确认时触发
+			* @param {string} value - 当前值
+			*/
+			'confirm',
+			/**
+			 * 关闭取消时触发
+			 * @param {string} value - 当前值
+			 */
+			'cancel',
+			'update:modelValue'
+		],
+		props: {
+			/**
+			 * 当前输入的值
+			 */
+			modelValue: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 最大长度
+			 */
+			maxLen: {
+				type: Number,
+				default: 9
+			},
+			/**
+			 * 当前打开的状态。
+			 * 等同v-model:model-show
+			 */
+			modelShow: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 顶部标题
+			 */
+			title: {
+				type: String,
+				default: "安全键盘请放心输入"
+			},
+			/**
+			 * 主按钮色，空值取全局主题
+			 */
+			color: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 按钮背景,暗黑时会取二级inputDarkbg灰
+			 */
+			btnColor: {
+				type: String,
+				default: 'transparent'
+			},
+			/**
+			 * 键盘背景
+			 */
+			bgColor: {
+				type: String,
+				default: 'info'
+			},
+			/**
+			 * 文字颜色,暗黑是会取白。
+			 */
+			fontColor: {
+				type: String,
+				default: '#3b3b3b'
+			},
+			/**
+			 * 输入的最大值
+			 * 默认0表示不限制。
+			 */
+			max:{
+				type:Number,
+				default:0
+			},
+			/**
+			 * 是否显示小数及00填充
+			 */
+			digit:{
+				type:Boolean,
+				default:true
+			},
+			/**
+			 * 模式
+			 * number 数字键盘
+			 * password 密码键盘,作为密码用，那就不会限制数字模式就当字符串使用。
+			 */
+			mode:{
+				type:String,
+				default:"number"
+			},
+			/**
+			 * 点击确认是否保持键盘不收起
+			 */
+			hold:{
+				type:Boolean,
+				default:false
+			}
+		},
+		computed: {
+			_hold():boolean{
+				return this.hold;
+			},
+			_color() : string {
+				if (this.color == '') return getDefaultColor(xConfig.color)
+				return getDefaultColor(this.color)
+			},
+			_btnColor() : string {
+				if (xConfig.dark == 'dark') return xConfig.inputDarkColor
+				return getDefaultColor(this.btnColor)
+			},
+			_bgColor() : string {
+				return getDefaultColor(this.bgColor)
+			},
+			_fontColor() : string {
+				if (xConfig.dark == 'dark') return "#ffffff"
+				return getDefaultColor(this.fontColor)
+			},
+			_title() : string {
+				return this.title
+			},
+			_max():number{
+				return this.max;
+			}
+		},
+		watch: {
+			modelValue(newvalue : string) {
+				if (newvalue == this.nowValue) return;
+				this.nowValue = newvalue
+			},
+			modelShow(newValue : boolean) {
+				
+				if (newValue == this.show) return;
+				this.show = newValue
+			}
+		},
+
+		mounted() {
+			this.nowValue = this.modelValue
+			let t = this;
+			if (this.modelShow) {
+				this.tid = setTimeout(function () {
+					t.show = t.modelShow
+				}, 200);
+			}
+		},
+		beforeUnmount() {
+			clearTimeout(this.tid)
+		},
+		methods: {
+			getFontSize(k:string):string{
+				return checkIsCssUnit(k,xConfig.unit)
+			},
+			openShow() {
+				this.show = true;
+				/**
+				 * 变量控制打开状态
+				 * 等同v-model:model-show
+				 */
+				this.$emit('update:modelShow', true)
+			},
+
+			onCancel() {
+				/**
+				 * 关闭取消时触发
+				 */
+				this.$emit('cancel', this.nowValue);
+			},
+			onClose(){
+				this.$emit('update:modelShow', false)
+			},
+			itemClick(value : string) {
+				let isDem = this.nowValue.lastIndexOf('.') > -1;
+				let isMaxvalu = this.nowValue.split('').length >= this.maxLen;
+				if (isMaxvalu) {
+					uni.showToast({ title: '最多输入' + this.maxLen.toString() + '位数', icon: 'error' })
+					return;
+				}
+				if(this.mode=='number'){
+					if (isDem && value == '.') return;
+					
+					if ((this.nowValue.split('').length == 0 && value == '00') || (this.nowValue.split('').length == 0 && value == '.')) return
+					if (this.nowValue.substring(0, 1) == '0' && this.nowValue.split('').length == 1 && value != '.') return;
+					let totalvalue = parseFloat(this.nowValue + value);
+					if(totalvalue>this._max&&this._max!=0){
+						uni.showToast({ title: '应该小于' + this._max.toString(), icon: 'error' })
+						return;
+					}
+				}
+				
+				this.nowValue = this.nowValue + value;
+				/**
+				 * 等同v-model
+				 */
+				this.$emit('update:modelValue', this.nowValue);
+				/**
+				 * 值变化时触发
+				 * @paramt {string} value
+				 */
+				this.$emit('change', this.nowValue);
+			},
+			ok() {
+				/**
+				 * 点击确认时触发
+				 */
+				this.$emit('confirm', this.nowValue);
+				if(!this._hold){
+					this.show = false;
+					this.$emit('update:modelShow', false)
+				}
+			},
+			del() {
+				if (this.nowValue.split('').length == 0) return;
+				let stp = this.nowValue.split('');
+				stp = stp.slice(0, stp.length - 1)
+				this.nowValue = stp.join("")
+				/**
+				 * 等同v-model
+				 */
+				this.$emit('update:modelValue', this.nowValue);
+				/**
+				 * 值变化时触发
+				 * @paramt {string} value
+				 */
+				this.$emit('change', this.nowValue);
+
+			}
+		},
+	}
+</script>
+<template>
+	<view @click="openShow">
+		<!--
+		 @slot 插槽,默认触发打开选择器。你的默认布局可以放置在这里。
+		 @prop {boolean} show - 控制打开关闭状态
+		 -->
+		<slot></slot>
+	</view>
+	<x-drawer @close="onClose" :widthCoverCenter="true" :disabled-scroll="true" :bgColor="_bgColor" size="auto" overflayBgColor="rgba(0,0,0,0)" :title="title"
+		@cancel="onCancel" v-model:show="show" :show-close="true">
+		<template v-slot:title>
+			<view style="height: 44px;display: flex;justify-content: center;align-items: center;flex-direction: row;">
+			<text
+				:style="{fontSize:nowValue.split('').length>0?getFontSize('16'):getFontSize('12'),color:_fontColor}">{{nowValue.split('').length>0?nowValue:_title}}</text>
+			</view>
+		</template>
+		<template v-slot:default>
+			<view v-if="digit" class="xKeyboardNumber">
+				<view class="xKeyboardLeft">
+					<view v-for="(item,index) in numbList" :key="index" class="xKeyboardLeftLine">
+						<view @click="itemClick(item2)" v-for="(item2,index2) in item" :key="index2"
+							class="xKeyboardItem" :hover-start-time="20" :hover-stay-time="250"
+							hover-class="xKeyboardHover" :style="{backgroundColor:_btnColor}">
+							<text :style="{color:_fontColor}" class="xKeyboardText">{{item2}}</text>
+
+						</view>
+					</view>
+				</view>
+				<view class="xKeyboardRight">
+					<view :style="{backgroundColor:_btnColor,height:'50px'}" @click="del" class="xKeyboardItemDel xKeyboardItemNoright"
+						hover-class="xKeyboardHover" :hover-start-time="10" :hover-stay-time="250">
+						<x-icon :color="_fontColor" name="delete-back-2-line" font-size="24"></x-icon>
+					</view>
+					<view @click="ok" :style="{backgroundColor:_color}" class="xKeyboardItem xKeyboardItemNoright"
+						hover-class="xKeyboardHover" :hover-start-time="10" :hover-stay-time="250">
+						<!-- <x-icon name="check-line" font-size="38" color="white"></x-icon> -->
+						<text style="color: white;font-size: 16px;">确认</text>
+					</view>
+				</view>
+
+			</view>
+			<view v-if="!digit" class="xKeyboardNumber">
+				<view class="xKeyboardLeft">
+					<view v-for="(item,index) in numbList2" :key="index" class="xKeyboardLeftLine">
+						<view @click="itemClick(item2)" v-for="(item2,index2) in item" :key="index2"
+							class="xKeyboardItem" :hover-start-time="20" :hover-stay-time="250"
+							hover-class="xKeyboardHover" :style="{backgroundColor:_btnColor}">
+							<text :style="{color:_fontColor}" class="xKeyboardText">{{item2}}</text>
+						</view>
+					</view>
+					<view class="xKeyboardLeftLine">
+						<view @click="itemClick('0')"
+							class="xKeyboardItem" :hover-start-time="20" :hover-stay-time="250"
+							hover-class="xKeyboardHover" :style="{backgroundColor:_btnColor}">
+							<text :style="{color:_fontColor}" class="xKeyboardText">0</text>
+						</view>
+						<view @click="del" 
+							class="xKeyboardItem" :hover-start-time="20" :hover-stay-time="250"
+							hover-class="xKeyboardHover" :style="{backgroundColor:_btnColor}">
+							<x-icon :color="_fontColor" name="delete-back-2-line" font-size="24"></x-icon>
+						</view>
+						
+						<view @click="ok" :style="{backgroundColor:_color,'margin-right': '5px'}" class="xKeyboardItem xKeyboardItemNoright"
+							hover-class="xKeyboardHover" :hover-start-time="10" :hover-stay-time="250">
+							<!-- <x-icon name="check-line" font-size="38" color="white"></x-icon> -->
+							<text style="color: white;font-size: 16px;">确认</text>
+						</view>
+					</view>
+					
+				</view>
+			
+			</view>
+			<view style="height:12px"></view>
+		</template>
+
+	</x-drawer>
+</template>
+<style scoped>
+	.xKeyboardText {
+		font-weight: bold;
+		font-size: 20px;
+	}
+
+	.xKeyboardHover {
+		opacity: 0.6;
+	}
+
+	.xKeyboardLeftLine {
+		display: flex;
+		flex-direction: row;
+	}
+
+	.xKeyboardNumber {
+		display: flex;
+		flex-direction: row;
+	}
+
+	.xKeyboardLeft {
+		flex: 1;
+	}
+
+	.xKeyboardItem {
+		flex: 1;
+		height: 50px;
+		/* background-color: white; */
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		margin-right: 5px;
+		margin-bottom: 5px;
+		border-radius: 6px;
+	}
+	
+	.xKeyboardItemDel {
+		
+		height: 50px;
+		/* background-color: white; */
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		margin-right: 5px;
+		margin-bottom: 5px;
+		border-radius: 6px;
+	}
+
+	.xKeyboardItemNoright {
+		margin-right: 0px;
+	}
+
+	.xKeyboardRight {
+		width: 140rpx;
+		display: flex;
+		flex-direction: column;
+	}
+</style>

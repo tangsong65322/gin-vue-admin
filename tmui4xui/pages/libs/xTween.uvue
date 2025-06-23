@@ -1,0 +1,94 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor"
+			:front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">xTween - Library</x-text>
+			<x-text color="#999999">
+				这是动画帖核心类库,将为你提供无头动画库基础,与xAnimate不同,xAnimate旨在提供简单上手的view动画.而xTween只关心动画帖.
+			</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b ">先简单偿试</x-text>
+			<x-text color="error" class="mb-8">
+				线性动画,loop:-1永久循环，tyty:true,如果fps比较低通常小于50，说明设备比较差。
+			</x-text>
+			<x-text>进度:{{_progress}}%，</x-text>
+			<view :style="{background:'#4f5050',height:'8px',borderRadius:'8px'}">
+				<view :style="{background:'#fc2411',width:_progress+'%',height:'8px'}"></view>
+			</view>
+
+			<view ref="demoView1" class="felx flex-center my-20" style="width: 80px;height:50px;background-color: red;">
+				<x-text color="white">fps:{{_frmae}}</x-text>
+			</view>
+			<view class="flex flex-row flex-row-center-center">
+				<x-button @click="demo1Click">重新播放</x-button>
+				<x-button class="mx-10" @click="demo1Pause">暂停</x-button>
+				<x-button @click="demo1Stop">继续播放</x-button>
+			</view>
+		</x-sheet>
+
+
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script setup>
+	import { getCurrentInstance } from "vue"
+	import { xTween } from "@/uni_modules/tmx-ui/index.uts"
+	import { xTweenAnimate, xTweenEventCallFunType} from "@/uni_modules/tmx-ui/interface.uts"
+
+	const demoView1 = ref<UniElement | null>(null)
+
+	let tw = new xTween()
+	const _frmae = ref(0)
+	const _progress = ref('0')
+	tw.startRender()
+		.setComplete(() => {
+			console.log("所有动画结束")
+		})
+
+	const demo1Click = () => {
+		tw.stop()
+		tw.addAnimate({
+			duration: 3000,
+			loop: -1,
+			tyty: true,
+			enter: (item : xTweenEventCallFunType) => {
+				let progeress = item.reverse ? (1 - item.progress) : item.progress
+				if (demoView1 == null) return;
+				demoView1.value!.style.setProperty('left', `${progeress * 100}%`)
+				_frmae.value = tw.frmae
+				_progress.value = (progeress * 100).toFixed(2)
+			},
+			complete: (_ : xTweenEventCallFunType) => {
+				if (demoView1 == null) return;
+				demoView1.value!.style.setProperty('left', `${0}%`)
+				_progress.value = '0'
+			}
+		} as xTweenAnimate)
+		tw.play()
+	}
+	const demo1Pause = () => {
+		tw.pause()
+	}
+	const demo1Stop = () => {
+		tw.play()
+	}
+
+	// 销毁
+	onUnload(() => {
+		tw.destroy()
+	})
+</script>
+
+<style>
+
+</style>

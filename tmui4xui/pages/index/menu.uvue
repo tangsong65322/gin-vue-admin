@@ -1,0 +1,146 @@
+<template>
+	<view class="flex-1 menuBody" ref="mask" @click="closeDialogByNoCall">
+		<view class="menuBodyWrap flex-1" ref="maskWrap" @click.stop="" :style="{backgroundColor:bgColor}">
+			<view style="height: 44px;"></view>
+			<x-text font-size="18" class="text-weight-b mb-8 px-16">全局风格设置</x-text>
+			<view class='round-8'>
+				<x-cell :card="false" @click="linksTo" icon="palette-fill" title="全局主题" label="配置风格"></x-cell>
+				<x-cell :link="false" :card="false" icon="sun-line" title="暗黑风格">
+					<template #right>
+						<x-switch @change="darkChange" v-model="dark"></x-switch>
+					</template>
+				</x-cell>
+				<x-cell :show-bottom-border="true" :link="false" :card="false" icon="verified-badge-line" title="全局字号">
+					<template #right>
+						<x-stepper :disabled="true" @change="fontChange" v-model="fontScale" :decimal-len="1" :max="3"
+							:min="0.9" :step="0.1" width="110"></x-stepper>
+					</template>
+				</x-cell>
+				<!-- #ifdef APP||WEB -->
+				<x-cell min-height="80" :show-bottom-border="false" desc="H5请刷新页面,app请杀死再进入程序" :link="false"
+					:card="false" icon="sparkling-2-fill" title="开屏体验"></x-cell>
+				<view class="mx-16">
+					<x-button @click="clearXieyi" :block="true">清除隐私协议</x-button>
+				</view>
+				<view class="mt-n5">
+					<x-text font-size="12" style="text-align: center;" dark-color="#575757" color="#d3d3d3">@2025
+						TMUI版权所有</x-text>
+				</view>
+				<!-- #endif -->
+			</view>
+		</view>
+	</view>
+</template>
+
+<script setup lang="uts">
+	import { xStore, xDate} from "@/uni_modules/tmx-ui/index.uts"
+	import { checkIsCssUnit } from "@/uni_modules/tmx-ui//core/util/xCoreUtil.uts"
+	import { demoStore } from "@/libs/demoStore.uts"
+	type callbackCall = ()=>void
+	const mask = ref<UniElement | null>(null)
+	const maskWrap = ref<UniElement | null>(null)
+	const runing = ref(false)
+	const footerHeight = ref(44)
+	const botterHeight = ref(0)
+	const sliderIndex = ref(0)
+	const dark = ref<boolean>(xStore.xConfig.dark == 'dark')
+	const fontScale = ref<number>(xStore.xConfig.fontScale)
+	const bgColor = computed(() : string => {
+		return xStore.xConfig.dark == 'dark' ? xStore.xConfig.sheetDarkColor : "#ffffff"
+	})
+
+
+	function closeDialog(callback : callbackCall = () => { }) {
+		
+		if (mask.value == null || maskWrap.value == null || runing.value) return;
+		runing.value = true;
+		let ele = mask.value!
+		let eleWrap = maskWrap.value!
+		
+		ele.style.setProperty('transition-duration','200ms')
+		ele.style.setProperty('background-color','rgba(0, 0, 0, 0)')
+		eleWrap.style.setProperty('transition-duration','200ms')
+		eleWrap.style.setProperty('transform',`translateX(-640rpx`)
+		demoStore.homeMenuOpened = false
+		setTimeout(function() {
+			runing.value = false;
+			uni.closeDialogPage()
+			callback()
+		}, 200);
+	}
+
+	function closeDialogByNoCall(){
+		closeDialog(()=>{
+			
+		})
+	}
+
+	function stylAnimation() {
+		if (mask.value == null || maskWrap.value == null || runing.value) return;
+		runing.value = true;
+		let ele = mask.value!
+		let eleWrap = maskWrap.value!
+		
+		ele.style.setProperty('transition-duration','350ms')
+		ele.style.setProperty('background-color','rgba(0, 0, 0, 0.64)')
+		eleWrap.style.setProperty('transition-duration','350ms')
+		eleWrap.style.setProperty('transform','translateX(0px)')
+		setTimeout(function() {
+			runing.value = false;
+			demoStore.homeMenuOpened = true
+		}, 350);
+	}
+
+	function clearXieyi() {
+		uni.removeStorageSync('xTmui4.0Xieyi')
+		uni.showToast({ title: "app请杀死重进,web/h5请刷新页面体验", icon: "none" })
+	}
+
+	function darkChange(vale : boolean) {
+		dark.value = vale;
+		xStore.setDarkModel(vale ? 'dark' : 'light')
+	}
+	function fontChange(fontSizeScaleVal : number) {
+		xStore.xConfig.fontScale = fontSizeScaleVal;
+	}
+
+	function linksTo() {
+		closeDialog(() => {
+			uni.navigateTo({
+				url: "/pages/index/global"
+			})
+		})
+
+	}
+
+
+	onReady(()=>{
+		const sys = uni.getWindowInfo()
+		footerHeight.value = sys.safeAreaInsets.top
+		botterHeight.value = sys.safeAreaInsets.bottom
+		stylAnimation()
+	})
+	onUnload(()=>{
+		demoStore.homeMenuOpened = false
+	})
+</script>
+
+<style lang="scss">
+	.menuBody {
+		background-color: rgba(0, 0, 0, 0);
+		transition-property: background-color;
+		transition-timing-function: cubic-bezier(.42,.38,.15,.93);
+		transition-duration: 350ms;
+	}
+
+	.menuBodyWrap {
+		transition-property: transform;
+		transition-timing-function: cubic-bezier(.42,.38,.15,.93);
+		transition-duration: 350ms;
+		// background-color: #ffffff;
+		width: 640rpx;
+		transform: translateX(-640rpx);
+		max-width:420px;
+	}
+
+</style>

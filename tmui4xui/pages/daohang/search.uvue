@@ -1,0 +1,55 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		
+		<x-sheet :round="['0']" :padding="['16','0']" :margin="['0','0','0','16']">
+			<x-search v-model="inputval"></x-search>
+			<x-text>{{inputval}}</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">搜索栏 xSearch</x-text>
+			<x-text  color="#999999" >样式可自己完全定义。如果还不满足建议修改源码</x-text>
+		</x-sheet>
+		<x-sheet >
+			<x-text font-size="18" class=" text-weight-b">复杂的布局可通过插槽自定义</x-text>
+		</x-sheet>
+		<x-sheet :round="['0']" :padding="['16','0']" :margin="['0','0','0','16']">
+			<x-search right-text="取消" round="64" :show-clear="false">
+				<template v-slot:left>
+					<view class="flex flex-row flex-row-center-center">
+						<x-text class="mr-5 text-size-m">江西省</x-text>
+						<x-icon class="mr-5" color="#bfbfbf" name="arrow-down-s-line" font-size="16"></x-icon>
+					</view>
+				</template>
+				<template v-slot:inputLeft>
+					<x-icon style="margin-left:12px;" color="primary" name="qr-scan-2-line" font-size="16"></x-icon>
+				</template>
+				<template v-slot:inputRight>
+					<x-button class="mr-2" round="24" size="small" height="32" width="62">搜索</x-button>
+				</template>
+			</x-search>
+		</x-sheet>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+				inputval:""
+			};
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

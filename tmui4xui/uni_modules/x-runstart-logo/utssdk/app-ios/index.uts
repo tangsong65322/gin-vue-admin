@@ -1,0 +1,86 @@
+import { XRUN_START_LOGO_OPTS, RGBA } from "../interface.uts"
+import { UIView, UIViewController, NSLayoutConstraint, UIScrollView, NSLineBreakMode,UIWindow, UIFont, UILabel, UITapGestureRecognizer, UIImageView, UIImage } from 'UIKit';
+import { CGRect, CGPoint, CGFloat } from 'CoreFoundation';
+import { Alignment } from 'SwiftUI';
+import { UInt32, KeyPath } from 'Swift';
+import { NSString, URL, URLSession } from 'Foundation';
+import { CABasicAnimation, CAAnimationDelegate, CAAnimation } from 'QuartzCore';
+import { Selector } from "ObjectiveC";
+
+let maskerDom : null | UIView = null;
+let tid = 0
+
+export function hideRunLogo() {
+	if (maskerDom != null) {
+		maskerDom!.removeFromSuperview()
+	}
+}
+
+export function showRunLogo(opts : XRUN_START_LOGO_OPTS) {
+	let nowwindow = UTSiOS.getKeyWindow() as UIWindow
+	let rootUIview = nowwindow.rootViewController as UIViewController|null
+	
+	if (maskerDom != null) {
+		clearTimeout(tid)
+		maskerDom!.removeFromSuperview()
+	}
+	let parent = UTSiOS.getCurrentViewController() as UIViewController;
+	if(rootUIview!=null){
+		parent = rootUIview!;
+	}
+	let parentView = parent.view as UIView
+
+	let config : XRUN_START_LOGO_OPTS = opts
+
+	maskerDom = new UIView()
+
+	if (maskerDom == null) return;
+	let cg = parentView.frame as CGRect
+	maskerDom!.frame = cg
+	maskerDom!.backgroundColor = UTSiOS.colorWithString(config.bgColor)
+
+	// 添加标题
+	let titleDiv = new UILabel();
+	titleDiv.textColor = UTSiOS.colorWithString(config.fontColor)
+	titleDiv.text = new String(config.rightText)
+	titleDiv.font = UIFont.systemFont(ofSize = new CGFloat(config.fontSize))
+	titleDiv.textAlignment = NSTextAlignment.center
+	maskerDom!.addSubview(titleDiv)
+	titleDiv.translatesAutoresizingMaskIntoConstraints = false
+
+	NSLayoutConstraint.activate([
+		// 顶部约束
+		// titleDiv.topAnchor.constraint(equalTo = content.topAnchor, constant = 0),
+		titleDiv.bottomAnchor.constraint(equalTo = maskerDom!.bottomAnchor, constant = -80),
+		// contextText.widthAnchor.constraint(equalToConstant = new CGFloat((width!-32))),
+		// 左侧约束
+		titleDiv.leadingAnchor.constraint(equalTo = maskerDom!.leadingAnchor, constant = 16),
+		// 右侧约束
+		titleDiv.trailingAnchor.constraint(equalTo = maskerDom!.safeAreaLayoutGuide.trailingAnchor, constant = -16)
+	])
+
+	// 内容外框。
+	let container = new UIView();
+	container.layer.cornerRadius = new CGFloat(config.round)
+	container.layer.masksToBounds = true;
+	container.backgroundColor = UTSiOS.colorWithString(config.logoBgColor)
+	container.translatesAutoresizingMaskIntoConstraints = false
+	// container.frame = new CGRect(x = 0, y = 0, width = (config.width+config.logoPadding).toInt(), height = (config.height+config.round).toInt())
+	maskerDom!.addSubview(container)
+	NSLayoutConstraint.activate([
+		container.bottomAnchor.constraint(equalTo = titleDiv.topAnchor, constant = -12),
+		container.centerXAnchor.constraint(equalTo = maskerDom!.centerXAnchor),
+		container.widthAnchor.constraint(equalToConstant = new CGFloat(config.width + config.logoPadding)),
+		container.heightAnchor.constraint(equalToConstant = new CGFloat(config.height + config.logoPadding))
+	])
+
+	// 图片.
+	let img = new UIImageView()
+	
+	let imgTop = (config.logoPadding/2).toInt()
+	img.frame = new CGRect(x = imgTop, y = imgTop, width = (config.width).toInt(), height = (config.height).toInt())
+	img.image = new UIImage(named = config.logo)
+	
+	container.addSubview(img)
+	parentView.addSubview(maskerDom!)
+}

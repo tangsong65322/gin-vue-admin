@@ -1,0 +1,17 @@
+<script lang="ts" setup>
+	import { type PropType } from "vue"
+	import { getUid, rpx2px } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor, hexToRgb } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { xDate, dateCovertXdate, xDateTypeTime } from "../../core/util/xDate.uts"
+	import { xDateDayInfoType, xCalendarDateStyle_type } from "../../interface.uts"
+</script>
+<template>
+	<view class="xCalendarView">
+
+	</view>
+</template>
+<style scoped>
+	
+</style>

@@ -1,0 +1,24 @@
+import {configCover} from "../libs/config.uts"
+export const close = (call : () => void, isClose : boolean)=>{
+	if (!isClose) return;
+	call()
+	console.error("微信无法关闭showModal")
+}
+
+export const showModal = (opts : any)=>{
+	let config = configCover(opts)
+	uni.showModal({
+		title:config.title,
+		content:config.content,
+		confirmText:config.confirmText,
+		cancelText:config.cancelText,
+		success(e){
+			if(e.confirm){
+				config.confirm()
+			}else{
+				config.cancel()
+			}
+		},
+	
+	})
+}

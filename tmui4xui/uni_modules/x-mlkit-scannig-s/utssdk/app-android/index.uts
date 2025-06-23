@@ -1,0 +1,382 @@
+/**
+ * 引用 Android 系统库，示例如下：
+ * import { Context } from "android.content.Context";
+ * [可选实现，按需引入]
+ */
+
+/* 引入 interface.uts 文件中定义的变量 */
+import { SCANNING_PHOTO_RESULT, SCANNING_PHOTO_RESULT_BOUND, SCANNING_PHOTO_RESULT_POS } from '../interface.uts';
+
+/* 引入 unierror.uts 文件中定义的变量 */
+import Intent from 'android.content.Intent';
+import Context from 'android.content.Context'
+import IOException from 'java.io.IOException'
+import InputStream from 'java.io.InputStream'
+import Uri from 'android.net.Uri';
+import File from 'java.io.File'
+import Bitmap from "android.graphics.Bitmap"
+import BarcodeScanner from "com.google.mlkit.vision.barcode.BarcodeScanner"
+import BarcodeScannerOptions from "com.google.mlkit.vision.barcode.BarcodeScannerOptions"
+import BarcodeScanning from "com.google.mlkit.vision.barcode.BarcodeScanning"
+import ZoomSuggestionOptions from "com.google.mlkit.vision.barcode.ZoomSuggestionOptions"
+import ZoomCallback from "com.google.mlkit.vision.barcode.ZoomSuggestionOptions.ZoomCallback"
+import Barcode from "com.google.mlkit.vision.barcode.common.Barcode"
+import InputImage from "com.google.mlkit.vision.common.InputImage"
+
+import Task from "com.google.android.gms.tasks.Task"
+import List from "java.util.List"
+import ByteBuffer from 'java.nio.ByteBuffer'
+import ImageFormat from 'android.graphics.ImageFormat'
+
+import {xCamera} from "./camera.uts"
+import {CALL_RESULT_FUN} from "../interface.uts"
+
+import {gotoDemoActivity} from "./cameraByx.uts"
+
+const camera =  new xCamera()
+
+/**
+* 从相册中选取图片进行解码
+* @public chooseImageDecodeQr
+*/
+export function chooseImage() : Promise<SCANNING_PHOTO_RESULT | null> {
+	return new Promise((res) => {
+		uni.chooseImage({
+			count: 1,
+			sourceType:['album'],
+			albumMode:"system",
+			success(evt : ChooseImageSuccess) {
+				console.log('**')
+				if (evt.tempFilePaths.length > 0) {
+					console.log(evt, "----")
+					const imgs = evt.tempFilePaths[0] as string;
+					try {
+						const decodedPath = Uri.decode(imgs).substring(7)
+						const file = File(decodedPath)
+						let image = InputImage.fromFilePath(UTSAndroid.getAppContext() as Context, Uri.fromFile(file));
+						let scanner = BarcodeScanning.getClient();
+						scanner.process(image)
+							.addOnSuccessListener((barcodes) => {
+								let listpos = [] as number[][][]
+								let bounedlist = [] as SCANNING_PHOTO_RESULT_BOUND[]
+								let rulstText = [] as string[]
+								for (barcode in barcodes) {
+									// 位置信息
+									let bounds = barcode.boundingBox
+									// 坐标
+									let corners = barcode.cornerPoints
+									// 解析的内容
+									let rawValue = barcode.rawValue
+									// 码的格式
+									let valueType = barcode.valueType
+
+									if (rawValue != null && bounds != null && corners != null) {
+										let iminfo = { width: bounds!.width(), height: bounds!.height(), centerX: bounds!.centerX(), centerY: bounds!.centerY() } as SCANNING_PHOTO_RESULT_BOUND
+										let posinfo = [] as number[][]
+										for (pos in corners) {
+											posinfo.push([pos!.x as number, pos!.y as number] as number[])
+										}
+										listpos.push(posinfo)
+										bounedlist.push(iminfo)
+										rulstText.push(rawValue)
+									}
+								}
+								res({
+									url: imgs,
+									position: listpos,
+									bounds: bounedlist,
+									text: rulstText,
+									imgWidth:image.getWidth(),
+									imgHeight:image.getHeight()
+								} as SCANNING_PHOTO_RESULT)
+							})
+
+					} catch (e : IOException) {
+						res(null)
+					}
+				}
+			},
+			fail() {
+				res(null)
+			}
+		})
+	})
+}
+
+/**
+* 给定图片路径解析图片。
+* @public decoderUriPathToQr
+*/
+export function decoderUriPathToQr(filePath : string,callback:(rs:SCANNING_PHOTO_RESULT)=>void) {
+		try{
+			let uri = UTSAndroid.getFileProviderUri(new File(filePath))!
+			
+			let image = InputImage.fromFilePath(UTSAndroid.getAppContext() as Context, uri);
+			let scanner = BarcodeScanning.getClient();
+			scanner.process(image)
+			.addOnSuccessListener((barcodes) => {
+				let listpos = [] as number[][][]
+				let bounedlist = [] as SCANNING_PHOTO_RESULT_BOUND[]
+				let rulstText = [] as string[]
+				for (barcode in barcodes) {
+					// 位置信息
+					let bounds = barcode.boundingBox
+					// 坐标
+					let corners = barcode.cornerPoints
+					// 解析的内容
+					let rawValue = barcode.rawValue
+					// 码的格式
+					let valueType = barcode.valueType
+			
+					if (rawValue != null && bounds != null && corners != null) {
+						let iminfo = { width: bounds!.width(), height: bounds!.height(), centerX: bounds!.centerX(), centerY: bounds!.centerY() } as SCANNING_PHOTO_RESULT_BOUND
+						let posinfo = [] as number[][]
+						for (pos in corners) {
+							posinfo.push([pos!.x as number, pos!.y as number] as number[])
+						}
+						listpos.push(posinfo)
+						bounedlist.push(iminfo)
+						rulstText.push(rawValue)
+					}
+				}
+				callback({
+					url: "",
+					position: listpos,
+					bounds: bounedlist,
+					text: rulstText,
+					imgWidth:image.getWidth(),
+					imgHeight:image.getHeight()
+				} as SCANNING_PHOTO_RESULT)
+			})
+		}catch(e){
+			console.error(e)
+		}
+}
+
+
+/**
+* 给定图片路径Uri解析图片。
+* @public decoderUriPathToQr
+*/
+export function decoderUriPathToQrByUri(filePath : Uri,callback:(rs:SCANNING_PHOTO_RESULT)=>void) {
+		try{
+			let image = InputImage.fromFilePath(UTSAndroid.getAppContext() as Context, filePath);
+			let options = BarcodeScannerOptions.Builder()
+				.setBarcodeFormats(
+					Barcode.FORMAT_QR_CODE,
+					Barcode.FORMAT_EAN_13,
+					Barcode.FORMAT_CODE_128,
+					Barcode.FORMAT_CODABAR
+				)
+				.build()
+			let scanner = BarcodeScanning.getClient(options);
+			scanner.process(image)
+			.addOnSuccessListener((barcodes) => {
+				let listpos = [] as number[][][]
+				let bounedlist = [] as SCANNING_PHOTO_RESULT_BOUND[]
+				let rulstText = [] as string[]
+				for (barcode in barcodes) {
+					// 位置信息
+					let bounds = barcode.boundingBox
+					// 坐标
+					let corners = barcode.cornerPoints
+					// 解析的内容
+					let rawValue = barcode.rawValue
+					// 码的格式
+					let valueType = barcode.valueType
+			
+					if (rawValue != null && bounds != null && corners != null) {
+						let iminfo = { width: bounds!.width(), height: bounds!.height(), centerX: bounds!.centerX(), centerY: bounds!.centerY() } as SCANNING_PHOTO_RESULT_BOUND
+						let posinfo = [] as number[][]
+						for (pos in corners) {
+							posinfo.push([pos!.x as number, pos!.y as number] as number[])
+						}
+						listpos.push(posinfo)
+						bounedlist.push(iminfo)
+						rulstText.push(rawValue)
+					}
+				}
+				callback({
+					url: "",
+					position: listpos,
+					bounds: bounedlist,
+					text: rulstText,
+					imgWidth:image.getWidth(),
+					imgHeight:image.getHeight()
+				} as SCANNING_PHOTO_RESULT)
+			})
+		}catch(e){
+			console.error(e)
+		}
+}
+
+/**
+* 给定ImageBuffer
+* @public decoderBuffToQr
+*/
+export function decoderBuffToQr(bitmap : ByteArray, width : Number, height : Number, ration : Number) : Promise<SCANNING_PHOTO_RESULT | null> {
+	return new Promise((res) => {
+		let options = BarcodeScannerOptions.Builder()
+			.setBarcodeFormats(
+					Barcode.FORMAT_QR_CODE,
+					Barcode.FORMAT_EAN_13,
+					Barcode.FORMAT_CODE_128,
+					Barcode.FORMAT_CODABAR
+				)
+			.build()
+			
+		let image = InputImage.fromByteArray(bitmap, width.toInt(), height.toInt(), ration.toInt(), InputImage.IMAGE_FORMAT_NV21)
+		// 如果只扫qr开启这行，速度快一点。
+		let scanner = BarcodeScanning.getClient(options);
+		// let scanner = BarcodeScanning.getClient();
+		scanner.process(image)
+			.addOnSuccessListener((barcodes) => {
+				let listpos = [] as number[][][]
+				let bounedlist = [] as SCANNING_PHOTO_RESULT_BOUND[]
+				let rulstText = [] as string[]
+				for (barcode in barcodes) {
+					// 位置信息
+					let bounds = barcode.boundingBox
+					// 坐标
+					let corners = barcode.cornerPoints
+					// 解析的内容
+					let rawValue = barcode.rawValue
+					// 码的格式
+					let valueType = barcode.valueType
+
+					if (rawValue != null && bounds != null && corners != null) {
+						let iminfo = { width: bounds!.width(), height: bounds!.height(), centerX: bounds!.centerX(), centerY: bounds!.centerY() } as SCANNING_PHOTO_RESULT_BOUND
+						let posinfo = [] as number[][]
+						for (pos in corners) {
+							posinfo.push([pos!.x as number, pos!.y as number] as number[])
+						}
+						listpos.push(posinfo)
+						bounedlist.push(iminfo)
+						rulstText.push(rawValue)
+					}
+				}
+				res({
+					url: "",
+					position: listpos,
+					bounds: bounedlist,
+					text: rulstText,
+					imgWidth:image.getWidth(),
+					imgHeight:image.getHeight()
+				} as SCANNING_PHOTO_RESULT)
+			})
+			.addOnFailureListener((e) => {
+
+				res(null)
+			})
+	})
+}
+
+
+/**
+ * 提供一个网络图片地址进行解码
+ * @public urlPathDecoderQr
+ */
+export function urlPathDecoderQr(url : String,callback:(rs:SCANNING_PHOTO_RESULT)=>void) {
+	uni.downloadFile({
+		url,
+		success(res) {
+			const contentResolver = UTSAndroid.getAppContext()!.contentResolver
+			let decodedPath = res.tempFilePath
+			if (res.tempFilePath.indexOf('file://') > -1) {
+				decodedPath = Uri.decode(res.tempFilePath).substring(7)
+			}
+			decoderUriPathToQr(decodedPath,callback)
+		},
+		fail() {
+			console.error('下载图片错误')
+		}
+	})
+}
+
+/**
+ * 检查相机权限
+ */
+export function	checkPermissions() : Promise<boolean> {
+	let permissionCheck = ["android.permission.CAMERA"]
+	let _this = this;
+	// 请求拍照权限
+	return new Promise((res) => {
+		if (UTSAndroid.checkSystemPermissionGranted(UTSAndroid.getUniActivity()!, permissionCheck)) {
+			// _this.cameraPermissioPass = true
+			res(true)
+		} else {
+			console.log("当前不具备指定权限")
+			// 请求拍照权限
+			UTSAndroid.requestSystemPermission(UTSAndroid.getUniActivity()!, permissionCheck, function (allRight : boolean, _ : string[]) {
+				// _this.cameraPermissioPass = allRight
+				res(true)
+			}, function (_ : boolean, _ : string[]) {
+				//用户拒绝了部分权限
+				res(false)
+			})
+		}
+	})
+}
+
+
+let callCustomFun = null as null|CALL_RESULT_FUN
+
+const xMlkitScanningActivityResult = (requestCode : Int, resultCode : Int, data ?: Intent)=>{
+	let _this = this;
+	let jgCode = 1;
+	let datastr = uni.getStorageSync('xMlkitScannigUResult');
+	
+	if(requestCode==jgCode.toInt()&&datastr!=null&&callCustomFun!=null){
+		let str = ""
+		let call = callCustomFun!;
+		if(typeof datastr == 'bigint'||typeof datastr == 'number' || typeof datastr == 'int'){
+			call(datastr.toString())
+		}else{
+			str = datastr as string;
+			call(str)
+		}
+		uni.removeStorageSync('xMlkitScannigUResult')
+	}
+}
+
+
+
+export function openCameraApi(call:CALL_RESULT_FUN,onlyCamera:boolean){
+	
+	
+	// UTSAndroid.offAppActivityResult(xMlkitScanningActivityResult)
+	// callCustomFun = call
+	let isPrivacyAgreeCamrea = uni.getStorageSync('isPrivacyAgreeCamreaByTmui')
+	if(isPrivacyAgreeCamrea!='on'){
+		uni.showModal({
+			title:"提醒",
+			content:"将授权你的设备相机使用权限进行拍摄识别功能，是否允许？",
+			success(isPermisseions){
+				if(isPermisseions.confirm){
+					checkPermissions()
+					.then((res:boolean)=>{
+						gotoDemoActivity(call,onlyCamera)
+						uni.setStorageSync('isPrivacyAgreeCamreaByTmui','on')
+					
+					})
+					.catch(()=>{
+						uni.setStorageSync('isPrivacyAgreeCamreaByTmui','off')
+					})
+				}
+			},
+			fail(){
+				uni.showToast({title:"未授权相机使用权",icon:"none"})
+			}
+		})
+	}else{
+		// camera.openCamera(call,onlyCamera)
+		gotoDemoActivity(call,onlyCamera)
+	}
+	
+	
+	
+}
+
+export function closeCamera(){
+	
+}

@@ -1,0 +1,279 @@
+<script lang="ts">
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { getUid } from '../../core/util/xCoreUtil.uts';
+
+	/**
+	 * @name 进度条 xProgress
+	 * @description 使用，允许设置min,max值，如果你的双向绑定的vale值超过min,max的合法值，将会被转换为正确值。
+	 * @page /pages/index/progress
+	 * @category 展示组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				/** 百分值，目前3.98有bug动态更改view的百分比不会生效。暂且取宽度值 */
+				percentage: 0,
+				_val: 0,
+				boxwidth: 0,
+				boxheight: 0,
+				id: "xProgress" + getUid()
+			}
+		},
+		emits: ['update:modelValue'],
+		props: {
+			/**
+			 * 最小值
+			 */
+			min: {
+				type: Number,
+				default: 0
+			},
+			/**
+			 * 最大值
+			 */
+			max: {
+				type: Number,
+				default: 100
+			},
+			/**
+			 * 当前的值
+			 * 等同v-model=""
+			 */
+			modelValue: {
+				type: Number,
+				default: 0
+			},
+			/**
+			 * 进度条激活时的颜色
+			 * 为空时，取全局配置的值
+			 */
+			color: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 背景颜色
+			 */
+			bgColor: {
+				type: String,
+				default: "info"
+			},
+			/**
+			 * 暗黑背景颜色，如果不设置取inputDarkColor
+			 */
+			darkBgColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 是否显示进度条上的label文本
+			 */
+			showLabel: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 文本颜色
+			 */
+			labelColor: {
+				type: String,
+				default: "white"
+			},
+			/**
+			 * 文本文字大小
+			 */
+			labelFontSize: {
+				type: String,
+				default: "10"
+			},
+			/**
+			 * 进度条的大小
+			 */
+			size: {
+				type: String,
+				default: "4"
+			},
+			/**
+			 * 圆角。
+			 * 为空值时，取全局的统一值
+			 */
+			round: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 动画持续的时间
+			 */
+			duration: {
+				type: Number,
+				default: 350
+			},
+
+
+		},
+		computed: {
+			_round() : string {
+				if (this.round == "") {
+					return checkIsCssUnit(xConfig.progressRadius, xConfig.unit)
+				}
+				return checkIsCssUnit(this.round, xConfig.unit)
+			},
+			_min() : number {
+				return this.min;
+			},
+			_max() : number {
+				return this.max;
+			},
+			_showLabel() : boolean {
+				return this.showLabel
+			},
+			_color() : string {
+				if (this.color == "") {
+					return getDefaultColor(xConfig.color)
+				}
+				return getDefaultColor(this.color)
+			},
+			_bgColor() : string {
+				if (xConfig.dark == 'dark') {
+					if (this.darkBgColor != '') return getDefaultColor(this.darkBgColor)
+					return getDefaultColor(xConfig.inputDarkColor)
+				}
+				return getDefaultColor(this.bgColor)
+			},
+			_labelColor() : string {
+				return getDefaultColor(this.labelColor)
+			},
+			_labelFontSize() : string {
+				return checkIsCssUnit(this.labelFontSize, xConfig.unit)
+			},
+			_size() : string {
+				return checkIsCssUnit(this.size, xConfig.unit)
+			}
+		},
+		watch: {
+			modelValue(newval : number) {
+				if (newval != this._val) {
+					this._val = newval
+					this.percentage = this.valueToPro(this._val);
+					this.getNodes()
+				}
+			}
+		},
+		mounted() {
+			this.getNodes();
+			this._val = this.modelValue
+			this.percentage = this.valueToPro(this._val);
+		},
+		methods: {
+			getNodes() {
+				uni.createSelectorQuery().in(this)
+					.select("#" + this.id)
+					.boundingClientRect().exec((ret) => {
+						let nodeinfo = ret[0] as NodeInfo;
+						this.boxwidth = nodeinfo.width!;
+						this.boxheight = nodeinfo.height!;
+					})
+			},
+			/**
+			 * 比例转值
+			 */
+			proToValue(val : number) : number {
+				const minValue = Math.min(this._min, this._max);
+				const maxValue = Math.max(this._min, this._max);
+				if (minValue === maxValue) {
+					return minValue;
+				}
+				return (val / 100) * (maxValue - minValue) + minValue;
+			},
+			/**
+			 * 值转比例
+			 */
+			valueToPro(val : number) : number {
+				let min = Math.min(this._min, this._max);
+				let max = Math.max(this._min, this._max);
+				let realval = Math.max(Math.min(val, max), min);
+				/**
+				 * 等同v-model=""
+				 * 如果你的双向绑定的vale值超过min,max的合法值，将会被转换为正确值。
+				 */
+				this.$emit('update:modelValue', realval);
+				return (realval - min) / (max - min) * 100;
+			},
+		},
+	}
+</script>
+<template>
+	<view class="xPropressBox" >
+		<view :id="id" class="xPropress" :style="{backgroundColor:_bgColor,height:_size,borderRadius:_round}">
+			<view class="xPropressBg"
+				:style="{
+					backgroundColor:_color,
+					width:`${(percentage/100)*boxwidth}px`,
+					borderRadius:_round,
+					transitionDuration:`${duration}ms`
+					}"
+				>
+				<view v-if="showLabel" class="xPropressBtn">
+					<text class="xPropressTxt" :style="{color:_labelColor,fontSize:_labelFontSize}">
+						<!-- 
+						 @slot 默认标签文本插槽，需要设置:showLabel="true"
+						 @prop {number} value - 当前的值
+						 @prop {number} percentage - 当前的百分比值
+						 -->
+						<slot :value="_val" :percentage="percentage.toFixed(0)">{{percentage.toFixed(0)}}%</slot>
+					</text>
+				</view>
+			</view>
+		</view>
+		<view class="xPropressBoxRight">
+			<!--
+			 @slot 右插槽
+			 @prop {number} value - 当前的值
+			 @prop {number} percentage - 当前的百分比值
+			 -->
+			<slot name="right" :value="_val" :percentage="percentage.toFixed(0)"></slot>
+		</view>
+	</view>
+</template>
+<style scoped>
+	.xPropressBox {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+	}
+
+	.xPropressBoxRight {}
+
+	.xPropress {
+		flex: 1;
+	}
+
+	.xPropressBg {
+		height: 100%;
+		display: flex;
+		flex-direction: row;
+		justify-content: flex-end;
+		align-items: center;
+		transition-duration: 0ms;
+		transition-property: width;
+		transition-timing-function: ease;
+	}
+
+	.xPropressBtn {
+		height: 100%;
+		/* background-color: yellow; */
+		padding: 0rpx 10rpx;
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.xPropressTxt {}
+</style>

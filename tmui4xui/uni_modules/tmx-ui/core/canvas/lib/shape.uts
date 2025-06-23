@@ -1,0 +1,663 @@
+import { ICanvas } from '@/uni_modules/tmx-ui/core/canvas/ICanvas.uts';
+// import { Path2DShape } from '@/uni_modules/tmx-ui/core/canvas/lib/path2d.uts';
+
+import {
+	IShape, IShapeVector2d,
+	ILineJoinType, ILineCapType,
+	IShapeOptional, IShapeBoundRect, ICanvasEvent, CanvasEventType, IEventShapeListener, IEventShape, CanvasRotateCenter, ShapeSetAttrType, ITextAlignType, ITextBaselineType
+} from '../interface.uts';
+
+export class Shape implements IShape {
+	canvas : ICanvas
+	x : number = 0;
+	y : number = 0;
+	width : number = 0;
+	height : number = 0;
+	fill : string = "";
+	stroke : string = "";
+	strokeWidth : number = 0;
+	opacity : number = 1;
+	visible : boolean = true;
+	rotation : number = 0;
+	scaleX : number = 1;
+	scaleY : number = 1;
+	offsetX : number = 0;
+	offsetY : number = 0;
+	draggable : boolean = false;
+	draggableing : boolean = false;
+	// 元素之间上下重叠时，是否允许穿透冒泡逐层触发，默认不允许
+	bubbleEvent = false;
+	toggleStatus = false;
+
+	// 线条样式
+	lineJoin : ILineJoinType = "round";
+	lineDashOffset : number = 0;
+	lineDash : number[] = []
+	lineCap : ILineCapType = "butt";
+
+	text : string = "";
+	fontSize : number = 12;
+	fontFamily : string = "Arial";
+	textAlign : 'left' | 'center' | 'right' = 'left';
+	textBaseline : 'top' | 'middle' | 'bottom' = 'top';
+	padding : number = 0;
+	lineHeight : number = 1.2;
+
+	innerRadius : number = 10;
+	outerRadius : number = 20;
+	startAngle : number = 0;
+	endAngle : number = 360;
+
+
+	radius : number = 0;
+
+	sides : number = 3;
+
+	points : number[] = [];
+	//多边形线是否自动闭合
+	closed : boolean = true;
+	tension : number = 0
+	bezier : boolean = false;
+
+	radiusX : number = 20;
+	radiusY : number = 80;
+	//星的角数量,默认5角星
+	numPoints : number = 5
+
+
+	pointStart : IShapeVector2d = { x: 0, y: 0 };
+	pointEnd : IShapeVector2d = { x: 0, y: 0 };
+
+	clip : boolean = false;
+	zIndex : number = 0;
+	textBgColor : string = '';
+
+
+	id : string = "shape-" + (Math.random()).toString(8).substring(4, 20)
+	type : string = ''
+	/** 旋转元素时的中心点,默认是topLeft左顶,center表示元素的中间 */
+	rotateCenter : CanvasRotateCenter = "topLeft"
+
+
+	strokeGradient = [] as string[]
+	fillGradient = [] as string[]
+
+	needsUpdate = false
+	private toggleListener = (status : boolean, target : any) => { }
+	private eventListeners : Map<CanvasEventType, IEventShapeListener[]> = new Map();
+
+
+	drag : (eventName : CanvasEventType, parentEventDetail : ICanvasEvent) => void = (eventName : CanvasEventType, parentEventDetail : ICanvasEvent) => {
+		if (!this.draggable) return
+		this.x -= parentEventDetail.detail[0].moveLenX
+		this.y -= parentEventDetail.detail[0].moveLenY
+		
+	}
+	constructor(config : IShapeOptional, canvas : ICanvas) {
+		this.canvas = canvas
+		this.x = config?.x ?? this.x;
+		this.y = config?.y ?? this.y;
+		this.width = config?.width ?? this.width;
+		this.height = config?.height ?? this.height;
+		this.fill = config?.fill ?? this.fill;
+		this.stroke = config?.stroke ?? this.stroke;
+		this.strokeWidth = config?.strokeWidth ?? this.strokeWidth;
+		this.opacity = config?.opacity ?? this.opacity;
+		this.visible = config?.visible ?? this.visible;
+		this.rotation = config?.rotation ?? this.rotation;
+		this.scaleX = config?.scaleX ?? this.scaleX;
+		this.scaleY = config?.scaleY ?? this.scaleY;
+		this.offsetX = config?.offsetX ?? this.offsetX;
+		this.offsetY = config?.offsetY ?? this.offsetY;
+		this.draggable = config?.draggable ?? this.draggable;
+		this.bubbleEvent = config?.bubbleEvent ?? this.bubbleEvent;
+		this.rotateCenter = config?.rotateCenter ?? this.rotateCenter;
+
+		this.lineJoin = config?.lineJoin ?? this.lineJoin;
+		this.lineDashOffset = config?.lineDashOffset ?? this.lineDashOffset;
+		this.lineDash = config?.lineDash ?? this.lineDash;
+		this.lineCap = config?.lineCap ?? this.lineCap;
+
+		this.text = config?.text ?? this.text;
+		this.fontSize = config?.fontSize ?? this.fontSize;
+		this.fontFamily = config?.fontFamily ?? this.fontFamily;
+		this.textAlign = config?.textAlign ?? this.textAlign;
+		this.textBaseline = config?.textBaseline ?? this.textBaseline;
+		this.padding = config?.padding ?? this.padding;
+		this.lineHeight = config?.lineHeight ?? this.lineHeight;
+
+		this.innerRadius = config?.innerRadius ?? this.innerRadius;
+		this.outerRadius = config?.outerRadius ?? this.outerRadius;
+		this.startAngle = config?.startAngle ?? this.startAngle;
+		this.endAngle = config?.endAngle ?? this.endAngle;
+
+		this.radius = config?.radius ?? this.radius;
+		this.sides = config?.sides ?? this.sides;
+
+		this.points = config?.points ?? this.points;
+		this.closed = config?.closed ?? this.closed;
+
+		this.tension = config?.tension ?? this.tension;
+		this.bezier = config?.bezier ?? this.bezier;
+
+		this.radiusX = config?.radiusX ?? this.radiusX;
+		this.radiusY = config?.radiusY ?? this.radiusY;
+		this.numPoints = config?.numPoints ?? this.numPoints;
+		this.pointStart = config?.pointStart ?? this.pointStart;
+		this.pointEnd = config?.pointEnd ?? this.pointEnd;
+
+		this.strokeGradient = config?.strokeGradient ?? this.strokeGradient;
+		this.fillGradient = config?.fillGradient ?? this.fillGradient;
+		this.clip = config?.clip ?? this.clip;
+		this.zIndex = config?.zIndex ?? this.zIndex;
+		this.textBgColor = config?.textBgColor ?? this.textBgColor;
+
+
+	}
+
+	draw(ctx : CanvasRenderingContext2D) : void {
+		if (this.visible == false) return;
+		ctx.save();
+		ctx.globalAlpha = this.opacity;
+		ctx.translate(this.x + this.offsetX, this.y + this.offsetY);
+		if (this.rotation != 0) {
+			if (this.rotateCenter == 'topLeft') {
+				ctx.rotate(this.rotation * Math.PI / 180);
+			} else if (this.rotateCenter == 'center') {
+				ctx.translate(this.width / 2, this.height / 2);
+				ctx.rotate(this.rotation * Math.PI / 180);
+				ctx.translate(-this.width / 2, -this.height / 2);
+			} else if (this.rotateCenter == 'topRight') {
+				ctx.translate(this.width, 0);
+				ctx.rotate(this.rotation * Math.PI / 180);
+				ctx.translate(-this.width, 0);
+			} else if (this.rotateCenter == 'bottomLeft') {
+				ctx.translate(0, this.height);
+				ctx.rotate(this.rotation * Math.PI / 180);
+				ctx.translate(0, -this.height);
+			} else if (this.rotateCenter == 'bottomRight') {
+				ctx.translate(this.width, this.height);
+				ctx.rotate(this.rotation * Math.PI / 180);
+				ctx.translate(-this.width, -this.height);
+			}
+		}
+		if (this.scaleX != 1 || this.scaleY != 1) {
+
+			if (this.rotateCenter == 'topLeft') {
+				ctx.scale(this.scaleX, this.scaleY);
+			} else if (this.rotateCenter == 'center') {
+				ctx.translate(this.width / 2, this.height / 2);
+				ctx.scale(this.scaleX, this.scaleY);
+				ctx.translate(-this.width / 2, -this.height / 2);
+			} else if (this.rotateCenter == 'topRight') {
+				ctx.translate(this.width, 0);
+				ctx.scale(this.scaleX, this.scaleY);
+				ctx.translate(-this.width, 0);
+			} else if (this.rotateCenter == 'bottomLeft') {
+				ctx.translate(0, this.height);
+				ctx.scale(this.scaleX, this.scaleY);
+				ctx.translate(0, -this.height);
+			} else if (this.rotateCenter == 'bottomRight') {
+				ctx.translate(this.width, this.height);
+				ctx.scale(this.scaleX, this.scaleY);
+				ctx.translate(-this.width, -this.height);
+			}
+
+		}
+		ctx.translate(-this.x, -this.y);
+		if (this.clip) {
+			ctx.clip()
+		}
+		if (this.fill != "" || this.fillGradient.length > 0) {
+			if (this.fillGradient.length > 0) {
+				const gradient = this.createLinearGradient(ctx, this.fillGradient);
+				ctx.fillStyle = gradient;
+			} else if (this.fill != "") {
+				ctx.fillStyle = this.fill;
+			}
+		}
+		if (this.stroke != "" || this.strokeGradient.length > 0) {
+			if (this.strokeGradient.length > 0) {
+				const gradient = this.createLinearGradient(ctx, this.strokeGradient);
+				ctx.strokeStyle = gradient;
+			} else {
+				ctx.strokeStyle = this.stroke
+			}
+			ctx.lineWidth = this.strokeWidth;
+			ctx.lineJoin = this.lineJoin;
+			ctx.lineCap = this.lineCap;
+			ctx.lineDashOffset = this.lineDashOffset;
+			if (this.lineDash.length > 0) {
+				ctx.setLineDash(this.lineDash)
+			}
+		}
+
+	}
+
+	isPointInPath(x : number, y : number, shapeId : string) : boolean {
+		if (!this.visible || (shapeId != "" && shapeId != this.id)) return false;
+		const realX = x - (this.offsetX) - this.x;
+		const realY = y - (this.offsetY) - this.y;
+
+		if (this.rotation != 0) {
+			const angle = -this.rotation * Math.PI / 180;
+			const cos = Math.cos(angle);
+			const sin = Math.sin(angle);
+			let centerX = 0;
+			let centerY = 0;
+			
+			if (this.rotateCenter == 'topLeft') {
+				centerX = 0;
+				centerY = 0;
+			} else if (this.rotateCenter == 'center') {
+				centerX = this.width / 2;
+				centerY = this.height / 2;
+			} else if (this.rotateCenter == 'topRight') {
+				centerX = this.width;
+				centerY = 0;
+			} else if (this.rotateCenter == 'bottomLeft') {
+				centerX = 0;
+				centerY = this.height;
+			} else if (this.rotateCenter == 'bottomRight') {
+				centerX = this.width;
+				centerY = this.height;
+			}
+			
+			const dx = realX - centerX;
+			const dy = realY - centerY;
+			const rotatedX = centerX + dx * cos - dy * sin;
+			const rotatedY = centerY + dx * sin + dy * cos;
+			return rotatedX >= 0 && rotatedX <= this.width * this.scaleX && rotatedY >= 0 && rotatedY <= this.height * this.scaleY;
+		}
+
+		return realX >= 0 && realX <= this.width * this.scaleX &&
+			realY >= 0 && realY <= this.height * this.scaleY;
+	}
+
+	addEventListener(eventName : CanvasEventType, listener : IEventShapeListener) : Shape {
+		if (!this.eventListeners.has(eventName)) {
+			this.eventListeners.set(eventName, []);
+		}
+
+		this.eventListeners.get(eventName)!.push(listener);
+		return this;
+	}
+
+	removeEventListener(eventName : CanvasEventType, listener : IEventShapeListener) : Shape {
+		const listeners = this.eventListeners.get(eventName);
+		if (listeners == null) return this;
+		const index = listeners.indexOf(listener);
+		if (index != -1) {
+			listeners.splice(index, 1);
+		}
+		return this;
+	}
+
+	buildEvents(eventName : CanvasEventType, parentEventDetail : ICanvasEvent) {
+		const listeners = this.eventListeners.get(eventName);
+		
+		if (eventName == 'click') {
+			this.toggleStatus = !this.toggleStatus
+			this.toggleListener(this.toggleStatus, this)
+		}
+
+		if (listeners == null) return;
+		let layerX = parentEventDetail.x - ((this.offsetX * this.scaleX) + this.x);
+		let layerY = parentEventDetail.y - ((this.offsetY * this.scaleY) + this.y);
+		const events = {
+			type: eventName,
+			x: parentEventDetail.x,
+			y: parentEventDetail.y,
+			/** 元素本身内的坐标X */
+			layerX: layerX,
+			/** 元素本身内的坐标Y */
+			layerY: layerY,
+			target: this,
+			touches: parentEventDetail.touches.map((el : ICanvasEvent) : IEventShape => {
+				let layerX_self = el.x - ((this.offsetX * this.scaleX) + this.x);
+				let layerY_self = el.y - ((this.offsetY * this.scaleY) + this.y);
+				return {
+					touches: [] as IEventShape[],
+					type: eventName,
+					x: el.x,
+					y: el.y,
+					layerX: layerX_self,
+					layerY: layerY_self,
+					target: this
+				} as IEventShape
+			})
+		} as IEventShape
+
+		for (let i = 0; i < listeners.length; i++) {
+			let children = listeners[i]
+			//执行画布的监听事件
+			children(events);
+		}
+	}
+
+	setRotateCenter(center : CanvasRotateCenter) : Shape {
+		this.rotateCenter = center;
+		return this;
+	}
+	setX(value : number) : Shape {
+		this.x = value;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	setY(value : number) : Shape {
+		this.y = value;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	setWidth(value : number) : Shape {
+		this.width = value;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	setHeight(value : number) : Shape {
+		this.height = value;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	setFill(value : string) : Shape {
+		this.fill = value;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	setStroke(value : string) : Shape {
+		this.stroke = value;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	setStrokeWidth(value : number) : Shape {
+		this.strokeWidth = value;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	setOpacity(value : number) : Shape {
+		this.opacity = value;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	setVisible(value : boolean) : Shape {
+		this.visible = value;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	setRotation(value : number) : Shape {
+		this.rotation = value;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	setScaleX(value : number) : Shape {
+		this.scaleX = value;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	setScaleY(value : number) : Shape {
+		this.scaleY = value;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	setOffsetX(value : number) : Shape {
+		this.offsetX = value;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	setOffsetY(value : number) : Shape {
+		this.offsetY = value;
+		this.needsUpdate = true;
+		return this;
+	}
+	setLineDash(value : number[]) : Shape {
+		this.lineDash = value;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	setDraggable(value : boolean) : Shape {
+		this.draggable = value;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	setBubbleEvent(value : boolean) : Shape {
+		this.bubbleEvent = value;
+		this.needsUpdate = true;
+		return this;
+	}
+	setZindex(value : number) : Shape {
+		this.zIndex = value;
+		this.needsUpdate = true;
+		return this;
+	}
+	setClip(value : boolean) : Shape {
+		this.clip = value;
+		this.needsUpdate = true;
+		return this;
+	}
+	setTextBgColor(value : string) : Shape {
+		this.textBgColor = value;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	setAttr(key : string, value : any) {
+		this.needsUpdate = true;
+		switch (key) {
+			case 'x': { this.x = value as number; break; }
+			case 'y': { this.y = value as number; break; }
+			case 'width': { this.width = value as number; break; }
+			case 'height': { this.height = value as number; break; }
+			case 'fill': { this.fill = value as string; break; }
+			case 'stroke': { this.stroke = value as string; break; }
+			case 'strokeWidth': { this.strokeWidth = value as number; break; }
+			case 'opacity': { this.opacity = value as number; break; }
+			case 'visible': { this.visible = value as boolean; break; }
+			case 'rotation': { this.rotation = value as number; break; }
+			case 'scaleX': { this.scaleX = value as number; break; }
+			case 'scaleY': { this.scaleY = value as number; break; }
+			case 'offsetX': { this.offsetX = value as number; break; }
+			case 'offsetY': { this.offsetY = value as number; break; }
+			case 'draggable': { this.draggable = value as boolean; break; }
+			case 'bubbleEvent': { this.bubbleEvent = value as boolean; break; }
+			case 'lineJoin': { this.lineJoin = value as ILineJoinType; break; }
+			case 'lineDashOffset': { this.lineDashOffset = value as number; break; }
+			case 'lineDash': { this.lineDash = value as number[]; break; }
+			case 'lineCap': { this.lineCap = value as ILineCapType; break; }
+			case 'text': this.text = value as string;
+			case 'fontSize': this.fontSize = value as number;
+			case 'fontFamily': this.fontFamily = value as string;
+			case 'textAlign': this.textAlign = value as ITextAlignType;
+			case 'textBaseline': this.textBaseline = value as ITextBaselineType;
+			case 'padding': this.padding = value as number;
+			case 'lineHeight': this.lineHeight = value as number;
+			case 'innerRadius': { this.innerRadius = value as number; break; }
+			case 'outerRadius': { this.outerRadius = value as number; break; }
+			case 'startAngle': { this.startAngle = value as number; break; }
+			case 'endAngle': { this.endAngle = value as number; break; }
+			case 'radius': { this.radius = value as number; break; }
+			case 'sides': { this.sides = value as number; break; }
+			case 'points': { this.points = value as number[]; break; }
+			case 'closed': { this.closed = value as boolean; break; }
+			case 'tension': { this.tension = value as number; break; }
+			case 'bezier': { this.bezier = value as boolean; break; }
+			case 'radiusX': { this.radiusX = value as number; break; }
+			case 'radiusY': { this.radiusY = value as number; break; }
+			case 'numPoints': { this.numPoints = value as number; break; }
+			case 'pointStart': { this.pointStart = value as IShapeVector2d; break; }
+			case 'pointEnd': { this.pointEnd = value as IShapeVector2d; break; }
+			case 'clip': { this.clip = value as boolean; break; }
+			case 'zIndex': { this.zIndex = value as number; break; }
+			case 'textBgColor': { this.textBgColor = value as string; break; }
+
+
+			default: return;
+		}
+	}
+
+	getAttr(key : string) : any | null {
+		switch (key) {
+			case 'x': return this.x;
+			case 'y': return this.y;
+			case 'width': return this.width;
+			case 'height': return this.height;
+			case 'fill': return this.fill;
+			case 'stroke': return this.stroke;
+			case 'strokeWidth': return this.strokeWidth;
+			case 'opacity': return this.opacity;
+			case 'visible': return this.visible;
+			case 'rotation': return this.rotation;
+			case 'scaleX': return this.scaleX;
+			case 'scaleY': return this.scaleY;
+			case 'offsetX': return this.offsetX;
+			case 'offsetY': return this.offsetY;
+			case 'draggable': return this.draggable;
+			case 'bubbleEvent': return this.bubbleEvent;
+			case 'lineJoin': return this.lineJoin;
+			case 'lineDashOffset': return this.lineDashOffset;
+			case 'lineDash': return this.lineDash;
+			case 'lineCap': return this.lineCap;
+			case 'text': return this.text;
+			case 'fontSize': return this.fontSize;
+			case 'fontFamily': return this.fontFamily;
+			case 'textAlign': return this.textAlign;
+			case 'textBaseline': return this.textBaseline;
+			case 'padding': return this.padding;
+			case 'lineHeight': return this.lineHeight;
+			case 'innerRadius': return this.innerRadius;
+			case 'outerRadius': return this.outerRadius;
+			case 'startAngle': return this.startAngle;
+			case 'endAngle': return this.endAngle;
+			case 'radius': return this.radius;
+			case 'sides': return this.sides;
+			case 'closed': return this.closed;
+			case 'points': return this.points;
+			case 'tension': return this.tension;
+			case 'bezier': return this.bezier;
+			case 'radiusX': return this.radiusX;
+			case 'radiusY': return this.radiusY;
+			case 'numPoints': return this.numPoints;
+			case 'pointStart': return this.pointStart;
+			case 'pointEnd': return this.pointEnd;
+			case 'clip': return this.pointEnd;
+			case 'zIndex': return this.zIndex;
+			case 'textBgColor': return this.textBgColor;
+			default: return null;
+		}
+	}
+
+	getBoundRect() : IShapeBoundRect {
+		return {
+			x: this.x,
+			y: this.y,
+			width: this.width,
+			height: this.height
+		} as IShapeBoundRect;
+	}
+
+
+	toggle(call : (status : boolean, target : any) => void) : void {
+		this.toggleListener = call;
+	}
+
+
+	update() : Shape {
+		if (!this.needsUpdate) return this;
+		this.needsUpdate = false;
+		return this;
+	}
+
+	private createLinearGradient(ctx : CanvasRenderingContext2D, gradientArray : string[]) : CanvasGradient {
+		if (gradientArray.length < 2) return ctx.createLinearGradient(0, 0, 0, 0);
+		// 解析角度
+		let angle = 0;
+		const firstItem = gradientArray[0];
+		if (firstItem.includes('deg')) {
+			angle = parseFloat(firstItem);
+			gradientArray = gradientArray.slice(1);
+		}
+
+		// 计算渐变的起点和终点
+		const radian = angle * Math.PI / 180;
+		const length = Math.max(this.width, this.height);
+		let startX = this.x;
+		let startY = this.y;
+		let endX = this.x;
+		let endY = this.y;
+
+		if (this.type == 'ICircle') {
+			// 对于圆形，使用半径计算
+			const dx = Math.cos(radian) * this.radius;
+			const dy = Math.sin(radian) * this.radius;
+			startX = this.x - dx;
+			startY = this.y - dy;
+			endX = this.x + dx;
+			endY = this.y + dy;
+		} else if (this.type == 'IEllipse') {
+			// 对于椭圆，使用radiusX和radiusY计算
+			const dx = Math.cos(radian) * this.radiusX;
+			const dy = Math.sin(radian) * this.radiusY;
+			startX = this.x - dx;
+			startY = this.y - dy;
+			endX = this.x + dx;
+			endY = this.y + dy;
+		} else if (this.type == 'IStar') {
+			// 对于星形，使用外接圆半径计算
+			const radius = this.outerRadius;
+			const dx = Math.cos(radian) * radius;
+			const dy = Math.sin(radian) * radius;
+			startX = this.x - dx;
+			startY = this.y - dy;
+			endX = this.x + dx;
+			endY = this.y + dy;
+		} else if (this.type == 'IText') {
+			// 对于文本，使用文本框的宽高计算
+			const dx = Math.cos(radian) * this.width;
+			const dy = Math.sin(radian) * this.height;
+			endX = startX + dx;
+			endY = startY + dy;
+		} else if (this.type == 'IArc' || this.type == 'ISector') {
+			// 对于圆弧和扇形，使用半径计算
+			const dx = Math.cos(radian) * this.radius;
+			const dy = Math.sin(radian) * this.radius;
+			startX = this.x - dx;
+			startY = this.y - dy;
+			endX = this.x + dx;
+			endY = this.y + dy;
+		} else {
+			// 默认使用矩形的宽高计算
+			const dx = Math.cos(radian) * length;
+			const dy = Math.sin(radian) * length;
+			endX = startX + dx;
+			endY = startY + dy;
+		}
+
+		const gradient = ctx.createLinearGradient(startX, startY, endX, endY);
+		// 添加渐变色停止点
+		gradientArray.forEach(item => {
+			const ar = item.split(' ');
+			const color = ar[0];
+			const stop = ar[1];
+			const offset = parseFloat(stop) / 100;
+
+			gradient.addColorStop(offset, color);
+		});
+
+		return gradient;
+	}
+
+}

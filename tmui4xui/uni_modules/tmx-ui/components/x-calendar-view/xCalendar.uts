@@ -1,0 +1,211 @@
+import { xDate } from "../../core/util/xDate.uts"
+import { xDateDayInfoType, xCalendarDateStyle_type } from "../../interface.uts"
+import { xDateArrayItemType,xCalendarArgs,dateStyleDot,dateStyleBg,dateStyleType,xCalendarMode } from "../x-calendar-view/interface.uts"
+export class xCalendar {
+	date : xDate;
+	calendar:xDateArrayItemType[] = [];
+	constructor(currentDate : string | number | Date | null = null) {
+		this.date = new xDate(currentDate)
+	}
+	isInCurrentMonth(current:Date,target:Date):boolean{
+		let y1 = current.getFullYear()
+		let m1 = current.getMonth()
+		// let d1 = current.getDate()
+		let y2 = target.getFullYear()
+		let m2 = target.getMonth()
+		// let d2 = target.getDate()
+		return y1 == y2 && m1 == m2
+	}
+	isInpanel(current:Date|string):boolean{
+		console.log(this.calendar)
+		if(this.calendar.length==0) return false;
+		let s = new xDate(this.calendar[0].date.date);
+		let e = new xDate(this.calendar[this.calendar.length-1].date.date);
+		let c = new xDate(current);
+		
+		return c.getTime('d')<=e.getTime('d')&&c.getTime('d')>=s.getTime('d')
+	}
+	isInRangeDate(current:Date,targets:Date[],mode:xCalendarMode):boolean{
+		let y1 = current.getFullYear()
+		let m1 = current.getMonth()
+		let d1 = current.getDate()
+		if(mode == 'day'){
+			for(let i=0;i<targets.length;i++){
+				let target = targets[i]
+				let y2 = target.getFullYear()
+				let m2 = target.getMonth()
+				let d2 = target.getDate()
+				if(y1 == y2 && m1 == m2 && d1 == d2){
+					return true
+				}
+			}
+		}else if(mode == 'range'){
+			if(targets.length<2) return false;
+			let start = targets[0]
+			let end = targets[targets.length-1]
+			return current.getTime()>start.getTime()&&current.getTime()<end.getTime()
+		}
+		
+		return false
+	}
+	isInRangeDateByIndex(current:Date,targets:Date[],mode:xCalendarMode):number{
+		let y1 = current.getFullYear()
+		let m1 = current.getMonth()
+		let d1 = current.getDate()
+		if(mode == 'day'){
+			for(let i=0;i<targets.length;i++){
+				let target = targets[i]
+				let y2 = target.getFullYear()
+				let m2 = target.getMonth()
+				let d2 = target.getDate()
+				if(y1 == y2 && m1 == m2 && d1 == d2){
+					return i
+				}
+			}
+		}else if(mode == 'range'){
+			if(targets.length<2) return -1;
+			let start = targets[0]
+			let end = targets[targets.length-1]
+			if(current.getTime()>start.getTime()&&current.getTime()<end.getTime()) return -1
+			if(current.getTime()==start.getTime()) return 0
+			if(current.getTime()==end.getTime()) return 1
+		}
+		
+		return -1
+	}
+	isInCurrente(current:Date,targets:Date):boolean{
+		return targets.getTime() == current.getTime()
+	}
+	isDisabled(current:Date,start:Date|null,end:Date|null,targets:Date[]):boolean{
+		let y1 = current.getFullYear()
+		let m1 = current.getMonth()
+		let d1 = current.getDate()
+		let disabled = false
+		for(let i=0;i<targets.length;i++){
+			let target = targets[i]
+			let y2 = target.getFullYear()
+			let m2 = target.getMonth()
+			let d2 = target.getDate()
+			if(y1 == y2 && m1 == m2 && d1 == d2){
+				disabled = true;
+				break;
+			}
+		}
+		if(start!=null){
+			disabled = start.getTime() > current.getTime()
+		}
+		if(end!=null){
+			disabled = end.getTime() < current.getTime()
+		}
+		
+		return disabled
+	}
+	isInStart(current:Date,targets:Date[]):boolean{
+		if(targets.length==0) return false;
+		return targets[0].getTime() == current.getTime()
+	}
+	isInEnd(current:Date,targets:Date[]):boolean{
+		if(targets.length<2) return false;
+		return targets[targets.length-1].getTime() == current.getTime()
+	}
+	diffDays(start:Date,end:Date):number{
+		return end.getTime()-start.getTime()
+	}
+	getDateStyle(current:Date,defaultStyle:xCalendarArgs,disabled:boolean,inMonth:boolean,inRange:boolean,isInStart:boolean,isInEnd:boolean,dateStyle:xCalendarDateStyle_type[],mode:xCalendarMode):dateStyleType{
+		let nowdatestyleIndex = dateStyle.findIndex((d:xCalendarDateStyle_type):boolean => {
+			return new Date(d.date.replace(/-/g,'/')).getTime() == current.getTime()
+		})
+		let item:xCalendarDateStyle_type|null = nowdatestyleIndex==-1?null:dateStyle[nowdatestyleIndex]
+		const label = (item?.label??'') as string;
+		let fontColor = (item?.fontColor??defaultStyle.fontColor) as string;
+		fontColor = inRange ? defaultStyle.activeFontColor:(inRange?defaultStyle.rangFontColor:fontColor)
+		let bgColor = (item?.color??'transparent') as string;
+		bgColor = inRange ? defaultStyle.color : (inRange?defaultStyle.rangColor:bgColor)
+		const bgstyle = {
+			/** 底部文本 */
+			label : label,
+			/** 日期文字颜色 */
+			fontColor : fontColor,
+			backgroundColor : bgColor,
+			opacity : disabled||!inMonth?0.5:1
+		} as dateStyleBg
+		
+		const dotstyle = {
+			/** 是否显示右角标 */
+			dot : item?.dot??false,
+			/** 右角标背景颜色 */
+			dotColor : item?.dotColor??defaultStyle.color,
+			/** 右角标文字颜色 */
+			dotLabelColor : item?.dotLabelColor??'#ffffff',
+			/** 注意如果dot为true，此内容为空就会显示小圆点。如果有内容优先显示本文本 */
+			dotLabel : item?.dotLabel??'',
+		} as dateStyleDot
+		
+		return {
+			dot : dotstyle,
+			dstyle : bgstyle
+		} as dateStyleType
+	}
+	getCalendar(
+	mode:xCalendarMode,
+	currentDate : string | number | Date | null = null,
+	selectedDate:string,
+	start:Date|null,
+	end:Date|null,
+	defaultStyle:xCalendarArgs,
+	dateStyle:xCalendarDateStyle_type[] = [],
+	disabledDays:string[] = [],
+	isPadding:boolean = true):xDateArrayItemType[]{
+		const nowCutime = Date.now()
+		let nowdate = (currentDate == null?this.date:new xDate(currentDate)) as xDate;
+		const dateAr = nowdate.getDaysOf('m')
+		let dates = [] as xDateDayInfoType[]
+		if(isPadding){
+			const beforeNum = dateAr[0].week - 1
+			const beforeDates = new xDate(dateAr[0].date).getDaysOfNum(beforeNum,'before')
+			dates = [...beforeDates,...dateAr]
+			if(dates.length<42){
+				//补齐最后一周的内容
+				let lastWeek = new xDate(dates[dates.length-1].date).getDaysOfNum(42-dates.length,'after')
+				dates = [...dates,...lastWeek]
+			}
+		}else{
+			dates = dateAr
+		}
+		
+		let selectedTargets = selectedDate==""?new Date():new Date(selectedDate.replace(/-/g,'/'))
+		let disabledDaysAs = disabledDays.map((d:string):Date =>{
+			return new Date(d.replace(/-/g,'/'))
+		})
+		
+		const current = nowdate.date
+		const list = [] as xDateArrayItemType[]
+		
+		for(let i=0;i<dates.length;i++){
+			let item = dates[i]
+			let checkDate = new Date(item.date);
+			const inmonth = this.isInCurrentMonth(checkDate,current);
+			const inRange = this.isInCurrente(checkDate,selectedTargets);
+			const disabled = this.isDisabled(checkDate,start,end,disabledDaysAs)
+			const isInstart = false
+			const isInEnd = false
+			const astyle = this.getDateStyle(checkDate,defaultStyle,disabled,inmonth,inRange,isInstart,isInEnd,dateStyle,mode)
+			list.push({
+				date : item,
+				disabled : disabled,
+				inCurrentMonth : inmonth,
+				inRange : inRange,
+				isInstart : isInstart,
+				isInEnd : isInEnd,
+				style : astyle
+			})
+			
+		}
+		
+		this.calendar = list;
+		
+		// console.log(`执行组时间：${Date.now()-nowCutime}毫秒，循环数组：${dates.length}`)
+		
+		return list
+	}
+}

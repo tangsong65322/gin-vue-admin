@@ -1,0 +1,561 @@
+import Intent from 'android.content.Intent';
+import Context from 'android.content.Context'
+import IOException from 'java.io.IOException'
+import InputStream from 'java.io.InputStream'
+import Uri from 'android.net.Uri';
+import File from 'java.io.File'
+import Bitmap from "android.graphics.Bitmap"
+import FrameLayout from 'android.widget.FrameLayout';
+import FaceDetection from "com.google.mlkit.vision.face.FaceDetection"
+import FaceDetectorOptions from "com.google.mlkit.vision.face.FaceDetectorOptions"
+import FaceLandmark from "com.google.mlkit.vision.face.FaceLandmark"
+import FaceContour from "com.google.mlkit.vision.face.FaceContour"
+import Face from "com.google.mlkit.vision.face.Face"
+
+import InputImage from "com.google.mlkit.vision.common.InputImage"
+
+import Task from "com.google.android.gms.tasks.Task"
+import List from "java.util.List"
+import ByteBuffer from 'java.nio.ByteBuffer'
+import ImageFormat from 'android.graphics.ImageFormat'
+import Kotlin from 'kotlin.jvm.internal.Intrinsics.Kotlin';
+import Image from 'android.media.Image';
+import LinearLayout from 'android.widget.LinearLayout';
+import ViewGroup from 'android.view.ViewGroup';
+
+import { XFACE_CHECK_OPTS, XFACE_EVENT_SUCCESS, XFACE_TEST_EYE_TYPE, XFACE_FACE_Direction, XFACE_EVENT_CHECK_SUCCESS } from "../interface.uts"
+import { XFACE_CHECK_OPTS_REAL, getDefaultConfig } from "../libs/config.uts"
+import BitmapFactory from 'android.graphics.BitmapFactory';
+import View from 'android.view.View';
+import { xCamera } from "./camera.uts"
+import { xAudio  } from "./audio.uts"
+
+let camera : xCamera | null = null;
+const audio = new xAudio();
+const checkFaceResult = (image : InputImage, faces : MutableList<Face>, callBack : (result : XFACE_EVENT_SUCCESS[]) => void) => {
+	const cfaces = [] as XFACE_EVENT_SUCCESS[]
+	// @ts-ignore
+	for (item in faces) {
+		// @ts-ignore
+		const face = item as Face;
+		let rightEye = { openNum: 0, isOpen: false } as XFACE_TEST_EYE_TYPE;
+		let leftEye = { openNum: 0, isOpen: false } as XFACE_TEST_EYE_TYPE;
+		// 眼睛
+		let rightEyeMark = face.getLandmark(FaceLandmark.RIGHT_EYE)
+		let leftEyeMark = face.getLandmark(FaceLandmark.RIGHT_EYE)
+		// 鼻子
+		let noseMark = face.getLandmark(FaceLandmark.NOSE_BASE)
+		// 耳朵
+		let rightEarMark = face.getLandmark(FaceLandmark.RIGHT_EAR)
+		let leftEarMark = face.getLandmark(FaceLandmark.LEFT_EAR)
+		
+		
+		let rightEyeNum = face.getRightEyeOpenProbability()
+		let leftEyeNum = face.getLeftEyeOpenProbability()
+		let isSmile = face.getSmilingProbability()
+		
+		let faceId = face.getTrackingId()
+
+		if (rightEyeNum != null) {
+			rightEye.openNum = rightEyeNum + 0;
+			rightEye.isOpen = rightEyeNum > 0.7
+		}
+		if (leftEyeNum != null) {
+			leftEye.openNum = leftEyeNum + 0;
+			leftEye.isOpen = leftEyeNum > 0.7
+		}
+
+		// 检测当前左,右,下,上
+		let faceRightLeft : XFACE_FACE_Direction = "center"
+		let faceUpDown : XFACE_FACE_Direction = "center"
+
+
+		let eulerX = face.getHeadEulerAngleX(); // 获取头部左右旋转角度
+		let eulerY = face.getHeadEulerAngleY(); // 获取头部上下俯仰角度
+		let eulerZ = face.getHeadEulerAngleZ(); // 获取头部上下俯仰角度
+		
+		// 嘴巴
+		let leftMouth = face.getLandmark(FaceLandmark.MOUTH_LEFT)
+		let rightMouth = face.getLandmark(FaceLandmark.MOUTH_RIGHT)
+		let bottomMouth = face.getLandmark(FaceLandmark.MOUTH_BOTTOM)
+		
+		let isMouthOpened = false
+		let ANGLE_THRESHOLD = 30; // 容差值
+		let ANGLE_HEAD_THRESHOLD = 0; // 容差值
+		let ANGLE_EYE_THRESHOLD = 6; // 眨眼的容差.
+		
+		let allHeadBody = false;
+
+		if (Math.abs(eulerY) > ANGLE_THRESHOLD) { // 确保头部没有明显上下俯仰
+			faceRightLeft = eulerY > 0 ? 'left' : 'right';
+		}
+
+		if (Math.abs(eulerX) >= ANGLE_HEAD_THRESHOLD) { // 确保头部没有明显上下俯仰
+			faceUpDown = eulerY > 0 ? 'down' : 'up';
+		}
+
+		if (leftMouth != null && rightMouth != null && bottomMouth != null) {
+			// @ts-ignore
+			let mouthWidth = rightMouth.position.x - leftMouth.position.x
+			// @ts-ignore
+			let mouthHeight = bottomMouth.position.y - ((leftMouth.position.y + rightMouth.position.y) / 2)
+
+			if (mouthHeight / mouthWidth > 0.4 && faceRightLeft == 'center') {
+				isMouthOpened = true;
+			} else {
+				isMouthOpened = false;
+			}
+		}
+		
+		if(
+		 leftMouth != null &&
+		 rightMouth != null &&
+		 bottomMouth != null &&
+		 noseMark !=null&&
+		 rightEarMark !=null&&
+		 leftEarMark !=null&&
+		 rightEyeMark !=null&&
+		 leftEyeMark !=null
+		 ){
+			allHeadBody = true;
+		}
+
+		cfaces.push({
+			imgWidth: image.getWidth(),
+			imgHeight: image.getHeight(),
+			isSmile: isSmile == null ? false : (isSmile >= 0.8),
+			rightEye,
+			leftEye,
+			faceRightLeft,
+			faceUpDown,
+			isMouthOpened,
+			allHeadBody,
+			faceId:faceId!=null?(faceId+0):null
+		})
+
+	}
+
+	callBack(cfaces)
+}
+
+
+
+export function decodeImage(success : (evt : XFACE_EVENT_SUCCESS[]) => void, fail : () => void, image : InputImage) {
+	// @ts-ignore
+	const highAccuracyOpts = new FaceDetectorOptions.Builder()
+		.setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
+		.setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
+		.setContourMode(FaceDetectorOptions.CONTOUR_MODE_NONE)
+		.setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
+		.enableTracking()
+		.build()
+	const detector = FaceDetection.getClient(highAccuracyOpts)
+
+
+	detector.process(image)
+		.addOnSuccessListener((faces : MutableList<Face>) => {
+	
+			UTSAndroid.getDispatcher("main").async(function(_){
+				checkFaceResult(image, faces, (result : XFACE_EVENT_SUCCESS[]) => {
+					success(result)
+				})
+			},null)
+
+		})
+		.addOnFailureListener(e => {
+			console.error(e)
+			fail()
+		})
+}
+
+/**
+ * 通过相册选择检测当前图片是否有人脸.
+ */
+export function checkFaceByImage(config : XFACE_CHECK_OPTS | null = null) {
+	const cfg = getDefaultConfig(config)
+	// @ts-ignore
+	const highAccuracyOpts = new FaceDetectorOptions.Builder()
+		.setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
+		.setContourMode(FaceDetectorOptions.CONTOUR_MODE_ALL)
+		.setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
+		.setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
+		.build()
+
+	// @ts-ignore
+	uni.chooseImage({
+		count: 1,
+		// @ts-ignore
+		success(evt : ChooseImageSuccess) {
+			if (evt.tempFilePaths.length == 0) return;
+			const imgs = evt.tempFilePaths[0] as string;
+			const decodedPath = UTSAndroid.convert2AbsFullPath(imgs)
+			const file = new File(decodedPath)
+			const image = InputImage.fromFilePath(UTSAndroid.getAppContext() as Context, Uri.fromFile(file));
+			// const image = InputImage.fromBitmap(BitmapFactory.decodeFile(decodedPath)!, 0)
+			const detector = FaceDetection.getClient(highAccuracyOpts)
+			detector.process(image)
+				.addOnSuccessListener((faces : MutableList<Face>) => {
+					if (faces.size == 0) {
+						cfg.success({
+							isPass: false,
+							images: [decodedPath] as string[],
+							videoPath: ""
+						})
+						return;
+					}
+					checkFaceResult(image, faces, (result : XFACE_EVENT_SUCCESS[]) => {
+					
+						cfg.enter(result,JSON.stringify(result))
+						cfg.success({
+							isPass: true,
+							images: [decodedPath] as string[],
+							videoPath: ""
+						})
+
+					})
+				})
+				.addOnFailureListener(e => {
+					console.error(e)
+					cfg.fail("解析错误")
+				})
+		},
+		fail() {
+			console.error("未选择图片")
+			cfg.fail("未选择图片")
+		}
+	})
+}
+/**
+ * 提供外部图片地址检测当前图片是否存在人脸
+ */
+export function checkFaceByImageFromFilePath(config : XFACE_CHECK_OPTS) {
+	const cfg = getDefaultConfig(config)
+	if (cfg.url == '') {
+		cfg.fail("url图片地址没提供正确.")
+		return;
+	}
+	const decodedPath = UTSAndroid.convert2AbsFullPath(cfg.url)
+	const file = new File(decodedPath)
+	const image = InputImage.fromFilePath(UTSAndroid.getAppContext() as Context, Uri.fromFile(file));
+	// const image = InputImage.fromBitmap(BitmapFactory.decodeFile(decodedPath)!, 0)
+	// @ts-ignore
+	const highAccuracyOpts = new FaceDetectorOptions.Builder()
+		.setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
+		.setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
+		.setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
+		.build()
+	const detector = FaceDetection.getClient(highAccuracyOpts)
+	detector.process(image)
+		.addOnSuccessListener((faces : MutableList<Face>) => {
+			if (faces.size == 0) {
+				cfg.enter([] as XFACE_EVENT_SUCCESS[],JSON.stringify([] as XFACE_EVENT_SUCCESS[] ))
+				cfg.fail("未检测到人脸")
+				return;
+			}
+			checkFaceResult(image, faces, (result : XFACE_EVENT_SUCCESS[]) => {
+				
+				cfg.enter(result,JSON.stringify(result))
+				cfg.success({
+					isPass: true,
+					images: [decodedPath] as string[],
+					videoPath: ""
+				})
+			})
+		})
+		.addOnFailureListener(e => {
+			console.error(e)
+			cfg.fail("解析错误")
+		})
+}
+
+/**
+ * 检查相机权限
+ */
+export function checkCamraPermissions(call : (istrue : boolean) => void) {
+	let permissionCheck = ["android.permission.CAMERA"]
+
+	if (UTSAndroid.checkSystemPermissionGranted(UTSAndroid.getUniActivity()!, permissionCheck)) {
+		call(true)
+	} else {
+		console.log("当前不具备指定权限")
+		// 请求拍照权限
+		UTSAndroid.requestSystemPermission(UTSAndroid.getUniActivity()!, permissionCheck, function (allRight : boolean, _ : string[]) {
+			call(true)
+		}, function (_ : boolean, _ : string[]) {
+			//用户拒绝了部分权限
+			call(false)
+		})
+	}
+}
+let tid = 0
+//当前等待检测的指令
+let nowInsIndex = 0;
+//是否允许开始动作检测
+//allow,next,‘wait'
+let isCheckNext = 'wait'
+//指令执行中start,checking,dercoding,end
+let actioning = ''
+
+/**
+ * 打开视频进行人脸活体检测
+ */
+@UTSJS.keepAlive
+export function checkFaceByCamra(config : XFACE_CHECK_OPTS) {
+	
+	if (camera != null) {
+		camera!.closeCamera()
+		clearTimeout(tid)
+	}
+	actioning = ''
+	isCheckNext = 'wait'
+	nowInsIndex = 0
+
+	const cfg = getDefaultConfig(config)
+	if (cfg.viewId == '') {
+		cfg.fail("没有提供正在的view的id绑定.")
+		return;
+	}
+	if (cfg.instruction.length == 0) {
+		console.warn("未提供指令,将仅进行人脸验证.")
+		// cfg.fail("没有提供活体检测指令")
+		// return;
+	}
+	// @ts-ignore
+	let ele = uni.getElementById(cfg.viewId) as UniElement | null;
+	if (ele == null) {
+		cfg.fail("绑定的容器view找不到")
+		return;
+	}
+	let parentView = ele.getAndroidView() as ViewGroup;
+	let viewWidth = parentView.getWidth()
+	let viewHeight = parentView.getHeight()
+	let grop = new FrameLayout(UTSAndroid!.getAppContext()!)
+	let layaout = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+	grop.setLayoutParams(layaout)
+	parentView.addView(grop)
+	
+	let isPassCheck = false
+	let checkImgs = [] as string[]
+	let lastFaceAllBody = ""
+	let faceId = null as null|number;
+	if (viewWidth == 0 || viewHeight == 0) {
+		cfg.fail("绑定的容器view宽高不能为0")
+		return;
+	}
+
+	camera = new xCamera(grop)
+	camera?.setCameraDir('front')
+	camera?.setFlash(false)
+
+	camera?.startRecoderVideo((videoPath : string) => {
+		console.log(videoPath)
+		UTSAndroid.getDispatcher("main").async(function (_) {
+			if(lastFaceAllBody!=''){
+				checkImgs.push(lastFaceAllBody)
+			}
+			cfg.success({
+				videoPath,
+				images:checkImgs,
+				isPass:isPassCheck
+			} as XFACE_EVENT_CHECK_SUCCESS)
+		})
+	})
+
+	function closeCamera() {
+		camera?.stopRecoderVideo()
+		camera?.closeCamera()
+		parentView.removeAllViews()
+	}
+
+	tid = setTimeout(() => {
+		cfg.insTipsEvent("start")
+		actioning = 'start'
+		isCheckNext = 'allow'
+	}, 2000)
+	
+	let headDonwUp = 0
+	UTSAndroid.getDispatcher("main").async(function (_) {
+		camera?.setCheckFaceEnter((result:XFACE_EVENT_SUCCESS[],imgBit:any|null) => {
+			
+			// 无指令时的正脸检测
+			if(cfg.instruction.length==0){
+				if(result.length>0){
+					let item = result[0]
+					if(item.allHeadBody){
+						nowInsIndex = -1;
+						if(imgBit!=null&&camera!=null&&imgBit instanceof Bitmap){
+							checkImgs.push(camera!.savePhotoBitmapTocache((imgBit! as Bitmap)))
+						}
+						isPassCheck = true;
+						closeCamera()
+					}
+				}
+				return;
+			}
+			
+			if (nowInsIndex == -1 || actioning == '') {
+				return;
+			}
+			if (nowInsIndex > cfg.instruction.length - 1) {
+				nowInsIndex = -1;
+				cfg.insTipsEvent("end")
+				isPassCheck = true;
+				closeCamera()
+				return;
+			}
+			let item = null as null|XFACE_EVENT_SUCCESS
+			if(result.length>0){
+				item = result[0]
+			}
+			let dir = cfg.instruction[nowInsIndex]
+			if (actioning == 'start') {
+				actioning = ''
+				audio.play(dir)
+				setTimeout(function () {
+					cfg.insTipsEvent("ins_start_" + dir)
+					isCheckNext = 'allow'
+					actioning = 'checking'
+				}, 1500);
+				return;
+			}
+			
+			
+			// 保存一次正脸
+			if(lastFaceAllBody==""){
+				if(result.length>0){
+					let item = result[0]
+					if(item.allHeadBody){
+						lastFaceAllBody = camera!.savePhotoBitmapTocache(imgBit! as Bitmap)
+						faceId = item.faceId
+						console.log(faceId,'+++')
+					}
+				}
+				return;
+			}
+			
+			// 进行人脸检测
+			if(item!=null&&actioning == 'checking'&&isCheckNext == 'allow'){
+					let rts = result!
+					if(faceId!=item.faceId||item.faceId==null||faceId==null){
+						console.log(item.faceId,'---')
+						isPassCheck = false;
+						console.log("检脸追踪id变化,检测失败")
+						nowInsIndex = -1;
+						cfg.insTipsEvent("end")
+						closeCamera()
+						return;
+					}
+					// 向左转
+					if (dir == 'left' && item.faceRightLeft == 'left') {
+						// 立即更改状态，防止重复处理
+						actioning = 'dercoding'
+						cfg.insTipsEvent("ins_end_" + dir)
+						cfg.enter(result,JSON.stringify(rts))
+						isCheckNext = 'wait';
+						audio.play('goold')
+						if(imgBit!=null&&camera!=null){
+							checkImgs.push(camera!.savePhotoBitmapTocache(imgBit! as Bitmap))
+						}
+						tid = setTimeout(function () {
+							isCheckNext = 'next';
+						}, 1000);
+					} else if (dir == 'right' && item.faceRightLeft == 'right') {
+						// 立即更改状态，防止重复处理
+						actioning = 'dercoding'
+						cfg.insTipsEvent("ins_end_" + dir)
+						cfg.enter(result,JSON.stringify(rts))
+						isCheckNext = 'wait';
+						audio.play('goold')
+						if(imgBit!=null&&camera!=null){
+							checkImgs.push(camera!.savePhotoBitmapTocache(imgBit! as Bitmap))
+						}
+						tid = setTimeout(function () {
+							isCheckNext = 'next';
+						}, 1000);
+						
+					} else if(dir == 'downUp'&&(item.faceUpDown=='up'||item.faceUpDown=='down')){
+						if(item.faceUpDown=='up'&&headDonwUp==0){
+							headDonwUp = 1;
+							
+						}else if(item.faceUpDown=='down'&&headDonwUp==1){
+							headDonwUp = 2;
+							
+							// 立即更改状态，防止重复处理
+							actioning = 'dercoding'
+							cfg.insTipsEvent("ins_end_" + dir)
+							cfg.enter(result,JSON.stringify(rts))
+							audio.play('goold')
+							isCheckNext = 'wait';
+							if(imgBit!=null&&camera!=null){
+								checkImgs.push(camera!.savePhotoBitmapTocache(imgBit! as Bitmap))
+							}
+							tid = setTimeout(function () {
+								isCheckNext = 'next';
+								headDonwUp = 0
+							}, 1000);
+							
+						}
+					}else if(dir == 'monthOpenClose'){
+						if(item.isMouthOpened==true&&headDonwUp==0){
+							headDonwUp = 1;
+							
+						}else if(item.isMouthOpened == false&&headDonwUp==1){
+							headDonwUp = 2;
+							// 立即更改状态，防止重复处理
+							actioning = 'dercoding'
+							cfg.insTipsEvent("ins_end_" + dir)
+							cfg.enter(result,JSON.stringify(rts))
+							audio.play('goold')
+							isCheckNext = 'wait';
+							if(imgBit!=null&&camera!=null){
+								checkImgs.push(camera!.savePhotoBitmapTocache(imgBit! as Bitmap))
+							}
+							tid = setTimeout(function () {
+								isCheckNext = 'next';
+								headDonwUp = 0
+							}, 1000);
+							
+						}
+					}else if(dir == 'eyeOplenClose'){
+						if((item.leftEye.isOpen&&item.rightEye.isOpen)&&headDonwUp==0){
+							headDonwUp = 1;
+						}else if((!item.leftEye.isOpen&&!item.rightEye.isOpen)&&headDonwUp==1){
+							headDonwUp = 2;
+						}else if((item.leftEye.isOpen&&item.rightEye.isOpen)&&headDonwUp==2){
+							headDonwUp = 3;
+							// 立即更改状态，防止重复处理
+							actioning = 'dercoding'
+							cfg.insTipsEvent("ins_end_" + dir)
+							cfg.enter(result,JSON.stringify(rts))
+							audio.play('goold')
+							isCheckNext = 'wait';
+							if(imgBit!=null&&camera!=null){
+								checkImgs.push(camera!.savePhotoBitmapTocache(imgBit! as Bitmap))
+							}
+							tid = setTimeout(function () {
+								isCheckNext = 'next';
+								headDonwUp = 0
+							}, 1000);
+							
+						}
+					}
+
+				
+			}
+			if (isCheckNext == 'next'){
+				isCheckNext = 'allow';
+				actioning = 'start'
+				nowInsIndex += 1;
+			}
+			
+		})
+
+	})
+
+
+
+
+
+
+
+}

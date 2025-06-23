@@ -1,0 +1,87 @@
+{
+	"id": "x-share-s",
+	"displayName": "安卓，ios文件视频文本任意文件分享到其它应用",
+	"version": "1.0.5",
+	"description": "可以让你的内容分享到其它应用中，安卓和ios支持",
+	"keywords": [
+        "ios,安卓，文件分享"
+    ],
+	"repository": "",
+	"engines": {
+		"HBuilderX": "^4.15"
+	},
+
+	"dcloudext": {
+		"type": "uts",
+		"sale": {
+			"regular": {
+				"price": "68.00"
+			},
+			"sourcecode": {
+				"price": "0.00"
+			}
+		},
+		"contact": {
+			"qq": ""
+		},
+		"declaration": {
+			"ads": "无",
+			"data": "无",
+			"permissions": "读写文件权限"
+		},
+		"npmurl": ""
+	},
+	"uni_modules": {
+		"dependencies": [],
+		"encrypt": [],
+		"platforms": {
+			"cloud": {
+				"tcb": "y",
+				"aliyun": "y",
+				"alipay": "y"
+			},
+			"client": {
+				"Vue": {
+					"vue2": "u",
+					"vue3": "y"
+				},
+				"App": {
+					"app-android": {
+                        "minVersion": "21"
+                    },
+					"app-ios": {
+                        "minVersion": "9"
+                    }
+				},
+				"H5-mobile": {
+					"Safari": "u",
+					"Android Browser": "u",
+					"微信浏览器(Android)": "u",
+					"QQ浏览器(Android)": "u"
+				},
+				"H5-pc": {
+					"Chrome": "u",
+					"IE": "u",
+					"Edge": "u",
+					"Firefox": "u",
+					"Safari": "u"
+				},
+				"小程序": {
+					"微信": "u",
+					"阿里": "u",
+					"百度": "u",
+					"字节跳动": "u",
+					"QQ": "u",
+					"钉钉": "u",
+					"快手": "u",
+					"飞书": "u",
+					"京东": "u"
+				},
+				"快应用": {
+					"华为": "u",
+					"联盟": "u"
+				}
+			}
+		}
+	}
+}

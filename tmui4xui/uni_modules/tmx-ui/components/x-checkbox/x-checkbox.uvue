@@ -1,0 +1,419 @@
+<script lang="ts">
+	import { getDefaultColor, colorAddDeepen } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit, getUid, getUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { PropType, SlotsType } from "vue";
+	import { CHECKBOX_ITEM_INFO } from '../../interface.uts';
+
+	/**
+	 * @name 多选框 xCheckbox
+	 * @page /pages/index/checkbox
+	 * @category 表单组件
+	 * @description 使用时,x-checkbox能单独使用，如果要与x-checkbox-group配合，只能是它的的直接子节点
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				nowValue: '',
+				boxId: "xCheckbox-" + getUid(),
+				tid: 0,
+				isDestroy: false,
+				undefaultCheck:false
+			}
+		},
+		emits: [
+			/**
+			 * 用户交互切换，选中变换时触发。
+			 * @param {Boolean} check - 当前是否选中
+			 * @param {String} value - 当前选中的值
+			 */
+			'change',
+			/**
+			 * 点击事件
+			 */
+			'click',
+			'update:modelValue'],
+		slots: Object as SlotsType<{
+			label : {
+				checked : boolean,
+				value : string
+			},
+		}>,
+		props: {
+			/**
+			 * 当前主题色，空值时取全局
+			 */
+			color: {
+				type: String,
+				default: ""
+			},
+
+			/**
+			 * 当前未选中时主题色，空值时取全局
+			 */
+			unCheckColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 当前未选中时的暗黑主题色
+			 */
+			darkUnCheckColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 由于uniappx 截止3.98
+			 * 不支持联合类型，后期如果官方支持
+			 * 可扩展为string,number,boolean
+			 */
+			modelValue: {
+				type: String,
+				default: ''
+			},
+			/**
+			 * 非受控下默认选中的状态
+			 */
+			defaultChecked:{
+				type:Boolean,
+				default:false
+			},
+			/**
+			 * 选中的值，
+			 * 由于uniappx 截止3.98
+			 * 不支持联合类型，后期如果官方支持
+			 * 可扩展为string,number,boolean
+			 */
+			value: {
+				type: String,
+				default: '1'
+			},
+			/**
+			 * 未选中的值
+			 * 由于uniappx 截止3.98
+			 * 不支持联合类型，后期如果官方支持
+			 * 可扩展为string,number,boolean
+			 */
+			unCheckValue: {
+				type: String,
+				default: ''
+			},
+			/**
+			 * 是否禁用
+			 */
+			disabled: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 选中的图标名称。
+			 */
+			icon: {
+				type: String,
+				default: "check-line"
+			},
+			/**
+			 * 右侧文字。
+			 */
+			label: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 是否隐藏选中框。然后利用默认插槽自定义选中所有样式和状态。
+			 */
+			hiddenCheckbox: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 半选中
+			 */
+			indeterminate: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 尺寸
+			 */
+			size: {
+				type: String,
+				default: "24"
+			},
+			/**
+			 * 中间小图标大小
+			 */
+			iconSize:{
+				type:String,
+				default:"20"
+			},
+			/**
+			 * 文字大小
+			 */
+			labelFontSize:{
+				type:String,
+				default:"15px"
+			},
+			/**
+			 * label和选中框间的间距
+			 */
+			labelSpace:{
+				type:String,
+				default:'10'
+			},
+			/**
+			 * 圆角
+			 */
+			round:{
+				type:String,
+				default:'4'
+			}
+		},
+		computed: {
+			_color() : string {
+				if (this.color == "") return getDefaultColor(xConfig.color)
+				return getDefaultColor(this.color)
+			},
+			_round() : string {
+				return checkIsCssUnit(this.round, xConfig.unit);
+			},
+			_unCheckColor() : string {
+				if (xConfig.dark == 'dark' && this.darkUnCheckColor != '') {
+					return getDefaultColor(this.darkUnCheckColor)
+				}
+				if (this.unCheckColor == "") return getDefaultColor(xConfig.unRadioAndCheckBoxColor)
+				return getDefaultColor(this.unCheckColor)
+			},
+			_isCheck() : boolean {
+				return this.nowValue == this.value||this.undefaultCheck||this._indeterminate
+			},
+			_disabled() : boolean {
+				return this.disabled
+			},
+			_label() : string {
+				return this.label
+			},
+			_indeterminate() : boolean {
+				return this.indeterminate
+			},
+			_size() : string {
+				let size = checkIsCssUnit(this.size, xConfig.unit);
+				if (xConfig.fontScale == 1) return size;
+				let sizeNumber = parseInt(size)
+				if (isNaN(sizeNumber)) {
+					sizeNumber = 24
+				}
+				return (sizeNumber * xConfig.fontScale).toString() + getUnit(size)
+			},
+			_labelSpace():string{
+				return checkIsCssUnit(this.labelSpace,xConfig.unit)
+			}
+		},
+		beforeUnmount() {
+			this.isDestroy = true;
+		},
+		mounted() {
+			let t = this;
+			this.isDestroy = false;
+			// 如果在group中,默认选中状态将失效.否则数据异常错乱.
+			let pelement = this.findParent(this);
+			if(pelement!=null){
+				this.undefaultCheck = false
+			}else{
+				this.undefaultCheck = this.defaultChecked
+			}
+			this.$nextTick(() => {
+				
+				t.nowValue = t.modelValue;
+				t.setAni();
+				t.pushDataToParent(false);
+			})
+		},
+		watch: {
+			modelValue(newValue : string) {
+				if (newValue == this.nowValue) return;
+				this.nowValue = newValue;
+				this.setAni();
+				// this.pushDataToParent();
+			},
+			indeterminate(newValue : boolean) {
+				this.setAni();
+			}
+		},
+		methods: {
+			boxClick() {
+				/**
+				 * 点击事件
+				 */
+				this.$emit("click")
+				if (this._disabled) return;
+				/**
+				 * 要点提示：当本组件属性半选中状态时，应该继续保持选中状态，
+				 * 并触发change。
+				 */
+				if ((this._isCheck && !this.indeterminate)||this.undefaultCheck) {
+					this.nowValue = this.unCheckValue
+				} else {
+					this.nowValue = this.value
+				}
+				/**
+				 * 当前选中的值，等同v-model
+				 */
+				this.$emit("update:modelValue", this.nowValue)
+				/**
+				 * 用户交互切换，选中变换时触发。
+				 * @param check {boolean} 当前是否选中
+				 * @param value {number} 当前选中的值
+				 */
+				this.$emit("change", this._isCheck, this.nowValue)
+				if(this.undefaultCheck){
+					this.undefaultCheck = false
+				}else{
+					this.pushDataToParent(true);
+				}
+				
+				this.setAni();
+			},
+			setAni() {
+				if (this.hiddenCheckbox || this.isDestroy) return;
+
+				try {
+					let el = this.$refs["checkboxBoxIcon"] as Element;
+					el.style.setProperty('opacity', this._isCheck ? 1 : 0)
+					el.style.setProperty('transform', `scale(${this._isCheck ? 0.74 : 0})`)
+				} catch (e) {
+					//TODO handle the exception
+				}
+			},
+			/**
+			 * 手动切换选中状态，这里不会触发change
+			 */
+			setSelected(val :string[]) {
+				if (!Array.isArray(val)) {
+					throw new Error("val must be an array");
+				}
+				const isChecked = val.includes(this.value);
+				if (isChecked) {
+					this.nowValue = this.value;
+					// this.$emit("update:modelValue", this.nowValue);
+				} else {
+					this.nowValue = this.unCheckValue;
+					// this.$emit("update:modelValue", this.nowValue);
+				}
+				this.setAni()
+			},
+		
+			pushDataToParent(isChange : boolean) {
+				let pelement = this.findParent(this);
+				if (pelement == null) return;
+				let parent : XCheckboxGroupComponentPublicInstance  =pelement as XCheckboxGroupComponentPublicInstance;
+				
+				// #ifndef APP-ANDROID
+				if (typeof parent?.addItem != 'function') return;
+				// #endif
+
+				parent.addItem(this, {
+					id: this.boxId as string,
+					nowvalue: this.nowValue,
+					value: this.value,
+					unvalue: this.unCheckValue
+				} as CHECKBOX_ITEM_INFO, isChange)
+
+			},
+			findParent(parent:VueComponent|null):VueComponent|null{
+				if(parent == null) return null;
+				// #ifdef WEB||APP-IOS||MP-WEIXIN
+				if(parent.$parent?.id?.indexOf('xCheckboxGroup')>-1) return parent.$parent;
+				// #endif
+				// #ifdef APP-ANDROID
+				if(parent.$parent instanceof XCheckboxGroupComponentPublicInstance) return parent.$parent;
+				// #endif
+				
+				let parents = this.findParent(parent.$parent)
+				
+				// #ifdef WEB||APP-IOS||MP-WEIXIN
+				if(parents?.id?.indexOf('xCheckboxGroup')>-1) return parents;
+				// #endif
+				// #ifdef APP-ANDROID
+				if(parents instanceof XCheckboxGroupComponentPublicInstance) return parents;
+				// #endif
+				
+				return null;
+				
+			}
+		},
+	}
+</script>
+<template>
+	<view :class="[_disabled?'checkboxDisabled':'']" class="checkbox" @click="boxClick">
+		<view class="checkboxBox" v-if="!hiddenCheckbox" :style="{
+			backgroundColor:_isCheck?_color:'transparent',
+			border: `1px solid ${_isCheck?_color:_unCheckColor}`,
+			borderRadius:_round,
+			width:_size,
+			height:_size
+		}">
+			<view :id="boxId" ref="checkboxBoxIcon" class="checkboxBoxIcon">
+				<x-icon  color="white" :name="_indeterminate?'subtract-line':icon" :font-size="iconSize"></x-icon>
+			</view>
+
+		</view>
+		<view class="checkboxLabelBox" :style="{paddingLeft:!hiddenCheckbox?_labelSpace:'0px'}">
+			<!-- 
+			 @slot 默认文本插槽
+			 @prop {boolean} checked - 是否选中
+			 @prop {number} value - 当前选中的值
+			 -->
+			<slot name="label" :checked="_isCheck" :value="nowValue">
+				<x-text :font-size="labelFontSize" class="checkboxLabel">{{_label}}</x-text>
+			</slot>
+		</view>
+	</view>
+</template>
+<style scoped>
+	.checkbox {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: flex-start;
+	}
+
+	.checkboxLabelBox {
+		flex: 1;
+	}
+
+	.checkboxDisabled {
+		opacity: 0.7;
+	}
+
+	.checkboxBoxIcon {
+		transition-duration: 350ms;
+		transition-timing-function: cubic-bezier(.18, .89, .32, 1);
+		transition-property: opacity, transform;
+		opacity: 0;
+		transform: scale(0);
+
+
+	}
+
+	.checkboxBox {
+		/* border-radius: 4px; */
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.checkboxLabelBoxLeftSpace {
+		padding-left: 10px;
+	}
+
+	.checkboxLabel {
+		font-size: 14px;
+
+	}
+</style>

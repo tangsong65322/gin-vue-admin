@@ -1,0 +1,247 @@
+<script lang="ts">
+	import { checkIsCssUnit, getUid, splitArrayByGroup, px2dp } from '../../core/util/xCoreUtil.uts'
+	import { getDefaultColor, colorAddDeepen } from "../../core/util/xCoreColorUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { TEXTCLOUD_ITEM_INFO } from "../../interface.uts"
+	type WordPosition = {
+		x : number
+		y : number
+		width : number
+		height : number
+		text : string
+		fontSize : number
+		color : string
+	}
+	type PROPS_TYPE = {
+		width : string
+		height : string
+		color : string
+		bgColor : string
+	}
+	type POS = {
+		x : number,
+		y : number
+	}
+
+	/**
+	 * @name 词云 TextCloud
+	 * @description 实验性的组件。
+	 * @page /pages/index/text-cloud
+	 * @category 展示组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				ctx: null as null | DrawableContext,
+				canvas: null as Element | null,
+				id: ("xSignBoard" + getUid()) as string,
+				boxWidth: 0,
+				boxHeight: 0,
+				tid: 0,
+				words: [] as WordPosition[]
+			}
+		},
+		props: {
+			/**
+			 * 宽度，可任意单位
+			 */
+			width: {
+				type: String,
+				default: '100%'
+			},
+			/**
+			 * 高度，可任意单位
+			 */
+			height: {
+				type: String,
+				default: '300rpx'
+			},
+			/**
+			 * 背景颜色
+			 */
+			backgroundColor: {
+				type: String,
+				default: 'transparent'
+			},
+			/**
+			 * 数据
+			 */
+			list: {
+				type: Array as PropType<TEXTCLOUD_ITEM_INFO[]>,
+				default: () : TEXTCLOUD_ITEM_INFO[] => [] as TEXTCLOUD_ITEM_INFO[]
+			},
+			/**
+			 * 文本颜色，如果的数据中不指定统一使用这里的值。
+			 */
+			color: {
+				type: String,
+				default: 'primary'
+			},
+		},
+		computed: {
+			_props() : PROPS_TYPE {
+				return {
+					width: checkIsCssUnit(this.width, 'rpx'),
+					height: checkIsCssUnit(this.height, 'rpx'),
+					bgColor: getDefaultColor(this.backgroundColor),
+					color: getDefaultColor(this.color),
+				} as PROPS_TYPE
+			},
+			_list() : TEXTCLOUD_ITEM_INFO[] {
+
+				return this.list.map((el : TEXTCLOUD_ITEM_INFO) : TEXTCLOUD_ITEM_INFO => {
+					return {
+						text: el.text,
+						color: el.color == null ? this._props.color : el.color!,
+						weight: el.weight
+					} as TEXTCLOUD_ITEM_INFO
+				})
+			}
+		},
+
+		mounted() {
+			this.canvas = uni.getElementById(this.id as string) as Element
+			let t = this;
+			this.tid = setTimeout(function () {
+				t.getNodes()
+			}, 200);
+		},
+		beforeUnmount() {
+			clearTimeout(this.tid)
+		},
+		methods: {
+			getNodes() {
+				uni.createSelectorQuery().in(this)
+					.select(".xTextCloud")
+					.boundingClientRect().exec((ret) => {
+						let nodeinfo = ret[0] as NodeInfo;
+						this.boxWidth = nodeinfo.width!;
+						this.boxHeight = nodeinfo.height!;
+						this.drawerText();
+					})
+			},
+			// 检查位置是否有碰撞
+			checkCollision(word : WordPosition, placed : WordPosition[]) : boolean {
+				for(let i=0;i<placed.length;i++){
+					let placedWord = placed[i] as WordPosition
+					if (!(word.x + word.width < placedWord.x ||
+						word.x > placedWord.x + placedWord.width ||
+						word.y + word.height < placedWord.y ||
+						word.y > placedWord.y + placedWord.height)) {
+						return true
+					}
+				}
+				
+				return false
+			},
+
+			// 计算字体大小
+			calculateFontSize(weight : number, maxWeight : number) : number {
+				const maxFontSize = 30;
+				const minFontSize = 10;
+				const size = (weight / maxWeight) * (maxFontSize - minFontSize) + minFontSize
+				return Math.round(size)
+			},
+			// 计算文本位置
+			calculateTextPosition(ctx : CanvasRenderingContext2D,boxWidth:number,boxHeight:number) {
+				
+				let _this = this;
+				_this.words = [] as WordPosition[]
+				const maxWeight = Math.max(...this._list.map((item:TEXTCLOUD_ITEM_INFO):number => item.weight))
+				this._list.forEach((item : TEXTCLOUD_ITEM_INFO) => {
+
+					const fontSize = _this.calculateFontSize(item.weight, maxWeight)
+					ctx.font = `${fontSize}px Arial`
+					const metrics = ctx.measureText(item.text)
+
+					let placed = false
+					let attempts = 0
+					const maxAttempts = 100
+
+					while (!placed && attempts < maxAttempts) {
+
+						const x = Math.random() * (boxWidth - metrics.width)
+						const y = Math.random() * (boxHeight - fontSize) + fontSize
+						const wordPosition = {
+							x,
+							y,
+							width: metrics.width,
+							height: fontSize,
+							text: item.text,
+							fontSize,
+							color: item?.color??"#333333"
+						} as WordPosition
+
+						if (!_this.checkCollision(wordPosition, _this.words)) {
+							_this.words.push(wordPosition)
+							placed = true
+						}
+						attempts++
+
+
+					}
+
+
+				});
+
+			},
+		
+			drawTextByweb(ctx : CanvasRenderingContext2D, text : string, weight : number, color : string) {
+				// let ratio = uni.getDeviceInfo().devicePixelRatio
+				// const fontSize = this.calculateFontSize(weight);
+				// ctx.font = `bold ${fontSize * ratio}px serif`;
+				// ctx.fillStyle = color;
+				// ctx.textAlign = 'left';
+				// ctx.textBaseline = 'top'
+				// const position = this.calculateTextPosition(weight);
+				// ctx.fillText(text, position.x * ratio, position.y * ratio);
+
+			},
+			drawerText() {
+				uni.createCanvasContextAsync({
+					id: this.id! as string,
+					component: this,
+					success: (context : CanvasContext) => {
+						const canvasContext = context.getContext('2d')!;
+						const canvas = canvasContext.canvas;
+						// 处理高清屏逻辑
+						const dpr = uni.getDeviceInfo().devicePixelRatio ?? 1;
+						canvas.width = canvas.offsetWidth * dpr;
+						canvas.height = canvas.offsetHeight * dpr;
+						canvasContext.scale(dpr, dpr);
+						const ctx = canvasContext
+						ctx!.reset();
+						ctx!.fillStyle = 'transparent'
+						ctx!.fillRect(0, 0, this.boxWidth * dpr, this.boxHeight * dpr)
+						this.calculateTextPosition(ctx,canvas.width,canvas.height)
+						 // 绘制所有成功放置的词
+						 this.words.forEach(word => {
+							ctx.font = `${word.fontSize}px Arial`
+							ctx.fillStyle = word.color
+							ctx.fillText(word.text, word.x, word.y)
+						  })
+							  
+						// // #ifdef APP
+						// ctx!.update()
+						// // #endif
+
+					}
+				})
+			}
+
+		},
+	}
+</script>
+<template>
+
+	<view class="xTextCloud" :style="{width:_props.width,height:_props.height,backgroundColor:_props.bgColor}">
+		<canvas :id="id" :style="{width:'100%',height:'100%'}"></canvas>
+	</view>
+
+</template>
+<style scoped>
+</style>

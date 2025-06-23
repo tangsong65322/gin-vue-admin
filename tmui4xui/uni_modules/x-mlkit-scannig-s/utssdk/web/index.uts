@@ -1,0 +1,218 @@
+export { SCANNING_PHOTO_RESULT, SCANNING_PHOTO_RESULT_BOUND, Call_BACK, AUTH_CALL_BACK_TYPE } from '../interface.uts';
+import Zxing from "./zxing.js"
+var qre;
+var resultQr = ""
+var cid
+// https://www.npmjs.com/package/qr-scanner/v/1.4.2?activeTab=readme
+export function closeCamera() {
+	let parentView = document.getElementById("xScannigDiv")
+	if (parentView) {
+		parentView.remove()
+	}
+	if (qre) {
+		qre.getTracks().forEach(function (track) {
+			track.stop();
+		});
+	}
+	resultQr = ""
+	
+}
+export function openCameraApi(callback : Call_BACK,onlyCameras:boolean) {
+	qre = null;
+	resultQr = ""
+	let onleyCamrae = onlyCameras
+	scanning()
+
+	function scanning() {
+		closeCamera();
+		let parenView : HTMLElement = document.createElement("div")
+		parenView.id = 'xScannigDiv';
+		parenView.style.position = "fixed"
+		parenView.style.left = "0px"
+		parenView.style.top = "0px"
+		parenView.style.width = "100%"
+		parenView.style.height = "100%"
+		parenView.style.zIndex = "888"
+		parenView.style.backgroundColor = "#000"
+		parenView.style.display = "flex"
+		parenView.style.flexDirection = "column"
+		parenView.style.transitionDuration = '0.25s'
+		parenView.style.transitionProperty = 'transform'
+		parenView.style.transitionTimingFunction = 'linear'
+		parenView.style.transform = 'scale(0)'
+
+		let backText = document.createElement("div")
+		backText.innerText = "返回"
+		backText.style.fontSize = "16px"
+		backText.style.height = "50px"
+		backText.style.lineHeight = "50px"
+		backText.style.padding = "0px 20px"
+		backText.style.color = "white"
+		backText.onclick = function () {
+			closeCamera()
+		}
+
+		let video : HTMLVideoElement = document.createElement("video")
+		video.style.flex = "1"
+		video.style.backgroundColor = '#111'
+		video.style.width = '100%'
+		video.style.objectFit = 'cover'
+		let bottomView = document.createElement("div")
+		bottomView.style.height = "100px"
+		bottomView.style.display = "flex"
+		bottomView.style.flexDirection = "row"
+		bottomView.style.justifyContent = "space-between"
+
+		let photo = document.createElement("div")
+		photo.innerText = onleyCamrae?"":"相册选取"
+		photo.style.fontSize = "16px"
+		photo.style.height = "50px"
+		photo.style.lineHeight = "50px"
+		photo.style.padding = "0px 20px"
+		photo.style.color = "white"
+		let scan = document.createElement("div")
+		scan.innerText = "扫一扫"
+		scan.style.fontSize = "16px"
+		scan.style.height = "50px"
+		scan.style.lineHeight = "50px"
+		scan.style.padding = "0px 20px"
+		scan.style.color = "white"
+		photo.onclick = function () {
+			if(onleyCamrae) return;
+			uni.chooseImage({
+				sourceType:["album"],
+				success(res) {
+					if (res.tempFilePaths.length > 0) {
+						
+						let img = new Image()
+						img.src = res.tempFilePaths[0];
+						img.onload = function () {
+							closeCamera();
+							var newWidth = 600;
+							var newHeight =  newWidth*img.width / img.height;
+							var canvas = document.createElement('canvas');
+							canvas.width = 600;
+							canvas.height = 600;
+							var ctx = canvas.getContext('2d');
+							ctx.clearRect(0, 0, newWidth, newHeight)
+							ctx.drawImage(img, 0, 0, newWidth, newHeight)
+							var imageData = ctx.getImageData(0, 0, 600, 600);
+							let code = new Zxing(imageData.data,600,600,{inversionAttempts:true})
+							if(code&&code?.data){
+								callback(code.data)
+								resultQr = ""
+							}
+						}
+						
+						
+						
+						
+					}
+
+				}
+			})
+		}
+
+		bottomView.appendChild(photo)
+		bottomView.appendChild(scan)
+
+		parenView.appendChild(backText)
+		parenView.appendChild(video)
+		parenView.appendChild(bottomView)
+		document.body.appendChild(parenView)
+		
+	
+		
+		const canvas = document.createElement('canvas');
+		const ctx = canvas.getContext('2d')!;
+		navigator.mediaDevices.getUserMedia({ video: true })
+			.then(stream => {
+				video.srcObject = stream;
+				qre = stream
+				video.play();
+				var newWidth = 800;
+				var newHeight =  newWidth*video.offsetWidth / video.offsetHeight;
+				
+				canvas.width = newWidth
+				canvas.height = newHeight
+				function readFrame() {
+					ctx.clearRect(0,0,newWidth,newWidth)
+					ctx.drawImage(video, 0, 0, newWidth, newHeight);
+					const frameData = ctx.getImageData(0, 0, newWidth, newWidth);
+					
+					let code = Zxing(frameData.data,newWidth,newWidth,{inversionAttempts:true})
+					if(code&&code?.data&&resultQr==''){
+						resultQr = code.data
+						callback(code.data)
+						cancelAnimationFrame(cid)
+						closeCamera()
+					}
+				
+					cid = requestAnimationFrame(readFrame);
+				}
+				// 开始读取帧
+				readFrame();
+			})
+			.catch(error => {
+				console.error('Error accessing media devices:', error);
+			});
+			
+		
+		
+		
+		// navigator.mediaDevices.getUserMedia({ video: true })
+		// 	.then(stream => {
+		// 		video.srcObject = stream;
+		// 		t.qre = stream
+		// 		video.play();
+		
+		// 		// 设置 canvas 用于读取视频帧
+		// 		const canvas = document.createElement('canvas');
+		// 		canvas.style.width = video.offsetWidth + 'px'
+		// 		canvas.style.height = video.offsetHeight + 'px'
+		// 		canvas.width = video.offsetWidth
+		// 		canvas.height = video.offsetHeight
+		// 		const ctx = canvas.getContext('2d');
+		// 		function readFrame() {
+		// 			ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+		// 			const frameData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+		
+		// 			let p = new Zxing()
+		// 			let qrd = new p()
+		// 			qrd.callback = function (err, value) {
+		// 				if (resultQr == '' && value?.result) {
+		// 					resultQr = value.result
+		// 					t.$emit("scan", [value.result])
+		// 					cancelAnimationFrame(t.cid)
+		// 				}
+		// 			}
+		// 			qrd.decode(frameData);
+		// 			t.cid = requestAnimationFrame(readFrame);
+		// 		}
+		// 		// 开始读取帧
+		// 		readFrame();
+		// 	})
+		// 	.catch(error => {
+		// 		console.error('Error accessing media devices:', error);
+		// 	});
+		
+		
+		
+		// qre = new QrScanner(
+		// 	video,
+		// 	function (result) {
+		// 		console.log(result)
+		// 		qre.stop()
+		// 		video.pause();
+		// 		resultQr = result;
+		// 		callback(result)
+		// 		closeCamera();
+		// 		qre = null;
+		// 	}
+		// );
+		// qre.start()
+		setTimeout(function() {
+			parenView.style.transform = 'scale(1)'
+		}, 50);
+	}
+}

@@ -1,0 +1,114 @@
+<script>
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit, getUid } from "../../core/util/xCoreUtil.uts"
+	import { PropType } from "vue"
+	import { xConfig } from "../../config/xConfig.uts"
+
+	/**
+	 * @name 加载中 xLoading
+	 * @description 加载中占位符，场景用到页面加载前。请在标签内写上你的文本, 如果不写，默认显示“加载中...”
+	 * @page /pages/index/loading
+	 * @category 反馈组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+
+			}
+		},
+		props: {
+			/**
+			 * 图标颜色
+			 */
+			color: {
+				type: String,
+				default: "#8b8b8b"
+			},
+			/**
+			 * 文字颜色
+			 */
+			textColor: {
+				type: String,
+				default: "#8b8b8b"
+			},
+			/**
+			 * 文字大小
+			 */
+			textSize: {
+				type: String,
+				default: "12"
+			},
+			/**
+			 * 图标大小
+			 */
+			iconSize: {
+				type: String,
+				default: "21"
+			},
+			/**
+			 * 是否垂直，默认是水平
+			 */
+			vertical: {
+				type: Boolean,
+				default: true
+			},
+			/**
+			 * 图标
+			 */
+			icon: {
+				type: String,
+				default: "loader-line"
+			},
+			/**
+			 * 隐藏加载文本插槽
+			 */
+			hideText:{
+				type: Boolean,
+				default: false
+			}
+		},
+		computed: {
+			_icon() : string {
+				return this.icon
+			},
+			_hideText() : boolean {
+				return this.hideText
+			},
+			_color() : string {
+				return getDefaultColor(this.color)
+			},
+			_textColor() : string {
+				return getDefaultColor(this.textColor)
+			},
+			_textSize() : string {
+				return checkIsCssUnit(this.textSize, xConfig.unit)
+			},
+			_iconSize() : string {
+				return checkIsCssUnit(this.iconSize, xConfig.unit)
+			}
+		},
+	}
+</script>
+<template>
+	<view class="xLoading" :style="{'flex-direction':vertical?'column':'row'}">
+		<x-icon :font-size="_iconSize" :color="_color" :name="_icon" :spin="true"></x-icon>
+		<text v-if="!_hideText" :style="{'font-size': _textSize,'color': _textColor,marginLeft:vertical?'0px':'5px',marginTop:vertical?'8px':'0px',lineHeight:'1.1'}">
+			<!-- 
+			 @slot 请在插槽内写上你的文本, 如果不写，默认显示“加载中...”
+			 -->
+			<slot>加载中...</slot>
+		</text>
+	</view>
+</template>
+<style scoped>
+	.xLoading {
+		display: flex;
+		/* flex-direction: column; */
+		align-items: center;
+		justify-content: center;
+	}
+</style>

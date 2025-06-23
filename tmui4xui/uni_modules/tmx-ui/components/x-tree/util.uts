@@ -1,0 +1,172 @@
+
+export function findParentIds(nodes : UTSJSONObject[], targetId : string, idkey : string) : string[] {
+	for (let i = 0; i < nodes.length; i++) {
+		let node = nodes[i] as UTSJSONObject
+
+		if (node.getString(idkey) == targetId) {
+			return [node.getString(idkey!)!] as string[];
+		}
+		if (node.getArray("children") != null) {
+			let children = node.getArray("children") as UTSJSONObject[] | null;
+			children = children == null ? ([] as UTSJSONObject[]) : children!
+
+			if (children.length > 0) {
+				let childResult = findParentIds(children as UTSJSONObject[], targetId, idkey);
+				// console.log(childResult)
+
+				if (childResult.length > 0) {
+					return childResult.concat([node.getString(idkey!)!] as string[]) as string[];
+				}
+			}
+
+		}
+
+	}
+
+	return [] as string[];
+}
+
+export function flatChildrensId(list : UTSJSONObject, idkey : string) : string[] {
+	let seleds = [] as string[];
+	let nodes = list.getArray("children") as UTSJSONObject[] | null;
+	nodes = nodes == null ? ([] as UTSJSONObject[]) : nodes!
+	if (nodes.length == 0) {
+		return seleds
+	}
+	for (let i = 0; i < nodes.length; i++) {
+		let node = nodes[i] as UTSJSONObject
+		let disabled = node.getBoolean('disabled');
+		disabled = disabled == null ? false : disabled!
+		if (!disabled) {
+			seleds.push(node.getString(idkey!)!)
+		}
+		let childResult = flatChildrensId(node, idkey);
+		seleds = seleds.concat(childResult)
+	}
+	return seleds;
+}
+
+/**
+ * unix在安卓上，二级以下直接赋值修改，不会影响整体list数据。无奈。只有一级一级反推修改。
+ */
+export function setChildrenByid(nodesess : UTSJSONObject[], targetId : string, idkey : string, targetChildren : UTSJSONObject[]) : UTSJSONObject[] {
+	let nodes = nodesess
+
+	function setlist(nodes : UTSJSONObject[]) {
+		for (let i = 0; i < nodes.length; i++) {
+			let node = nodes[i] as UTSJSONObject
+			if (node.getString(idkey) == targetId) {
+				nodes[i].set('children', targetChildren)
+				break;
+			}
+			if (node.getArray("children") != null) {
+				let children = node.getArray("children") as UTSJSONObject[] | null;
+				if (children != null) {
+					setlist(children!);
+				}
+			}
+		}
+	}
+	setlist(nodes)
+
+	return nodes;
+}
+
+
+export function findParentNode(tree : UTSJSONObject[], targetId : string, idkey : string,parent:UTSJSONObject|null=null) : null | UTSJSONObject {
+	
+	for (let i = 0; i < tree.length; i++) {
+		const node = tree[i];
+		if (node.getString(idkey) == targetId) {
+			return parent; // 没有父级，因为它是根节点
+		}
+		let children = node.getArray('children') as null | UTSJSONObject[]
+		if (children !=null) {
+			const parent = findParentNode(children!,targetId,idkey,node);
+			if (parent !=null) {
+				return parent;
+			}
+		}
+	}
+	return null; // 没有找到具有该ID的节点或其父级
+}
+
+export function getAllParentIds(nodes : UTSJSONObject[],idkey : string) : string[] {
+	let parentIds = [] as string[];
+	
+	function traverseTree(nodeList : UTSJSONObject[]) {
+		for (let i = 0; i < nodeList.length; i++) {
+			let node = nodeList[i] as UTSJSONObject;
+			let children = node.getArray("children") as UTSJSONObject[] | null;
+			
+			if (children != null && children.length > 0) {
+				// 只有当节点有子节点时，才将其ID添加到父节点列表中
+				parentIds.push(node.getString(idkey!)!);
+				// 递归遍历子节点
+				traverseTree(children!);
+			}
+		}
+	}
+	
+	traverseTree(nodes);
+	return parentIds;
+}
+
+export function findNode(nodes : UTSJSONObject[],targetId : string,idkey : string) : UTSJSONObject|null {
+	for (let i = 0; i < nodes.length; i++) {
+		let node = nodes[i] as UTSJSONObject
+		
+		if (node.getString(idkey) == targetId) {
+			return node; // 找到匹配ID的节点，直接返回
+		}
+		
+		if (node.getArray("children") != null) {
+			let children = node.getArray("children") as UTSJSONObject[] | null;
+			if (children != null && children.length > 0) {
+				let result = findNode(children!, targetId, idkey);
+				if (result != null) {
+					return result; // 在子节点中找到匹配的节点，返回结果
+				}
+			}
+		}
+	}
+	
+	return null;
+}
+
+export function findNodeIndeterminate(nodes : UTSJSONObject[],targetIds : string[],idkey : string) : string[] {
+	let indeterminateIds = [] as string[];
+	
+	function traverseTree(nodeList : UTSJSONObject[]) {
+		for (let i = 0; i < nodeList.length; i++) {
+			let node = nodeList[i] as UTSJSONObject;
+			let nodeId = node.getString(idkey!)!;
+			let children = node.getArray("children") as UTSJSONObject[] | null;
+			
+			// 检查当前节点是否在targetIds中
+			let currentNodeSelected = targetIds.includes(nodeId)
+			if(currentNodeSelected){
+				continue;
+			}
+			if (children != null && children.length > 0) {
+			
+				let childrenIds = flatChildrensId(node,idkey)
+				// 检查子节点是否部分选中
+				let hasSelected = childrenIds.some((id:string):boolean => targetIds.includes(id))
+				
+				
+				// 如果子节点部分选中（有选中但不是全部选中），则添加当前节点ID到结果中
+				if (hasSelected) {
+					indeterminateIds.push(nodeId);
+				}
+				
+				// 递归检查子节点
+				traverseTree(children!);
+			}
+		}
+	}
+	
+	traverseTree(nodes);
+	return indeterminateIds;
+}
+

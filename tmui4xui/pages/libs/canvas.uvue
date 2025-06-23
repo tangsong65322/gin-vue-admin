@@ -1,0 +1,369 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+		<!-- #ifdef MP-WEIXIN -->
+		<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+			<navigation-bar :background-color="xThemeConfigNavBgColor"
+				:front-color="xThemeConfigNavFontColor"></navigation-bar>
+		</page-meta>
+		<!-- #endif -->
+
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">绘画库 ICanvas</x-text>
+			<x-text color="#999999" class="mb-8">有独立的事件及动画系统,下面绘制的元素都可点击，并且可以拖动，暂无法绘制图片,正和官方交流解决</x-text>
+			<!-- 
+			 @mousedown="bindEvents"
+			 @mousemove="bindEvents"
+			 @mouseup="bindEvents" 
+			 @mouseleave="bindEvents"
+			 -->
+			<canvas 
+			:id="canvasId" 
+			@click="bindEvents" 
+			@touchstart="bindEvents" 
+			@touchmove="bindEvents"
+			@touchend="bindEvents" 
+			@touchcancel="bindEvents" 
+			style="width: 100%;height: 350px;" 
+			ref="canvasDom"
+			>
+			</canvas>
+		</x-sheet>
+		
+		<x-cell url="/pages/libs/canvasRotarySwitch" title="旋转开关示例"></x-cell>
+		<x-cell url="/pages/libs/canvasWatchSportOne" title="运动环示例"></x-cell>
+		
+		<view style="height:150px"></view>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script setup>
+	import { ICanvas } from '@/uni_modules/tmx-ui/core/canvas/ICanvas.uts';
+	import { CanvasEventType, ICanvasEvent } from '@/uni_modules/tmx-ui/core/canvas/interface.uts';
+
+	import { IRect } from '@/uni_modules/tmx-ui/core/canvas/lib/rect.uts';
+	import { IText } from '@/uni_modules/tmx-ui/core/canvas/lib/text.uts';
+	import { Tween } from '@/uni_modules/tmx-ui/core/canvas/lib/animation/tween.uts';
+	import { ImageShape } from '@/uni_modules/tmx-ui/core/canvas/lib/image.uts';
+	import { Path2DShape } from '@/uni_modules/tmx-ui/core/canvas/lib/path2d.uts';
+	import { IRing } from '@/uni_modules/tmx-ui/core/canvas/lib/ring.uts';
+	import { IArc } from '@/uni_modules/tmx-ui/core/canvas/lib/arc.uts';
+	import { ISector } from '@/uni_modules/tmx-ui/core/canvas/lib/sector.uts';
+	import { IRegularPolygon } from '@/uni_modules/tmx-ui/core/canvas/lib/regularPolygon.uts';
+	import { ILinePolygon } from '@/uni_modules/tmx-ui/core/canvas/lib/linePolygon.uts';
+	import { ICircle } from '@/uni_modules/tmx-ui/core/canvas/lib/circle.uts';
+	import { IEllipse } from '@/uni_modules/tmx-ui/core/canvas/lib/ellipse.uts';
+	import { IStar } from '@/uni_modules/tmx-ui/core/canvas/lib/star.uts';
+	const canvasDom = ref<UniCanvasElement | null>(null)
+	const canvasId = "xCanvas-" + Math.random().toString(16).substring(4)
+	const proxy = getCurrentInstance()?.proxy ?? null;
+	const xcanvas = ref<ICanvas>(new ICanvas({ canvasId: canvasId,component: proxy as any | null }));
+	// 添加受支持的事件。
+	xcanvas.value.checkPointInHitEvents = ['down','move','up','click'] 
+	let tw1 = null as Tween | null
+	let tw2 = null as Tween | null
+	let tw3 = null as Tween | null
+
+	const initdrawer = () => {
+		if (xcanvas.value == null) return;
+		const render = xcanvas.value! as ICanvas
+		const text = new IText({
+			draggable: true,
+			text:
+				`这是一个非常强劲的图形渲染库\n有独立的事件及动画系统\n主要是用来制作营销动画交互及海报等场景\n有了它之后编排海报或者营销动画非常简单.`,
+			fill: "#587cff",
+			textAlign: 'right'
+		}, render)
+		const textBounds = text.getBoundRect();
+		text.setY(render.boxHeight - textBounds.height - 44)
+		text.setX(render.boxWidth - textBounds.width)
+		text.addEventListener('click', (evt) => {
+			text.setFill(text.toggleStatus ? '#f93e41' : '#587cff')
+			render.update()
+		})
+
+		render.addShape(text)
+
+		// #ifdef APP-IOS||WEB
+		let sp = new ImageShape('https://cdn.tmui.design/xui/tmui4.0banner1.jpg', {
+			draggable: true,
+			width: 100,
+			height: 56,
+			x: render.boxWidth - 100,
+			rotateCenter: "center",
+			y: 20
+		}, render)
+		sp.addEventListener('click', (evt) => {
+			sp.setScaleX(sp.toggleStatus ? 1.2 : 1)
+			sp.setScaleY(sp.toggleStatus ? 1.2 : 1)
+			render.update()
+		})
+		// render.addShape(sp)
+		// #endif
+		let pathsape = new Path2DShape({
+			draggable: true,
+			fill: "#587cff", offsetX: 50, width: 100
+		}, render)
+
+		pathsape.parsePathData('M50,0a50,50,0,1,0,50,50A50,50,0,0,0,50,0ZM66,21.25a8,8,0,1,1-8,8A8,8,0,0,1,66,21.25Zm-32,0a8,8,0,1,1-8,8A8,8,0,0,1,34,21.25Zm-14,38H80C75,85.25,25,85.25,20,59.25Z')
+		pathsape.addEventListener('click', (evt) => {
+			pathsape.setFill(pathsape.toggleStatus ? '#ff0000' : '#587cff')
+			render.update()
+		})
+
+		render.addShape(pathsape)
+
+		const rect = new IRect({
+			draggable: true,
+			x: 100, y: 100, width: 100, height: 50, fill: "#572cff", rotation: 45, opacity: 0.6,rotateCenter:'center'
+		}, render)
+		const rect2 = new IRect({
+			draggable: true,
+			x: 100, y: 100, width: 100, height: 50, fill: "#d348e5", radius: 8
+		}, render)
+		// rect2.drag = (event:CanvasEventType,parentEvent:ICanvasEvent)=>{
+		// 	// let x = rect2.x-parentEvent.detail[0].moveLenX
+		// 	// x = Math.max(0,Math.min(150,x))
+		// 	// rect2.x = x
+		// 	rect2.x-=parentEvent.detail[0].moveLenX
+		// 	rect2.y-=parentEvent.detail[0].moveLenY
+		// }
+		rect2.addEventListener('click', (evt) => {
+			rect2.setFill(rect2.toggleStatus ? '#ff6939' : '#81144f')
+			render.update()
+		})
+		rect.addEventListener('click', (evt) => {
+			rect.setFill(rect.toggleStatus ? '#ef3c9e' : '#ffac69')
+			render.update()
+		})
+		render.addShape(rect2)
+		render.addShape(rect)
+		const ring = new IRing({
+			draggable: true,
+			fill: "#ff0000",
+			x: 50,
+			y: 110,
+			endAngle: 90
+		}, render)
+		ring.addEventListener('click', (evt) => {
+			ring.setFill(ring.toggleStatus ? '#ffac69' : '#ff0000')
+			render.update()
+		})
+
+		render.addShape(ring)
+
+		const arc = new IArc({
+			draggable: true,
+			stroke: "#ff0000",
+			x: 40,
+			y: 160,
+			strokeWidth: 8,
+			lineJoin: 'round',
+			lineCap: "round",
+			lineDashOffset: 5,
+			endAngle: 135
+		}, render)
+
+		arc.addEventListener('click', (evt) => {
+			let target = evt.target as IArc
+			target.setStroke(target.stroke == '#ff0000' ? '#ffac69' : '#ff0000')
+			render.update()
+		})
+		render.addShape(arc)
+
+		for (let i = 0; i < 24; i++) {
+			const colortest = `rgb(255,${10 * (i + 1)},${10 * (i + 1)})`
+			const tarc = new ISector({
+				draggable: true,
+				fill: colortest,
+				x: 240,
+				y: 120,
+				radius: i * 2 + 14,
+				startAngle: 15 * i,
+				endAngle: 15 * (i + 1)
+			}, render)
+
+			tarc.addEventListener('click', (evt) => {
+				tarc.setFill(tarc.toggleStatus ? '#ffc61e' : colortest)
+				render.update()
+			})
+
+			render.addShape(tarc)
+		}
+
+		const text2 = new IText({
+			draggable: true,
+			text: "点我保存画布图片!",
+			fill: "#ffffff",
+			textAlign: 'center',
+			padding:16,
+			fontSize: 16,
+			lineHeight: 1,
+			bubbleEvent: true,
+			textBaseline: 'middle',
+			radius:12,
+			textBgColor:"rgb(5, 121, 255)"
+		}, render)
+
+		text2.toggle((status : boolean, target : any) => {
+			if (status) {
+				text2.setText("已导出预览图片")
+				text2.setTextBgColor('#ff0000')
+				render.getImage().then((imgpath:string)=>{
+					console.log(imgpath)
+					uni.previewImage({
+						current:imgpath,
+						urls:[imgpath]
+					})
+				})
+			} else {
+				text2.setText("点我保存画布图片")
+				text2.setTextBgColor('rgb(5, 121, 255)')
+			}
+			
+			render.update()
+		})
+	
+		const text2Bounds = text2.getBoundRect();
+		text2.setY(render.boxHeight - text2Bounds.height)
+		render.addShape(text2)
+		const polygon = new IRegularPolygon({
+			draggable: true,
+			sides: 5,
+			x: 50,
+			y: 250,
+			fill: "#ff0000",
+		}, render)
+		polygon.addEventListener('click', (evt) => {
+			polygon.setSides(polygon.toggleStatus ? 6 : 5)
+			render.update()
+		})
+		render.addShape(polygon)
+
+		const linepolygon = new ILinePolygon({
+			draggable: true,
+			points: [0, 0, 40, 60, 80, 0, 120, 60, 160, 0, 200, 60],
+			x: 90,
+			y: 220,
+			strokeWidth: 8,
+			stroke: "#ff0000",
+			lineCap: 'round',
+			opacity: 0.5,
+			tension: 0.5,
+			closed: false,
+			bezier: true
+		}, render)
+		linepolygon.addEventListener('click', (evt) => {
+			linepolygon.setStroke(linepolygon.toggleStatus ? "#ffff00" : "#ff0000")
+			render.update()
+		})
+		render.addShape(linepolygon)
+
+
+		const circle = new ICircle({
+			draggable: true,
+			x: 220,
+			y: 200,
+			strokeWidth: 8,
+			stroke: "#18e7dd",
+			lineCap: 'round',
+			fill: "#5f5cf0"
+
+		}, render)
+		circle.addEventListener('click', (evt) => {
+			circle.setStroke(circle.toggleStatus ? "#5f5cf0" : "#18e7dd")
+			render.update()
+		})
+		render.addShape(circle)
+
+		const ellipse = new IEllipse({
+			draggable: true,
+			x: 220,
+			y: 200,
+			strokeWidth: 6,
+			stroke: "#f08200",
+			lineCap: 'round',
+			// lineDash:[2,0,0,8]
+		}, render)
+
+		ellipse.addEventListener('click', (evt) => {
+			ellipse.setStroke(ellipse.toggleStatus ? "#f4483b" : "#f08200")
+			// ellipse.setLineDash(ellipse.toggleStatus ? [2,0,0,0] : [2,0,0,8])
+			render.update()
+		})
+		render.addShape(ellipse)
+
+		const star = new IStar({
+			draggable: true,
+			x: 280,
+			y: 240,
+			strokeWidth: 6,
+			numPoints: 6,
+			stroke: "rgba(255,0,0,1)",
+			fill: "rgba(255,0,0,0.5)"
+		}, render)
+		star.addEventListener('click', (evt) => {
+			star.setStroke(star.toggleStatus ? "#f4483b" : "rgba(255,0,0,1)")
+			star.setNumPoints(star.toggleStatus ? 5 : 6)
+
+			render.update()
+			
+			
+		})
+		render.addShape(star)
+
+
+
+		render.render()
+
+		// tw1 = new Tween(rect, render)
+		// 	.to({ radius: 24 })
+		// 	.setYoyo(true)
+		// 	.setLoop(-1)
+		// 	.start()
+
+		// tw2 = new Tween(polygon, render)
+		// 	.to({ scaleX: 1.3, scaleY: 1.3 })
+		// 	.setYoyo(true)
+		// 	.setLoop(-1)
+		// 	.start()
+
+		// tw3 = new Tween(ring, render)
+		// 	.addTo({ endAngle: 270 })
+		// 	// .addTo({ x: 100 })
+		// 	.setYoyo(true)
+		// 	.setLoop(-1)
+		// 	.onComplete(() => {
+		// 		console.log('ok')
+		// 	})
+		// 	.start()
+
+	}
+
+	const bindEvents = (evt : UniTouchEvent | UniPointerEvent | UniMouseEvent) => {
+		xcanvas.value.bindEvent(evt)
+	
+	}
+	const oninit = () => {
+		xcanvas.value.init()
+			.then(() => {
+				initdrawer()
+			})
+	}
+
+	onReady(() => {
+		oninit()
+	})
+	onBeforeUnmount(() => {
+		tw1?.stop()
+		tw2?.stop()
+		tw3?.stop()
+	})
+</script>
+
+<style>
+
+</style>

@@ -1,0 +1,41 @@
+import { UseInfo} from "./interface"
+
+export type useUseStoreType = {
+	token : string | null,
+	uploadUrl : string,
+	imgHost : string,
+	user : UseInfo
+}
+
+export const useUseStore = reactive({
+	token: null,
+	uploadUrl: "https://baidu.com",
+	imgHost: "https://baidu.com",
+	user: {
+		naicename: '',
+		avatar: '',
+		id: '',
+		tags: [] as string[],
+		level: -1
+	} as UseInfo
+} as useUseStoreType)
+
+export const setLogin = (token : string | null, user : UseInfo | null) => {
+	useUseStore.token = token;
+	if (token != null) {
+		uni.setStorageSync('token', token!)
+	}
+	if (user != null) {
+		useUseStore.user = user
+	}
+}
+export const loginOut = () => {
+	useUseStore.token = null;
+	useUseStore.user = {
+		naicename: '',
+		avatar: '',
+		id: '',
+		tags: [] as string[],
+		level: -1
+	} as UseInfo
+}

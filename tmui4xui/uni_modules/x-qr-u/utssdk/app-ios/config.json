@@ -1,0 +1,10 @@
+{
+	"deploymentTarget": "9",
+	"dependencies-pods": [
+		{
+			"name": "EFQRCode",
+			"version": "6.2.1"
+		}
+	]
+}
+

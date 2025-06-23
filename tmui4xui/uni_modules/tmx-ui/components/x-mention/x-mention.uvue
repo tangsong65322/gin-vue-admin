@@ -1,0 +1,307 @@
+<script lang="ts">
+	import { type PropType } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit, getUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	type MENTION_BEFOREREMOVE_TYPE = (tag:string) => boolean
+	/**
+	 * @name 提及 xMention
+	 * @description 它是依照微信的输入体验来的,请自行体验效果,样式是可以直接在标签上写style来定义你想的外观.
+	 * @page /pages/index/mention
+	 * @category 其它组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				nowValue: "",
+				focusinput:false
+			}
+		},
+		emits: [
+			/**
+			 * 字符变化时触发
+			 * @param {string} value - 当前的值。
+			 */
+			'change', 
+			/**
+			 * 输入提及符时触发
+			 */
+			'mention',
+			/**
+			 * 用记在删除字符时,如果触发删除标签时触发
+			 * @param {string} value - 当前被删除的标签
+			 */
+			'removemention',
+			/**
+			 * 键盘确认时触发.
+			 * @param {string} value - 当前的值。
+			 */
+			'confirm',
+			/**
+			 * 输入时触发.
+			 * @param {string} value - 当前的值。
+			 */
+			'input',
+			/**
+			 * 失去焦点
+			 */
+			'blur',
+			/**
+			 * 获得焦点
+			 */
+			'foucs',
+			/**
+			 * 键盘高度变化时
+			 * @param {number} height - 高。
+			 */
+			'keyboardheightchange',
+			
+			'update:modelValue',
+			],
+		props: {
+			/**
+			 * 输入框背景及标签背景
+			 */
+			bgColor: {
+				type: String,
+				default: "#f5f5f5"
+			},
+			/**
+			 * 输入框的暗黑背景色
+			 * 空值读取全局的Input暗黑背景色
+			 */
+			darkBgColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 右边按钮主题色，空取全局主题色
+			 */
+			btnColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 文本大小
+			 */
+			fontSize: {
+				type: String,
+				default: "16"
+			},
+			/**
+			 * 文本颜色，暗黑时取白
+			 */
+			fontColor: {
+				type: String,
+				default: "#333333"
+			},
+			/**
+			 * 宽
+			 */
+			width: {
+				type: String,
+				default: "auto"
+			},
+			/**
+			 * 高
+			 */
+			height: {
+				type: String,
+				default: "40"
+			},
+			/**
+			 * 圆角
+			 */
+			round: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 输入提示词
+			 */
+			placeholder: {
+				type: String,
+				default: "请输入内容，@选择朋友,按确认完成"
+			},
+			/**
+			 * 双向绑定
+			 */
+			modelValue: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 提及符号
+			 */
+			mentionChar:{
+				type:String,
+				default:"@"
+			},
+			autFoucs:{
+				type:Boolean,
+				default:false
+			},
+			adjustPosition:{
+				type:Boolean,
+				default:false
+			},
+			holdKeyboard:{
+				type:Boolean,
+				default:false
+			},
+			beforeRemove:{
+				type: Function as PropType<MENTION_BEFOREREMOVE_TYPE>,
+				default: (tag : string) : boolean => {
+					return true
+				}
+			}
+		},
+		computed: {
+			
+			_holdKeyboard():boolean{
+				return this.holdKeyboard
+			},
+			_adjustPosition():boolean{
+				return this.adjustPosition
+			},
+			_bgColor() : string {
+				let color = getDefaultColor(this.bgColor)
+				if (xConfig.dark == 'dark') {
+					if (this.darkBgColor == "") {
+						color = xConfig.inputDarkColor
+					} else {
+						color = getDefaultColor(this.darkBgColor)
+					}
+				}
+				return color
+			},
+			_intagBg() : string {
+				if (xConfig.dark == 'dark') return '#333'
+				return "#ffffff"
+			},
+			_fontColor() : string {
+				if (xConfig.dark == 'dark') return '#ffffff'
+				return getDefaultColor(this.fontColor)
+			},
+			_btnColor() : string {
+				if (this.btnColor == "") return getDefaultColor(xConfig.color)
+				return getDefaultColor(this.btnColor)
+			},
+			_round() : string {
+				if (this.round == "") return checkIsCssUnit(xConfig.buttonRadius, xConfig.unit)
+				return checkIsCssUnit(this.round, xConfig.unit)
+			},
+
+			_fontSize() : string {
+				let fontSize = checkIsCssUnit(this.fontSize, xConfig.unit);
+				if (xConfig.fontScale == 1) return fontSize;
+				let sizeNumber = parseInt(fontSize)
+				if (isNaN(sizeNumber)) {
+					sizeNumber = 16
+				}
+				return (sizeNumber * xConfig.fontScale).toString() + getUnit(fontSize)
+			},
+			_width() : string {
+				return checkIsCssUnit(this.width, xConfig.unit)
+			},
+			_height() : string {
+				return checkIsCssUnit(this.height, xConfig.unit)
+			},
+		},
+		mounted() {
+			this.nowValue = this.modelValue;
+		},
+		watch: {
+			modelValue(newValue : string) {
+				if (newValue == this.nowValue) return;
+				this.nowValue = this.modelValue;
+			}
+		},
+		methods: {
+			okConfirm() {
+				/**
+				 * 标签变化时触发
+				 * @param {string} value 当前的值,
+				 */
+				this.$emit('confirm', this.nowValue)
+			},
+			oninput(evt:UniInputEvent){
+				let word = evt.detail.value;
+				let isDel = word.length<this.nowValue.length?true:false
+				if(isDel){
+					// 在删除字符
+					let reg = new RegExp(`${this.mentionChar}\\S+`,'g');
+					let result = this.nowValue.match(reg)
+					if(result!=null&&Array.isArray(result)){
+						if(result.length>0){
+							let lastName = result[result.length-1]! as string
+							let removeChart = word.substring(word.length - lastName.length)
+							if(lastName == removeChart){
+								let isremove = this.beforeRemove(lastName.substring(1))
+								if(isremove){
+									word = word.substring(0,word.length - lastName.length)
+									this.$emit('removemention',lastName)
+								}
+							}
+						}
+					}
+				}else if(word.length>0){
+					let lastchars = word.substring(word.length-1)
+					if(lastchars == this.mentionChar){
+						this.focusinput = false;
+						this.$emit('mention')
+					}
+				}
+				
+				this.nowValue = word;
+				this.$emit('update:modelValue', word)
+				/**
+				 * 标签变化时触发
+				 * @param {string[]} value 当前的标签数组。
+				 */
+				this.$emit('change', word)
+				
+			},
+			onfoucusByCoustom(evt:UniInputFocusEvent){
+				this.focusinput = true;
+				this.$emit('foucs')
+			},
+			onblurByCoustom(evt:UniInputBlurEvent){
+				this.focusinput = false;
+				this.$emit('blur')
+			},
+			onkeyboardheightchange(evt:UniInputKeyboardHeightChangeEvent){
+				this.$emit('keyboardheightchange',evt.detail.height)
+			},
+			/**
+			 * 设置当前焦点
+			 * @public
+			 * @param {boolean} val 焦点值true,false
+			 */
+			setFoucus(val:boolean){
+				if(val==this.focusinput) return;
+				this.focusinput = val;
+			}
+		},
+	}
+</script>
+<template>
+	<input class="xInputTagIntag" :adjustPosition="_holdKeyboard" :focus="focusinput" :adjust-position="_adjustPosition"
+	:auto-focus="autFoucs" @keyboardheightchange="onkeyboardheightchange" @focus="onfoucusByCoustom" @blur="onblurByCoustom" 
+	@input="oninput" :confirm-hold="true" :value="nowValue" @confirm="okConfirm" :placeholder="placeholder"
+	:style="[{color:_fontColor,fontSize:_fontSize,height:'44px',marginBottom:'8px',backgroundColor:_bgColor}]" type="text" />
+
+</template>
+<style scoped>
+	.xInputTagIntag {
+	
+		padding:0px 12px;
+		
+	}
+
+</style>

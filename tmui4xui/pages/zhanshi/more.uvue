@@ -1,0 +1,69 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">查看更多 xMore</x-text>
+			<x-text  color="#999999" >更多信息展示使用,在使用时注意内部不要放动态异步加载内容。</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-more >
+				<x-text class="line-10">
+					随后，行刑者用一根管子放出温水顺着死刑犯的手臂往下流。并在地上放置一个铁盆，让水流到盆里的声音“嘀哒嘀哒“作响，给罪犯造成是自己流血的错觉。
+					随着水流越来越慢，水温越来越低，声音越来越小。
+					没过多久，罪犯就断气而身亡。尸检发现，罪犯死于心脏麻痹。
+					随后，行刑者用一根管子放出温水顺着死刑犯的手臂往下流。并在地上放置一个铁盆，让水流到盆里的声音“嘀哒嘀哒“作响，给罪犯造成是自己流血的错觉。
+					随着水流越来越慢，水温越来越低，声音越来越小。
+					没过多久，罪犯就断气而身亡。尸检发现，罪犯死于心脏麻痹。
+				</x-text>
+				<x-image src="https://store.tmui.design/api_v2/public/random_picture?random=vsf"></x-image>
+			</x-more>
+			<x-divider class="my-24"></x-divider>
+			<x-more :disabled="true" :text="['付费解锁','关闭详情']">
+				<x-text class="line-10">
+					禁用无法打开
+					随后，行刑者用一根管子放出温水顺着死刑犯的手臂往下流。并在地上放置一个铁盆，让水流到盆里的声音“嘀哒嘀哒“作响，给罪犯造成是自己流血的错觉。
+					随着水流越来越慢，水温越来越低，声音越来越小。
+					没过多久，罪犯就断气而身亡。尸检发现，罪犯死于心脏麻痹。
+					随后，行刑者用一根管子放出温水顺着死刑犯的手臂往下流。并在地上放置一个铁盆，让水流到盆里的声音“嘀哒嘀哒“作响，给罪犯造成是自己流血的错觉。
+					随着水流越来越慢，水温越来越低，声音越来越小。
+					没过多久，罪犯就断气而身亡。尸检发现，罪犯死于心脏麻痹。
+				</x-text>
+				<x-image src="https://store.tmui.design/api_v2/public/random_picture?random=vsf"></x-image>
+			</x-more>
+			<x-divider class="my-24"></x-divider>
+			<x-more height="80">
+				<x-text font-size="18" class=" text-weight-b mb-8">可以设置高度</x-text>
+				<x-text class="line-10">
+					并在地上放置一个铁盆，让水流到盆里的声音“嘀哒嘀哒“作响，给罪犯造成是自己流血的错觉。
+					随着水流越来越慢，水温越来越低，声音越来越小。
+				</x-text>
+				<x-image src="https://store.tmui.design/api_v2/public/random_picture?random=666df"></x-image>
+			</x-more>
+		</x-sheet>
+
+		<view class="py-32"></view>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+			};
+		},
+		onLoad() {
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

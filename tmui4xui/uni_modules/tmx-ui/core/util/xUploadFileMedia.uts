@@ -1,0 +1,521 @@
+import { XUPLOADFILE_INFO, XUPLOADFILE_FILE_VALUE, XUPLOADFILE_FILE_INFO, XUPLOADFILE_EVENT_NAME } from "../../interface.uts"
+import { getUid } from "./xCoreUtil.uts"
+type CONFIG = {
+	count : number,
+	sourceType : Array<string>,
+	sizeType : Array<string>,
+	hostUrl : string,
+	name : string,
+	header : UTSJSONObject,
+	formData : UTSJSONObject,
+	multipart : boolean,
+	autoUpload : boolean,
+	statusCode : number,
+	compress:boolean,
+	quality:number|null,
+	compressedHeight:number|null,
+	compressedWidth:number|null
+	
+	
+}
+
+/**
+ * 媒体文件上传 
+ */
+export class xUploadMedia {
+	model = 'photo'
+	videoOps={
+		pageOrientation:'auto',
+		albumMode:'system',
+		sourceType:['album', 'camera'] as string[],
+		compressed:true,
+		maxDuration:60,
+		camera:'back'
+	} as UTSJSONObject
+	config = {
+		count: 9,
+		sourceType: ['album', 'camera'],
+		sizeType: ['original', 'compressed'],
+		hostUrl: "",
+		name: "file",
+		header: {} as UTSJSONObject,
+		multipart: false,
+		formData:{} as UTSJSONObject,
+		autoUpload: true,
+		statusCode: 200,
+		compress:true,
+		quality:80,
+		compressedHeight:null,
+		compressedWidth:null
+	} as CONFIG
+	fileList : Array<XUPLOADFILE_FILE_INFO> = []
+	currentIndex = 0;
+	uploading = false;
+	uploadObj = null as null | UploadTask
+	constructor(opts : XUPLOADFILE_INFO = {} as XUPLOADFILE_INFO) {
+		this.chuliConfigArgs(opts)
+	}
+	chooseBefore = (res : string[]) : Promise<string[]> => Promise.resolve(res)
+	complete = (res : XUPLOADFILE_FILE_INFO[]) : Promise<XUPLOADFILE_FILE_INFO[]> => Promise.resolve(res)
+	change = (res : XUPLOADFILE_FILE_INFO[]) : Promise<XUPLOADFILE_FILE_INFO[]> => Promise.resolve(res)
+	beforeComplete = (res : XUPLOADFILE_FILE_INFO) :XUPLOADFILE_FILE_INFO => res
+	myChangeSync = function (res : XUPLOADFILE_FILE_INFO[]) { }
+	beforeUpload = (res : XUPLOADFILE_FILE_INFO) : Promise<XUPLOADFILE_FILE_INFO> => Promise.resolve(res)
+	events:Map<XUPLOADFILE_EVENT_NAME,(res : any) => Promise<any>> = new Map();
+
+
+	/**
+	 * 处理配置参数 
+	 * @param  opts  配置参数
+	 */
+	private chuliConfigArgs(opts : XUPLOADFILE_INFO) : CONFIG {
+		this.config = {
+			count: opts.count == null ? this.config.count : opts.count as number,
+			statusCode: opts.statusCode == null ? this.config.statusCode : opts.statusCode as number,
+			sourceType: opts.sourceType == null ? this.config.sourceType : opts.sourceType as string[],
+			sizeType: opts.sizeType == null ? this.config.sizeType : opts.sizeType as string[],
+			hostUrl: opts.hostUrl == null ? this.config.hostUrl : opts.hostUrl as string,
+			name: opts.name == null ? this.config.name : opts.name as string,
+			header: opts.header == null ? this.config.header : opts.header as UTSJSONObject,
+			formData: opts.formData == null ? this.config.formData : opts.formData as UTSJSONObject,
+			multipart: opts.multipart == null ? this.config.multipart : opts.multipart as boolean,
+			autoUpload: opts.autoUpload == null ? this.config.autoUpload : opts.autoUpload as boolean,
+			compress: opts.compress == null ? this.config.compress : opts.compress as boolean,
+			quality: opts.quality == null ? this.config.quality : opts.quality as number,
+			compressedHeight: opts.compressedHeight,
+			compressedWidth: opts.compressedWidth,
+		} as CONFIG
+		return this.config
+	}
+	stop() {
+		if (this.uploadObj == null) return
+		this.currentIndex = 0;
+		this.uploading = false;
+		this.uploadObj!.abort()
+		this.uploadObj = null;
+		console.info("xUploadMedia:中断上传")
+	}
+	chooseMedia() {
+		if (this.fileList.length == this.config.count) {
+			uni.showToast({ title: "已超最大上传数量", mask: true, icon: 'none' })
+			console.warn("xUploadMedia:已经超过最大上传数量")
+			return;
+		}
+		if(this.model == 'photo'){
+			uni.chooseImage({
+				count: Math.max(this.config.count - this.fileList.length, 0),
+				sourceType: this.config.sourceType,
+				sizeType: this.config.sizeType,
+				success: (res) => {
+					
+					let temps = [] as UTSJSONObject[]
+					// #ifdef uniVersion >= 4.31
+					let items = res.tempFiles;
+					 for(let i=0;i<res.tempFiles.length;i++){
+						temps.push({path:items[i].path,size:items[i].size} as UTSJSONObject)
+					 }
+					// #endif
+					// #ifdef uniVersion < 4.31
+					temps = res.tempFiles as UTSJSONObject[]
+					// #endif
+					let chooseBefore = this.events.get('chooseBefore')
+					if(chooseBefore!=null){
+						// 处理新文件。
+						if (Array.isArray(temps)) {
+							chooseBefore(res.tempFilePaths).then(() => {
+								
+								this.addNewFile(temps)
+								
+								if (this.config.autoUpload && !this.uploading){
+									this.start()
+								}
+							}).catch(er => {
+								console.error(er)
+								uni.showModal({
+									title:"系统异常",
+									content:er as string,
+									showCancel:false
+								})
+							})
+						
+						} else {
+							let tps = res.tempFilePaths as UTSJSONObject
+							chooseBefore([tps] as UTSJSONObject[]).then(() => {
+								this.addNewFile(temps)
+								if (this.config.autoUpload && !this.uploading){
+									this.start()
+								}
+							}).catch(er => {
+								console.error(er)
+								uni.showModal({
+									title:"系统异常",
+									content:er as string,
+									showCancel:false
+								})
+							})
+						}
+					}else{
+						
+						if (Array.isArray(temps)) {
+							this.addNewFile(temps)
+							if (this.config.autoUpload && !this.uploading){
+								this.start()
+							}
+						}else{
+							let tps = res.tempFilePaths as UTSJSONObject
+							this.addNewFile([tps] as UTSJSONObject[])
+							if (this.config.autoUpload && !this.uploading){
+								this.start()
+							}
+						}
+						
+					}
+					
+			
+			
+				},
+				fail: (err) => {
+					this.chooseBefore([] as string[])
+					console.warn("xUploadMedia:", err)
+				}
+			})
+		}else if(this.model == 'video'){
+			let pageOrientation = this.videoOps.getString('pageOrientation')
+			pageOrientation = pageOrientation==null?'auto':pageOrientation
+			let albumMode = this.videoOps.getString('albumMode')
+			albumMode = albumMode==null?'system':albumMode
+			let sourceType = this.videoOps.getArray<string>('sourceType')
+			sourceType = sourceType==null?(['album', 'camera'] as string[]):sourceType
+			let compressed = this.videoOps.getBoolean('compressed')
+			compressed = compressed==null?true:compressed
+			let maxDuration = this.videoOps.getNumber('maxDuration')
+			maxDuration = maxDuration==null?60:maxDuration
+			let camera = this.videoOps.getString('camera')
+			camera = camera==null?'back':camera
+			uni.chooseVideo({
+				pageOrientation,
+				albumMode,
+				sourceType,
+				compressed,
+				maxDuration,
+				camera,
+				success: (res) => {
+					
+					let temps = [
+						{path:res.tempFilePath,size:res.size} as UTSJSONObject
+					] as UTSJSONObject[]
+					
+					let chooseBefore = this.events.get('chooseBefore')
+					if(chooseBefore!=null){
+						chooseBefore([res.tempFilePath] as string[]).then(() => {
+							this.addNewFile(temps)
+							if (this.config.autoUpload && !this.uploading){
+								this.start()
+							}
+						}).catch(er => {
+							console.error(er)
+							uni.showModal({
+								title:"系统异常",
+								content:er as string,
+								showCancel:false
+							})
+						})
+					}else{
+						this.addNewFile(temps)
+						if (this.config.autoUpload && !this.uploading){
+							this.start()
+						}
+					}
+							
+				},
+				fail: (err) => {
+					this.chooseBefore([] as string[])
+					console.warn("xUploadMedia:", err)
+				}
+			} as ChooseVideoOptions)
+		}
+		
+	}
+	
+	/**
+	 * 增加事件监听
+	 * @param eventName 事件名称
+	 * @param callback(res : T) => Promise<T> 回调，注意如果是chooseBefore,外部回调时res是string[]，其它为 XUPLOADFILE_FILE_INFO[]
+	 */
+	addListenEvent(eventName : XUPLOADFILE_EVENT_NAME, callback : (res : any) => Promise<any>) {
+		this.events.set(eventName,callback)
+		// if (eventName == 'chooseBefore') {
+		// 	this.chooseBefore = (res2 : string[]) : Promise<string[]> => callback(res2 as unknown[] as T) as Promise<string[]>
+		// } else if (eventName == 'complete') {
+		// 	this.complete = (res2 : XUPLOADFILE_FILE_INFO[]) : Promise<XUPLOADFILE_FILE_INFO[]> => callback(res2 as unknown[] as T) as Promise<XUPLOADFILE_FILE_INFO[]>
+		// } else if (eventName == 'change') {
+		// 	this.change = (res2 : XUPLOADFILE_FILE_INFO[]) : Promise<XUPLOADFILE_FILE_INFO[]> => callback(res2 as unknown[] as T) as Promise<XUPLOADFILE_FILE_INFO[]>
+		// }
+	
+	}
+	
+	/**
+	 * 增加事件监听
+	 * @param eventName 事件名称
+	 * @param callback(res : T) => Promise<T> 回调，注意如果是chooseBefore,外部回调时res是string[]，其它为 XUPLOADFILE_FILE_INFO[]
+	 */
+	addListenEventsss<T extends unknown[]>(eventName : XUPLOADFILE_EVENT_NAME, callback : (res : T) => Promise<T>) {
+		if (eventName == 'chooseBefore') {
+			this.chooseBefore = (res2 : string[]) : Promise<string[]> => callback(res2 as unknown[] as T) as Promise<string[]>
+		} else if (eventName == 'complete') {
+			this.complete = (res2 : XUPLOADFILE_FILE_INFO[]) : Promise<XUPLOADFILE_FILE_INFO[]> => callback(res2 as unknown[] as T) as Promise<XUPLOADFILE_FILE_INFO[]>
+		} else if (eventName == 'change') {
+			this.change = (res2 : XUPLOADFILE_FILE_INFO[]) : Promise<XUPLOADFILE_FILE_INFO[]> => callback(res2 as unknown[] as T) as Promise<XUPLOADFILE_FILE_INFO[]>
+		}
+
+	}
+	/**
+	 * 设置上传的配置参数
+	 * @param opts 配置参数-XUPLOADFILE_INFO
+	 */
+	setConfig(opts : XUPLOADFILE_INFO) {
+		this.chuliConfigArgs(opts)
+	}
+	
+	setVideoOps(config:UTSJSONObject,model:string){
+		this.videoOps = config
+		this.model = model;
+	}
+	setChangeSync(callBack : (res : XUPLOADFILE_FILE_INFO[]) => void) {
+		this.myChangeSync = function (res2 : XUPLOADFILE_FILE_INFO[]) {
+			callBack(res2)
+		}
+	}
+	delFile(id : string) : boolean {
+		let index = this.fileList.findIndex((item : XUPLOADFILE_FILE_INFO) : boolean => item.id == id)
+		if (index >= 0) {
+			let item = this.fileList[index];
+			if (item.status == 1) {
+				item.status = 4
+				item.statusText = "取消上传"
+				this.stop()
+			}
+			this.fileList.splice(index, 1)
+			this.myChangeSync(this.fileList)
+			return true;
+		}
+		return false
+	}
+	clear(){
+		this.fileList = [] as XUPLOADFILE_FILE_INFO[]
+		this.myChangeSync(this.fileList)
+	}
+	/**
+	 * 添加新选择的未上传文件
+	 */
+	private addNewFile(files : UTSJSONObject[]) {
+		if (files.length == 0) return;
+		let t = this;
+		// #ifdef APP-ANDROID||APP-IOS
+		if(this.model == 'photo'){
+			let i=0;
+			function compress(){
+				if(i>=files.length) return;
+				let item = files[i]! as UTSJSONObject;
+				uni.compressImage({
+					src: item.getString('path')!,
+					quality: t.config.quality,
+					compressedHeight: t.config.compressedHeight,
+					compressedWidth: t.config.compressedWidth,
+					success: (res:CompressImageSuccess) => {
+						item.set("path",res.tempFilePath)
+						i+=1;
+						compress()
+					},
+					fail: (err) => {
+						i+=1;
+						compress()
+					}
+				})
+			}
+			if(this.config.compress){
+				compress()
+			}
+		}
+		// #endif
+		
+		
+		files.forEach((item : UTSJSONObject) => {
+			let id = getUid();
+			let name = "";
+			let size = 0
+			// #ifdef APP
+			let items = item as UTSJSONObject
+			name = items.getString('path')!
+			size = items.getNumber('size')!
+			// #endif
+			
+			// #ifndef APP
+			name = item.path!
+			size = item.size!
+			// #endif
+			
+			this.fileList.push({
+				id: id,
+				type: "",
+				size: size,
+				extension: name.substring(name.lastIndexOf(".") + 1),
+				statusText: '待上传',
+				status: 0,
+				path: name,
+				progress: 0,
+				response: "",
+				name: name.substring(name.lastIndexOf("/") + 1),
+				model:this.model
+			} as XUPLOADFILE_FILE_INFO)
+		})
+		
+		this.myChangeSync(this.fileList)
+		
+	}
+	addFile(files:XUPLOADFILE_FILE_VALUE[]){
+		let ids = this.fileList.map((el:XUPLOADFILE_FILE_INFO):string=>el.id)
+		let i=0;
+		files.forEach((el:XUPLOADFILE_FILE_VALUE)=>{
+			let oldId = el.id == null?"":el.id! as string;
+			if(!ids.includes(oldId)){
+				let id = getUid();
+				let name = el.url
+				let status = el?.status??2;
+				this.fileList.push({
+					id: id,
+					type: "",
+					size: 0,
+					extension: name.substring(name.lastIndexOf(".") + 1),
+					statusText: status==2?'上传成功':'待上传',
+					status: el?.status??2,
+					path: name,
+					progress: status==2?100:0,
+					response: el.response == null ?"":el.response! as string,
+					name: name.substring(name.lastIndexOf("/") + 1)
+				} as XUPLOADFILE_FILE_INFO)
+				++i;
+			}
+		})
+		
+		if(i>0){
+			this.myChangeSync(this.fileList)
+		}
+		
+	}
+	_addFilesByself(files:XUPLOADFILE_FILE_INFO[]){
+		this.fileList = files.slice(0)
+	}
+	
+	/**
+	 * 获取待上传的文件数量。
+	 */
+	private getWaitUploadFilesNumber() : number {
+		let num = 0;
+		this.fileList.forEach((item : XUPLOADFILE_FILE_INFO) => {
+			if (item.status == 0 || item.status == 3 || item.status == 4) {
+				num += 1;
+			}
+		})
+		return num;
+	}
+	start() {
+		if (this.uploading) return;
+		this.uploading = true;
+		this.currentIndex = 0
+		this.uploadFile();
+	}
+	private uploadFile() {
+		// if (!this.config.autoUpload) return;
+
+		// if (this.fileList.length == 0 || this.getWaitUploadFilesNumber() == 0) {
+		// 	this.uploadObj = null
+		// 	this.uploading = false;
+		// 	console.warn("xUploadMedia:上传结束了")
+		// 	return;
+		// }
+		
+		
+
+		if (this.currentIndex >= this.fileList.length) {
+			this.uploadObj = null;
+			this.uploading = false;
+			
+			this.complete(this.fileList)
+			this.myChangeSync(this.fileList)
+			let complete = this.events.get('complete')
+		
+			if(complete!=null){
+				complete(this.fileList.slice(0))
+			}
+			return;
+		}
+		
+		this.beforeUpload(this.fileList[this.currentIndex]).then((beforeUploadFileRes:XUPLOADFILE_FILE_INFO)=>{
+			this.fileList[this.currentIndex] = beforeUploadFileRes;
+			let nowitemStatus = this.fileList[this.currentIndex].status
+			if (nowitemStatus == 1 || nowitemStatus == 2 || nowitemStatus == 5) {
+				this.uploadObj = null
+				this.uploading = false;
+				this.currentIndex += 1;
+				this.uploadFile();
+				return;
+			}
+			this.fileList[this.currentIndex].status = 1;
+			this.fileList[this.currentIndex].statusText = "上传中";
+			this.myChangeSync(this.fileList)
+			this.uploadObj = uni.uploadFile({
+				url: this.config.hostUrl,
+				filePath: this.fileList[this.currentIndex].path,
+				name: this.config.name,
+				formData: this.config.formData,
+				header:this.config.header,
+				success: (uploadFileRes) => {
+					if (uploadFileRes.statusCode != 200) {
+						this.fileList[this.currentIndex].status = 3;
+						this.fileList[this.currentIndex].statusText = "上传失败";
+						this.currentIndex += 1;
+						this.uploadFile();
+						this.myChangeSync(this.fileList)
+						return;
+					}
+					this.fileList[this.currentIndex].status = 2;
+					this.fileList[this.currentIndex].response = uploadFileRes.data;
+					this.fileList[this.currentIndex].statusText = "上传成功";
+					let itemtemp = this.fileList.slice(0)[this.currentIndex]
+					let calllItem =  this.beforeComplete(itemtemp)
+					this.fileList[this.currentIndex] = calllItem
+					this.currentIndex += 1;
+					this.uploadFile();
+					this.myChangeSync(this.fileList)
+					
+				},
+				fail: (err) => {
+					console.error("上传失败了,请检查配置:",err)
+					this.fileList[this.currentIndex].status = 3;
+					this.fileList[this.currentIndex].statusText = "上传失败";
+					this.currentIndex += 1;
+					this.uploadFile();
+				},
+				complete: () => {
+					this.myChangeSync(this.fileList)
+				}
+			})
+			
+			this.uploadObj?.onProgressUpdate((res) => {
+			
+				this.fileList[this.currentIndex].progress = res.progress;
+				// if(res.progress == 100){
+				// 	this.fileList[this.currentIndex].status = 1;
+				// 	this.fileList[this.currentIndex].statusText = "上传中";
+				// }else{
+				// 	this.fileList[this.currentIndex].status = 1;
+				// 	this.fileList[this.currentIndex].statusText = "上传中";
+				// }
+				this.myChangeSync(this.fileList)
+			})
+			
+		})
+		
+	}
+}

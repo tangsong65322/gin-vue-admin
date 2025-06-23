@@ -1,0 +1,388 @@
+<script lang="ts">
+	import { type PropType } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+
+	/**
+	 * @name 搜索栏 xSearch
+	 * @description 可定制化强
+	 * @page /pages/index/search
+	 * @category 导航组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				nowValue: "",
+				foucsIng: false,
+
+			}
+		},
+		emits: [
+			/**
+			 * 取消时触发
+			 * @param {string} str - 当前已输入的字符串
+			 */
+			'cancel',
+			/**
+			 * 清空时触发
+			 * @param {string} str - 当前已输入的字符串
+			 */
+			'clear',
+			/**
+			 * 点击右侧文本时触发,如果你使用了插槽替换了，此事件不会触发
+			 * @param {string} str - 已输入的字符串
+			 */
+			'rightClick',
+			/**
+			 * 输入法点了确认搜索按钮时触发
+			 * @param {string} str - 已输入的字符串
+			 */
+			'confirm',
+			/**
+			 * 输入时触发
+			 * @param {string} str - 当前已输入的字符串
+			 */
+			'input', 'update:modelValue'],
+		props: {
+			/**
+			 * 输入框圆角
+			 */
+			round: {
+				type: String,
+				default: "8"
+			},
+			/**
+			 * 是否显示清除图标
+			 */
+			showClear: {
+				type: Boolean,
+				default: true
+			},
+			/**
+			 * 右侧文本
+			 */
+			rightText: {
+				type: String,
+				default: "搜索"
+			},
+			/**
+			 * 双向绑定的输入值
+			 */
+			modelValue: {
+				type: String,
+				default: "",
+			},
+			/**
+			 * 输入框提示语
+			 */
+			placeholder: {
+				type: String,
+				default: "请输入",
+			},
+			/**
+			 * 搜索图标和清除图标的颜色
+			 */
+			iconColor: {
+				type: String,
+				default: "#bfbfbf",
+			},
+			/**
+			 * 搜索条背景
+			 */
+			color: {
+				type: String,
+				default: "#ffffff",
+			},
+			/**
+			 * 取消的文本色
+			 */
+			cancelFontColor:{
+				type: String,
+				default: "#000000",
+			},
+			/**
+			 * 暗黑模式下的搜索条背景，空值取：sheetDarkColor
+			 */
+			darkColor:{
+				type: String,
+				default: "",
+			},
+			/**
+			 * 输入框的背景
+			 */
+			inputBgColor: {
+				type: String,
+				default: "#f5f5f5",
+			},
+			/**
+			 * 输入框的字体颜色
+			 */
+			fontColor: {
+				type: String,
+				default: "#333333",
+			},
+			/**
+			 * 边框style请输入规范的css
+			 * 格式:1px,solid,red
+			 * 默认空值，表示不设置边
+			 */
+			border: {
+				type: Array as PropType<string[]>,
+				default: () : string[] => [] as string[]
+			},
+			/**
+			 * 边框style请输入规范的css
+			 * 如:red,暗黑变换时，如果你设定了border，但没有设定本值，将会自动取全局的边线颜色。
+			 * 默认空值，表示不设置边
+			 */
+			darkBorderColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 输入框的提示样式
+			 */
+			placeholderStyle: {
+				type: String,
+				default: ""
+			}
+		},
+		computed: {
+			_placeholderStyle() : string {
+				return this.placeholderStyle
+			},
+			_round() : string {
+				return checkIsCssUnit(this.round, xConfig.unit)
+			},
+			_showClear() : boolean {
+				return this.showClear
+			},
+			_rightText() : string {
+				return this.rightText
+			},
+			_placeholder() : string {
+				return this.placeholder
+			},
+			_iconColor() : string {
+				return getDefaultColor(this.iconColor)
+			},
+			_color() : string {
+				if (xConfig.dark == 'dark') {
+					if (this.darkColor == "") {
+						return xConfig.sheetDarkColor
+					}
+					return getDefaultColor(this.darkColor)
+				}
+				return getDefaultColor(this.color)
+			},
+			_inputBgColor() : string {
+				if (xConfig.dark == 'dark') return xConfig.inputDarkColor
+				return getDefaultColor(this.inputBgColor)
+			},
+			_cancelFontColor(): string{
+				return getDefaultColor(this.cancelFontColor)
+			},
+			_fontColor() : string {
+				if (xConfig.dark == 'dark') return '#ffffff'
+				return getDefaultColor(this.fontColor)
+			},
+			_border() : string {
+				let borderstr = this.border;
+				if (borderstr.length != 3) return "none";
+				let lastColor = borderstr[borderstr.length - 1]
+				if (xConfig.dark == 'dark') {
+					if (this.darkBorderColor == "") {
+						lastColor = getDefaultColor(xConfig.borderDarkColor)
+					} else {
+						lastColor = this.darkBorderColor
+					}
+				}
+
+				return `${borderstr[0]} ${borderstr[1]} ${lastColor}`
+			}
+
+		},
+		watch: {
+			modelValue(newValue : string) {
+				if (newValue === this.nowValue) return
+				this.nowValue = newValue;
+			}
+		},
+		mounted() {
+			this.nowValue = this.modelValue;
+		},
+		methods: {
+			confirm() {
+				/**
+				 * 输入法点了确认搜索按钮时触发
+				 * @param {string} 已输入的字符串
+				 */
+				this.$emit('confirm', this.nowValue)
+			},
+			inputHndler(evt : InputEvent) {
+
+				this.nowValue = evt.detail.value;
+
+				/**
+				 * 输入时触发
+				 * @param {string} 当前已输入的字符串
+				 */
+				this.$emit('input', this.nowValue)
+
+				/**
+				 * 等同v-model
+				 */
+				this.$emit('update:modelValue', this.nowValue)
+
+			},
+			raightCellClick() {
+				/**
+				 * 点击右侧文本时触发,如果你使用了插槽替换了，此事件不会触发
+				 * @param {string} 已输入的字符串
+				 */
+				this.$emit('rightClick', this.nowValue)
+			},
+			clearHandler() {
+				this.nowValue = "";
+				/**
+				 * 等同v-model
+				 */
+				this.$emit('update:modelValue', "")
+				this.$emit('clear', "")
+				this.foucsIng = false;
+
+			},
+			cancel() {
+				this.nowValue = "";
+				this.$emit('cancel', "")
+				this.$emit('update:modelValue', "")
+				this.foucsIng = false;
+			},
+			blur() {
+				if (this.nowValue.length == 0) {
+					this.foucsIng = false;
+				}
+			},
+			foucus() {
+				this.foucsIng = true;
+			},
+		},
+	}
+</script>
+<template>
+	<view class="xSearch" :style="{backgroundColor:_color}">
+		<view class="xSearchLeft">
+			<!-- 
+			 @slot 左插槽
+			 -->
+			<slot name="left"></slot>
+		</view>
+		<view class="xSearchCenter" :style="{borderRadius:_round,backgroundColor:_inputBgColor,border:_border}">
+			<!-- 
+			 输入框内的左插槽
+			 -->
+			<slot name="inputLeft"></slot>
+			<x-icon style="margin: 0 12px;" :color="_iconColor" name="search-2-line" font-size="16"></x-icon>
+			<input :style="{color:_fontColor}" @focus="foucus" @blur="blur" @input="inputHndler" confirm-type="search"
+				:value="nowValue" @confirm="confirm" :placeholder-style="_placeholderStyle" :placeholder="_placeholder"
+				class="xSearchCenterInput" type="text" />
+			<view @click="clearHandler" v-if="_showClear&&nowValue.length>0" class="xSearchclear"
+				style="padding: 0 12px;">
+				<x-icon :color="_iconColor" name="close-circle-fill"></x-icon>
+			</view>
+			<!-- 
+			 输入框内右插槽
+			 -->
+			<slot name="inputRight"></slot>
+		</view>
+		<view :class="[(nowValue.length>0||foucsIng)?'xSearchRightTextOn':'xSearchRightTextOff']" @click="cancel"
+			class="xSearchRightText">
+			<!-- 
+			 取消按钮的文本插槽
+			 -->
+			<slot name="cacel">
+				<x-text :color="_cancelFontColor">取消</x-text>
+			</slot>
+		</view>
+		<view class="xSearchRight" @click="raightCellClick">
+			<!-- 
+			 右插槽
+			 -->
+			<slot name="right">
+
+			</slot>
+		</view>
+	</view>
+</template>
+<style scoped>
+	.xSearchCenterInput {
+		flex: 1;
+		font-size: 16px;
+	}
+
+	.xSearch {
+		width: 100%;
+		position: relative;
+		height: 48px;
+		display: flex;
+		flex-direction: row;
+		justify-content: flex-start;
+		align-items: center;
+		overflow: hidden;
+	}
+
+	.xSearchCenter {
+		display: flex;
+		flex-direction: row;
+		justify-content: flex-start;
+		align-items: center;
+		height: 38px;
+		flex: 1;
+
+	}
+
+	.xSearchLeft {
+		display: flex;
+		flex-direction: row;
+		justify-content: flex-start;
+	}
+
+	.xSearchRight {
+		display: flex;
+		flex-direction: row;
+		justify-content: flex-end;
+	}
+
+	.xSearchRightText {
+		transition-duration: 200ms;
+		transition-property: opacity, transform, width;
+		transition-timing-function: linear;
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+		/* #ifdef WEB */
+		cursor: pointer;
+		/* #endif */
+	}
+
+	.xSearchRightTextOn {
+		opacity: 1;
+		transform: scale(1) translateX(0px);
+		width: 60px;
+		pointer-events: auto;
+	}
+
+	.xSearchRightTextOff {
+		opacity: 0;
+		transform: scale(0) translateX(60px);
+		width: 0px;
+		pointer-events: none;
+	}
+</style>

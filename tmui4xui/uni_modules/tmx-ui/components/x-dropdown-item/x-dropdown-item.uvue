@@ -1,0 +1,270 @@
+<script lang="ts">
+	import { checkIsCssUnit, getUid, rpx2px } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor, colorAddDeepen } from "../../core/util/xCoreColorUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { XDROPDOWN_LISTITEM_INFO_TYPE } from '../../interface.uts';
+
+	/**
+	 * 
+	 * @name 下拉菜单子组件 xDropdownItem
+	 * @description 注意只能放置在父组件x-dropdown-menu中
+	 * @page /pages/index/dropdown-menu
+	 * @category 反馈组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				id: ("xDropMenuItem" + getUid()) as string,
+				show: false,
+				tid: 0
+			}
+		},
+		props: {
+			/**
+			 * 菜单标题
+			 */
+			title: {
+				type: String,
+				default: "标题"
+			},
+			/**
+			 * 标识，变换或者点击时，会通过事件传回。
+			 */
+			keyName: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 未选中时的图标
+			 */
+			icon: {
+				type: String,
+				default: "arrow-down-s-fill"
+			},
+			/**
+			 * 激活时的图标
+			 */
+			activeIcon: {
+				type: String,
+				default: "arrow-up-s-fill"
+			},
+			/**
+			 * 默认的文字及图标颜色
+			 */
+			fontColor: {
+				type: String,
+				default: "#333333"
+			},
+			/**
+			 * 暗黑时的默认的文字及图标颜色，
+			 * 空取时白色
+			 */
+			darkFontColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 文字及图标大小
+			 */
+			fontSize: {
+				type: String,
+				default: "16"
+			},
+			/**
+			 * 激活的文字及图标颜色
+			 * 空值时取全局统一的主题色。
+			 */
+			activeFontColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 是否是按钮选项。
+			 */
+			isBtn: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 内容背景颜色
+			 */
+			color: {
+				type: String,
+				default: "white"
+			},
+			/**
+			 * 暗黑时的内容背景颜色,空值取sheetDarkColor
+			 */
+			darkColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 渲染,如果设置为true,内部使用vif切换渲染
+			 * 注意它不会影响其它菜单只影响本菜单.vif切换会导致内容重绘,但
+			 * 可以解决sdk的一些异常组件嵌套的问题.
+			 * 当您嵌套的组件在此内出现异常,闪退,报错时请设置为true,否则不用理会本属性
+			 * 本属性存在就是为了绕开sdk bug.
+			 */
+			render:{
+				type:Boolean,
+				default:false
+			}
+		},
+		beforeMount() {
+			this.pushDataToParent();
+		},
+		mounted() {
+		},
+		beforeUnmount() {
+			this.removeSelf();
+			clearTimeout(this.tid)
+		},
+		watch: {
+			title() { this.pushDataToParent() },
+			keyName() { this.pushDataToParent() },
+			icon() { this.pushDataToParent() },
+			activeIcon() { this.pushDataToParent() },
+			fontColor() { this.pushDataToParent() },
+			activeFontColor() { this.pushDataToParent() },
+			fontSize() { this.pushDataToParent() }
+		},
+		computed: {
+			_color() : string {
+				if (xConfig.dark == 'dark') {
+					if (this.darkColor != '') return getDefaultColor(this.darkColor)
+					return getDefaultColor(xConfig.sheetDarkColor)
+				}
+				return getDefaultColor(this.color)
+			},
+			_activeFontColor() : string {
+				if (this.activeFontColor == "") return getDefaultColor(xConfig.color)
+				return getDefaultColor(this.activeFontColor)
+			},
+			_fontColor() : string {
+				if (xConfig.dark == 'dark') {
+					if (this.darkFontColor != '') return getDefaultColor(this.darkFontColor)
+					return "#ffffff"
+				}
+				return getDefaultColor(this.fontColor)
+			},
+
+			_fontSize() : string {
+				return checkIsCssUnit(this.fontSize, xConfig.unit)
+			},
+			_showrender():boolean{
+				if(this.render){
+					return this.show
+				}
+				return true;
+			}
+		},
+		methods: {
+			pushDataToParent() {
+				let t = this;
+				let parent : XDropdownMenuComponentPublicInstance | null = null;
+				try {
+					parent = this.$parent as XDropdownMenuComponentPublicInstance | null
+				} catch (_e) {
+					console.error("x-dropdown-item：本组件必须放置在x-dropdown-menu中的直接子节点，不可单独或者嵌套使用。")
+				}
+
+				if (parent == null) return;
+
+				// #ifdef WEB
+				if (typeof parent?.addMenu != 'function') return;
+				// #endif
+
+				clearTimeout(this.tid)
+				this.tid = setTimeout(function () {
+					parent!.addMenu(t as XDropdownItemComponentPublicInstance, {
+						id: t.id as string,
+						title: t.title as string,
+						keyName: t.keyName as string,
+						icon: t.icon as string,
+						activeIcon: t.activeIcon as string,
+						fontColor: t._fontColor as string,
+						activeFontColor: t._activeFontColor as string,
+						fontSize: t._fontSize as string,
+						isBtn: t.isBtn as boolean
+					} as XDROPDOWN_LISTITEM_INFO_TYPE)
+				}, 5);
+			},
+			removeSelf() {
+				let parent : XDropdownMenuComponentPublicInstance | null = null;
+				try {
+					parent = this.$parent as XDropdownMenuComponentPublicInstance | null
+				} catch (_e) {
+					console.error("x-dropdown-item：本组件必须放置在x-dropdown-menu中的直接子节点，不可单独或者嵌套使用。")
+				}
+
+				if (parent != null) {
+					// #ifdef WEB
+					if (typeof parent?.delMenu != 'function') return;
+					// #endif
+					parent!.delMenu(this.id as string)
+				}
+			},
+			open() {
+				this.show = true;
+			},
+			close() {
+				this.show = false;
+			},
+		},
+	}
+</script>
+<template>
+	<!-- :class="show?'x-dropdown-itemOn':'x-dropdown-itemOff'" -->
+	<!-- :class="[
+			show&&!render?'xDrodownItemOn':'',
+			!show&&!render?'xDrodownItemOff':'',
+		]" -->
+	<view v-if="_showrender" @click.stop="" :ref="id" :id="id" class="x-dropdown-item" :class="show?'x-dropdown-itemOn':'x-dropdown-itemOff'">
+		<view class="x-dropdown-itemWrap" 
+		:style="{backgroundColor:_color}" 
+		>
+			<!--
+			@slot 默认插槽，弹层内容。 
+			 -->
+			<slot></slot>
+		</view>
+	</view>
+</template>
+<style scoped>
+	.x-dropdown-item {
+		transition-duration: 250ms;
+		transition-property: transform , opacity;
+		transition-timing-function: cubic-bezier(.18, .89, .32, 1);
+		transform: translateY(-100%);
+		position: absolute;
+		top:0px;
+		left:0;
+		width:100%;
+	}
+	.x-dropdown-itemOn{
+		transform: translateY(0%);
+	}
+	.x-dropdown-itemOff{
+		transition-duration: 50ms;
+		transform: translateY(-100%);
+	}
+	.x-dropdown-itemWrap{
+		transition-duration: 250ms;
+		transition-property: height;
+		transition-timing-function: cubic-bezier(.18, .89, .32, 1);
+		pointer-events: auto;
+		padding: 12px;
+		border-radius: 0px 0px 12px 12px;
+	}
+	.xDrodownItemOn {
+		display: flex;
+	}
+	.xDrodownItemOff {
+		display: none;
+	}
+</style>

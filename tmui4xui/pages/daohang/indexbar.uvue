@@ -1,0 +1,52 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet style="flex:1" :padding="['24','0','0','0']">
+			<x-indexbar :list="list" height="500" cellHeight="72">
+				<template v-slot:default="{index,currentIndex,current}">
+					<view class="flex flex-row flex-row-center-start" style="border-bottom: 1px solid rgba(100, 100, 100, 0.1);height:72px;">
+						<image class="flex-shrink" :src="`https://store.tmui.design/api_v2/public/random_picture?row=${index}`" style="width:50px;height:50px;border-radius: 50px;"></image>
+						<text :style="{color:isDark?'#ffffff':'#000000'}" class="ml-20">{{(current as UTSJSONObject).getAny("name")}}</text>
+					</view>
+				</template>
+			</x-indexbar>
+		</x-sheet>
+		
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+
+</template>
+
+<script>
+	// 示例参数数据,请vip用户到demo中下载查询数据样例.
+	import {dataslist} from "./indexdata.uts"
+	import { xStore } from "@/uni_modules/tmx-ui/index.uts";
+	
+	export default {
+		data() {
+			return {
+				list:dataslist as UTSJSONObject[]
+			};
+		},
+		computed:{
+			isDark:():boolean=>xStore.xConfig.dark=='dark'
+		},
+		onLoad() {
+			
+		},
+		methods:{
+			
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

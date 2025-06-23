@@ -1,0 +1,219 @@
+var nowTouchType = 'head'
+var touchmoevIsOver = true;
+var isHover = true;
+var isMoving = false;
+var _test_x = 0
+var _test_y = 0
+var _x = 0
+var _y = 0
+var _realY = 0
+var _realYDiff = 0
+var _scrollDetail_y_start = 0
+var disabledScolly = false;
+var defaultTranformYValue = 'matrix(1, 0, 0, 1, 0, 0) '
+var opts = {
+	maxHeight: 650,
+	size: 480,
+	height: 0,
+	threshold: 0,
+	duration: 300,
+	status: 'close',
+	triggerDy: 180,
+	_scrollDetail_y:0
+}
+
+function eventTransform_start(evt, ins) {
+	isHover = true;
+	_scrollDetail_y_start = opts._scrollDetail_y
+	disabledScolly = false
+	isMoving = false
+	
+	if (opts.status == 'open') {
+		_y = evt.y - opts.maxHeight
+
+	} else if (opts.status == 'close') {
+		_y = evt.y - opts.size
+	}
+	_realY = evt.y
+	_test_y = evt.y;
+	ins.selectComponent('.xFloatDrawerWrapContent').setStyle({
+		'transition-duration': '0ms',
+		'transform': defaultTranformYValue
+	})
+	ins.callMethod('callEmits', {
+		disabledScolly: disabledScolly,
+		isMoving: isMoving
+	})
+}
+
+function eventTransform_move(evt, ins) {
+	var ele = ins.selectComponent('.xFloatDrawerWrapContent')
+	
+	var dy = evt.y - _test_y;
+	
+	if(dy<0){
+		disabledScolly = false;
+		isMoving = false;
+		opts._scrollDetail_y = 0
+	}else{
+		opts._scrollDetail_y = 0
+	}
+	
+	ins.callMethod('callEmits', {
+		disabledScolly: disabledScolly,
+		isMoving: isMoving
+	})
+
+	if(disabledScolly) return true;
+	var movey = evt.y - _y
+	if (movey <= opts.maxHeight) {
+		movey = opts.maxHeight - (opts.maxHeight - movey) * opts.threshold
+	} else if (movey >= opts.size) {
+		movey = opts.size + (movey - opts.size) * opts.threshold
+	}
+
+	ele.setStyle({
+		'transition-duration': '0ms',
+		'transform': 'matrix(1, 0, 0, 1, 0, ' + movey + ')'
+	})
+
+	_realYDiff = evt.y - _realY
+	var ratioValue = (movey - opts.size) / (opts.maxHeight - opts.size) * 100;
+	ins.callMethod('callEmits', {
+		name: 'heightChange',
+		args: ratioValue
+	})
+}
+
+function eventTransform_end(evt, ins) {
+	isHover = false;
+	var ele = ins.selectComponent('.xFloatDrawerWrapContent')
+	var duration = opts.duration
+	var offset = 0
+	if (_realY - evt.y == 0) return;
+	if (_realYDiff >= opts.triggerDy) {
+		offset = opts.size
+		opts.status = 'close';
+		ins.callMethod('callEmits', 'beforeClose')
+		ins.callMethod('callEmits', {
+			name: 'heightChange',
+			args: 0
+		})
+	} else if (_realYDiff < (opts.triggerDy * -1)) {
+		offset = opts.maxHeight
+		opts.status = 'open';
+		ins.callMethod('callEmits', {
+			name: 'heightChange',
+			args: 100
+		})
+	} else {
+		if (opts.status === 'open') {
+			offset = opts.maxHeight
+			ins.callMethod('callEmits', {
+				name: 'heightChange',
+				args: 100
+			})
+
+		} else {
+			offset = opts.size
+			ins.callMethod('callEmits', {
+				name: 'heightChange',
+				args: 0
+			})
+		}
+	}
+
+	ins.callMethod('setOpts', opts)
+	ele.setStyle({
+		'transition-duration': duration + 'ms',
+		'transform': 'matrix(1, 0, 0, 1, 0, ' + offset + ')'
+	})
+
+}
+
+
+function setTatus(status,instance){
+	var ele = instance.selectComponent('.xFloatDrawerWrapContent')
+	var offset = 0
+	var duration = opts.duration
+	if (status === 'open') {
+		offset = opts.maxHeight
+	} else {
+		offset = opts.size
+	}
+	
+	ele.setStyle({
+		'transition-duration': duration + 'ms',
+		'transform': 'matrix(1, 0, 0, 1, 0, ' + offset + ')'
+	})
+}
+function mStartHead(evt, ins) {
+
+
+
+}
+
+function mMoveHead(evt, ins) {
+
+}
+
+function mEndHead(evt, ins) {
+
+}
+
+function mStart(evt, ins) {
+	_test_x = evt.changedTouches[0].clientX;
+	_test_y = evt.changedTouches[0].clientY;
+	// var otps = ins.callMethod('getNowOpts')
+	var ele = ins.selectComponent('.xFloatDrawerWrapContent')
+	opts = ele.getDataset().opts;
+	defaultTranformYValue = ele.getComputedStyle(['transform']).transform
+	isMoving = false
+	ins.callMethod('callEmits', {
+		name: 'movestart',
+		args: null
+	})
+	eventTransform_start({
+		x: _test_x,
+		y: _test_y
+	}, ins);
+}
+
+function mMove(evt, ins) {
+	isMoving = true
+
+	eventTransform_move({
+		x: evt.changedTouches[0].clientX,
+		y: evt.changedTouches[0].clientY
+	}, ins);
+
+
+	return false
+}
+
+function mEnd(evt, ins) {
+	ins.callMethod('callEmits', {
+		name: 'moveend',
+		args: null
+	})
+	eventTransform_end({
+		x: evt.changedTouches[0].clientX,
+		y: evt.changedTouches[0].clientY
+	}, ins)
+}
+
+module.exports = {
+	mStart: mStart,
+	mMove: mMove,
+	mEnd: mEnd,
+	mStartHead: mStartHead,
+	mMoveHead: mMoveHead,
+	mEndHead: mEndHead,
+	propObserver: function(newValue, oldValue, ownerInstance, instance) {
+		var ele = ownerInstance.selectComponent('.xFloatDrawerWrapContent')
+		opts = ele.getDataset().opts;
+		if(newValue!=undefined&&oldValue!=undefined&&newValue!=oldValue){
+			setTatus(newValue,ownerInstance)
+		}
+	}
+}

@@ -1,0 +1,845 @@
+<!-- #ifdef MP-WEIXIN -->
+<!-- @vue-docgen-ignore-next-line -->
+<script module="xfs" lang="wxs" src="./xfs.wxs"></script>
+<!-- #endif -->
+<script lang="ts">
+	import { type PropType } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit, rpx2px } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+
+	/**
+	 * @name 双向滑块 xSliderDouble
+	 * @description 此为双向滑块,单向滑块见:x-slider
+	 * @page /pages/index/slider
+	 * @category 表单组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | x | ☑️ | 4.14+ | 1.0.0 |
+	 */
+	export default {
+		data() {
+			return {
+				percentage: [0, 0],
+				_val: [0, 0],
+				_moving_val: [0, 0],
+				boxwidth: 0,
+				boxheight: 0,
+				id: ("xSlider" + getUid()) as string,
+				btnId1: ("xSlider-1-" + getUid()) as string,
+				btnId2: ("xSlider-2-" + getUid()) as string,
+				bgId: ("xSlider-2-" + getUid()) as string,
+				_x: [0, 0],
+				_now_x: [0, 0],
+				boxLeft: [0, 0],
+				isMoveing: false,
+				/**当前滑动的哪个按钮索引。*/
+				isMoveIndex: 0,
+			}
+		},
+		emits: [
+			/**
+			 * 拖动变换时触发
+			 * @param {number[]} value - 当前的值
+			 */
+			'change', 'update:modelValue'],
+		props: {
+			/**
+			 * 等同v-model当前值
+			 */
+			modelValue: {
+				type: Array as PropType<number[]>,
+				default: [0, 0]
+			},
+			/**
+			 * 最大值
+			 */
+			max: {
+				type: Number,
+				default: 100
+			},
+			/**
+			 * 最不值
+			 */
+			min: {
+				type: Number,
+				default: 0
+			},
+			/**
+			 * 是否禁用
+			 */
+			disabled: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 步进值
+			 */
+			step: {
+				type: Number,
+				default: 1
+			},
+			/**
+			 * 步进值刻度值
+			 * 比如max-min为100总值,刻度为20,那么setpCount就是4,
+			 */
+			stepCount: {
+				type: Number,
+				default: 0
+			},
+			/**
+			 * 激活时的颜色，空值取全局值
+			 */
+			color: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 默认的背景色
+			 */
+			bgColor: {
+				type: String,
+				default: "info"
+			},
+			/**
+			 * 滑条的大小
+			 */
+			size: {
+				type: String,
+				default: "3"
+			},
+			/**
+			 * 滑块的尺寸
+			 */
+			btnSize: {
+				type: String,
+				default: "24"
+			},
+			/**
+			 * 滑条的圆角。
+			 * 为空值时，取全局的进度条值
+			 */
+			round: {
+				type: String,
+				default: ""
+			},
+
+			/**
+			 * 是否显示进度条上的label文本
+			 */
+			showLabel: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 文本颜色
+			 */
+			labelColor: {
+				type: String,
+				default: "black"
+			},
+			/**
+			 * 文本文字大小
+			 */
+			labelFontSize: {
+				type: String,
+				default: "12"
+			},
+
+		},
+		computed: {
+			_stepCount() : number {
+				return this.stepCount;
+			},
+			_round() : string {
+				if (this.round == "") {
+					return checkIsCssUnit(xConfig.progressRadius, xConfig.unit)
+				}
+				return checkIsCssUnit(this.round, xConfig.unit)
+			},
+			_size() : string {
+				return checkIsCssUnit(this.size, xConfig.unit)
+			},
+			_labelColor() : string {
+				return getDefaultColor(this.labelColor)
+			},
+			_labelFontSize() : string {
+				return checkIsCssUnit(this.labelFontSize, xConfig.unit)
+			},
+			_showLabel() : boolean {
+				return this.showLabel
+			},
+			_color() : string {
+				if (this.color == "") return getDefaultColor(xConfig.color)
+				return getDefaultColor(this.color)
+			},
+			_bgColor() : string {
+				return getDefaultColor(this.bgColor)
+			},
+			_max() : number {
+				return this.max
+			},
+			_min() : number {
+				return this.min
+			},
+			_step() : number {
+
+				let val = this.step / (this._max - this._min) * 100
+				return this.ProToWidthByval(val)
+			},
+			_disabled() : boolean {
+				return this.disabled
+			},
+			_btnSize() : number {
+				let p = parseInt(this.btnSize);
+				let covertp = checkIsCssUnit(p,xConfig.unit)
+				p = parseFloat(covertp)
+				return Math.floor(p)
+			},
+			_bgLeft() : number {
+				let minleft = Math.min(this.percentage[0], this.percentage[1])
+				return this.ProToWidthByval(minleft) + 5
+			},
+			_bgWidth() : number {
+				let minwidth = Math.abs(this.percentage[0] - this.percentage[1])
+				return this.ProToWidthByval(minwidth) + 5
+			}
+		},
+		mounted() {
+			this._val = this.modelValue
+			this._moving_val = this.modelValue;
+			this.percentage = [this.valueToPro(this._val[0]), this.valueToPro(this._val[1])];
+			this.getNodes();
+
+			// 兼容电脑端
+			// #ifdef WEB
+			window.addEventListener('mouseup', this.mmEnd);
+			window.addEventListener('mousemove', this.mmMove);
+			// #endif
+
+			uni.$on("onResize", this.getNodes)
+		},
+		beforeUnmount() {
+			// 兼容电脑端
+			// #ifdef WEB
+			window.removeEventListener('mouseup', this.mmEnd);
+			window.removeEventListener('mousemove', this.mmMove);
+			// #endif
+			uni.$off("onResize", this.getNodes)
+		},
+		watch: {
+			modelValue(newval : number[]) {
+				if (newval.join('') == this._val.join('')) return
+				this._val = newval
+				this._moving_val = newval
+				this.percentage = [this.valueToPro(this._val[0]), this.valueToPro(this._val[1])];
+				this.getNodes()
+			}
+		},
+		methods: {
+			// #ifdef MP-WEIXIN
+			setOpts(opts) {
+				if (!opts) return;
+				if (!opts.boxLeft) return;
+				if (opts.boxLeft.lenght != 2) return;
+				console.log(opts.boxLeft)
+				let x = opts.x
+				let index = opts.index
+				this.isMoveIndex = opts.isMoveIndex
+				this.boxLeft = opts.boxLeft
+			},
+			setMoveChanges(opts) {
+				if (!opts) return;
+				let x = opts.x
+				let index = opts.index
+				if (index == 0) {
+					this.percentage = [Math.ceil(this.widthToPro(x)), this.percentage[1]];
+					let nowval = this.proToValue(this.percentage[0]);
+					if (this.step > 0) {
+						nowval = this.getNearestTick(this.max, this.min, this.step, nowval);
+					}
+					this._moving_val = [nowval, this._moving_val[1]];
+					/**
+					 * 拖动变换时触发
+					 * @param {number[]} value 当前的值
+					 */
+					this.$emit('change', this._moving_val)
+				} else {
+					this.percentage = [this.percentage[0], Math.ceil(this.widthToPro(x))];
+					let nowval = this.proToValue(this.percentage[1]);
+					if (this.step > 0) {
+						nowval = this.getNearestTick(this.max, this.min, this.step, nowval);
+					}
+					this._moving_val = [this._moving_val[0], nowval];
+					/**
+					 * 拖动变换时触发
+					 * @param {number[]} value 当前的值
+					 */
+					this.$emit('change', this._moving_val)
+				}
+
+			},
+			setMoveEnd() {
+				this.isMoveing = false
+				this.isMoveIndex = -1
+				this._val = [this.proToValue(this.percentage[0]), this.proToValue(this.percentage[1])];
+				this.boxLeft = [this.ProToWidthByval(this.percentage[0]), this.ProToWidthByval(this.percentage[1])]
+				/**
+				 * 松开拖动按钮时触发同步值，等同v-model
+				 * @param {number[]} value 当前的值
+				 */
+				this.$emit('update:modelValue', this._val)
+			},
+			// #endif
+			
+			getFontSize(k:string):string{
+				return checkIsCssUnit(k,xConfig.unit)
+			},
+
+			mapValue(value : number, originalMin : number, originalMax : number, newMin : number, newMax : number) : number {
+				// 确保 value 在原始范围内
+				if (value < originalMin) value = originalMin;
+				if (value > originalMax) value = originalMax;
+
+				// 计算映射后的值
+				const originalRange = originalMax - originalMin;
+				const newRange = newMax - newMin;
+				const scale = newRange / originalRange;
+				return newMin + (value - originalMin) * scale;
+			},
+			getNodes() {
+				uni.createSelectorQuery().in(this)
+					.select(".xSlider")
+					.boundingClientRect().exec((ret) => {
+						let nodeinfo = ret[0] as NodeInfo;
+						this.boxwidth = nodeinfo.width!;
+						this.boxheight = nodeinfo.height!;
+						this.boxLeft = [this.ProToWidthByval(this.percentage[0]), this.ProToWidthByval(this.percentage[1])];
+						// #ifdef MP-WEIXIN
+						let node1 = this.$refs[this.btnId1] as UniElement
+						let node2 = this.$refs[this.btnId2] as UniElement
+						let bgNode = this.$refs['bgId'] as UniElement
+						node1.style.setProperty("left", this.boxLeft[0] + "px")
+						node2.style.setProperty("left", this.boxLeft[1] + "px")
+						let minwidth = Math.abs(this.boxLeft[0] - this.boxLeft[1]) + 5
+						let minleft = Math.min(this.boxLeft[0], this.boxLeft[1]) + 5
+						bgNode.style.setProperty("width", `${minwidth}px`)
+
+						bgNode.style.setProperty("left", `${minleft}px`)
+						// #endif
+					})
+			},
+			/**
+			 * 比例转值
+			 */
+			proToValue(val : number) : number {
+				const minValue = Math.min(this._min, this._max);
+				const maxValue = Math.max(this._min, this._max);
+				if (minValue === maxValue) {
+					return minValue;
+				}
+				return Math.ceil((val / 100) * (maxValue - minValue) + minValue);
+			},
+			/**
+			 * 值转比例
+			 */
+			valueToPro(val : number) : number {
+				let min = Math.min(this._min, this._max);
+				let max = Math.max(this._min, this._max);
+				let realval = Math.max(Math.min(val, max), min);
+				return (realval - min) / (max - min) * 100;
+			},
+			// 位置宽转比例
+			widthToPro(val : number) : number {
+				let maxWidth = this.boxwidth - this._btnSize;
+				let bl = val / maxWidth;
+				return bl * 100
+			},
+			// 比例转位置.
+			ProToWidthByval(percentage : number) : number {
+				let maxWidth = this.boxwidth - this._btnSize;
+				let val = maxWidth * percentage / 100;
+				return Math.ceil(val)
+			},
+			getNearestTick(max : number, min : number, step : number, nowValue : number) : number {
+				// 确保 nowValue 在 min 和 max 之间
+				if (nowValue < min) {
+					return min;
+				}
+				if (nowValue > max) {
+					return max;
+				}
+
+				// 计算最近的刻度值
+				const ticks = Math.round((nowValue - min) / step);
+				const nearestValue = min + ticks * step;
+
+				// 确保 nearestValue 不超过 max
+				return Math.min(nearestValue, max);
+			},
+			mStart(evt : TouchEvent, index : number) {
+				if (this._disabled) return
+				this.isMoveIndex = index
+				let node = this.$refs[this.btnId1] as Element
+				if (index == 1) {
+					node = this.$refs[this.btnId2] as Element
+				}
+				let leftpos = parseInt(node.style.getPropertyValue("left")! as string)
+				if (index == 0) {
+					this._x = [evt.changedTouches[0].clientX - leftpos, this._x[1]]
+					this._now_x = [evt.changedTouches[0].clientX, this._now_x[1]]
+				} else if (index == 1) {
+					this._x = [this._x[0], evt.changedTouches[0].clientX - leftpos]
+					this._now_x = [this._now_x[0], evt.changedTouches[0].clientX]
+				}
+
+				this.isMoveing = true
+			},
+			/**
+			 * 判断b离a和c的距离返回最近的值
+			 */
+			isLeftOrRight(a : number, b : number, c : number, diffX : number) : number {
+				if (diffX > 0) {
+					return c;
+				} else if (diffX < 0) {
+					return a;
+				}
+				return b;
+			},
+			mMove(evt : TouchEvent, index : number) {
+				evt.stopPropagation()
+				evt.preventDefault()
+				if (this._disabled) return
+				this.isMoveIndex = index
+				let node = this.$refs[this.btnId1] as Element
+				if (index == 1) {
+					node = this.$refs[this.btnId2] as Element
+				}
+				let x = evt.changedTouches[0].clientX - this._x[index]
+				let diffX = evt.changedTouches[0].clientX - this._now_x[index]
+				let maxX = this.boxwidth - this._btnSize;
+				if (this.step > 0) {
+					let step = this._step;
+					let distanceToMove = Math.abs(diffX);
+					let qz = Math.floor(x / step) * step;
+
+					if (distanceToMove > 1) {
+						x = this.isLeftOrRight(qz - step, x, qz + step, diffX);
+					}
+				}
+
+				x = Math.max(Math.min(maxX, x), 0)
+
+				// #ifdef APP-ANDROID || APP-IOS
+				node.style.setProperty("left", `${x}px`)
+
+				// #endif
+
+
+
+				// #ifdef WEB
+				this.boxLeft[index] = x
+				// this.bgWidth = x+4
+				// #endif
+
+
+
+				if (index == 0) {
+					this.percentage = [Math.ceil(this.widthToPro(x)), this.percentage[1]];
+					let nowval = this.proToValue(this.percentage[0]);
+					if (this.step > 0) {
+						nowval = this.getNearestTick(this.max, this.min, this.step, nowval);
+					}
+					this._moving_val = [nowval, this._moving_val[1]];
+					/**
+					 * 拖动变换时触发
+					 * @param {number[]} value 当前的值
+					 */
+					this.$emit('change', this._moving_val)
+				} else {
+					this.percentage = [this.percentage[0], Math.ceil(this.widthToPro(x))];
+					let nowval = this.proToValue(this.percentage[1]);
+					if (this.step > 0) {
+						nowval = this.getNearestTick(this.max, this.min, this.step, nowval);
+					}
+					this._moving_val = [this._moving_val[0], nowval];
+					/**
+					 * 拖动变换时触发
+					 * @param {number[]} value 当前的值
+					 */
+					this.$emit('change', this._moving_val)
+				}
+			},
+			mEnd(_ : TouchEvent) {
+				this.isMoveing = false
+				this.isMoveIndex = -1
+				this._val = [this.proToValue(this.percentage[0]), this.proToValue(this.percentage[1])];
+				this.boxLeft = [this.ProToWidthByval(this.percentage[0]), this.ProToWidthByval(this.percentage[1])]
+				/**
+				 * 松开拖动按钮时触发同步值，等同v-model
+				 * @param {number[]} value 当前的值
+				 */
+				this.$emit('update:modelValue', this._val)
+			},
+
+
+			// 滑动条上被点击.
+			sliderClick(evt : UniPointerEvent) {
+				
+				if (this._disabled) {
+					return;
+				}
+				
+				let node = this.$refs['xSlider'] as UniElement
+				node.getBoundingClientRectAsync()!.then((result : DOMRect | null) => {
+					if (result != null) {
+						const leftpos = (result as DOMRect).left
+						const maxwidth = (result as DOMRect).width - this._btnSize
+						let diffX = evt.clientX - leftpos
+						diffX = Math.max(0, Math.min(diffX, maxwidth))
+						// 需要判断离哪个近,就设置哪个索引
+						const indexVal_1 = this.proToValue(this.percentage[0])
+						const indexVal_2 = this.proToValue(this.percentage[1])
+						let index = 0
+						const distanceToA = Math.abs(diffX - indexVal_1);
+						const distanceToB = Math.abs(diffX - indexVal_2);
+						if (distanceToB < distanceToA) {
+							index = 1
+						}
+						let val = Math.ceil(this.widthToPro(diffX));
+						let percentage = Math.ceil(this.widthToPro(diffX));
+						let nowval = this.proToValue(percentage);
+						this._val.splice(index,1,val)
+						this._moving_val.splice(index,1,val) 
+						this.boxLeft.splice(index,1,diffX) 
+						this.percentage.splice(index,1,percentage) 
+						
+						let node1 = this.$refs[this.btnId1] as UniElement
+						let node2 = this.$refs[this.btnId2] as UniElement
+						let bgNode = this.$refs['bgId'] as UniElement
+						node1.style.setProperty("left", this.boxLeft[0] + "px")
+						node2.style.setProperty("left", this.boxLeft[1] + "px")
+						let minwidth = Math.abs(this.boxLeft[0] - this.boxLeft[1]) + 5
+						let minleft = Math.min(this.boxLeft[0], this.boxLeft[1]) + 5
+						bgNode.style.setProperty("width", `${minwidth}px`)
+						
+						bgNode.style.setProperty("left", `${minleft}px`)
+						
+						this.$emit('update:modelValue', this._val)
+						this.$emit('change', this._val)
+				
+					}
+				})
+			},
+			// #ifdef WEB
+
+			mmStart(evt : UniMouseEvent, index : number) {
+				if (this._disabled) return
+				this.isMoveIndex = index
+				window.sliderId = this.id;
+				let node = this.$refs[this.btnId1] as Element
+				if (index == 1) {
+					node = this.$refs[this.btnId2] as Element
+				}
+				let leftpos = parseInt(node.style.getPropertyValue("left")! as string)
+				if (index == 0) {
+					this._x = [evt.clientX - leftpos, this._x[1]]
+					this._now_x = [evt.clientX, this._now_x[1]]
+				} else if (index == 1) {
+					this._x = [this._x[0], evt.clientX - leftpos]
+					this._now_x = [this._now_x[0], evt.clientX]
+				}
+
+				this.isMoveing = true
+			},
+			mmMove(evt : UniMouseEvent, index : number) {
+				// #ifdef WEB
+				evt.preventDefault();
+				evt.stopPropagation();
+				if (window.sliderId != this.id) return;
+				if (this._disabled || !this.isMoveing) return
+				index = this.isMoveIndex
+				let node = this.$refs[this.btnId1] as Element
+				if (index == 1) {
+					node = this.$refs[this.btnId2] as Element
+				}
+				let x = evt.clientX - this._x[index]
+				let diffX = evt.clientX - this._now_x[index]
+				let maxX = this.boxwidth - this._btnSize;
+				if (this.step > 0) {
+					let step = this._step;
+					let distanceToMove = Math.abs(diffX);
+					let qz = Math.floor(x / step) * step;
+
+					if (distanceToMove > 1) {
+						x = this.isLeftOrRight(qz - step, x, qz + step, diffX);
+					}
+				}
+
+				x = Math.max(Math.min(maxX, x), 0)
+
+				this.boxLeft[index] = x
+
+				if (index == 0) {
+					this.percentage = [Math.ceil(this.widthToPro(x)), this.percentage[1]];
+					let nowval = this.proToValue(this.percentage[0]);
+					if (this.step > 0) {
+						nowval = this.getNearestTick(this.max, this.min, this.step, nowval);
+					}
+					this._moving_val = [nowval, this._moving_val[1]];
+					/**
+					 * 拖动变换时触发
+					 * @param {number[]} value 当前的值
+					 */
+					this.$emit('change', this._moving_val)
+				} else {
+					this.percentage = [this.percentage[0], Math.ceil(this.widthToPro(x))];
+					let nowval = this.proToValue(this.percentage[1]);
+					if (this.step > 0) {
+						nowval = this.getNearestTick(this.max, this.min, this.step, nowval);
+					}
+					this._moving_val = [this._moving_val[0], nowval];
+					/**
+					 * 拖动变换时触发
+					 * @param {number[]} value 当前的值
+					 */
+					this.$emit('change', this._moving_val)
+				}
+				// #endif
+			},
+			mmEnd(evt : UniMouseEvent) {
+				if (window.sliderId != this.id) return;
+				this.isMoveing = false
+				this.isMoveIndex = -1
+				/**
+				 * 松开拖动按钮时触发同步值，等同v-model
+				 * @param {number[]} value 当前的值
+				 */
+				this.$emit('update:modelValue', [this.proToValue(this.percentage[0]), this.proToValue(this.percentage[1])])
+			}
+			// #endif
+		},
+	}
+</script>
+<template>
+	<view class="xSliderBox">
+
+		<view :id="id" class="xSlider" ref="xSlider" :style="{height:_btnSize+'px'}">
+			<view @click="sliderClick" class="xSliderBgBox" :style="{backgroundColor:_bgColor,height:_size,borderRadius:_round,flex:'1'}">
+				<view class="xSliderBg" ref="bgId" :id="bgId"
+					:style="{backgroundColor:_color,left:`${_bgLeft}px`,borderRadius:_round,width:`${_bgWidth}px`}">
+				</view>
+			</view>
+			<view class="xSliderBgKedu" :style="{paddingRight:_btnSize+'px'}">
+				<view></view>
+				<view class="xSliderBgKeduKeyDuitem"
+					:style="{transform:`translateX(${_btnSize/2}px)`,left:((boxwidth-_btnSize)/_stepCount*(index+1))+'px'}"
+					v-for="(item,index) in _stepCount" :key="index"></view>
+				<view></view>
+			</view>
+			<!-- #ifdef WEB || MP-WEIXIN -->
+			<view :id="btnId1" :ref="btnId1" <!-- #ifdef WEB -->
+				@touchstart="mStart($event as TouchEvent,0)"
+				@touchmove="mMove($event as TouchEvent,0)"
+				@touchend="mEnd($event as TouchEvent)"
+				@mousedown="mmStart($event as UniMouseEvent,0)"
+				@mousemove="mmMove($event as UniMouseEvent,0)"
+				@mouseup="mmEnd($event as UniMouseEvent)"
+				<!-- #endif -->
+
+				<!-- #ifdef MP-WEIXIN -->
+				@touchstart.stop="xfs.mStart"
+				@touchmove.stop="xfs.mMove"
+				@touchend="xfs.mEnd"
+				:data-index="0"
+				:data-bgid="bgId"
+				:data-opts="{
+				disabled:_disabled,
+				max:max,
+				min:min,
+				step:step,
+				_step:_step,
+				btnSize:_btnSize,
+				boxwidth:boxwidth,
+				boxLeft:boxLeft
+				}"
+
+				<!-- #endif -->
+				:style="{left:boxLeft[0]+'px',height:_btnSize+'px',width:_btnSize+'px',backgroundColor:_color,zIndex:isMoveIndex==0?10:1}"
+				:class="[isMoveing&&isMoveIndex==0?'xSliderBtnHover':'']"
+				class="xSliderBtn">
+			</view>
+			<!-- #endif -->
+
+			<!-- #ifdef APP -->
+			<view :id="btnId1" :ref="btnId1" @touchstart="mStart($event as TouchEvent,0)"
+				@touchmove="mMove($event as TouchEvent,0)" @touchend="mEnd($event as TouchEvent)"
+				:style="{left:boxLeft[0]+'px',height:_btnSize+'px',width:_btnSize+'px',backgroundColor:_color,zIndex:isMoveIndex==0?10:1}"
+				:class="[isMoveing&&isMoveIndex==0?'xSliderBtnHover':'']" class="xSliderBtn"></view>
+			<!-- #endif -->
+
+			<!-- #ifdef WEB || MP-WEIXIN -->
+			<view :id="btnId2" :ref="btnId2" <!-- #ifdef WEB -->
+				@touchstart="mStart($event as TouchEvent,1)"
+				@touchmove="mMove($event as TouchEvent,1)"
+				@touchend="mEnd($event as TouchEvent)"
+				@mousedown="mmStart($event as UniMouseEvent,1)"
+				@mousemove="mmMove($event as UniMouseEvent,1)"
+				@mouseup="mmEnd($event as UniMouseEvent)"
+				<!-- #endif -->
+
+				<!-- #ifdef MP-WEIXIN -->
+				@touchstart.stop="xfs.mStart2"
+				@touchmove.stop="xfs.mMove2"
+				@touchend="xfs.mEnd2"
+				:data-index="1"
+				:data-bgid="bgId"
+				:data-opts="{
+				disabled:_disabled,
+				max:max,
+				min:min,
+				step:step,
+				_step:_step,
+				btnSize:_btnSize,
+				boxwidth:boxwidth,
+				boxLeft:boxLeft
+				}"
+
+				<!-- #endif -->
+
+				:style="{left:boxLeft[1]+'px',height:_btnSize+'px',width:_btnSize+'px',backgroundColor:_color,zIndex:isMoveIndex==1?10:1}"
+				:class="[isMoveing&&isMoveIndex==1?'xSliderBtnHover':'']"
+				class="xSliderBtn xSliderBtn2">
+			</view>
+
+			<!-- #endif -->
+
+			<!-- #ifdef APP -->
+			<view :id="btnId2" :ref="btnId2" @touchstart="mStart($event as TouchEvent,1)"
+				@touchmove="mMove($event as TouchEvent,1)" @touchend="mEnd($event as TouchEvent)"
+				:style="{left:boxLeft[1]+'px',height:_btnSize+'px',width:_btnSize+'px',backgroundColor:_color,zIndex:isMoveIndex==1?10:1}"
+				:class="[isMoveing&&isMoveIndex==1?'xSliderBtnHover':'']" class="xSliderBtn"></view>
+
+			<!-- #endif -->
+
+
+
+		</view>
+		<!--
+		 @slot 右插槽
+		 @prop {number[]} value - 当前的值
+		 @prop {number[]} percentage - 当前的百分比值
+		 -->
+		<slot name="right" :value="_val" :percentage="percentage">
+			<view v-if="showLabel" class="xSliderBoxRight" :style="{width:getFontSize('50')}">
+				<x-text :color="(isMoveing?_color:_labelColor)" :font-size="_labelFontSize"
+					:style="{textAlign:'right'}">{{_moving_val.join('-')}}</x-text>
+			</view>
+		</slot>
+	</view>
+</template>
+<style scoped>
+	.xSliderBgBox {
+		/* #ifdef MP-WEIXIN||WEB */
+		overflow: hidden;
+		box-sizing: border-box;
+		/* #endif */
+	}
+
+	.xSliderBox {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.xSliderBoxRight {
+		/* width: 50px; */
+
+	}
+
+	.xSliderBoxLeft {
+		margin-right: 10px;
+	}
+
+	.xSlider {
+		flex: 1;
+		position: relative;
+		display: flex;
+		flex-direction: row;
+		justify-content: flex-start;
+		align-items: center;
+	}
+
+	.xSliderBtn {
+
+		position: absolute;
+		left: 0px;
+		top: 0px;
+		border: 4px solid #ffffff;
+		box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+		border-radius: 100px;
+
+		/* #ifdef WEB||MP-WEIXIN */
+		cursor: grab;
+		box-sizing: border-box;
+		/* #endif */
+	}
+
+	.xSliderBtnHover {
+		border: 2px solid #ffffff;
+	}
+
+	/* #ifdef WEB */
+	.xSliderBtn:active {
+		cursor: grabbing;
+	}
+
+	/* #endif */
+
+
+	.xSliderBg {
+		height: 100%;
+		display: flex;
+		flex-direction: row;
+		justify-content: flex-end;
+		align-items: center;
+		pointer-events: none;
+		position: relative;
+	}
+
+	.xSliderBgKedu {
+		height: 100%;
+		display: flex;
+		flex-direction: row;
+		justify-content: flex-start;
+		align-items: center;
+		width: 100%;
+		position: absolute;
+		z-index: 1;
+		pointer-events: none;
+	}
+
+	.xSliderBgKeduKeyDuitem {
+		width: 5px;
+		height: 5px;
+		border-radius: 5px;
+		background-color: rgba(0, 0, 0, 0.1);
+		transform: translateX(5px);
+		position: absolute;
+	}
+
+	.xSliderBtn {
+		height: 100%;
+		/* background-color: yellow; */
+		padding: 0rpx 5px;
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.xSliderTxt {}
+</style>

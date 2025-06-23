@@ -1,0 +1,312 @@
+<template>
+	<view>
+		<view :style="{height:'8px'}"></view>
+		<view class="box" v-for="(item,index) in rgbvalue" :key="index" :class="[`box${index}`]">
+			<x-text _style="opacity:0.5" font-size="13">{{rgbvalueText[index]}}</x-text>
+			<view class="boxRight">
+				<view :class="[
+					index==0?'barR':'',
+					index==1?'barG':'',
+					index==2?'barB':''
+				]" class="barBox " :style="{
+					borderRadius:(barsize+4)+'px',
+					
+				}">
+					<view class="barBoxRealWrap" @touchstart.stop="mStart(($event as UniTouchEvent),index)"
+						@touchmove.stop="mMove(($event as UniTouchEvent),index)"
+						@touchend.stop="mEnd(($event as UniTouchEvent),index)"
+						@touchcancel="mEnd(($event as UniTouchEvent),index)" <!-- #ifdef WEB -->
+						@mousedown="mmStart(($event as UniMouseEvent),index)"
+						<!-- #endif -->
+						>
+						<view ref="bar" class="bar"
+							:style="{width:barsize+'px',height:barsize+'px',borderRadius:barsize+'px'}"></view>
+						<view ref="barWrap" class="barWrap" :style="{height:barsize+'px'}"></view>
+						<view class="barPlace" :style="{width:barsize+'px',height:barsize+'px'}"></view>
+					</view>
+				</view>
+				<x-input font-size="14" input-padding="0px" type="number" @input="inputChange(($event as string),index)"
+					:model-value="realRgb[index]" width="70" height="30" align="center" placeholder=""></x-input>
+			</view>
+
+		</view>
+	</view>
+</template>
+
+<script lang="ts" setup>
+	import { ref, computed, getCurrentInstance, nextTick } from "vue"
+	import { hexToRgb, hslToRgb, rgbToHexNoAlpha, hslaToRgbCss, rgbToHex, rgbToHsl } from "../../core/util/xCoreColorUtil.uts";
+	const props = defineProps({
+		hexValue: {
+			type: String,
+			default: ""
+		}
+	})
+	const emits = defineEmits<{
+		/**
+		 * 值变化时触发。
+		 * @param {string} hexstr - 当前的颜色值
+		 */
+		(e : 'change', hexstr : string) : void,
+	}>()
+	const proxy = getCurrentInstance()?.proxy
+	const rgbvalue = ref<number[]>([0, 0, 0])
+	const rgbvalueText = ref<string[]>(['红色', '绿色', '蓝色'])
+	const isMoving = ref(false)
+	const realRgb = computed(() : string[] => {
+		let r = rgbvalue.value[0].toString()
+		let g = rgbvalue.value[1].toString()
+		let b = rgbvalue.value[2].toString()
+		return [r, g, b] as string[]
+	})
+	let tid = 0;
+	let _x = 0
+	let _startLeft = 0
+	const barsize = ref(28)
+	const valuestr = ref('#ffffff')
+
+	let nowIndex = 0
+	let xColorviewEventId = ''
+	const barWrapNodes = ref<NodeInfo | null>(null);
+
+	const toChangeEvents = () => {
+		let str = rgbToHexNoAlpha({ r: rgbvalue.value[0], g: rgbvalue.value[1], b: rgbvalue.value[2] } as UTSJSONObject)
+		if (str == valuestr.value) return;
+
+		valuestr.value = str;
+		emits('change', str)
+
+	}
+	const setPostionTranslaterStart = (x : number, y : number, index : number) => {
+		let doms = proxy!.$refs['bar'] as UniElement[]
+		let dom = doms[index] as UniElement
+		let bardoms = proxy!.$refs['barWrap'] as UniElement[]
+		let barWrapdom = bardoms[0] as UniElement
+
+		let domleft = dom.style.getPropertyValue('left') as null | string
+		if (isNaN(parseInt(domleft == null ? '0' : domleft!))) {
+			dom.style.setProperty('left', '0px')
+		}
+		let barwRound = barWrapNodes.value!;
+		_x = x
+		_startLeft = (_x - barwRound.left!) - barsize.value / 2
+		_startLeft = Math.ceil(Math.max(0, Math.min(_startLeft, barwRound.width!)))
+		dom.style.setProperty('left', _startLeft + 'px')
+		let val = Math.floor(_startLeft / barwRound.width! * 255)
+		rgbvalue.value[index] = val
+		toChangeEvents()
+	}
+	const setPostionTranslaterMove = (mx : number, my : number, index : number) => {
+		let doms = proxy!.$refs['bar'] as UniElement[]
+		let dom = doms[index] as UniElement
+		let bardoms = proxy!.$refs['barWrap'] as UniElement[]
+		let barWrapdom = bardoms[0] as UniElement
+		let barwRound = barWrapNodes.value!;
+		let x = mx - _x + _startLeft - barsize.value / 2
+		// #ifdef MP||WEB
+		x =  mx - _x + _startLeft
+		// #endif
+		x = Math.ceil(Math.max(0, Math.min(x, barwRound.width!)))
+		
+		dom.style.setProperty('left', x + 'px')
+		let val = Math.floor(x / barwRound.width! * 255)
+		rgbvalue.value[index] = val
+		toChangeEvents()
+	}
+	const inputChange = (val : string, index : number) => {
+		if (val == '') return;
+		let realvalue = parseInt(val)
+		realvalue = isNaN(realvalue) ? 0 : realvalue;
+		let realvalueNew = Math.max(0, Math.min(realvalue, 255));
+		uni.createSelectorQuery()
+			.in(proxy)
+			.select(".barWrap")
+			.boundingClientRect()
+			.exec(result => {
+				let nodes = result[0] as NodeInfo
+				let realwidth = nodes.width!
+
+				let left = Math.floor(realvalueNew / 255 * realwidth)
+				let doms = proxy!.$refs['bar'] as UniElement[]
+				let nowdom = doms[index]
+				nowdom.style.setProperty('left', left.toString() + 'px')
+
+				rgbvalue.value[index] = realvalue
+				nextTick(() => {
+					rgbvalue.value[index] = realvalueNew
+					toChangeEvents()
+				})
+			})
+	}
+	const mStart = (evt : UniTouchEvent, index : number) => {
+		evt.preventDefault()
+		isMoving.value = true;
+		uni.createSelectorQuery()
+			.in(proxy)
+			.select(".barWrap")
+			.boundingClientRect()
+			.exec(result => {
+				let nodes = result[0] as NodeInfo
+				barWrapNodes.value = nodes
+				setPostionTranslaterStart(evt.changedTouches[0].clientX, evt.changedTouches[0].clientY, index)
+			})
+	}
+	const mMove = (evt : UniTouchEvent, index : number) => {
+		if (!isMoving.value) return
+		setPostionTranslaterMove(evt.changedTouches[0].clientX, evt.changedTouches[0].clientY, index)
+	}
+	const mEnd = (evt : UniTouchEvent, index : number) => {
+		if (!isMoving.value) return
+		isMoving.value = false;
+	}
+
+	// #ifdef WEB
+	const mmStart = (evt : UniMouseEvent, index) => {
+		isMoving.value = true;
+		xColorviewEventId = Math.random().toString(16).substring(2, 16)
+		nowIndex = index
+		setPostionTranslaterMove(evt.clientX - barsize.value, evt.clientY, index)
+	}
+	const mmMove = (evt : UniMouseEvent) => {
+		if (!isMoving.value) return
+		setPostionTranslaterMove(evt.clientX - barsize.value, evt.clientY, nowIndex)
+	}
+	const mmEnd = (evt : UniMouseEvent) => {
+		if (!isMoving.value) return
+		isMoving.value = false;
+		xColorviewEventId = ''
+
+	}
+
+	document.body.addEventListener('mousemove', mmMove)
+	document.body.addEventListener('mouseup', mmEnd)
+	document.body.addEventListener('mouseleave', mmEnd)
+	// #endif
+
+	const setViewPosition = () => {
+		let colors = hexToRgb(valuestr.value)
+
+		uni.createSelectorQuery()
+			.in(proxy)
+			.select(".barWrap")
+			.boundingClientRect()
+			.exec(result => {
+				let r = colors.getNumber('r')!
+				let g = colors.getNumber('g')!
+				let b = colors.getNumber('b')!
+				let rgb = [r, g, b] as number[]
+
+				let nodes = result[0] as NodeInfo
+				barWrapNodes.value = nodes
+				let realwidth = nodes.width!
+
+				let doms = proxy!.$refs['bar'] as UniElement[]
+
+				for (let i = 0; i < rgb.length; i++) {
+					let leftvalue = rgb[i];
+					let left = Math.floor(leftvalue / 255 * realwidth)
+					let nowdom = doms[i]
+					nowdom.style.setProperty('left', left.toString() + 'px')
+
+				}
+				rgbvalue.value = rgb.splice(0)
+			})
+	}
+
+	watch(() : string => props.hexValue, (newval : string) => {
+		if (newval == '' || valuestr.value == newval) return;
+		valuestr.value = newval
+
+		setViewPosition()
+	})
+	onBeforeMount(() => {
+		valuestr.value = props.hexValue
+	})
+	onBeforeUnmount(() => {
+		// #ifdef WEB
+		document.body.removeEventListener('mousemove', mmMove)
+		document.body.removeEventListener('mouseup', mmEnd)
+		document.body.removeEventListener('mouseleave', mmEnd)
+		// #endif
+	})
+	onMounted(() => {
+
+		clearTimeout(tid)
+		tid = setTimeout(function () {
+			setViewPosition()
+		}, 60);
+	})
+</script>
+
+<style scoped>
+	.bar {
+		border: 3px solid white;
+		background-color: transparent;
+		position: absolute;
+		top: 0px;
+		pointer-events: none;
+		/* #ifdef WEB||MP */
+		box-sizing: border-box;
+		/* #endif */
+
+	}
+
+	.barPlace {
+		pointer-events: none;
+	}
+
+	.box0,
+	.box1 {
+		margin-bottom: 15px;
+
+	}
+
+	.boxRight {
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.barBox {
+
+		flex: 1;
+		margin-right: 12px;
+		/* #ifdef WEB||MP */
+		box-sizing: border-box;
+		/* #endif */
+	}
+
+	.barBoxRealWrap {
+		margin: 2px 2px;
+		display: flex;
+		flex-direction: row;
+		justify-content: flex-start;
+		align-items: center;
+		position: relative;
+		/* #ifdef WEB||MP */
+		cursor: cell;
+		box-sizing: border-box;
+		/* #endif */
+	}
+
+	.barWrap {
+		flex: 1;
+		pointer-events: none;
+		/* #ifdef WEB||MP */
+		box-sizing: border-box;
+		/* #endif */
+	}
+
+	.barR {
+		background-image: linear-gradient(to right, #000000, #ff0000);
+	}
+
+	.barG {
+		background-image: linear-gradient(to right, #000000, #00ff00);
+	}
+
+	.barB {
+		background-image: linear-gradient(to right, #000000, #0000ff);
+	}
+</style>

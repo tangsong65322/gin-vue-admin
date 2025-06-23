@@ -1,0 +1,113 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">角标 Badge</x-text>
+			<x-text color="#999999" >
+				另外：安卓布局需要你使用flex布局，并且内容层需要有宽度值防止让角标的内容断行
+			</x-text>
+		</x-sheet>
+		<x-sheet  class="flex flex-row flex-row-center-center flex-wrap ">
+
+			<view class="flex-1 flex flex-row flex-row-center-center ">
+				<x-badge >
+					<view style="width: 100rpx;height:100rpx;background: #f3f3f3;"></view>
+				</x-badge>
+			</view>
+			<view class="flex-1 flex flex-row flex-row-center-center">
+				<x-badge bg-color="danger" :count="1" >
+					<view style="width: 100rpx;height:100rpx;background: #f3f3f3;"></view>
+				</x-badge>
+			</view>
+			
+			<view class="flex-1 flex flex-row flex-row-center-center">
+				<x-badge bg-color="success" label="HOT" >
+					<view style="width: 100rpx;height:100rpx;background: #f3f3f3;"></view>
+				</x-badge>
+			</view>
+			<view  class="flex-1 flex flex-row flex-row-center-center">
+				<x-badge bg-color="primary" :count="150" >
+					<view style="width: 100rpx;height:100rpx;background: #f3f3f3;"></view>
+				</x-badge>
+				
+			</view>
+		</x-sheet>
+
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">左上，右上，左下，右下，上中，下中</x-text>
+			<x-text color="#999999" >
+				另外：安卓布局需要你使用flex布局，并且内容层需要有宽度值防止让角标的内容断行
+			</x-text>
+		</x-sheet>
+
+		<x-sheet class="flex flex-row flex-row-center-center flex-wrap ">
+
+			<x-badge position="left" >
+				<view style="width: 100rpx;height:100rpx;background: #f3f3f3;"></view>
+			</x-badge>
+			<x-badge position="right" bg-color="danger" :count="36" >
+				<view style="width: 100rpx;height:100rpx;background: #f3f3f3;"></view>
+			</x-badge>
+			<x-badge position="bottomLeft" bg-color="success" label="HOT" >
+				<view style="width: 100rpx;height:100rpx;background: #f3f3f3;"></view>
+			</x-badge>
+			<x-badge position="bottomRight" bg-color="primary" :count="150" >
+				<view style="width: 100rpx;height:100rpx;background: #f3f3f3;"></view>
+			</x-badge>
+			<x-badge position="top" bg-color="success" label="HOT" >
+				<view style="width: 100rpx;height:100rpx;background: #f3f3f3;"></view>
+			</x-badge>
+			<x-badge position="bottom" bg-color="error" :count="150" >
+				<view style="width: 100rpx;height:100rpx;background: #f3f3f3;"></view>
+			</x-badge>
+		</x-sheet>
+
+		<x-sheet >
+			<x-text font-size="18" class=" text-weight-b ">应用在其它组件上</x-text>
+		</x-sheet>
+		<x-sheet class="flex flex-row flex-row-center-center">
+
+			<x-badge label="50%SALE" >
+				<x-button size="normal">按钮</x-button>
+			</x-badge>
+			<x-badge label="HOT" >
+				<view style="width:64rpx">
+					<x-icon name="movie-2-fill"></x-icon>
+				</view>
+			</x-badge>
+			<x-badge>
+				<view style="width:42rpx">
+					<x-icon name="settings-5-fill"></x-icon>
+				</view>
+			</x-badge>
+
+		</x-sheet>
+
+		<view class="py-32"></view>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+				
+			};
+		},
+		onLoad(){
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

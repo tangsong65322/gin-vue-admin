@@ -1,0 +1,20 @@
+// function compressImage(quality:number) : string {
+// 	let base64data = canvas.toDataURL('image/jpeg', attrs.compress / 100);
+// 	return base64data;
+// }
+function base64ToBlob(data : string) : Blob {
+	let bytes = window.atob(data.split(',')[1])
+	let ab = new ArrayBuffer(bytes.length)
+	let ia = new Uint8Array(ab)
+	for (let i = 0; i < bytes.length; i++) {
+		ia[i] = bytes.charCodeAt(i)
+	}
+	// @ts-ignore
+	return new Blob([ab], { type: 'image/jpeg' })
+}
+
+// ,quality:number
+export function toPngFile(data : string) : Promise<string> {
+	let bloblfaile = URL.createObjectURL(base64ToBlob(data));
+	return Promise.resolve(bloblfaile);
+}

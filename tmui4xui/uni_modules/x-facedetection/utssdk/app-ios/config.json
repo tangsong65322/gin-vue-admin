@@ -1,0 +1,10 @@
+{
+	"deploymentTarget": "12",
+	"dependencies-pods": [
+		{
+			"name": "GoogleMLKit/FaceDetection",
+			"version": "5.0.0"
+		}
+	]
+}
+

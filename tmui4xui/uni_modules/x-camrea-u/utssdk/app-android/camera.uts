@@ -1,0 +1,470 @@
+import ListView from 'android.widget.ListView';
+import FrameLayout from 'android.widget.FrameLayout';
+import CameraManager from 'android.hardware.camera2.CameraManager'
+import CameraDevice from 'android.hardware.camera2.CameraDevice'
+import StateCallback from 'android.hardware.camera2.CameraDevice.StateCallback'
+import CameraCaptureSession from 'android.hardware.camera2.CameraCaptureSession'
+
+import CaptureRequest from 'android.hardware.camera2.CaptureRequest'
+import TotalCaptureResult from 'android.hardware.camera2.TotalCaptureResult'
+import StreamConfigurationMap from 'android.hardware.camera2.params.StreamConfigurationMap'
+import MeteringRectangle from 'android.hardware.camera2.params.MeteringRectangle'
+import OutputConfiguration from 'android.hardware.camera2.params.OutputConfiguration'
+import SessionConfiguration from 'android.hardware.camera2.params.SessionConfiguration'
+import CameraCharacteristics from 'android.hardware.camera2.CameraCharacteristics'
+import CameraMetadata from 'android.hardware.camera2.CameraMetadata'
+import Range from 'android.util.Range';
+
+import Executor from 'java.util.concurrent.Executor'
+import Looper from 'android.os.Looper'
+import ImageFormat from 'android.graphics.ImageFormat'
+import Size from 'android.util.Size'
+import SurfaceTexture from 'android.graphics.SurfaceTexture'
+import Handler from 'android.os.Handler'
+import Surface from 'android.view.Surface'
+import Image from 'android.media.Image'
+import LinearLayout from 'android.widget.LinearLayout';
+import Intent from 'android.content.Intent';
+import Integer from 'java.lang.Integer';
+import ByteOrder from 'java.nio.ByteOrder';
+
+
+import SurfaceHolder from 'android.view.SurfaceHolder'
+import SurfaceView from 'android.view.SurfaceView'
+import TextureView from 'android.view.TextureView'
+import View from 'android.view.View'
+import Context from 'android.content.Context'
+import Manifest from "android.Manifest";
+import Uri from 'android.net.Uri';
+import File from 'java.io.File'
+import System from 'java.lang.System'
+import Activity from 'android.app.Activity';
+import Bundle from 'android.os.Bundle';
+import Intent from 'android.content.Intent';
+import IntentFilter from 'android.content.IntentFilter';
+
+import Rect from 'android.graphics.Rect';
+import Matrix from 'android.graphics.Matrix'
+import ImageReader from 'android.media.ImageReader'
+import OnImageAvailableListener from 'android.media.ImageReader.OnImageAvailableListener'
+
+
+import ByteBuffer from 'java.nio.ByteBuffer'
+import MediaStore from 'android.provider.MediaStore'
+import Plane from 'android.media.Image.Plane'
+import Bitmap from "android.graphics.Bitmap"
+import BitmapFactory from "android.graphics.BitmapFactory"
+import Vibrator from "android.os.Vibrator"
+import Animation from "android.view.animation.Animation"
+import ScaleAnimation from "android.view.animation.ScaleAnimation"
+import AnimationUtils from "android.view.animation.AnimationUtils"
+
+
+import Color from "android.graphics.Color"
+import Window from "android.view.Window"
+import WindowManager from "android.view.WindowManager"
+import TextView from "android.widget.TextView"
+import RelativeLayout from "android.widget.RelativeLayout"
+import ImageView from "android.widget.ImageView"
+import HandlerThread from 'android.os.HandlerThread'
+import YuvImage from 'android.graphics.YuvImage'
+import ByteArrayOutputStream from 'java.io.ByteArrayOutputStream'
+import GradientDrawable from 'android.graphics.drawable.GradientDrawable'
+import MotionEvent from 'android.view.MotionEvent';
+import ViewGroup from 'android.view.ViewGroup';
+
+
+import IOException from 'java.io.IOException'
+import InputStream from 'java.io.InputStream'
+// import BarcodeScanner from "com.google.mlkit.vision.barcode.BarcodeScanner"
+// import BarcodeScannerOptions from "com.google.mlkit.vision.barcode.BarcodeScannerOptions"
+// import BarcodeScanning from "com.google.mlkit.vision.barcode.BarcodeScanning"
+// import ZoomSuggestionOptions from "com.google.mlkit.vision.barcode.ZoomSuggestionOptions"
+// import ZoomCallback from "com.google.mlkit.vision.barcode.ZoomSuggestionOptions.ZoomCallback"
+// import Barcode from "com.google.mlkit.vision.barcode.common.Barcode"
+// import InputImage from "com.google.mlkit.vision.common.InputImage"
+
+import Task from "com.google.android.gms.tasks.Task"
+import List from "java.util.List"
+
+// x
+import ProcessCameraProvider from "androidx.camera.lifecycle.ProcessCameraProvider"
+import PreviewView from "androidx.camera.view.PreviewView"
+import CameraController from "androidx.camera.view.CameraController"
+import CameraSelector from "androidx.camera.core.CameraSelector"
+import Preview from 'androidx.camera.core.Preview'
+import Camera from 'androidx.camera.core.Camera'
+import LifecycleObserver from "androidx.lifecycle.LifecycleObserver"
+import LifecycleOwner from "androidx.lifecycle.LifecycleOwner"
+import OnLifecycleEvent from "androidx.lifecycle.OnLifecycleEvent"
+import ImageAnalysis from 'androidx.camera.core.ImageAnalysis'
+import ImageProxy from 'androidx.camera.core.ImageProxy'
+import ImageCapture from 'androidx.camera.core.ImageCapture';
+import AspectRatio from 'androidx.camera.core.AspectRatio';
+import CameraInfo from 'androidx.camera.core.CameraInfo';
+
+
+import NonNull from 'androidx.annotation.NonNull'
+import ExecutorService from 'java.util.concurrent.ExecutorService'
+import Executors from 'java.util.concurrent.Executors'
+// import TargetResolution from 'androidx.camera.core.ImageAnalysis.TargetResolution'
+
+type buffoptsPlanesType = {
+	data : ByteBuffer,
+	getRowStride : number,
+	getPixelStride : number,
+}
+type buffoptsType = {
+	width : number,
+	height : number,
+	format : number,
+	rect : Rect,
+	planes : buffoptsPlanesType[],
+}
+
+import { AUTH_CALL_BACK_TYPE, CAMERA_PHOTO_SIZE } from "../interface.uts"
+
+import ContextCompat from 'androidx.core.content.ContextCompat';
+import FileOutputStream from 'java.io.FileOutputStream';
+import PreviewConfig from 'androidx.camera.core.impl.PreviewConfig';
+import VideoSource from 'android.media.MediaRecorder.VideoSource';
+import VideoCapture from 'androidx.camera.video.VideoCapture';
+import OutputFileOptions from 'androidx.camera.core.ImageCapture.OutputFileOptions';
+import Recorder from 'androidx.camera.video.Recorder';
+import Quality from 'androidx.camera.video.Quality';
+import QualitySelector from 'androidx.camera.video.QualitySelector';
+import OutputFileResults from 'androidx.camera.core.ImageCapture.OutputFileResults';
+import FileDescriptor from 'java.io.FileDescriptor';
+import FileOutputOptions from 'androidx.camera.video.FileOutputOptions';
+
+import VideoRecordEvent from 'androidx.camera.video.VideoRecordEvent';
+import Consumer from 'androidx.core.util.Consumer';
+import Recording from 'androidx.camera.video.Recording';
+import ResolutionCorrector from 'androidx.camera.camera2.internal.compat.workaround.ResolutionCorrector';
+import AspectRatioStrategy from 'androidx.camera.core.resolutionselector.AspectRatioStrategy';
+import ResolutionSelector from 'androidx.camera.core.resolutionselector.ResolutionSelector';
+
+type cameraListNameType = { id : string, device : CameraCharacteristics }
+type TAKE_CALL_BACK = (path : string) => void;
+let callFuntake = (path : string) => { }
+let callVideoFun = (path : string) => { }
+function px2dp(n : number) : number {
+	const mets = UTSAndroid.getAppContext()!.resources!.getDisplayMetrics()
+	return mets.density * n
+}
+function getUid(rdix = 1, length = 12) : string {
+	let ix = "";
+	// #ifdef APP
+	ix = Math.floor(Math.random() * rdix * Math.floor(Math.random() * Date.now())).toString().substring(0, length as Int);
+	// #endif
+	return ix;
+}
+export class xCamera {
+	parentView : FrameLayout;
+
+
+
+
+	viewBox_width = 0
+	viewBox_height = 0
+
+	imgPointsBycanmarea = [] as RelativeLayout[]
+
+
+	/** 手动震动服务 */
+	vibrator = null as null | Vibrator
+	context : Context;
+	// 相机旋转的角度。
+	cameraRate = new Map<Number, Number>([
+		[Surface.ROTATION_0, 0],
+		[Surface.ROTATION_90, 0],
+		[Surface.ROTATION_180, 0],
+		[Surface.ROTATION_270, 0]
+	])
+	// 相机服务
+	cameraService : CameraManager
+	// 相机列表,name,id
+	cameraListName = new Map<string, cameraListNameType>();
+	// 
+	cameraPreviewSize = { width: 800, height: 800 } as CAMERA_PHOTO_SIZE
+	// 当前预览的什么是设备
+	cameraDevice : CameraDevice | null = null
+	cameraDeviceCaptureSession : CameraCaptureSession | null = null
+	sufaceHolderView : Surface | null = null
+
+	// 相机区域视图
+	cameraView : PreviewView | null = null;
+	cameraProvider : ProcessCameraProvider | null = null
+	camera : Camera | null = null;
+	cameraPreview : Preview | null = null;
+	videoCapture : VideoCapture<Recorder> | null = null;
+	// Recording
+	recoderVideoObj:Recording|null = null;
+
+	// 是否拍照中
+	isDecoderQring = false
+	// 当前相机是否正在预览中。
+	isOpeningCameraing = false;
+
+	callFunEvent : TAKE_CALL_BACK = (str : string) => { }
+	//摄像头朝向,默认是向后置摄像头.
+	CamerDeviceDir = CameraSelector.LENS_FACING_FRONT
+	//摄像头的是否开
+	flashMode = false
+	// 拍照模式,还是录像模式.
+	takeModelType = 'photo'; //photo,video
+
+	private PHOTO_TYPE = "image/jpeg"
+	private RATIO_4_3_VALUE = 4.0 / 3.0
+	private RATIO_16_9_VALUE = 16.0 / 9.0
+	constructor(GroupView : FrameLayout) {
+		this.context = UTSAndroid.getAppContext()! as Context;
+		this.parentView = GroupView;
+		this.cameraService = this.context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+		this.vibrator = this.context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator;
+		this._createCameraView()
+	}
+
+	/** 创建相机预览区域 */
+	private _createCameraView() {
+
+		let sv = new PreviewView(UTSAndroid.getAppContext()!)
+		sv.scaleType = PreviewView.ScaleType.FILL_CENTER
+
+		// 让相机的高和宽与组件对齐。
+		let layaout = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+		sv.setLayoutParams(layaout)
+		this.cameraView = sv;
+
+		this.parentView.addView(this.cameraView!)
+	}
+
+	openCamera() {
+		let _this = this;
+		if (this.isOpeningCameraing) {
+			this.closeCamera()
+		}
+		_this._openCamera();
+	}
+	startRecoderVideo(call : (path : string) => void) {
+		callVideoFun = call;
+		let _this = this;
+		
+		if(_this.recoderVideoObj?.isClosed()==false){
+			_this.recoderVideoObj?.resume()
+		}else{
+			if (this.isOpeningCameraing||this.recoderVideoObj!=null) {
+				this.stopRecoderVideo()
+				this.closeCamera()
+			}
+			_this.takeModelType = 'video'
+			_this._openCamera();
+		}
+	}
+	pauseRecoderVideo(){
+		let _this = this;
+		_this.recoderVideoObj?.pause()
+	}
+	stopRecoderVideo() {
+		let _this = this;
+		_this.takeModelType = 'photo'
+		_this.recoderVideoObj?.stop()
+		_this.recoderVideoObj?.close()
+		_this.recoderVideoObj = null;
+		_this.videoCapture = null;
+		// closeCamera();
+	}
+
+	// 设置识别成功的回调函数
+	setCallEvent(call : TAKE_CALL_BACK) {
+		this.callFunEvent = call;
+	}
+	getCamraRotation() : Number {
+		return 0
+	}
+
+	closeCamera() {
+		let t = this;
+		class IntentRunable2 extends Runnable {
+			override run() {
+				t.cameraProvider?.unbindAll()
+				t.cameraPreview?.setSurfaceProvider(null)
+				t.isOpeningCameraing = false;
+			}
+		}
+		// 确保在主线程中关闭相机
+		new Handler(Looper.getMainLooper()).post(new IntentRunable2());
+	}
+
+	private aspectRatio(width : Int, height : Int) : Int {
+		let previewRatio = Math.max(width, height).toDouble() / Math.min(width, height)
+		if (Math.abs(previewRatio - this.RATIO_4_3_VALUE) <= Math.abs(previewRatio - this.RATIO_16_9_VALUE)) {
+			return AspectRatio.RATIO_4_3
+		}
+		return AspectRatio.RATIO_16_9
+	}
+	private _openCamera() {
+		let _this = this;
+		let cameraProviderFuture = ProcessCameraProvider.getInstance(this.context)
+
+		class IntentRunable extends Runnable {
+			override run() {
+				let cameraProvider : ProcessCameraProvider = cameraProviderFuture.get()
+				let previewView = _this.cameraView! as PreviewView
+
+				let cameraSelector : CameraSelector = new CameraSelector.Builder()
+					.requireLensFacing(_this.CamerDeviceDir)
+					.build();
+
+				// 预览比例
+				let screenAspectRatio = _this.aspectRatio((1280).toInt(), (720).toInt())
+				let preview : Preview = new Preview.Builder()
+					.setTargetAspectRatio(screenAspectRatio)
+					.build();
+				preview.setSurfaceProvider(previewView.getSurfaceProvider())
+				// 创建ImageCapture用例，并设置闪光灯模式
+
+				let imageCapture : ImageCapture = new ImageCapture.Builder()
+					.setTargetAspectRatio(screenAspectRatio)
+					.build();
+					
+
+				let imageAnalysis = new ImageAnalysis.Builder()
+					.setTargetResolution(new Size(1280, 720))
+					
+					.setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+					.build();
+				class MyImageAnalyzer implements ImageAnalysis.Analyzer {
+					constructor() {
+						super()
+					}
+					override analyze(image : ImageProxy) {
+
+						// image
+						if (_this.isDecoderQring) {
+
+							// _this.closeCamera()
+							_this.savePhotoTocache(image)
+
+						} else {
+							image.close()
+						}
+
+					}
+					override getDefaultTargetResolution() : Size {
+						return new Size(_this.viewBox_width.toInt(), _this.viewBox_height.toInt());
+					}
+
+				}
+				let cameraExecutor = Executors.newSingleThreadExecutor();
+				imageAnalysis.setAnalyzer(cameraExecutor, new MyImageAnalyzer());
+				
+				let recorder = Recorder.Builder()
+				    .setQualitySelector(QualitySelector.from(Quality.HIGHEST)) // 选择录制质量，HD、FHD等
+				    .build()
+				_this.videoCapture = VideoCapture.withOutput(recorder)
+				
+
+				let camera : Camera = cameraProvider.bindToLifecycle(UTSAndroid.getUniActivity()! as LifecycleOwner,
+					cameraSelector,
+					imageCapture,
+					imageAnalysis,
+					preview,
+					videoCapture!
+				);
+
+				
+				if (_this.takeModelType == 'video') {
+					// 录制视频
+					let filepath = _this.context.getExternalCacheDir()?.getPath() ?? ""
+					let videoFile = new File(filepath, 'tmui4xCamreaVideo' + getUid(1, 12) + '.mp4')
+					let outputOptions = FileOutputOptions.Builder(videoFile).build()
+					class DirectExecutor implements Executor {
+					   override execute(r:Runnable ) {
+					     r.run();
+						 console.error('录制错误')
+						 callVideoFun('')
+					   }
+					 }
+					 // Consumer<VideoRecordEvent>
+					 class reocdereventClass implements Consumer<VideoRecordEvent> {
+						 override accept(event: VideoRecordEvent) {
+							if(event instanceof VideoRecordEvent.Start){
+								console.log("开始录制")
+							}else if(event instanceof VideoRecordEvent.Finalize){
+								console.log("结束录制",videoFile.absolutePath)
+								callVideoFun(videoFile.absolutePath)
+							}
+						 }
+					 }
+					 // ContextCompat.getMainExecutor(_this.context)
+					_this.recoderVideoObj = _this.videoCapture!.getOutput()
+					.prepareRecording(_this.context,outputOptions)
+					.start(ContextCompat.getMainExecutor(_this.context),new reocdereventClass() as Consumer<VideoRecordEvent>)
+					
+					
+				}
+
+
+				let cameraControl = camera.cameraControl
+				let cameraInfo : CameraInfo = camera.cameraInfo
+
+				// 闪光灯.
+				cameraControl.enableTorch(_this.flashMode)
+				_this.camera = camera
+				_this.cameraPreview = preview
+
+				_this.cameraProvider = cameraProvider
+				_this.isDecoderQring = false
+				_this.isOpeningCameraing = true
+
+			}
+		}
+
+		try{
+			cameraProviderFuture.addListener(new IntentRunable(), ContextCompat.getMainExecutor(this.context))
+		}catch(e){
+			console.error('开启错误.')
+		}
+	}
+
+	takPhoto(call : (path : string) => void) {
+		callFuntake = call;
+		this.isDecoderQring = true;
+	}
+	//front,前置,back后置
+	setCameraDir(type : string) {
+		this.CamerDeviceDir = type == 'back' ? CameraSelector.LENS_FACING_BACK : CameraSelector.LENS_FACING_FRONT
+	}
+	setFlash(type : boolean) {
+		this.flashMode = type;
+	}
+
+
+	savePhotoTocache(image : ImageProxy) {
+		let context = UTSAndroid.getAppContext()!
+		let filepath = context.getExternalCacheDir()?.getPath() ?? ""
+		let img : Bitmap | null = image.toBitmap()
+		let file = new File(filepath, 'tmui4xCamrea' + getUid(1, 12) + '.jpg');
+		let fos = new FileOutputStream(file)
+		let conunt = (img?.getByteCount() ?? 0) / 1024 / 1024
+
+		let saved = img!.compress(Bitmap.CompressFormat.JPEG, conunt > 1 ? 64 : 100, fos);
+		let t = this;
+		class IntentRunable2 extends Runnable {
+			override run() {
+				if (saved) {
+					callFuntake(file.getPath())
+					t.isDecoderQring = false
+				}
+				// ,拍照暂不关闭相机让用户手动关闭.
+				// t.closeCamera()
+			}
+		}
+		image.close()
+		new Handler(Looper.getMainLooper()).post(new IntentRunable2());
+	}
+
+
+
+}

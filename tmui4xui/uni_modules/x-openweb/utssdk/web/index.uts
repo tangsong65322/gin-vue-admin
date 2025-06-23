@@ -1,0 +1,4 @@
+
+export function openWeb(url : string) {
+	location.href = url;
+}

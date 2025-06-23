@@ -1,0 +1,13 @@
+	/**
+	 * 侧边分类数据
+	 */
+	export type SLIDER_TREE_ITEM = {
+		id : string,
+		title : string,
+		children : SLIDER_TREE_ITEM[],
+		disabled : boolean,
+		/** 当前选中的id数组 */
+		selected : string[],
+		//左侧小图标.
+		icon:string
+	}

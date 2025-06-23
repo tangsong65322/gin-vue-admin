@@ -1,0 +1,689 @@
+<script lang="ts">
+	import { type PropType } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { xFileSystem, xFileSListType,fileListType } from "@/uni_modules/x-file-s"
+	export type XFILESUPLOAD_BEFORE_CALLBACK = (list : fileListType[]) => Promise<fileListType[]>
+	/**
+	 * 
+	 * @name 文件选择 xUploadFile
+	 * @page /pages/index/upload-file
+	 * @category 表单组件
+	 * @description 使用时请注意区别：安卓端和IOS端没有区别。web端是我模拟的格式有点区别，上传文件是File对象。
+	 * 没有提供双向绑定，因为可能的数据格式化比较麻烦，请根据change事件来保存数据,微信端请保证你的小程序隐私政策中勾选了相关权限使用.
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				xfile: null as null | xFileSystem,
+				fileList: [] as fileListType[],
+				_uploading: false,
+				_uploadingIndex: 0,
+			}
+		},
+		emits: [
+			/**
+			 * 只有删除和上传完成时才会触发
+			 * 并返回当前的文件列表。
+			 */
+			'change'
+		],
+		props: {
+			/**
+			 * 提供的默认上传的文件列表
+			 * 请确保要有以下三个字段：
+			 * 1.name
+			 * 2.type
+			 * 3.request 你服务器自己构造的成功数据，例：{code,data,msg}
+			 * 小心的是，如果你变动了此值，内部会把默认当前的列表数据清空，直接用此列表替换。这样你在表单加载数据更新编辑时
+			 * 会很有用。
+			 */
+			defaultList: {
+				type: Array as PropType<UTSJSONObject[] | null>,
+				default: null
+			},
+			/**
+			 * 头部数据
+			 */
+			header: {
+				type: Object as PropType<UTSJSONObject | null>,
+				default: null
+			},
+			/**
+			 * 文件上传的字段名称
+			 */
+			name: {
+				type: String,
+				default: "file"
+			},
+			/**
+			 * 表单数据
+			 */
+			formData: {
+				type: Object as PropType<UTSJSONObject | null>,
+				default: null
+			},
+			/**
+			 * 服务器上传地址
+			 */
+			url: {
+				type: String,
+				default: "https://mockapi.eolink.com/LRViGGZ8e6c1e8b4a636cd82bca1eb15d2635ed8c74e774/admin/upload_pic/"
+			},
+			/**
+			 * 最大上传数量
+			 * -1表示不限制
+			 */
+			maxCount: {
+				type: Number,
+				default: -1
+			},
+			/**
+			 * 是否多选
+			 */
+			multiple: {
+				type: Boolean,
+				default: true
+			},
+			/**
+			 * 最大文件大小,单位字节
+			 * 超过此大小的文件不会被上传。30*1024*1024
+			 */
+			maxFileSize: {
+				type: Number,
+				default: 30*1024*1024
+			},
+			/**
+			 * 当前是否在上传中
+			 * 请使用v-model:loading来
+			 * 不可更改此值。
+			 */
+			loading: {
+				type: Boolean,
+				default: true
+			},
+			/**
+			 * 选择文件后自动上传
+			 */
+			autoStart: {
+				type: Boolean,
+				default: true
+			},
+			/**
+			 * 服务正常返回的状态码如果为此值表示失败。
+			 */
+			statusCode: {
+				type: Number,
+				default: 200
+			},
+			/**
+			 * 禁用上传功能
+			 */
+			disabled: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 已上传的文件是否禁用删除
+			 * 这个是某些特殊的erp系统中的需求需要。
+			 */
+			uploadFileDisabledDel: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 文件过滤器,不要动态修改。
+			 * 空数组时为所有文件类型,类型请注意使用如下规范:
+			 * 如:["jpg","docx","doc","webp"]
+			 * 在ios需要14+支持类型过滤，14以下此属性无效,
+			 * web是过滤指定类型.
+			 * 在安卓端事实上系统差异,暂时无法多文件类型过滤,安卓只会取类型文件中的最后一项,如上述只会取webp
+			 * 但在安卓是我映射的类型,因为如果比如我要jpg,gif格式,只取gif肯定不行,因此你写jpg,gif,png其实在
+			 * 安卓端都是同一种类型文件对应image*所有图图片类型,比如你写pdf,zip,josn格式,都是统一为application*
+			 * 因此在安卓它是对应一种文件类的类型不是指代具体的后缀.
+			 */
+			filter: {
+				type: Array as PropType<string[]>,
+				default: ():string[] => [] as string[]
+			},
+			/**
+			 * 底部线条颜色
+			 */
+			borderBottomColor: {
+				type: String,
+				default: "#f5f5f5"
+			},
+			/**
+			 * 上传前执行的函数勾子,如果不会使用见demo
+			 * 类型:(lsit:fileListType[]) => Promise<fileListType[]>
+			 * 这里可以过滤不需要上传的文件.
+			 */
+			beforeUpload: {
+				type: Function as PropType<XFILESUPLOAD_BEFORE_CALLBACK>,
+				default: (list : fileListType[]) : Promise<fileListType[]> => {
+					return Promise.resolve(list)
+				}
+			}
+		},
+		mounted() {
+			this.xfile = new xFileSystem(this.filter, this.multiple, this.maxFileSize)
+
+			this.$nextTick(function () {
+				this.covertList();
+			})
+		},
+		watch: {
+			defaultList() {
+				this.covertList();
+			}
+		},
+		beforeUnmount() {
+			this.xfile?.destory()
+			
+		},
+		computed: {
+		
+			_maxCount() : number {
+				return this.maxCount
+			},
+			_url() : string {
+				return this.url
+			},
+			_formData() : UTSJSONObject | null {
+				return this.formData
+			},
+			_header() : UTSJSONObject | null {
+				return this.header
+			},
+			_name() : string {
+				return this.name
+			},
+			_disabled() : boolean {
+				return this.disabled || (this.fileList.length > this._maxCount && this._maxCount > -1)
+			},
+			_borderBottomColor() : string {
+				if (xConfig.dark == 'dark') return xConfig.borderDarkColor
+				return this.borderBottomColor;
+			},
+			_isDark() : boolean {
+				return xConfig.dark == 'dark'
+			}
+		},
+		methods: {
+			covertList() {
+				if (this.defaultList == null) return;
+				
+				let dlist = this.defaultList!.map((el : UTSJSONObject, index : number) : fileListType => {
+					let uid = Math.floor(Math.random() * 1 * Math.floor(Math.random() * Date.now())).toString().substring(0, 10);
+					let type = el.getString("type")
+					type = type == null ? uid : type
+					let name = el.getString("name")
+					name = name == null ? index.toString() : name;
+					let requestdata = el.getAny("request")
+					// #ifdef APP || MP-WEIXIN
+					return {
+						name,
+						type,
+						id: uid,
+						request: requestdata as any,
+						realFilePath: "",
+						cacheFilePath: "",
+						status: 2,
+						file: "",
+						uri:"",
+						size: 0
+					} as fileListType
+					// #endif
+					// #ifdef WEB
+					return {
+						name,
+						type,
+						id: uid,
+						request: requestdata as any,
+						realFilePath: "",
+						cacheFilePath: "",
+						status: 2,
+						file: "",
+						uri:"",
+						size: 0
+					}
+					// #endif
+
+				})
+
+				this.fileList = dlist;
+				this.xfile!.clear();
+			},
+			/**
+			 * 文件目录或者文件是否存在
+			 */
+			fileIsOnlyInSys(dir : string) : Promise<string> {
+				// #ifdef WEB||MP-WEIXIN
+				return Promise.resolve("")
+				// #endif
+
+
+				let baseNamePath = dir == null ? 'tmui4temp' : dir
+				baseNamePath = uni.env.CACHE_PATH + "/" + baseNamePath
+				const fileManager = uni.getFileSystemManager()
+				return new Promise((res, rej) => {
+					fileManager.readdir({
+						dirPath: baseNamePath,
+						success(result : ReadDirSuccessResult) {
+							if (result == null) {
+								fileManager.mkdir({
+									dirPath: baseNamePath,
+									recursive: true,
+									success(result : FileManagerSuccessResult) {
+										res(baseNamePath)
+									},
+									fail(er : IFileSystemManagerFail) {
+										console.log('创建目录失败', er)
+										rej("")
+									}
+								} as MkDirOptions)
+							} else {
+								// console.log(result)
+								res(baseNamePath)
+							}
+						},
+						fail(ere : IFileSystemManagerFail) {
+							fileManager.mkdir({
+								dirPath: baseNamePath,
+								recursive: true,
+								success(result : FileManagerSuccessResult) {
+									res(baseNamePath)
+								},
+								fail(er : IFileSystemManagerFail) {
+									console.log('创建目录失败', er)
+									rej("")
+								}
+							} as MkDirOptions)
+						}
+					} as ReadDirOptions)
+				})
+			},
+			getCacheFiles(dir : string | null) : Promise<string[]> {
+				// #ifdef WEB || MP-WEIXIN
+				return Promise.resolve([])
+				// #endif
+				let baseNamePath = dir == null ? 'tmui4temp' : dir
+				baseNamePath = uni.env.CACHE_PATH + "/" + baseNamePath
+				const fileManager = uni.getFileSystemManager()
+				return new Promise((res, rej) => {
+					fileManager.readdir({
+						dirPath: baseNamePath,
+						success(result : ReadDirSuccessResult) {
+							if (result == null) {
+								fileManager.mkdir({
+									dirPath: baseNamePath,
+									recursive: true,
+									success(result2 : FileManagerSuccessResult) {
+										res([] as string[])
+
+									},
+									fail(er : IFileSystemManagerFail) {
+
+										rej([] as string[])
+									}
+								} as MkDirOptions)
+							} else {
+								res(result.files)
+							}
+						},
+						fail(ere : IFileSystemManagerFail) {
+							fileManager.mkdir({
+								dirPath: baseNamePath,
+								recursive: true,
+								success(result : FileManagerSuccessResult) {
+									res([] as string[])
+								},
+								fail(er : IFileSystemManagerFail) {
+									console.log('创建目录失败', er)
+									rej([] as string[])
+								}
+							} as MkDirOptions)
+						}
+					} as ReadDirOptions)
+				})
+			},
+			openfile() {
+				let _this = this;
+				if (this._uploading || this._disabled || (_this.fileList.length > _this._maxCount && _this._maxCount > -1)) return;
+				
+				this.xfile!.openDocument((listtest : any) => {
+					let list = [] as fileListType[];
+					// #ifdef APP-IOS
+					let templist = JSON.parseArray<string>(listtest)
+					for (let i = 0; i < templist.length; i++) {
+						let item = JSON.parse(templist[i])! as fileListType;
+						list.push(item)
+					}
+					// #endif
+
+					// #ifndef APP-IOS
+					list = listtest as fileListType[]
+					// #endif
+					for (let i = 0; i < list.length; i++) {
+						let el = list[i] as fileListType
+						let isSonme = _this.fileList.some((ele) : boolean => ele.type == el.type && ele.name == el.name)
+						if (_this.fileList.length > _this._maxCount && _this._maxCount > -1) {
+							break;
+						} else if (!isSonme) {
+
+							_this.fileList.push(el as fileListType)
+						}
+					}
+					if (_this.autoStart) {
+						_this.start();
+					}
+				})
+			},
+
+			copyFile(item : fileListType, call : (item : fileListType | null) => void) {
+				let _this = this;
+				let index = this.fileList.findIndex((v) : boolean => v.id == item.id)
+
+				if (index == -1) {
+					call(null)
+					return
+				}
+
+				// #ifdef APP-IOS
+				item!.realFilePath = uni.env.CACHE_PATH + '/' + item!.realFilePath
+				call(item)
+				// #endif
+				// #ifdef MP-WEIXIN
+				item!.realFilePath = item!.realFilePath
+				call(item)
+				// #endif
+
+				if ((item?.cacheFilePath != null && item?.cacheFilePath != "") || item.status != 0) {
+					// #ifndef APP-IOS
+					call(item)
+					// #endif
+					return
+				}
+
+				//创建临时存放的目录
+				this.fileIsOnlyInSys('tmui4temp')
+					.then((basedir : string) => {
+						// #ifndef APP-IOS
+						_this.xfile!.copyFileToPath(item, basedir)
+							.then((oreal : fileListType | null) => {
+								if (oreal != null) {
+									item = oreal!
+									_this.fileList.splice(index, 1, oreal!)
+									call(item)
+								} else {
+									call(null)
+								}
+							})
+						// #endif
+
+					})
+
+			},
+			remove(item : fileListType) {
+				if (this._uploading) {
+					uni.showToast({ title: "上传中禁止删除", icon: 'none' })
+					return;
+				}
+				if (this.uploadFileDisabledDel) {
+					uni.showToast({ title: "已上传文件禁止删除", icon: 'none' })
+					return;
+				}
+				this.xfile!.remove(item.id)
+				let tems = this.fileList.slice(0)
+				this.fileList = tems.filter((v) : boolean => v.id != item.id);
+				/**
+				 * 变动触发change
+				 * @param {fileListType[]} fileList -文件列表。
+				 */
+				this.$emit("change", this.fileList.slice(0))
+			},
+			/**
+			 * 安卓专用清缓存函数
+			 * @description 如果你是安卓端，如果不用了离开页面了，请手动调用 下此函数
+			 * 来清空应用缓存文件。以免造成数据占了内存卡。
+			 * @public
+			 */
+			clearCacheFiles() {
+				// #ifdef APP-ANDROID
+				let baseNamePath = 'tmui4temp'
+				baseNamePath = uni.env.CACHE_PATH + "/" + baseNamePath
+				this.getCacheFiles(null)
+					.then((files : string[]) => {
+						const fileManager = uni.getFileSystemManager()
+						files.forEach((el : string) => {
+							fileManager.unlink({
+								filePath: baseNamePath + "/" + el,
+								success: (res : FileManagerSuccessResult) => {
+									console.info("缓存清除成功：", el)
+								},
+								fail: (res : IFileSystemManagerFail) => {
+									console.error("文件删除失败：", el)
+								}
+							} as UnLinkOptions)
+						})
+					})
+				// #endif
+			},
+			/**
+			 * 上传文件列表
+			 * @public
+			 */
+			start() {
+				if (this._uploading) return;
+				let _this = this;
+				this._uploadingIndex = 0;
+				this._uploading = true;
+
+
+				this.beforeUpload(this.fileList.slice(0))
+					.then((list : fileListType[]) => {
+					
+						_this.fileList = list.slice(0)
+						_this.uploadFile();
+						
+					})
+					.catch((_ : any | null) => {
+						console.error("参数有误,请返回正确.")
+					})
+			},
+			statusColor(status : number | null) : string {
+				if (status == 0) return "#888888"
+				if (status == 1 || status == 4) return "#FF0000"
+				if (status == 2) return "#12cb4d"
+				return "#1480e5"
+			},
+			getFilesize(item : fileListType) : string {
+				let size = item.size
+				if (size == null || size == 0) return ""
+				let fileszie = size! as number;
+				if (fileszie <= 1024) {
+					return fileszie.toString() + "字节"
+				}
+				if (fileszie <= 1024 * 1024) {
+					let fz = (fileszie / 1024).toFixed(2)
+					return fz + "kb"
+				}
+				if (fileszie <= 1024 * 1024 * 1024) {
+					let fz = (fileszie / (1024 * 1024)).toFixed(2)
+					return fz + "mb"
+				}
+				let fz = (fileszie / (1024 * 1024 * 1024)).toFixed(2)
+				return fz + "gb"
+			},
+			uploadFile() {
+				let _this = this;
+				if (this.fileList.length == 0 || this._uploadingIndex > this.fileList.length - 1) {
+					this._uploading = false;
+					this.$emit("change", this.fileList.slice(0))
+
+					this.clearCacheFiles()
+					_this.xfile?.destory()
+					_this.xfile = new xFileSystem(_this.filter, _this.multiple, this.maxFileSize)
+					return;
+				}
+				let item = this.fileList[this._uploadingIndex];
+
+				if (item.status == 2 || item.status == 4) {
+					this._uploadingIndex += 1;
+					this.uploadFile();
+					return;
+				}
+
+				
+				this.copyFile(item, (realItem : fileListType | null) => {
+					
+					if (realItem != null) {
+						item = realItem!
+
+						item.status = 3;
+						_this.$forceUpdate()
+
+						let filepath = item!.realFilePath;
+						let files = null as null | UploadFileOptionFiles[];
+						// #ifdef WEB
+						filepath = "";
+						files = [
+							{
+								name: _this._name,
+								uri: "",
+								file: item.file!
+							}
+						] as UploadFileOptionFiles[]
+					
+						// #endif
+
+						uni.uploadFile({
+							url: _this._url,
+							formData: _this._formData,
+							name: _this._name,
+							header: _this._header,
+							filePath: item!.realFilePath,
+							files,
+							success: (res : UploadFileSuccess) => {
+								if (res.statusCode != _this.statusCode) {
+									item.status = 1;
+									_this._uploadingIndex += 1;
+									_this.$forceUpdate()
+									_this.uploadFile();
+								} else {
+									item.status = 2;
+									item!.request = res.data;
+									_this._uploadingIndex += 1;
+									// #ifdef WEB
+									item.file = null;
+									// #endif
+									_this.$forceUpdate()
+									_this.uploadFile();
+								}
+							},
+							fail: (error : UploadFileFail) => {
+								console.error(error)
+								item.status = 1;
+								_this._uploadingIndex += 1;
+								_this.$forceUpdate()
+								_this.uploadFile();
+							}
+						})
+					}
+
+				})
+
+
+			},
+			getTextStatus(item : fileListType) : string {
+
+				let text = "";
+				if (item.status == 0) {
+					text = "待上传"
+				} else if (item.status == 1) {
+					text = "上传失败"
+				} else if (item.status == 2) {
+					text = "上传成功"
+				} else if (item.status == 3) {
+					text = "上传中..."
+				} else if (item.status == 4) {
+					text = "超过大小"
+				}
+				let fsize = this.getFilesize(item as fileListType);
+
+				return text + (fsize == '' ? "" : " | " + fsize)
+			}
+		},
+	}
+</script>
+<template>
+	<view class="xFile">
+		<view @click="openfile">
+			<!-- 
+			 @slot 触发文件选择的区域插槽
+			 -->
+			<slot>
+				<view style="pointer-events: none;">
+					<x-button :disabled="_disabled" :loading="_uploading" icon="sticky-note-add-line"
+						:block="true">选择文件</x-button>
+				</view>
+			</slot>
+		</view>
+		<slot name="list" :list="fileList">
+			<view style="margin-top: 16px;" v-if="fileList.length>0">
+				<view class="xFileItem" :style="
+					{
+						borderBottomColor:index==fileList.length-1? 'transparent': _borderBottomColor,
+						padding:`16px 0px`
+					}" v-for="(item,index) in fileList"
+					:key="index">
+					<view class="xFileItemWrap">
+						<view style="margin-right: 20px;flex:1">
+							<text :style="{color:_isDark?'#ffffff':'#333333',fontSize:'15px'}" class="xFileItemTitle">{{item.name}}</text>
+							<text class="xFileItemSubtext"
+								:style="{color:statusColor(item.status),fontSize:'12px'}">{{getTextStatus(item)}}</text>
+						</view>
+						<x-icon v-if="(item.status!=3)&&!uploadFileDisabledDel" @click="remove(item)" name="close-line"
+							font-size="24px" color="#bdbdbd"></x-icon>
+					</view>
+				</view>
+			</view>
+		</slot>
+	</view>
+</template>
+<style scoped>
+	.xFileItemWrap {
+		display: flex;
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+	}
+
+	.xFileItem {
+		/* padding: 16px 0px; */
+		border-bottom-width: 1px;
+		border-bottom-style: solid;
+	}
+
+	.xFileItemTitle {
+		/* font-size: 15px; */
+		/* #ifdef APP */
+		lines: 1;
+		text-overflow: ellipsis;
+		/* #endif */
+		/* #ifdef H5 */
+		word-break: break-all;
+		/* #endif */
+	}
+
+	.xFileItemSubtext {
+		/* font-size: 12px; */
+		margin-top: 5px;
+	}
+</style>

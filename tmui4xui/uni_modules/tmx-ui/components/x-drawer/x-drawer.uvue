@@ -1,0 +1,999 @@
+<script lang="ts">
+	import { checkIsCssUnit, getUid, getUnit } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor, colorAddDeepen } from "../../core/util/xCoreColorUtil.uts"
+	import { xConfig,xProvitae } from "../../config/xConfig.uts"
+	import { PropType, SlotsType } from "vue";
+	type callbackType = ()=>Promise<boolean>;
+	/**
+	 * @name 抽屉 xDrawer
+	 * @description 提供四个方向的弹出。
+	 * @page /pages/index/drawer
+	 * @category 反馈组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				_width: 0,
+				_height: 0,
+				showOverflay: false,
+				
+				//是否动画中
+				actioning: false,
+				status: "",
+				id: "xDrawer" + getUid(),
+				wrapId: ("xDrawerWrap" + getUid()) as string,
+				first: true,
+				tid: 0,
+				windtop: 0,
+				windowBottom: 0,
+				start_move_x: 0,
+				start_move_y: 0,
+				move_x: 0,
+				move_y: 0,
+				move_end_x: 0,
+				move_end_y: 0,
+				scrollTop: -1,
+				// 是否达到了滚动顶部或者底部。
+				isTopOrBottomByScroll: false,
+				xDrawerContentHeight: 0,
+				safeFooterHeight: 0,
+				lezyShowModal: true,
+				
+				isOpenedDefault:false,
+				isLoading:false
+			}
+		},
+		slots: Object as SlotsType<{
+			trigger : {
+				show : boolean
+			},
+			default : {
+				show : boolean
+			}
+		}>,
+		emits: [/**
+			 * 点击遮罩事件
+			 */
+			'click',
+			/**
+			 * 关闭是触发
+			 */
+			'close',
+			/**
+			 * 打开时触发
+			 */
+			'open',
+			/**
+			 * 打开前执行
+			 */
+			'beforeOpen',
+			/**
+			 * 关闭前执行
+			 */
+			'beforeClose',
+			/**
+			 * 等同v-model:show
+			 */
+			'update:show',
+			/**
+			 * 取消时触发
+			 */
+			'cancel',
+			/**
+			 * 确认时触发
+			 */
+			'confirm'],
+		props: {
+			/**
+			 * 自定义遮罩样式
+			 */
+			customStyle: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 自定义容器背景层样式
+			 */
+			customWrapStyle: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 标题
+			 */
+			title: {
+				type: String,
+				default: "标题"
+			},
+			/**
+			 * 显示底部操作栏
+			 */
+			showFooter: {
+				type: Boolean,
+				default: false
+			},
+
+			/**
+			 * 是否显示标题
+			 */
+			showTitle: {
+				type: Boolean,
+				default: true
+			},
+			/**
+			 * 是否显示底部关闭按钮
+			 */
+			showClose: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 遮罩是否允许点击被关闭
+			 */
+			overlayClick: {
+				type: Boolean,
+				default: true
+			},
+			/**
+			 * 显示可v-model:show双向绑定
+			 */
+			show: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 显示取消按钮
+			 */
+			showCancel: {
+				type: Boolean,
+				default: true
+			},
+			/**
+			 * 取消按钮的文本
+			 */
+			cancelText: {
+				type: String,
+				default: "取消"
+			},
+			/**
+			 * 确认按钮的文本
+			 */
+			confirmText: {
+				type: String,
+				default: "确认"
+			},
+			/**
+			 * 动画时间
+			 */
+			duration: {
+				type: Number,
+				default: 300
+			},
+			/**
+			 * 打开dom的延迟量，如果你打开 弹窗在ios正常。
+			 * 请不要修改此值。如果遇到打不开，或者 打开 后没动画，关闭不了等可能是sdk bug导致 
+			 * 此时需要加大值来避免。具体加多少以你弹窗内的节点复杂度有关，需要你自行压力测试。
+			 * 此值仅在ios下生效。
+			 */
+			watiDuration: {
+				type: Number,
+				default: 120
+			},
+			/**
+			 * 打开方向。
+			 */
+			position: {
+				type: String as PropType<"top" | "bottom" | "left" | "right">,
+				default: "bottom"
+			},
+			/**
+			 * 打开方向为上和下时的圆角
+			 * 空值时，取全局配置的圆角。
+			 */
+			round: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 左右时为内容宽，
+			 * 上下时为内容高
+			 * 百分比，数字字符或者带单位,或者为auto(根据内容自动高度或者宽高)
+			 */
+			size: {
+				type: String,
+				default: "50%"
+			},
+			/**
+			 * 弹层最大的高度值，默认为屏幕的可视高
+			 * 提供值时不能为百分比，可以是px,rpx单位数字。如果你不带单位，默认转换为rpx单位。
+			 */
+			maxHeight: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 背景颜色
+			 */
+			bgColor: {
+				type: String,
+				default: 'white'
+			},
+			/**
+			 * 暗黑背景颜色，如果不提供默认读取全局的sheet配置
+			 */
+			darkBgColor: {
+				type: String,
+				default: ''
+			},
+			/**
+			 * 遮罩的背景色
+			 */
+			overflayBgColor: {
+				type: String,
+				default: 'rgba(0, 0, 0, 0.4)'
+			},
+			/**
+			 * 是否禁用内部的scroll标签
+			 * 禁用后内容不会滚动，如果设定了指定高，内容超出指定高，会被裁切
+			 * 但如果没有指定高，内容自动的话，高是自动的。
+			 */
+			disabledScroll: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 内容区域左右和下的边距。
+			 */
+			contentMargin: {
+				type: String,
+				default: '16'
+			},
+			/**
+			 * 宽屏时是否让内容剧中显示
+			 * 并限制其宽为屏幕宽，只展示中间内容以适应宽屏。
+			 * 注意只有top,bottom才会生效。
+			 */
+			widthCoverCenter: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 滑动左右或者上下关闭弹出层
+			 * 注意如果设置为0就表示关闭该功能。
+			 * 默认drawer嵌套了scroll-view，再你滚动到顶或者底时，如果继续滑动的距离大于此值关闭层。
+			 * 但如果你是禁用了内部scroll-view，而是采用自己的scorll-view，此时该功能会与你的滚动手势冲突，请自行考虑。
+			 * 建议要打开时设置为80-100比较合理
+			 */
+			swiperLenClose: {
+				type: Number,
+				default: 0
+			},
+			/**
+			 * 距离顶部的偏移量,如果你布局顶会遮罩弹层可以考虑使用此值
+			 */
+			offsetTop: {
+				type: String,
+				default: '0'
+			},
+			/**
+			 * 距离底部的偏移量,如果你布局底会遮罩弹层可以考虑使用此值
+			 */
+			offsetBottom: {
+				type: String,
+				default: '0'
+			},
+			/**
+			 * 弹层的层级
+			 */
+			zIndex: {
+				type: Number,
+				default: 1100
+			},
+			/**
+			 * 懒加载
+			 * 为了解决业务布局节点超多时,你可能需要内容延迟加载以免阻塞动画流畅度.
+			 * 如果你启用了lazy,每次打开时,动画执行后才会显示内容.这样动画就流畅,不会因为节点过多造成的卡.
+			 * 开启了此属性后ios端前面的watiDuration属性可以不用再设置了.
+			 */
+			lazy: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 是否禁用确认按钮
+			 */
+			disabledConfirm: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 底部按钮操作的主题色，空取全局
+			 */
+			btnColor:{
+				type:String,
+				default:""
+			},
+			/**
+			 * 关闭前异步执行的函数，如果返回false阻止关闭，返回true允许关闭
+			 * 必须返回的是Promise异步函数，且类型返回值必须是Promise<boolean>，不然会报错。
+			 */
+			beforeClose: {
+				type: Function as PropType<callbackType>,
+				default: () : Promise<boolean> => {
+					return Promise.resolve(true)
+				}
+			},
+			/**
+			 * 关闭图标的颜色
+			 */
+			closeColor:{
+				type:String,
+				default:"#e6e6e6"
+			},
+			/**
+			 * 关闭图标的暗黑颜色
+			 */
+			closeDarkColor:{
+				type:String,
+				default:"#545454"
+			}
+
+		},
+		watch: {
+			show(_newval : boolean) {
+				if (_newval) {
+
+					this.showAlert()
+				} else {
+					this.closeAlert()
+				}
+			},
+			
+			
+		},
+		computed: {
+			
+			_disabledConfirm() : boolean {
+				return this.disabledConfirm
+			},
+			_lazy() : boolean {
+				return this.lazy
+			},
+			_customStyle() : string {
+				return this.customStyle
+			},
+			_customWrapStyle() : string {
+				return this.customWrapStyle
+			},
+			
+			_show() : boolean {
+				return this.show
+			},
+			_widthCoverCenter() : boolean {
+				return this.widthCoverCenter
+			},
+
+			_showClose() : boolean {
+				return this.showClose
+			},
+			_duration() : number {
+				return this.duration
+			},
+			_position() : string {
+				return this.position
+			},
+			_title() : string {
+				return this.title
+			},
+			_showTitle() : boolean {
+				return this.showTitle
+			},
+			_round() : string {
+				let round = this.round;
+				if (round == "") {
+					round = xConfig.drawerRadius
+				}
+				let radius = checkIsCssUnit(round, xConfig.unit);
+
+				let _r = "none"
+				if (this.position == 'top') {
+					_r = `0px 0px ${radius} ${radius}`
+				}
+				if (this.position == 'bottom') {
+					_r = `${radius} ${radius} 0px 0px`
+				}
+				return _r
+			},
+			_offset() : number {
+				let offset = checkIsCssUnit(this.offsetTop, xConfig.unit);
+				let x = parseFloat(offset)
+				let unit = getUnit(offset)
+				if (unit == 'rpx') {
+					x = uni.rpx2px(x)
+				}
+				return x;
+			},
+			_offsetBottom() : number {
+				let offset = checkIsCssUnit(this.offsetBottom, xConfig.unit);
+				let x = parseFloat(offset)
+				let unit = getUnit(offset)
+				if (unit == 'rpx') {
+					x = uni.rpx2px(x)
+				}
+				return x;
+			},
+
+			_size() : string {
+				return checkIsCssUnit(this.size, xConfig.unit);
+			},
+			_contentMargin() : string {
+				return checkIsCssUnit(this.contentMargin, xConfig.unit);
+			},
+
+			_showFooter() : boolean {
+				return this.showFooter
+			},
+			_maxHeight() : string {
+				if (this.maxHeight == "") return ""
+				if (this.position == 'left' || this.position == 'right') return ""
+
+				return checkIsCssUnit(this.maxHeight, xConfig.unit);
+			},
+			_showCancel() : boolean {
+				return this.showCancel
+			},
+			_cancelText() : string {
+				return this.cancelText
+			},
+			_confirmText() : string {
+				return this.confirmText
+			},
+			_animationFun() : string {
+				return xConfig.animationFun
+			},
+			_bgColor() : string {
+				let bgcolor = this.bgColor;
+				if (xConfig.dark == 'dark') {
+					if (this.darkBgColor != '') {
+
+					}
+					bgcolor = this.darkBgColor != '' ? this.darkBgColor : xConfig.sheetDarkColor
+				}
+				return getDefaultColor(bgcolor)
+			},
+			_btnColor():string{
+				if(this.btnColor == '') return getDefaultColor(xConfig.color)
+				return getDefaultColor(this.btnColor)
+			},
+			__height() : string {
+				let h = '100%';
+				// #ifdef WEB
+
+				h = `calc(100% - ${this.windtop}px - ${this._offsetBottom}px)`
+				// #endif
+				// #ifdef APP || MP-WEIXIN
+				if (this._offset > 0 || this._offsetBottom > 0) {
+					h = (this._height - this._offsetBottom) + 'px'
+				}
+
+				// #endif
+
+				return h;
+			},
+			_titleFontSize() : string {
+				return (xConfig.fontScale * 16).toString() + 'px'
+			},
+			_isDark() : boolean {
+				return xConfig.dark == 'dark'
+			},
+			_closeIcon():string{
+				return xConfig.closeIcon
+			}
+		},
+
+		mounted() {
+			this.lezyShowModal = this._lazy ? false : true;
+			let t = this;
+		
+			function oninitready(){
+				
+				t.isOpenedDefault = true;
+				let sys = uni.getWindowInfo()
+				// #ifdef WEB
+				t._width = sys.windowWidth
+				t._height = sys.windowHeight;
+				t.windtop = sys.windowTop + t._offset;
+				
+				// #endif
+				// #ifdef APP|| MP-WEIXIN
+				t._width = sys.windowWidth
+				t._height = sys.windowHeight + 44;
+				t.windtop = t._offset;
+				// #endif
+				t.safeFooterHeight = sys.safeAreaInsets.bottom == 0 ? 16 : sys.safeAreaInsets.bottom
+				if (t._show) {
+					t.showAlert();
+				}
+			}
+			
+			oninitready()
+		},
+		beforeUnmount() {
+			clearTimeout(this.tid)
+		},
+		methods: {
+			cancelEvt() {
+				// ios渲染有时会造成无法触发onEnd事件，导致无法关闭。这是ios渲染的bug造成，无力修复，已向官方反馈
+				// 但这牵涉到底层问题。一时无法修复，故在ios特殊处理。后期修复，需要删除此值。
+				// #ifdef APP-IOS
+				this.actioning = false;
+				// #endif
+
+				/**
+				 * 取消时触发
+				 */
+				this.$emit('cancel')
+				this.closeAlert()
+			},
+			async confirmEvt():Promise<any>  {
+				this.isLoading = true;
+				let isCanClose = await this.beforeClose()
+				this.isLoading = false;
+				if(!isCanClose){
+					return Promise.resolve(true)
+				}
+				// ios渲染有时会造成无法触发onEnd事件，导致无法关闭。这是ios渲染的bug造成，无力修复，已向官方反馈
+				// 但这牵涉到底层问题。一时无法修复，故在ios特殊处理。后期修复，需要删除此值。
+				// #ifdef APP-IOS
+				this.actioning = false;
+				// #endif
+
+				/**
+				 * 确认时触发
+				 */
+				this.$emit('confirm')
+				this.closeAlert()
+				return Promise.resolve(false)
+			},
+			overflayMoveTouch(evt : TouchEvent) {
+				evt.preventDefault();
+			},
+			onClickOverflowy(evt : Event) {
+				evt.stopPropagation()
+				/**
+				 * 点击遮罩事件
+				 */
+				this.$emit("click")
+				if (!this.overlayClick||this.isLoading) return;
+				this.closeAlert();
+				// this.cancelEvt();
+			},
+			closeAlert() {
+
+				if (this.actioning) return;
+				if (this.status == 'close') return;
+				this.actioning = true;
+				this.status = 'close'
+
+				/**
+				 * 关闭前执行
+				 */
+				this.$emit('beforeClose')
+				this.setStyleAni();
+			},
+			showAlert() {
+
+				if (this.actioning) return;
+				if (this.status == 'open') return;
+				this.showOverflay = true;
+				this.actioning = true;
+				this.status = 'open'
+
+				/**
+				 * 打开前执行
+				 */
+				this.$emit('beforeOpen')
+				this.setStyleAni();
+
+
+			},
+			setStyleAni() {
+				try {
+					let t = this;
+					let sys = uni.getWindowInfo()
+
+					t._height = sys.windowHeight - t._offset
+					let watiDuration = 60;
+					// #ifdef APP-IOS
+					watiDuration = t.watiDuration
+					// #endif
+
+					if (this.status == 'open') {
+
+						this.showOverflay = true;
+						clearTimeout(this.tid)
+						this.tid = setTimeout(function () {
+							let element = t.$refs['xDrawerWrap'] as UniElement | null
+							let elementWrap = t.$refs['xDrawerWrapContent'] as UniElement | null
+							if (element== null || elementWrap == null) return;
+
+							element!.style.setProperty("transition-duration", t._duration.toString() + 'ms')
+							elementWrap!.style.setProperty("transition-duration", t._duration.toString() + 'ms')
+
+							element!.style.setProperty('opacity', 1)
+							elementWrap!.style.setProperty('transform', `translate(0%,0%)`)
+						}, watiDuration);
+					} else if (this.status == 'close') {
+						let element = t.$refs['xDrawerWrap'] as UniElement | null
+						let elementWrap = t.$refs['xDrawerWrapContent'] as UniElement | null
+						if (element== null || elementWrap == null) return;
+						
+						element.style.setProperty("transition-duration", this._duration.toString() + 'ms')
+						elementWrap.style.setProperty("transition-duration", this._duration.toString() + 'ms')
+
+						element.style.setProperty('opacity', 0)
+						if (this._position == 'bottom') {
+							elementWrap.style.setProperty('transform', `translate(0%,100%)`)
+						} else if (this._position == 'top') {
+							elementWrap.style.setProperty('transform', `translate(0%,-100%)`)
+						} else if (this._position == 'left') {
+							elementWrap.style.setProperty('transform', `translate(-100%,0%)`)
+						} else if (this._position == 'right') {
+							elementWrap.style.setProperty('transform', `translate(100%,0%)`)
+						}
+					}
+
+				} catch (e) {
+					//TODO handle the exception
+				}
+			},
+			openDrawer() {
+
+				this.showAlert();
+			},
+			onEnd() {
+				this.actioning = false;
+				if (this.status == 'close') {
+					this.showOverflay = false;
+					/**
+					 * 关闭时执行
+					 */
+					this.$emit('close')
+					/**
+					 * 等同v-model:show
+					 */
+					this.$emit('update:show', false)
+					if (this._lazy) {
+						this.lezyShowModal = false
+					}
+				} else {
+					/**
+					 * 打开执行的事件
+					 */
+					this.$emit('open')
+					if (this._lazy) {
+						this.lezyShowModal = true
+					}
+				}
+			},
+			maskerMove(evt : UniTouchEvent) {
+				// #ifdef WEB
+				evt.preventDefault()
+				// #endif
+			},
+			mStart(evt : UniTouchEvent) {
+				if (this.swiperLenClose == 0) return;
+				// evt.preventDefault()
+				// evt.cancelable = true;
+				this.start_move_x = evt.changedTouches[0].clientX
+				this.start_move_y = evt.changedTouches[0].clientY
+			},
+			mMove(evt : UniTouchEvent) {
+				if (this.swiperLenClose == 0) return;
+				// #ifdef WEB
+				evt.preventDefault()
+				// #endif
+
+				if (evt.changedTouches.length == 0) return;
+				this.move_x = evt.changedTouches[0].clientX
+				this.move_y = evt.changedTouches[0].clientY
+
+			},
+			mEnd(evt : UniTouchEvent) {
+				if (this.swiperLenClose == 0) return;
+				// evt.preventDefault()
+				if (evt.changedTouches.length == 0) return;
+				let x = evt.changedTouches[0].clientX
+				let y = evt.changedTouches[0].clientY
+				this.move_end_x = x
+				this.move_end_y = y;
+
+				this.swiperClose();
+			},
+			swiperClose() {
+
+				let offsetX = this.move_end_x - this.start_move_x
+				let offsetY = this.move_end_y - this.start_move_y
+
+				if (this.swiperLenClose == 0 || (this.actioning && this.status == 'close')) return;
+
+				if (this.position == 'left' && offsetX < this.swiperLenClose * -1 && Math.abs(offsetX) >= Math.abs(offsetY)) {
+					this.closeAlert()
+				}
+				if (this.position == 'right' && offsetX > this.swiperLenClose && Math.abs(offsetX) >= Math.abs(offsetY)) {
+					this.closeAlert()
+				}
+				if (this.position == 'top' && offsetY < this.swiperLenClose * -1 && Math.abs(offsetY) >= Math.abs(offsetX)) {
+					this.closeAlert()
+				}
+				if (this.position == 'bottom' && offsetY > this.swiperLenClose && Math.abs(offsetY) >= Math.abs(offsetX)) {
+					this.closeAlert()
+				}
+
+			},
+			onScroll(evt : UniScrollEvent) {
+				if (this.position == 'bottom') {
+					if (evt.detail.scrollTop > 0) {
+						this.start_move_x = this.move_x
+						this.start_move_y = this.move_y
+					}
+				}
+				if (this.position == 'top') {
+					let ele = this.$refs['xDrawerContent'] as UniElement | null;
+					if (ele == null) return;
+					let height = ele.getBoundingClientRect().height;
+					let maxheight = evt.detail.scrollHeight - evt.detail.scrollTop
+					if (evt.detail.scrollTop < maxheight - 1) {
+						this.start_move_x = this.move_x
+						this.start_move_y = this.move_y
+					}
+				}
+
+			},
+			onScrollTop(evt : UniScrollToUpperEvent) {
+				this.start_move_x = this.move_x
+				this.start_move_y = this.move_y
+
+			},
+			onScrollBottom(evt : UniScrollToLowerEvent) {
+				this.start_move_x = this.move_x
+				this.start_move_y = this.move_y
+			}
+		},
+	}
+</script>
+<template>
+	<view>
+		<view @click="openDrawer">
+			<!--
+			@slot 标签触发显示遮罩，免于使用变量控制
+			@prop {Boolean} show - 当前是否已显示
+			-->
+			<slot name="trigger" :show="show"></slot>
+		</view>
+		<!-- #ifdef H5 -->
+		<teleport to="uni-app">
+		<!-- #endif -->
+		<!-- #ifdef MP-WEIXIN -->
+		<root-portal >
+		<!-- #endif -->
+		
+			<view @click="onClickOverflowy" @touchmove="maskerMove" v-if="showOverflay" :id="id" ref="xDrawerWrap"
+				class="xDrawerWrap" :class="[
+			(_position=='top'||_position=='bottom')&&_widthCoverCenter?'xDrawerWrapContentMinwidthWrapDir':'',
+			'xDrawerWrap_'+_position
+			]" :style="[{backgroundColor:overflayBgColor,width:'100%',
+			top:windtop+'px',
+			height:__height,
+			zIndex:zIndex,
+			'transition-timing-function':_animationFun},_customStyle]">
+				<view v-if="showOverflay&&_position == 'bottom'&&!actioning">
+					<!--
+					 @slot 内容顶部的额外插槽，仅为下向上弹出（position=bottom)下才会显示。
+					 -->
+					<slot name="contentTop"></slot>
+				</view>
+				<view @transitionend="onEnd" @click.stop="" ref="xDrawerWrapContent" class="xDrawerWrapContent"
+					@touchstart="mStart" @touchmove="mMove" @touchend="mEnd" :class="[
+					(_position=='top'||_position=='bottom')&&_widthCoverCenter?'xDrawerWrapContentMinwidth':'',
+					'xDrawerWrapContent_'+_position
+					]" :id="wrapId" 
+					:style="[
+						{
+						width:_position=='left'||_position=='right'?_size:'100%',
+						height:_position=='left'||_position=='right'?'100%':_size,
+						borderRadius:_round,
+						maxHeight:_maxHeight!=''?_maxHeight:'100%',
+						'transition-timing-function':_animationFun,
+						backgroundColor:_bgColor,
+						},
+						customWrapStyle
+					]">
+					<view v-if="_showClose" class="xDrawerXclose">
+						<x-icon  @click="cancelEvt" :color="closeColor" :dark-color="closeDarkColor" font-size="24px"
+							:name="_closeIcon"></x-icon>
+					</view>
+					
+					<view v-if="_showTitle">
+						<!--
+						 @slot 标题插槽
+						 @prop {Boolean} show - 当前是否已显示
+						 -->
+						<slot name="title" :show="show">
+							<view class="xDrawerTitleBox">
+								<text :style="{fontSize:_titleFontSize,color:_isDark?'white':'black',opacity:'0.64'}"
+									class="xDrawertitleBox">{{_title}}</text>
+							</view>
+						</slot>
+					</view>
+
+					<x-loading v-if="!lezyShowModal"><text></text></x-loading>
+					<view ref="xDrawerContent" class="xDrawerContent"
+						:style="{flex:'1',margin:`0px 0px ${_contentMargin} 0px`}">
+						<scroll-view v-if="!disabledScroll&&lezyShowModal" @scroll="onScroll"
+							@scrolltoupper="onScrollTop" @scrolltolower="onScrollBottom" 
+							
+							<!-- #ifdef APP||WEB -->
+							:style="{flex:'1'}"
+							<!-- #endif -->
+							<!-- #ifdef MP -->
+							:style="{position:'absolute',width:'100%',height:'100%'}"
+							<!-- #endif -->
+							
+							:scroll-y="true" :rebound="false">
+							<view :style="{padding:`0px ${_contentMargin} 0px ${_contentMargin}`}">
+
+								<!--
+								@slot 默认插槽
+								-->
+								<slot name="default"></slot>
+							</view>
+						</scroll-view>
+
+						<view v-if="disabledScroll&&lezyShowModal"
+							:style="{flex:'1',padding:`0px ${_contentMargin} 0px ${_contentMargin}`}">
+							<!--
+							默认插槽
+							-->
+							<slot name="default"></slot>
+						</view>
+
+					</view>
+					<view v-if="showFooter&&lezyShowModal" class="xDrawerFooter" :style="{backgroundColor:_bgColor}">
+						<!--
+						@slot 底部操作栏
+						-->
+						<slot name="footer">
+							<view style="flex-direction: row;align-items: center;justify-content: center;display: flex;">
+								<x-button :disabled="isLoading" :color="_btnColor" @click="cancelEvt" v-if="_showCancel" skin="thin" width="0px" :block="true"
+									style="margin-right: 16rpx;flex:1">{{_cancelText}}</x-button>
+								<x-button :loading="isLoading" :color="_btnColor" @click="confirmEvt" width="0px" :disabled="_disabledConfirm" :block="true"
+									style="flex:1">{{_confirmText}}</x-button>
+							</view>
+						</slot>
+						<view :style="{height:safeFooterHeight+'px'}"></view>
+					</view>
+				</view>
+
+			</view>
+			
+			
+		<!-- #ifdef MP-WEIXIN -->
+		</root-portal>
+		<!-- #endif -->
+		<!-- #ifdef H5 -->
+		</teleport>
+		<!-- #endif -->
+	</view>
+</template>
+<style>
+	.xDrawerContent{
+		position: relative;
+
+	}
+	.xDrawerFooter {
+		width: 100%;
+		/* background-color: white; */
+		padding: 0 16px 0px 16px;
+		/* #ifdef MP-WEIXIN||WEB */
+		box-sizing: border-box;
+		/* #endif */
+	}
+
+	.xDrawerXclose {
+		position: absolute;
+		right: 16px;
+		top: 9px;
+		z-index: 100;
+	}
+	.xDrawerXcloseOutter {
+		padding-right: 16px;
+	}
+	.xDrawerTitleBox {
+		height: 50px;
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.xDrawertitleBox {
+		max-width: 175px;
+		overflow: hidden;
+		lines: 1;
+		text-overflow: ellipsis;
+
+	}
+
+	.xDrawerWrap_bottom {
+		display: flex;
+		flex-direction: column;
+		justify-content: flex-end;
+	}
+
+	.xDrawerWrap_top {
+		display: flex;
+		flex-direction: column;
+		justify-content: flex-start;
+	}
+
+	.xDrawerWrap_left {
+		display: flex;
+		flex-direction: row;
+		justify-content: flex-start;
+	}
+
+	.xDrawerWrap_right {
+		display: flex;
+		flex-direction: row;
+		justify-content: flex-end;
+	}
+
+	.xDrawerWrapContent {
+		transition-duration: 350ms;
+		transition-property: transform;
+		/* background-color: white; */
+		display: flex;
+		flex-direction: column;
+		position: relative;
+
+	}
+
+	.xDrawerWrapContentMinwidth {
+		max-width: 500px;
+	}
+
+	.xDrawerWrapContentMinwidthWrapDir {
+		align-items: center;
+	}
+
+	.xDrawerWrapContent_bottom {
+		transform: translate(0%, 100%);
+	}
+
+	.xDrawerWrapContent_top {
+		transform: translate(0%, -100%);
+	}
+
+	.xDrawerWrapContent_left {
+		transform: translate(-100%, 0%);
+	}
+
+	.xDrawerWrapContent_right {
+		transform: translate(100%, 0%);
+	}
+
+	.xDrawerWrap {
+		/* background: rgba(0, 0, 0, 0.4); */
+		opacity: 0;
+		position: fixed;
+		left: 0;
+		top: 0px;
+		transition-duration: 350ms;
+		transition-property: opacity;
+	}
+</style>

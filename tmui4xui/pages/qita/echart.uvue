@@ -1,0 +1,183 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">图表 Echart</x-text>
+			<x-text color="#999999" >
+				是百度图表5.4.1,全量版本
+			</x-text>
+		</x-sheet>
+		<x-sheet dark-color="#dcdcdc">
+			<x-echart ref="echart" @init="oninit" :opts="opts"></x-echart>
+			<x-button :block="true" @click="changeData">改变数据</x-button>
+			<x-button class="mt-20" :block="true" @click="addEchartsclick">注册click事件(不要重复注册)</x-button>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b ">测试饼图</x-text>
+		</x-sheet>
+		<x-sheet dark-color="#dcdcdc">
+			<x-echart ref="echart2" height="300px" @init="initPie" :opts="opts2"></x-echart>
+		</x-sheet>
+		<view style="height:50px"></view>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	// #ifdef MP-WEIXIN
+	const echarts = require("./echarts.min.js")
+	// #endif
+	export default {
+		data() {
+			
+			return {
+				opts: "",
+				opts2:""
+			};
+		},
+		onReady() {
+			// #ifdef MP
+			let ele = this.$refs["echart"] as XEchartComponentPublicInstance
+			let ele2 = this.$refs["echart2"] as XEchartComponentPublicInstance
+			ele.setEcharts(echarts)
+			ele2.setEcharts(echarts)
+			// #endif
+		},
+		methods: {
+			addEchartsclick(){
+				let ele = this.$refs["echart"] as XEchartComponentPublicInstance
+				ele.cahrtActions("click","",(data:any)=>{
+					console.log(data)
+					// 打印点击图表中的click事件。data是属性，一般是UTSJONObject
+					if(data instanceof UTSJSONObject){
+						uni.showModal({
+							title:"提醒",
+							content:JSON.stringify(data! as UTSJSONObject),
+							showCancel:false
+						})
+					}
+				})
+			},
+			oninit() {
+				let opts = {
+					title: {
+						text: 'ECharts示例'
+					},
+					tooltip: {},
+					legend: {
+						data: ['销量']
+					},
+					xAxis: {
+						data: ['衬衫', '羊毛衫', '雪纺衫', '裤子', '高跟鞋', '袜子']
+					},
+					// #ifdef MP
+					formatter:function(val){ if(typeof val == "string") return val; var str = val.data + "件";return str;},
+					// #endif
+					// #ifdef H5
+					formatter:`function(val){ if(typeof val == "string") return val; var str = val.data + "件";return str;}`,
+					// #endif
+					// #ifdef APP
+					formatter:`function(val){ if(typeof val == \\"string\\") return val; var str = val.data + \\"件\\";return str;}`,
+					// #endif
+					yAxis: {},
+					series: [
+						{
+							name: '销量',
+							type: 'bar',
+							data: [5, 20, 36, 10, 10, 20]
+						}
+					],
+					
+				} as UTSJSONObject
+				// #ifdef MP
+				this.opts = opts
+				// #endif
+				// #ifndef MP
+				this.opts = JSON.stringify(opts)
+				// #endif
+			},
+			changeData() {
+				let opts = {
+					title: {
+						text: 'xui'
+					},
+					tooltip: {},
+					legend: {
+						data: ['xui']
+					},
+					xAxis: {
+						data: ['衬衫', '羊毛衫', '裤子', '高跟鞋', '袜子', '1高跟鞋']
+					},
+					yAxis: {},
+					series: [
+						{
+							name: 'xui',
+							type: 'bar',
+							data: [100, 50, 20, 70, 40,600]
+						}
+					]
+				} as UTSJSONObject
+				// #ifdef MP
+				this.opts = opts
+				// #endif
+				// #ifndef MP
+				this.opts = JSON.stringify(opts)
+				// #endif
+				
+				let ele = this.$refs["echart"] as XEchartComponentPublicInstance
+				ele.cahrtActions('resize','',null)
+			},
+			initPie(){
+				let option = {
+				  title: {
+				    text: 'Referer of a Website',
+				    subtext: 'Fake Data',
+				    left: 'center'
+				  },
+				  tooltip: {
+				    trigger: 'item'
+				  },
+				  legend: {
+				    orient: 'vertical',
+				    left: 'left'
+				  },
+				  series: [
+				    {
+				      name: 'Access From',
+				      type: 'pie',
+				      radius: '50%',
+				      data: [
+				        { value: 1048, name: 'Search Engine' },
+				        { value: 735, name: 'Direct' },
+				        { value: 580, name: 'Email' },
+				        { value: 484, name: 'Union Ads' },
+				        { value: 300, name: 'Video Ads' }
+				      ],
+				      emphasis: {
+				        itemStyle: {
+				          shadowBlur: 10,
+				          shadowOffsetX: 0,
+				          shadowColor: 'rgba(0, 0, 0, 0.5)'
+				        }
+				      }
+				    }
+				  ]
+				} as UTSJSONObject;
+				
+				this.opts2 = JSON.stringify(option)
+			}
+		},
+
+	}
+</script>
+
+<style lang="scss">
+
+</style>

@@ -1,0 +1,30 @@
+import Intent from 'android.content.Intent';
+import Uri from 'android.net.Uri';
+import Build from 'android.os.Build';
+import Activity from 'android.app.Activity';
+export function makePhone(tel : string) {
+	let phone = "tel:" + tel;
+	let ac = UTSAndroid.getUniActivity() as Activity
+	let permissionCheck = ["android.permission.CALL_PHONE"]
+	let _this = this;
+	function callphone() {
+		//10以上
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+			let intent = new Intent(Intent.ACTION_DIAL, Uri.parse(phone))
+			ac.startActivity(intent)
+			// 10以下.
+		} else {
+			let intent = new Intent(Intent.ACTION_CALL, Uri.parse(phone))
+			ac.startActivity(intent)
+		}
+	}
+	if (UTSAndroid.checkSystemPermissionGranted(UTSAndroid.getUniActivity()!, permissionCheck)) {
+		callphone()
+	} else {
+		console.log("当前不具备指定权限")
+		UTSAndroid.requestSystemPermission(UTSAndroid.getUniActivity()!, permissionCheck, function (_ : boolean, _ : string[]) {
+			callphone()
+		}, function (_ : boolean, _ : string[]) {
+		})
+	}
+}

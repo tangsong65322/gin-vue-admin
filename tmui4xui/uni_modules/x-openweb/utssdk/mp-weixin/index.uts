@@ -1,0 +1,4 @@
+
+export function openWeb(url : string) {
+	wx.openUrl ({ url:url, complete: console.log } )
+}

@@ -1,0 +1,15 @@
+
+import keyboardHeightChangeByKt from 'uts.sdk.modules.utsXKeyboardheightchangeS.keyboardHeightChangeByKt';
+
+
+// 监听键盘高度变化
+@UTSJS.keepAlive
+export const keyboardHeightChange = (callback : (h : number) => void):()=>void => {
+	const cancelFun = keyboardHeightChangeByKt(UTSAndroid.getUniActivity()!,(keyboardHeight:Int)=>{
+		callback(UTSAndroid.devicePX2px(keyboardHeight))
+	});
+	const cancel = ()=>{
+		cancelFun()
+	};
+	return cancel;
+}

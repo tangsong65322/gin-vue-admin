@@ -1,0 +1,59 @@
+import { hexToRgb } from '../libs/color.uts'
+import { xdAnimation } from './xdAnimation.uts';
+export { XDANIMATION_FLIP3D_OPTIONS, XDANIMATION_TRANSLATE_OPTIONS, XDANIMATION_ROTATE_OPTIONS, XDANIMATION_SCALE_OPTIONS } from "../interface.uts"
+
+
+export class xAnimationS {
+	public static translate(opts : XDANIMATION_TRANSLATE_OPTIONS) {
+		if (opts.ele == null) return
+		let view = opts.ele as HTMLElement
+		let duration_s = (opts?.duration ?? 1000)
+		let delay_s = (opts?.delay ?? 0)
+		let translation_s = (opts?.translation ?? 0)
+		let fromlen_s = (opts?.from ?? 360)
+		let len_s = (opts?.len ?? 360)
+		let loop_s = (opts?.loop ?? 0)
+		xdAnimation.translate(view, duration_s, delay_s, translation_s, fromlen_s, len_s, loop_s, opts?.start, opts?.end)
+	}
+	public static rotate(opts : XDANIMATION_ROTATE_OPTIONS) {
+		if (opts.ele == null) return
+		let view = opts.ele as HTMLElement
+		let duration_s = (opts?.duration ?? 1000)
+		let delay_s = (opts?.delay ?? 0)
+		let from_s = (opts?.from ?? 0)
+		let deg_s = (opts?.deg ?? 360)
+		let loop_s = (opts?.loop ?? 0)
+		xdAnimation.rotate(view, duration_s, delay_s, from_s, deg_s, loop_s, opts?.start, opts?.end)
+	}
+	public static scale(opts : XDANIMATION_SCALE_OPTIONS) {
+		if (opts.ele == null) return
+		let view = opts.ele as HTMLElement
+		let duration_s = (opts?.duration ?? 1000)
+		let delay_s = (opts?.delay ?? 0)
+		let direction_s = (opts?.direction ?? 2)
+		let scale_s = (opts?.scale ?? 1)
+		let from_s = (opts?.from ?? 0)
+
+		let loop_s = (opts?.loop ?? 0)
+		xdAnimation.scale(view, duration_s, delay_s, direction_s, from_s, scale_s, loop_s, opts?.start, opts?.end)
+	}
+	public static flip3D(opts : XDANIMATION_FLIP3D_OPTIONS) {
+		if (opts.ele == null) return
+		let view = opts.ele as HTMLElement
+		let duration_s = (opts?.duration ?? 1000)
+		let delay_s = (opts?.delay ?? 0)
+		let axis_s = (opts?.axis ?? 1)
+		let from_s = (opts?.from ?? 0)
+		let deg_s = (opts?.deg ?? 360)
+		let loop_s = (opts?.loop ?? 0)
+		let cameraDistance_s = (opts?.cameraDistance ?? 12)
+		let scaleZ_s = (opts?.scaleZ ?? 0.5)
+		xdAnimation.flip3D(view, duration_s, delay_s, axis_s, from_s, deg_s, loop_s, cameraDistance_s, scaleZ_s, opts?.start, opts?.end)
+	}
+	public static clearAnimations(ele : UniElement | null, reset : boolean = true) {
+		if (ele == null) return
+		let view = ele as HTMLElement
+		xdAnimation.clearAnimations(view,reset)
+	}
+
+}

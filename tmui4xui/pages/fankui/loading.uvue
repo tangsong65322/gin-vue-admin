@@ -1,0 +1,45 @@
+<template>
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+	<view>
+
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">加载 Loading</x-text>
+			<x-text color="#999999" >
+				可在需要占位加载中使用。
+			</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-loading></x-loading>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b ">水平</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-loading :vertical="false"></x-loading>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b ">更改图标及颜色</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-loading icon="refresh-line" color="primary"></x-loading>
+		</x-sheet>
+	</view>
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+				
+			};
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

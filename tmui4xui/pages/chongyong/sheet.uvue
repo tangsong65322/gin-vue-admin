@@ -1,0 +1,55 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet >
+			<x-text font-size="18" class=" text-weight-b mb-8">容器 Sheet</x-text>
+			<x-text color="#999999" class="line-8">属性比较多，可快速的用来布局，减轻你的布局压力，让效率提升。实验证明：一个普通的小程序20个页面。使用容器+我的组件布局。2天内完成布局，2天对接完成后端。</x-text>
+			<x-text color="error" class="line-8">并且背景，圆角，间隙允许全局动态/统一配置，布局后的页面可根据后期设计要求，一键修改所有设计风格。绝对布局利器。</x-text>
+		</x-sheet>
+		<x-sheet :round="['12','2']" color="primary">
+			<x-text color="white">更改圆角</x-text>
+		</x-sheet>
+		<x-sheet :round="['12','2']" :border="['2','2']" :border-color="['red','primary']">
+			<x-text font-size="18" class=" text-weight-b">边线</x-text>
+		</x-sheet>
+		
+		<x-sheet :round="['12','2']" :linearGradient="['left','#ff667f','#fdb247']">
+			<x-text color="white">渐变</x-text>
+		</x-sheet>
+
+		<x-sheet :loading="true">
+			<x-text font-size="18" class=" text-weight-b mb-24">还允许让内容处于加载中</x-text>
+			<x-sheet :margin="['0']" :linearGradient="['left','#ff667f','#fdb247']">
+				<x-text color="white" >渐变</x-text>
+			</x-sheet>
+			<x-sheet :margin="['0','12','0','0']" color="primary">
+				<x-text color="white" class=" text-weight-b ">更改圆角</x-text>
+			</x-sheet>
+		</x-sheet>
+		
+		<view style="height: 50px;"></view>
+		
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+				
+			};
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

@@ -1,0 +1,82 @@
+import LinearLayout from 'android.widget.LinearLayout';
+import Context from 'android.content.Context'
+import RelativeLayout from 'android.widget.RelativeLayout';
+import ViewGroup from 'android.view.ViewGroup';
+import View from 'android.view.View';
+import Color from 'android.graphics.Color';
+import Gravity from 'android.view.Gravity';
+import GradientDrawable from 'android.graphics.drawable.GradientDrawable';
+import TextView from 'android.widget.TextView';
+import Typeface from 'android.graphics.Typeface';
+import TextUtils from 'android.text.TextUtils';
+import Uri from 'android.net.Uri';
+import ObjectAnimator from 'android.animation.ObjectAnimator';
+import ValueAnimator from 'android.animation.ValueAnimator';
+import TimeInterpolator from 'android.animation.TimeInterpolator';
+import MotionEvent from 'android.view.MotionEvent';
+import { hexToRgb } from "../libs/color.uts"
+import ViewPropertyAnimator from 'android.view.ViewPropertyAnimator';
+import ScrollView from 'android.widget.ScrollView';
+import AccelerateDecelerateInterpolator from 'android.view.animation.AccelerateDecelerateInterpolator';
+// #ifdef UNI-APP-X
+import getCurrentPages from 'io.dcloud.uniapp.framework.getCurrentPages';
+import onReady from 'io.dcloud.uniapp.framework.onReady';
+import onUnload from 'io.dcloud.uniapp.framework.onUnload';
+import onShow from 'io.dcloud.uniapp.framework.onShow';
+import Visibility from 'android.transition.Visibility';
+// #endif
+
+
+export  class ManiWinFloat {
+	contentView:View|null = null;
+	parentView:LinearLayout|null = null;
+	contentWrap:ScrollView|null = null;
+	constructor(){
+		this._createRootView();
+	}
+	getContext():Context{
+		const context = UTSAndroid.getAppContext()! as Context
+		return context;
+	}
+	getWinRoot():ViewGroup{
+		let decorView = UTSAndroid.getUniActivity()!.window.decorView as ViewGroup
+		return decorView;
+	}
+	setContent(view:View){
+		this.contentView = view;
+		this.contentWrap?.addView(view)
+		console.log(view)
+	}
+	show(){
+		this.parentView?.setVisibility(View.VISIBLE)
+	}
+	hide(){}
+	destroy(){
+		
+	}
+	
+	_createRootView(){
+		// 内容容器
+		let container = new LinearLayout(this.getContext());
+		
+		let containerLayrPrams = new LinearLayout.LayoutParams(
+			ViewGroup.LayoutParams.MATCH_PARENT,
+			ViewGroup.LayoutParams.MATCH_PARENT
+		)
+		container.setLayoutParams(containerLayrPrams)
+		container.setBackgroundColor(Color.GREEN)
+		container.setOrientation(LinearLayout.VERTICAL)
+		// container.setGravity(Gravity.CENTER)
+		container.setVisibility(View.GONE)
+		container.setAlpha((0.3).toFloat())
+		
+		// 滚动容器
+		let scroll = new ScrollView(this.getContext())
+		scroll.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+		this.contentWrap = scroll;
+		container.addView(scroll)
+		this.parentView = container;
+		this.getWinRoot().addView(this.parentView)
+		
+	}
+}

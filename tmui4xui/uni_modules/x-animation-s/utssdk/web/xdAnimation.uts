@@ -1,0 +1,251 @@
+export class xdAnimation {
+	public static translate(
+		view : HTMLElement,
+		duration : number = 1000,
+		delay : number = 0,
+		translation : number = 0, //0平行移x,1平移y,2平移x,y
+		fromLen : number = 0, // 起始位置
+		len : number = 0, // 移动的距离
+		loop : number = 0,//-1永久播放动画，0循环1次，依次类推
+		start : (() => void) | null = null,
+		end : (() => void) | null = null
+	) {
+		view.style.transitionDuration = `${0}ms`;
+		view.style.transitionDelay = `${0}ms`;
+		view.style.transitionTimingFunction = 'linear'
+		// 设置初始位置
+		if (translation === 0) {
+			view.style.transform = `translateX(${fromLen}px)`;
+
+		} else if (translation === 1) {
+			view.style.transform = `translateY(${fromLen}px)`;
+		} else if (translation === 2) {
+			view.style.transform = `translate(${fromLen}px, ${fromLen}px)`;
+		}
+
+		function starttras() {
+			// 设置动画持续时间
+			view.style.transitionDuration = `${duration}ms`;
+			// 设置动画延迟
+			view.style.transitionDelay = `${delay}ms`;
+			if (translation === 0) {
+				console.log(fromLen, len)
+				view.style.transform = `translateX(${len}px)`;
+			} else if (translation === 1) {
+				view.style.transform = `translateY(${len}px)`;
+			} else if (translation === 2) {
+				view.style.transform = `translate(${len}px, ${len}px)`;
+			}
+
+			// 动画开始回调
+			if (start) start();
+		}
+		// 设置动画结束后的位置
+		if (delay == 0) {
+			setTimeout(() => {
+				starttras()
+			}, 50);
+		} else {
+			setTimeout(() => {
+				starttras()
+			}, delay);
+		}
+		let _this = this;
+		// 动画结束后的处理
+		view.addEventListener('transitionend', () => {
+			if (loop === -1) {
+				// 永久循环
+				_this.translate(view, duration, delay, translation, fromLen, len, loop, start, end);
+			} else if (loop > 0) {
+				// 有限循环
+				_this.translate(view, duration, delay, translation, fromLen, len, loop - 1, start, end);
+			} else {
+				// 动画结束回调
+				if (end) end();
+			}
+		}, { once: true });
+	}
+
+	public static scale(
+		view : HTMLElement,
+		duration : number = 1000,
+		delay : number = 0,
+		direction : number = 0, // 0: 水平缩放, 1: 竖直翻转,2:x,y缩放,
+		fromScale : number = 0, // 起始位置
+		scale : number = 0, // 移动的距离
+		loop : number = 0,//-1永久播放动画，0循环1次，依次类推
+		start : (() => void) | null = null,
+		end : (() => void) | null = null
+	) {
+		view.style.transitionDuration = `${0}ms`;
+		view.style.transitionDelay = `${0}ms`;
+		view.style.transitionTimingFunction = 'linear'
+		// 设置初始位置
+		function setValue(value : number) {
+			if (direction === 0) {
+				view.style.transform = `scaleX(${value})`;
+
+			} else if (direction === 1) {
+				view.style.transform = `scaleY(${value})`;
+			} else if (direction === 2) {
+				view.style.transform = `scale(${value}, ${value})`;
+			}
+		}
+		setValue(fromScale)
+		function starttras() {
+			// 设置动画持续时间
+			view.style.transitionDuration = `${duration}ms`;
+			// 设置动画延迟
+			view.style.transitionDelay = `${delay}ms`;
+			setValue(scale)
+			// 动画开始回调
+			if (start) start();
+		}
+		// 设置动画结束后的位置
+		if (delay == 0) {
+			setTimeout(() => {
+				starttras()
+			}, 50);
+		} else {
+			setTimeout(() => {
+				starttras()
+			}, delay);
+		}
+		let _this = this;
+		// 动画结束后的处理
+		view.addEventListener('transitionend', () => {
+			if (loop === -1) {
+				// 永久循环
+				_this.scale(view, duration, delay, direction, fromScale, scale, loop, start, end);
+			} else if (loop > 0) {
+				// 有限循环
+				_this.scale(view, duration, delay, direction, fromScale, scale, loop - 1, start, end);
+			} else {
+				// 动画结束回调
+				if (end) end();
+			}
+		}, { once: true });
+	}
+
+	public static rotate(
+		view : HTMLElement,
+		duration : number = 1000,
+		delay : number = 0,
+		fromDeg : number = 0, // 起始位置
+		deg : number = 0, // 移动的距离
+		loop : number = 0,//-1永久播放动画，0循环1次，依次类推
+		start : (() => void) | null = null,
+		end : (() => void) | null = null
+	) {
+		view.style.transitionDuration = `${0}ms`;
+		view.style.transitionDelay = `${0}ms`;
+		view.style.transitionTimingFunction = 'linear'
+		// 设置初始位置
+		function setValue(value : number) {
+			view.style.transform = `rotate(${value}deg)`;
+		}
+		setValue(fromDeg)
+		function starttras() {
+			// 设置动画持续时间
+			view.style.transitionDuration = `${duration}ms`;
+			view.style.transitionTimingFunction = 'linear'
+			// 设置动画延迟
+			view.style.transitionDelay = `${delay}ms`;
+			setValue(deg)
+			// 动画开始回调
+			if (start) start();
+		}
+		// 设置动画结束后的位置
+		if (delay == 0) {
+			setTimeout(() => {
+				starttras()
+			}, 50);
+		} else {
+			setTimeout(() => {
+				starttras()
+			}, delay);
+		}
+		let _this = this;
+		// 动画结束后的处理
+		view.addEventListener('transitionend', () => {
+			if (loop === -1) {
+				// 永久循环
+				_this.rotate(view, duration, delay, fromDeg, deg, loop, start, end);
+			} else if (loop > 0) {
+				// 有限循环
+				_this.rotate(view, duration, delay, fromDeg, deg, loop - 1, start, end);
+			} else {
+				// 动画结束回调
+				if (end) end();
+			}
+		}, { once: true });
+	}
+
+
+	public static flip3D(
+		view : HTMLElement,
+		duration : number = 1000,
+		delay : number = 0,
+		axis : number = 1, // 0: X轴, 1: Y轴
+		fromDeg : number = 0, // 起始位置
+		deg : number = 0, // 移动的距离
+		loop : number = 0,//-1永久播放动画，0循环1次，依次类推
+		cameraDistance : number = 8, // 控制视角距离，默认值更合理
+		scaleZ : number = 0.8, // 控制Z轴缩放，默认值更自然
+		start : (() => void) | null = null,
+		end : (() => void) | null = null
+	) {
+		view.style.transitionDuration = `${0}ms`;
+		view.style.transitionDelay = `${0}ms`;
+		view.style.transitionTimingFunction = 'linear'
+		// 设置透视视角
+		view.style.perspective = `${cameraDistance}px`;
+		view.style.transformStyle = "preserve-3d";
+		// 设置动画延迟
+		view.style.transitionDelay = `${0}ms`;
+
+		// 设置动画持续时间
+		view.style.transitionDuration = `${0}ms`;
+		// 设置初始角度
+		function setValue(value : number) {
+			if (axis === 0) {
+				view.style.transform = `rotateX(${value}deg) scaleZ(${scaleZ})`;
+			} else if (axis === 1) {
+				view.style.transform = `rotateY(${value}deg) scaleZ(${scaleZ})`;
+			}
+		}
+
+		setValue(fromDeg)
+
+		// 设置动画结束后的角度
+		setTimeout(() => {
+			// 设置动画延迟
+			view.style.transitionDelay = `${delay}ms`;
+			// 设置动画持续时间
+			view.style.transitionDuration = `${duration}ms`;
+			setValue(deg)
+			// 动画开始回调
+			if (start) start();
+		}, delay || 50);
+
+		let _this = this;
+		// 动画结束后的处理
+		view.addEventListener('transitionend', () => {
+			if (loop === -1) {
+				// 永久循环
+				_this.flip3D(view, duration, delay, axis, fromDeg, deg, loop, cameraDistance, scaleZ, start, end);
+			} else if (loop > 0) {
+				// 有限循环
+				_this.flip3D(view, duration, delay, axis, fromDeg, deg, loop - 1, cameraDistance, scaleZ, start, end);
+			} else {
+				// 动画结束回调
+				if (end) end();
+			}
+		}, { once: true });
+	}
+	public static clearAnimations(view : HTMLElement, _ : boolean = true) {
+		view.style.removeProperty('transform')
+		view.style.removeProperty('transition-delay')
+		view.style.removeProperty('transition-duration')
+	}
+}

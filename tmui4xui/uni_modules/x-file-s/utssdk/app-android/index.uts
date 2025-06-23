@@ -1,0 +1,432 @@
+import MediaStore from "android.provider.MediaStore"
+import Activity from 'android.app.Activity';
+import Bundle from 'android.os.Bundle';
+import Intent from 'android.content.Intent';
+import Uri from "android.net.Uri"
+import Context from 'android.content.Context'
+import ContentResolver from 'android.content.ContentResolver'
+import InputStream from 'java.io.InputStream'
+import FileOutputStream from 'java.io.FileOutputStream'
+import File from 'java.io.File'
+
+import ByteArrayOutputStream from 'java.io.ByteArrayOutputStream'
+import MimeTypeMap from 'android.webkit.MimeTypeMap'
+import OpenableColumns from 'android.provider.OpenableColumns'
+import Build from 'android.os.Build'
+import ParcelFileDescriptor from 'android.os.ParcelFileDescriptor'
+
+import { xFileSListType,fileListType } from "../interface.uts"
+
+type xFileSNameTYpe = {
+	name : string,
+	type : string,
+	uri : Uri,
+	id : string,
+	realFilePath : string,
+	cacheFilePath : string,
+	fileSize : number,
+	status : number
+}
+type callReadBackFun = (byte : ByteArray) => void
+
+type resumtype = (requestCode : Int, resultCode : Int, data : any) => void
+
+const mimeTypes = new Map<string, string>([
+	// 图片类型
+	["jpg", "image/*"],
+	["jpeg", "image/*"],
+	["png", "image/*"],
+	["gif", "image/*"],
+	["bmp", "image/*"],
+	["webp", "image/*"],
+	["tiff", "image/*"],
+	["svg", "image/*"],
+	["ico", "image/*"],
+
+	// 视频类型
+	["mp4", "video/*"],
+	["webm", "video/*"],
+	["ogv", "video/*"],
+	["mov", "video/*"],
+	["avi", "video/*"],
+	["wmv", "video/*"],
+
+	// 音频类型
+	["mp3", "audio/*"],
+	["wav", "audio/*"],
+	["ogg", "audio/*"],
+	["flac", "audio/*"],
+	["aac", "audio/*"],
+
+	// 文档类型
+	["pdf", "application/*"],
+	["doc", "application/*"],
+	["docx", "application/*"],
+	["xls", "application/*"],
+	["xlsx", "application/*"],
+	["ppt", "application/*"],
+	["pptx", "application/*"],
+	["odt", "application/*"],
+	["ods", "application/*"],
+
+	// 文本类型
+	["txt", "text/plain"],
+	["html", "text/html"],
+	["css", "text/css"],
+	["js", "text/javascript"],
+	["xml", "text/xml"],
+
+	// 其他类型
+	["zip", "application/*"],
+	["rar", "application/*"],
+	["7z", "application/*"],
+	["json", "application/*"]
+]);
+
+
+
+function getMimeTypeFromUri(uri : Uri, max : number) : xFileSNameTYpe {
+	let context = UTSAndroid.getAppContext() as Context
+	let contentResolver = context.getContentResolver() as ContentResolver;
+	let mime = MimeTypeMap.getSingleton() as MimeTypeMap;
+	let gz = mime.getExtensionFromMimeType(contentResolver.getType(uri)) as string | null;
+	let str = uri.getEncodedPath()
+	let par = contentResolver.openFileDescriptor(uri, "r") as ParcelFileDescriptor
+	let filesize = par.getStatSize()
+	if (gz == null) {
+		gz = str!.substring(str!.lastIndexOf(".") + 1)
+	}
+	let name = str!.substring(0, str!.lastIndexOf("/"))
+	name = str!.substring(0, str!.lastIndexOf("."))
+	///安卓10，api 29+需要遵循隐私策略获取名称。
+	if (Build.VERSION.SDK_INT > Build.VERSION_CODES.Q) {
+		let cursor = contentResolver.query(uri, null, null, null, null)
+		if (cursor != null && cursor.moveToFirst()) {
+			let nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+			if (nameIndex != -1) {
+				name = cursor.getString(nameIndex);
+			}
+			cursor.close();
+		}
+		// 确保关闭游标
+		if (cursor != null && !cursor.isClosed()) {
+			cursor.close();
+		}
+	}
+
+	return {
+		name,
+		type: gz!,
+		uri: uri,
+		id: Math.floor(Math.random() * 1 * Math.floor(Math.random() * Date.now())).toString().substring(0, 10),
+		realFilePath: "",
+		cacheFilePath: "",
+		fileSize: filesize,
+		status: filesize > max ? 4 : 0
+
+	} as xFileSNameTYpe;
+}
+
+function readFileToInputStrem(uri : Uri) : ByteArray {
+	//读写块的大小。
+	let sizeBlock = 1024
+	let context = UTSAndroid.getAppContext() as Context
+	let cover = context.getContentResolver() as ContentResolver
+	let inputStream = cover.openInputStream(uri)
+	let byteArrayOutputStream = new ByteArrayOutputStream();
+	// 文件的字节数组
+	let buffer = new ByteArray(sizeBlock.toInt());
+	let n = inputStream!.read(buffer)
+	while (-1 != n) {
+		byteArrayOutputStream.write(buffer, 0, n);
+		n = inputStream!.read(buffer)
+	}
+
+	return buffer;
+}
+
+let filelistAll = [] as xFileSNameTYpe[]
+function isInfilelist(file : xFileSNameTYpe) : boolean {
+	return filelistAll.some((el) : boolean => {
+		return el.name == file.name && el.type == file.type
+	})
+}
+let callFun = (list : fileListType[]) => { }
+let nowXFileSystem = null as null|xFileSystem;
+const activityResult = (requestCode : Int, resultCode : Int, data ?: Intent)=>{
+
+	let jgCode = 1;
+	console.log(1)
+	if (data != null && requestCode == jgCode.toInt()) {
+		let fdata = data! as Intent
+		let flistdata = fdata.getClipData();
+		let flistdataOnly = data?.data
+		//多选
+		if (flistdata != null) {
+			let count = flistdata.getItemCount();
+
+			for (let i = 0; i < count; i++) {
+				let item = flistdata.getItemAt(i.toInt())
+				let uri = item.getUri()
+
+
+				let itemfile = getMimeTypeFromUri(uri, nowXFileSystem!.maxFileSize)
+				if (!isInfilelist(itemfile)) {
+
+					filelistAll.push(itemfile)
+				}
+
+			}
+			//单选
+		} else if (flistdataOnly != null) {
+			let itemfile = getMimeTypeFromUri(flistdataOnly!, nowXFileSystem!.maxFileSize)
+			if (!isInfilelist(itemfile)) {
+				filelistAll.push(itemfile)
+			}
+		}
+		let listfile = filelistAll.map((el) : fileListType => {
+			return {
+				name: el.name,
+				type: el.type,
+				id: el.id,
+				uri: '',
+				realFilePath: el.realFilePath,
+				cacheFilePath: el.cacheFilePath,
+				status: el.fileSize > nowXFileSystem!.maxFileSize ? 4 : 0,
+				size: el.fileSize
+			} as fileListType
+		});
+
+		callFun(listfile)
+		
+	}
+}
+
+/**
+ * 由于安卓隐私的问题。实际得到的所有文件 其实 都不是真实地址。因此你想要得到真实的地址，你就得复制到你的应用沙盒中。
+ */
+export class xFileSystem {
+	mimeTypeFilter : string[] = [] as string[]
+	filelist = [] as xFileSNameTYpe[]
+	multiple : boolean = true;
+
+	maxFileSize = 30 * 1024 * 1024;
+
+	constructor(typeFilter : string[] | null, tempmultiple : boolean | null, maxSize : number | null) {
+		if (typeFilter != null) {
+
+			let filter : string[] = [] as string[];
+			let tms = typeFilter! as string[]
+			for (let i = 0; i < tms.length; i++) {
+				if (mimeTypes.get(tms[i]) != null) {
+					filter.push(mimeTypes.get(tms[i])!)
+				}
+			}
+			if (filter.length == 0) {
+				filter.push("*/*")
+			}
+
+			this.mimeTypeFilter = filter
+
+		}
+		if (tempmultiple != null) {
+			this.multiple = tempmultiple!
+		}
+		if (maxSize != null) {
+			this.maxFileSize = maxSize!
+		}
+		nowXFileSystem = this;
+		UTSAndroid.onAppActivityResult(activityResult);
+	}
+
+
+
+	destory() {
+		UTSAndroid.offAppActivityResult(activityResult)
+		// filelistAll = []  as xFileSNameTYpe[]
+	}
+	openDocument(call : (list : fileListType[]) => void) {
+
+		let intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+			intent.setAction(Intent.ACTION_OPEN_DOCUMENT);
+		} else {
+			intent.setAction(Intent.ACTION_GET_CONTENT);
+		}
+
+		// intent.addCategory(Intent.CATEGORY_OPENABLE);
+		if (this.mimeTypeFilter.length == 0) {
+			intent.type = "*/*"
+		} else {
+			let key = this.mimeTypeFilter[this.mimeTypeFilter.length - 1]
+			let ftype = key;
+			if (ftype != null) {
+				intent.setType(ftype!);
+			} else {
+				intent.setType("*/*");
+			}
+			// console.log(this.mimeTypeFilter)
+			// intent.putExtra(Intent.EXTRA_MIME_TYPES, []);
+
+		}
+
+		intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, this.multiple)
+		intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+		let _this = this;
+		callFun = call;
+
+		UTSAndroid.getUniActivity()!.startActivityForResult(intent, 1);
+	}
+
+	/**
+	 * 删除一个文件条目
+	 * @param {string} id - 文件id
+	 * @returns {fileListType[]} 最新的文件列表
+	 */
+	remove(id : string) : fileListType[] {
+
+		let index = -1;
+		for (let i = 0; i < filelistAll.length; i++) {
+			let item = filelistAll[i]
+			if (item.id == id) {
+				filelistAll.splice(i, 1)
+				break;
+			}
+		}
+
+		return filelistAll.map((el) : fileListType => {
+
+			return {
+				name: el.name,
+				type: el.type,
+				id: el.id,
+				uri: '',
+				realFilePath: el.realFilePath,
+				cacheFilePath: el.cacheFilePath,
+				size: el.fileSize,
+				status: el.status
+			} as fileListType
+		});
+	}
+	/**
+	 * 返回一个空文件列表数组
+	 */
+	clear() : fileListType[] {
+		filelistAll = [] as xFileSNameTYpe[];
+		this.filelist = [] as xFileSNameTYpe[];
+		return [] as fileListType[]
+	}
+	/**
+	 * 读取文件
+	 * @description 提供这个函数是因为如果是大文件上传，你可能需要分块上传。由于安卓隐私问题，大文件超过16mb复制回用户区可能会卡或者其它意外事项。
+	 * @param {string} id - 文件id
+	 * @param {number} size - 读写块的大小，每次读取的大小
+	 * @param {Function<byte:ByteArray>} callBack - 读取文件时的回调。
+	 */
+	readFile(item : xFileSListType, size : number | null = null, callBack : null | callReadBackFun = null) : ByteArray {
+		let index = -1;
+		for (let i = 0; i < filelistAll.length; i++) {
+			let item2 = filelistAll[i]
+			if (item.id == item2.id) {
+				index = i;
+				break;
+			}
+		}
+
+		if (index == -1) {
+			console.error("文件id不存在")
+			return new ByteArray((0).toInt())
+		}
+		let file = filelistAll[index]
+		// 1024
+
+		let sizeBlock = size == null ? 1024 : size!;
+		let context = UTSAndroid.getAppContext() as Context
+		let cover = context.getContentResolver() as ContentResolver
+		let inputStream = cover.openInputStream(file.uri)
+		let byteArrayOutputStream = new ByteArrayOutputStream();
+		// 文件的字节数组
+		let buffer = new ByteArray(sizeBlock.toInt());
+		let n = inputStream!.read(buffer)
+
+		while (-1 != n) {
+			byteArrayOutputStream.write(buffer, 0, n);
+			if (callBack != null) {
+				let tempbuffer = new ByteArray(sizeBlock.toInt());
+				byteArrayOutputStream.write(tempbuffer, 0, n);
+				callBack(tempbuffer)!
+			}
+			n = inputStream!.read(buffer)
+		}
+		let ar = byteArrayOutputStream.toByteArray()
+		try {
+			byteArrayOutputStream.flush()
+		} catch (e) {
+			byteArrayOutputStream.close()
+		}
+		return ar
+	}
+	/**
+	 * 获取文件地址
+	 * @description 主要是用来你外部上传用，但记住这个内部会放到临时目录中，因此你的地址也是临时在用户中。
+	 * @returns {Promise<string>} 返回文件地址
+	 */
+	copyFileToPath(item : xFileSListType, path : string) : Promise<xFileSListType | null> {
+		// let index = -1;
+		// for(let i=0;i<this.filelist.length;i++){
+		// 	let item = this.filelist[i]
+		// 	if(item.id==id){
+		// 		index = i;
+		// 		break;
+		// 	}
+		// }
+		// if(index==-1){
+		// 	console.error("文件id不存在")
+		// 	uni.showToast({title:"文件id不存在",icon:'none'})
+		// 	return Promise.resolve(null)
+		// }
+
+		let file = item
+		if (file.status == 4) {
+			console.error("文件大小超了")
+			// uni.showToast({title:"文件大小超了",icon:'none'})
+			return Promise.resolve(item)
+		}
+		let fileData = this.readFile(item, 1024, null);
+		let filepath = path + "/" + file.name
+
+
+		let realfilepath = UTSAndroid.convert2AbsFullPath(filepath)
+		// let outputFile = new File(filepath)
+		uni.showLoading({ title: '...', mask: true })
+		return new Promise((res, rej) => {
+			try {
+				let outputStream = new FileOutputStream(realfilepath)
+				outputStream.write(fileData);
+				outputStream.flush();
+				uni.hideLoading()
+				file.realFilePath = realfilepath
+				file.cacheFilePath = filepath
+				res({
+					name: file.name,
+					type: file.type,
+					id: file.id,
+					realFilePath: file.realFilePath,
+					cacheFilePath: file.cacheFilePath,
+					status: file.status,
+					size: file.size,
+					uri: file.uri
+				} as xFileSListType)
+			} catch (e) {
+				console.error(e)
+				uni.hideLoading()
+				uni.showToast({ title: "异常", icon: 'none' })
+				rej("异常")
+
+			}
+
+		})
+
+	}
+
+}

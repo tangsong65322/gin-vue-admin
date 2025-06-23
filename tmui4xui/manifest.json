@@ -1,0 +1,69 @@
+{
+	"name": "tmui4",
+	"appid": "__UNI__B73859A",
+	"description": "x-ui超效率布局神器",
+	"versionName": "1.1.13",
+	"versionCode": "1113",
+	"uni-app-x": {},
+	/* 快应用特有相关 */
+	"quickapp": {},
+	/* 小程序特有相关 */
+	"mp-weixin": {
+		"appid": "wxb30698c4b9f69030",
+		"darkmode": true,
+		"defaultAppTheme": "dark",
+		"permission": {
+			"scope.camera": {
+				"desc": "用于拍照及扫码识别"
+			}
+		},
+		"setting": {
+			"urlCheck": true,
+			"es6": true,
+			"minified": true
+		},
+		"usingComponents": true
+	},
+	"mp-alipay": {
+		"usingComponents": true
+	},
+	"mp-baidu": {
+		"usingComponents": true
+	},
+	"mp-toutiao": {
+		"usingComponents": true
+	},
+	"uniStatistics": {
+		"enable": false
+	},
+	"vueVersion": "3",
+	"app": {
+		"defaultAppTheme": "light",
+		"distribute": {
+			"modules": {
+				"uni-createInnerAudioContext": {}
+			},
+			"icons": {
+				"android": {
+					"hdpi": "unpackage/res/icons/72x72.png",
+					"xhdpi": "unpackage/res/icons/96x96.png",
+					"xxhdpi": "unpackage/res/icons/144x144.png",
+					"xxxhdpi": "unpackage/res/icons/192x192.png"
+				},
+				"ios": {
+					"appstore": "unpackage/res/icons/1024x1024.png"
+				}
+			}
+		}
+	},
+	"web": {
+		"title": "tmui4.0x",
+		"router": {
+			"mode": "hash",
+			"base": "./"
+		},
+		"devServer": {
+			"port": 3721
+		}
+	}
+}

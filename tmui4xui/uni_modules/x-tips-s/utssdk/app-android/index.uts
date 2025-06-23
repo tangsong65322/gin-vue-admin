@@ -1,0 +1,216 @@
+import LinearLayout from 'android.widget.LinearLayout';
+import Context from 'android.content.Context'
+import RelativeLayout from 'android.widget.RelativeLayout';
+import ViewGroup from 'android.view.ViewGroup';
+import View from 'android.view.View';
+import { XTIPS_TYPE, XTIPS_TYPE_PRIVATE } from "../interface.uts"
+import Color from 'android.graphics.Color';
+import Gravity from 'android.view.Gravity';
+import GradientDrawable from 'android.graphics.drawable.GradientDrawable';
+import TextView from 'android.widget.TextView';
+import Typeface from 'android.graphics.Typeface';
+import TextUtils from 'android.text.TextUtils';
+import Uri from 'android.net.Uri';
+import ObjectAnimator from 'android.animation.ObjectAnimator';
+import ValueAnimator from 'android.animation.ValueAnimator';
+import TimeInterpolator from 'android.animation.TimeInterpolator';
+import MotionEvent from 'android.view.MotionEvent';
+import { hexToRgb } from "../libs/color.uts"
+import { defaultConfig, configCover } from "../libs/config.uts"
+import ViewPropertyAnimator from 'android.view.ViewPropertyAnimator';
+import LayoutParams from 'android.widget.RelativeLayout.LayoutParams';
+// #ifdef UNI-APP-X
+import getCurrentPages from 'io.dcloud.uniapp.framework.getCurrentPages';
+import onReady from 'io.dcloud.uniapp.framework.onReady';
+import onUnload from 'io.dcloud.uniapp.framework.onUnload';
+import onShow from 'io.dcloud.uniapp.framework.onShow';
+import AccelerateDecelerateInterpolator from 'android.view.animation.AccelerateDecelerateInterpolator';
+// #endif
+
+let maskerDom : null | RelativeLayout = null;
+let tid : number | null = 0
+let maskDomId = 388
+
+function px2dp(n : number) : number {
+
+	const mets = UTSAndroid.getAppContext()!.resources!.getDisplayMetrics()
+
+	return mets.density * n
+}
+
+export function hideTips() {
+	UTSAndroid.getDispatcher("main").async(function (_) {
+		let decorView = UTSAndroid.getUniActivity()!.window.decorView as ViewGroup
+		let mk = decorView.findViewById<View>((maskDomId).toInt())
+		if (mk != null) {
+			decorView.removeView(mk)
+		}
+		if (tid != null) {
+			clearTimeout(tid!)
+		}
+	})
+}
+function __hideTips__(decorView : ViewGroup) {
+	UTSAndroid.getDispatcher("main").async(function (_) {
+		let mk = decorView.findViewById<View>((maskDomId).toInt())
+		if (mk != null) {
+			decorView.removeView(mk)
+		}
+		if (tid != null) {
+			clearTimeout(tid!)
+		}
+	})
+}
+function _showTips_(opts : XTIPS_TYPE | null) {
+	let decorView = UTSAndroid.getUniActivity()!.window.decorView as ViewGroup
+	UTSAndroid.getDispatcher("main").async(function (_) {
+		try {
+			let mk = decorView.findViewById<View>((maskDomId).toInt())
+			if (mk != null) {
+				decorView.removeView(mk)
+			}
+			if (tid != null) {
+				clearTimeout(tid!)
+			}
+
+		} catch (e) {
+			//TODO handle the exception
+		}
+		let realopts = opts == null ? ({ title: '' } as XTIPS_TYPE) : (opts!)
+		let config = configCover(realopts)
+		let rmbgColor = hexToRgb(config.maskBgColor);
+		let textColor = hexToRgb(config.iconColor);
+		let wrapColor = hexToRgb(config.contentBgColor);
+		let titleColorRgb = hexToRgb(config.titleColor);
+
+		let mbgColor = rmbgColor == null ? Color.parseColor(config.maskBgColor) : Color.argb((rmbgColor!.a * 255).toInt(), rmbgColor!.r.toInt(), rmbgColor!.g.toInt(), rmbgColor!.b.toInt())
+		let fontColor = textColor == null ? Color.parseColor(config.iconColor) : Color.argb((textColor!.a * 255).toInt(), textColor!.r.toInt(), textColor!.g.toInt(), textColor!.b.toInt())
+		let contentColor = rmbgColor == null ? Color.parseColor(config.contentBgColor) : Color.argb((wrapColor!.a * 255).toInt(), wrapColor!.r.toInt(), wrapColor!.g.toInt(), wrapColor!.b.toInt())
+		let titleColor = titleColorRgb == null ? Color.parseColor(config.titleColor) : Color.argb((titleColorRgb!.a * 255).toInt(), titleColorRgb!.r.toInt(), titleColorRgb!.g.toInt(), titleColorRgb!.b.toInt())
+
+		const context = UTSAndroid.getAppContext()! as Context
+		let maskerDom = new RelativeLayout(context)
+
+		class MaskerDomClickListsner extends View.OnTouchListener {
+			constructor() {
+				super();
+			}
+			override onTouch(view : View, event : MotionEvent) : Boolean {
+
+				return false
+			}
+		}
+
+		maskerDom.setOnTouchListener(new MaskerDomClickListsner())
+
+		let maskerDomLayrPrams : LayoutParams = new RelativeLayout.LayoutParams(
+			ViewGroup.LayoutParams.MATCH_PARENT,
+			ViewGroup.LayoutParams.MATCH_PARENT
+		)
+
+		if (config.position == 'top') {
+			maskerDomLayrPrams.addRule(RelativeLayout.ALIGN_PARENT_TOP, RelativeLayout.TRUE)
+			maskerDom.setPadding(px2dp(16).toInt(), px2dp(config.offset).toInt(), px2dp(16).toInt(), 0)
+			maskerDom.setGravity(Gravity.CENTER_HORIZONTAL)
+		} else if (config.position == 'bottom') {
+			maskerDomLayrPrams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM, RelativeLayout.TRUE)
+			maskerDom.setPadding(px2dp(16).toInt(), 0, px2dp(16).toInt(), px2dp(config.offset).toInt())
+			maskerDom.setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL)
+		}
+		maskerDom.setLayoutParams(maskerDomLayrPrams)
+		maskerDom.setBackgroundColor(mbgColor)
+		maskerDom.setId((maskDomId).toInt())
+
+		let contentWrapDiv = new LinearLayout(context);
+		// 设置圆角背景
+		let bg = new GradientDrawable()
+		bg.setColor(contentColor)
+		bg.setCornerRadius((px2dp(16)).toFloat())
+		contentWrapDiv.setBackground(bg)
+		// contentWrapDiv.setBackgroundColor(Color.parseColor(config.contentBgColor))
+		let wpx = px2dp(config.size + 16).toInt();
+		let minHeight = px2dp(Math.max(config.titleSize, config.iconSize) + 16).toInt();
+		contentWrapDiv.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+		contentWrapDiv.setMinimumHeight(minHeight)
+		contentWrapDiv.setMinimumWidth(wpx)
+		let wpadingx = px2dp(8).toInt();
+		contentWrapDiv.setPadding(wpadingx, wpadingx, wpadingx, wpadingx)
+
+		contentWrapDiv.setGravity(Gravity.CENTER)
+		contentWrapDiv.setOrientation(LinearLayout.HORIZONTAL)
+		// 创建图标。
+		let iconDiv = new TextView(context)
+		// iconDiv.setLineHeight(1)
+		iconDiv.setTextColor(fontColor)
+		let assetManager = context!.getAssets();
+		let typeface = Typeface.createFromAsset(assetManager, "remixicon.ttf")
+		iconDiv.setTypeface(typeface)
+		iconDiv.setGravity(Gravity.CENTER)
+		iconDiv.setTextSize(config.iconSize.toFloat())
+		if (!TextUtils.isEmpty(config.iconCode) && config.iconCode != '') {
+			let codePoint = Integer.parseInt(config.iconCode, 16);
+			let charArray = Character.toChars(codePoint);
+			let text = new String(charArray);
+			iconDiv.setText(text);
+			contentWrapDiv.addView(iconDiv)
+		}
+
+
+		if (config.title != "") {
+			// 添加一个title
+			let titleDiv = new TextView(context)
+			titleDiv.setText(config.title)
+			titleDiv.setTextSize((config.titleSize).toFloat())
+			titleDiv.setTextColor(titleColor)
+			titleDiv.setGravity(Gravity.CENTER)
+			titleDiv.setPadding(px2dp(10).toInt(), 0, 0, 0)
+			contentWrapDiv.addView(titleDiv)
+		}
+
+		maskerDom.addView(contentWrapDiv)
+
+		decorView.addView(maskerDom!)
+
+		try {
+			let s0 = (0).toFloat()
+			let s1 = (1).toFloat()
+			contentWrapDiv.setAlpha(s0)
+			contentWrapDiv.setScaleX(s0)
+			contentWrapDiv.setScaleY(s0)
+			let ani = contentWrapDiv.animate() as ViewPropertyAnimator;
+			ani.alpha(s1)
+				.scaleX(s1)
+				.scaleY(s1)
+				.setDuration(300)
+				.setInterpolator(AccelerateDecelerateInterpolator())
+				.start()
+		} catch (e) {
+			//TODO handle the exception
+		}
+
+		if (config.duration == 0) return;
+		tid = setTimeout(function () {
+			tid = null;
+			__hideTips__(decorView)
+		}, (config.duration + 300).toInt());
+
+	})
+}
+
+export function showTips(opts : XTIPS_TYPE | null) {
+	const pages = getCurrentPages();
+	if (pages.length > 0) {
+		const page = pages[pages.length - 1].vm!
+		const instance = page.$
+		if (page.$isReady) {
+			_showTips_(opts)
+		} else {
+			hideTips()
+		}
+		onUnload(() => {
+			hideTips()
+		}, instance)
+	}else{
+		_showTips_(opts)
+	}
+}

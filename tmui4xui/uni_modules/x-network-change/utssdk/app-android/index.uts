@@ -1,0 +1,133 @@
+import Build from 'android.os.Build';
+import Context from 'android.content.Context';
+import ConnectivityManager from 'android.net.ConnectivityManager';
+import NetworkCallback from 'android.net.ConnectivityManager.NetworkCallback';
+import Network from 'android.net.Network';
+import NetworkCapabilities from 'android.net.NetworkCapabilities';
+import NetworkRequest from 'android.net.NetworkRequest';
+import NetworkInfo from "android.net.NetworkInfo";
+import {xNetworkType} from "../interface"
+
+
+let netmarnger : ConnectivityManager | null = null;
+let networkCallback : ConnectivityManager.NetworkCallback | null = null;
+const context = UTSAndroid.getAppContext()!;
+
+//当前是否有网络。
+export function isNetworkAvailable() : Promise<boolean> {
+	let connectivityManager : ConnectivityManager | null = context!.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager | null;
+	if (connectivityManager == null) {
+		return Promise.resolve(false);
+	}
+
+	if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+		// Android 6.0及以上版本
+		let network : Network | null = connectivityManager!.getActiveNetwork();
+		if (network == null) {
+			return Promise.resolve(false);
+		}
+
+		let capabilities : NetworkCapabilities | null = connectivityManager.getNetworkCapabilities(network!);
+		return Promise.resolve(capabilities != null &&
+			capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+			capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED));
+	} else {
+		// Android 6.0以下版本
+		let networkInfo : NetworkInfo | null = connectivityManager.getActiveNetworkInfo();
+		return Promise.resolve(networkInfo != null && networkInfo.isConnected());
+	}
+}
+
+
+/**
+ * 获取网络类型
+ * @returns {Promise<xNetworkType|null>} "WiFi","Mobile","WiredNetwork",null网络
+ */
+export function getNetworkType() : Promise<xNetworkType | null> {
+	let connectivityManager : ConnectivityManager | null = context!.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager | null;
+	if (connectivityManager == null) {
+		return Promise.resolve(null);
+	}
+
+	if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+		let network : Network | null = connectivityManager!.getActiveNetwork();
+		if (network == null) {
+			return Promise.resolve(null);
+		}
+
+		let capabilities : NetworkCapabilities | null = connectivityManager.getNetworkCapabilities(network!);
+		if (capabilities == null) {
+			return Promise.resolve(null);
+		}
+		if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+			return Promise.resolve("WiFi");
+		} else if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
+			return Promise.resolve("Mobile");
+		} else if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) {
+			return Promise.resolve("WiredNetwork");
+		}
+	} else {
+		let networkInfo : NetworkInfo | null = connectivityManager.getActiveNetworkInfo();
+		if (networkInfo != null && networkInfo.isConnected()) {
+			let type = networkInfo.getType();
+			if (type == ConnectivityManager.TYPE_WIFI) {
+				return Promise.resolve("WiFi");
+			} else if (type == ConnectivityManager.TYPE_MOBILE) {
+				return Promise.resolve("Mobile");
+			} else {
+				return Promise.resolve("WiredNetwork");
+			}
+		}
+	}
+
+	return Promise.resolve(null);
+}
+
+@UTSJS.keepAlive
+function changeByBig(call : (conecting : boolean) => void) {
+	netmarnger = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+	class xnetworkCallback extends ConnectivityManager.NetworkCallback() {
+		override onAvailable(network : Network) {
+			super.onAvailable(network)
+			console.log("网络可用")
+			call(true)
+		}
+		override onLost(network : Network) {
+			super.onLost(network)
+			console.log("网络断开")
+			call(false)
+		}
+		override onCapabilitiesChanged(network : Network, networkCapabilities : NetworkCapabilities) {
+			super.onCapabilitiesChanged(network, networkCapabilities)
+		}
+	}
+	networkCallback = new xnetworkCallback() as NetworkCallback
+	if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+		netmarnger!.registerDefaultNetworkCallback(networkCallback!)
+	} else {
+		//安卓5-8
+		let builder = NetworkRequest.Builder()
+		let networkRequest = builder.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).build()
+		netmarnger!.registerNetworkCallback(networkRequest, networkCallback!)
+	}
+}
+//监听网络变化
+export function xNetChange(call : (conecting : boolean) => void) {
+	changeByBig(call);
+}
+//取消监听
+export function xUnNetChange() {
+	if (networkCallback != null && netmarnger != null) {
+		// @ts-ignore
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+			netmarnger!.unregisterNetworkCallback(networkCallback!)
+		} else {
+			// @ts-ignore
+			let builder = NetworkRequest.Builder()
+			let networkRequest = builder.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).build()
+			// @ts-ignore
+			netmarnger!.unregisterNetworkCallback(networkCallback!)
+		}
+	}
+
+}

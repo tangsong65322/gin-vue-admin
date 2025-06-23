@@ -1,0 +1,891 @@
+<script lang="ts">
+	import { colors, getDefaultColor, getDefaultColorObj, getTextColorObj, getThinColorObj, getOutlineColorObj } from "../../core/util/xCoreColorUtil.uts"
+	import { toFillMarginAr, checkIsCssUnit,getUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { PropType } from 'vue'
+
+	/**
+	 * 
+	 * @name 按钮 xButton
+	 * @page /pages/index/button
+	 * @category 常用组件
+	 * @description 圆角，主题可通过配置统一设置或者动态全局设置，使设计风格统一并保持一致性。让你的风格独一无二。
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				_set_border_color: `1px solid transparent`,
+				_set_background_color: `transparent`,
+				_set_background_img: ``,
+				_set_font_color: `#ffffff`,
+				_set_opacity: `1`,
+				_isHover: false,
+				boxShadow: '0 0px 0px rgba(0,0,0,0)',
+			}
+		},
+
+		emits: [
+			/**
+			 * 点击
+			 * @param {UniPointerEvent} event - 事件对象
+			 */
+			'click',
+			/**
+			 * 点击
+			 * @param {UniEvent} event - 事件对象
+			 */
+			'getuserinfo',
+			/**
+			 * 点击
+			 * @param {UniEvent} event - 事件对象
+			 */
+			'contact',
+			/**
+			 * 点击
+			 * @param {UniEvent} event - 事件对象
+			 */
+			'getphonenumber',
+			/**
+			 * 点击
+			 * @param {UniEvent} event - 事件对象
+			 */
+			'getrealtimephonenumber',
+			/**
+			 * 点击
+			 * @param {UniEvent} event - 事件对象
+			 */
+			'error',
+			/**
+			 * 点击
+			 * @param {UniEvent} event - 事件对象
+			 */
+			'opensetting',
+			/**
+			 * 点击
+			 * @param {UniEvent} event - 事件对象
+			 */
+			'launchapp',
+			/**
+			 * 点击
+			 * @param {UniEvent} event - 事件对象
+			 */
+			'chooseavatar',
+			/**
+			 * 点击
+			 * @param {UniEvent} event - 事件对象
+			 */
+			'chooseaddress',
+			/**
+			 * 点击
+			 * @param {UniEvent} event - 事件对象
+			 */
+			'chooseinvoicetitle',
+			/**
+			 * 点击
+			 * @param {UniEvent} event - 事件对象
+			 */
+			'addgroupapp',
+			/**
+			 * 点击
+			 * @param {UniEvent} event - 事件对象
+			 */
+			'subscribe',
+			/**
+			 * 点击
+			 * @param {UniEvent} event - 事件对象
+			 */
+			'login',
+			/**
+			 * 点击
+			 * @param {UniEvent} event - 事件对象
+			 */
+			'agreeprivacyauthorization'
+		],
+		props: {
+			/**
+			 * 主题名，名称或者合法的颜色值
+			 * 默认为空，读取全局的主题色，可动态切换主题。
+			 */
+			"color": {
+				type: String,
+				default: ''
+			},
+			/**
+			 * 暗黑时的自定义背景色
+			 */
+			"darkColor": {
+				type: String,
+				default: ''
+			},
+			/**
+			 * 自定义背景色，优先级高于color
+			 */
+			"bgColor": {
+				type: String,
+				default: ''
+			},
+			/**
+			 * 渐变背景
+			 * 数组格式如下
+				 [方向:top,bottom,left,right,自定义值例:45deg,颜色1:,颜色2]
+			 * 例:['left','black','white']
+			 */
+			"linearGradient": {
+				type: Array as PropType<string[]>,
+				default: () : string[] => []
+			},
+			/**
+			 * 文字颜色
+			 */
+			"fontColor": {
+				type: String,
+				default: ''
+			},
+			/**
+			 * 文字颜色
+			 */
+			"fontDarkColor": {
+				type: String,
+				default: ''
+			},
+			/**
+			 * 文字大小
+			 */
+			"fontSize": {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 圆角
+			 * 空值时取全局的圆角值，大于-1时取本值。
+			 */
+			"round": {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 数字
+			 */
+			"border": {
+				type: Number,
+				default: 0.5
+			},
+			/**
+			 * 投影
+			 */
+			"shadow": {
+				type: Array as PropType<number[]>,
+				default: () : number[] => {
+					return [] as number[]
+				}
+			},
+			/**
+			 * 自定义边框颜色 ，优先于color自动生成
+			 */
+			"borderColor": {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 主题样式
+			 * default 默认空值不作处理
+			 * secondary 次要按钮，
+			 * text 文本 按钮,
+			 * outline 线性，
+			 * dashed 虚线边框
+			 * thin 浅色浅色按钮（自动把color按理论值设置为浅色模式）
+			 */
+			"skin": {
+				type: String as PropType<"default" | "secondary" | "text" | "outline" | "dashed" | "thin">,
+				default: "default"
+			},
+			/**
+			 * 暂时只支持内置图标，名称不要带ri-
+			 */
+			"icon": {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 是否为纯图标按钮
+			 */
+			"iconBtn": {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 图标大小,空值取文字大小。
+			 */
+			"iconSize": {
+				type: String,
+				default: ''
+			},
+			/**
+			 * 按钮尺寸
+			 */
+			"size": {
+				type: String as PropType<"mini" | "large" | "normal" | "small">,
+				default: "normal"
+			},
+			/**
+			 * 提供url后，点击会导致该页面
+			 */
+			"url": {
+				type: String,
+				default: ""
+			},
+			/**
+			 * url跳转模式,可以是官方指定的模式:navigateTo,redirectTo,switchTab,reLaunch,navigateBack
+			 */
+			"navigateMode": {
+				type: String,
+				default: "navigateTo"
+			},
+			/**
+			 * 禁用后无法点击
+			 */
+			"disabled": {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 是否加载中
+			 */
+			"loading": {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 自定义高度，可以是数字，单位或者百分比
+			 */
+			"height": {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 宽，单位合法即可数字，字符串带单位，百分比。
+			 */
+			"width": {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 是否块状态按钮
+			 */
+			"block": {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 表单属性，设置为form可以直接提交表单触发xform 的 submit
+			 * 切记：如果你当作表单提交按钮时，一定是xform的直接子节点。
+			 * 可填：form
+			 */
+			formType: {
+				type: String as PropType<'form'>,
+				default: ""
+			},
+			/**
+			 * 建议不要修改些值理论1时上下对齐
+			 * 但由于uni sdk4.19-4.24之间会被裁剪，提供此属性
+			 * 4.25之后建议改成1
+			 */
+			lineHeight:{
+				type:String,
+				default:"1.4"
+			},
+			/**
+			 * 字号权限,normal,bold
+			 */
+			fontWeight:{
+				type:String,
+				default:'normal'
+			},
+			
+			openType:{
+				type:String,
+				default:""
+			},
+			lang:{
+				type:String,
+				default:"en"
+			},
+			sessionFrom:{
+				type:String,
+				default:""
+			},
+			sendMessageTitle:{
+				type:String,
+				default:""
+			},
+			sendMessagePath:{
+				type:String,
+				default:""
+			},
+			sendMessageImg:{
+				type:String,
+				default:""
+			},
+			appParameter:{
+				type:String,
+				default:""
+			},
+			showMessageCard:{
+				type:Boolean,
+				default:false
+			},
+			phoneNumberNoQuotaToast:{
+				type:Boolean,
+				default:true
+			}
+		},
+		computed: {
+			_fontWeight():string{
+				return this.fontWeight
+			},
+
+			_fontSize() : string {
+				let fontSize = this.fontSize;
+				if(fontSize==''){
+					if (this.size == "mini") {
+						fontSize = '12'
+					}
+					if (this.size == "small") {
+						fontSize = '14'
+					}
+					if (this.size == "normal") {
+						fontSize = '16'
+					}
+					if (this.size == "large") {
+						fontSize = '18'
+					}
+				}
+				fontSize = checkIsCssUnit(fontSize, xConfig.unit)
+				
+				if(xConfig.fontScale==1) return fontSize;
+				let sizeNumber = parseInt(fontSize)
+				if(isNaN(sizeNumber)){
+					sizeNumber = 16
+				}
+				return (sizeNumber*xConfig.fontScale).toString() + getUnit(this.fontSize)
+			},
+			_iconSize():string{
+				if(this.iconSize!=''){
+					let fontSize = checkIsCssUnit(this.iconSize, xConfig.unit)
+					
+					if(xConfig.fontScale==1) return fontSize;
+					let sizeNumber = parseInt(fontSize)
+					if(isNaN(sizeNumber)){
+						sizeNumber = 16
+					}
+					return (sizeNumber*xConfig.fontScale).toString() + getUnit(this.fontSize)
+				}
+				return this._fontSize
+			},
+			_disabled() : boolean {
+				
+				return this.disabled
+			},
+			_icon() : string {
+				return this.icon
+			},
+			_loading() : boolean {
+				
+				return this.loading
+			},
+			_radius() : string {
+				let radius = this.round;
+				if (radius== "") {
+					radius = xConfig.buttonRadius
+					if (this.size == "mini") {
+						radius = "6"
+					}
+					if (this.size == "small") {
+						radius = "8"
+					}
+				}
+				
+				return checkIsCssUnit(radius, xConfig.unit)
+			},
+			_border() : string {
+				return checkIsCssUnit(this.border.toString(), xConfig.unit)
+			},
+			_iconBtn() : boolean {
+				return this.iconBtn
+			},
+			_height() : string {
+				if (this.height != "") return checkIsCssUnit(this.height, xConfig.unit);
+				if (this.size == "mini") {
+					return checkIsCssUnit("24", xConfig.unit);
+				}
+				if (this.size == "small") {
+					return checkIsCssUnit("32", xConfig.unit);
+				}
+				if (this.size == "normal") {
+					return checkIsCssUnit("46", xConfig.unit);
+				}
+				if (this.size == "large") {
+					return checkIsCssUnit("56", xConfig.unit);
+				}
+				return checkIsCssUnit(this.height == "" ? '44' : this.height, xConfig.unit)
+			},
+			_width() : string {
+				if (this.iconBtn) return this._height;
+				if (this.block) return "100%";
+				if (this.width != "") return checkIsCssUnit(this.width, xConfig.unit);
+				if (this.size == "mini") {
+					return checkIsCssUnit("46", xConfig.unit);
+				}
+				if (this.size == "small") {
+					return checkIsCssUnit("60", xConfig.unit);
+				}
+				if (this.size == "normal") {
+					return checkIsCssUnit("98", xConfig.unit);
+				}
+				if (this.size == "large") {
+					return checkIsCssUnit("128", xConfig.unit);
+				}
+				return checkIsCssUnit(this.width, xConfig.unit)
+			},
+			_color() : string {
+				let color = this.color
+				if(xConfig.dark=='dark'&&this.darkColor!=''){
+					color = this.darkColor
+				}else{
+					if (color == '') {
+						color = xConfig.color
+					}
+				}
+				
+				return color;
+			},
+			_shadow() : number[] {
+				if (this.shadow.length == 0) return [0, 0] as number[];
+				if (this.shadow.length == 1) return [this.shadow[0], this.shadow[0]] as number[];
+				return this.shadow;
+			},
+			_styleMap():Map<string,string>{
+				let styleMap = new Map<string,string>()
+				styleMap.set('width',this._width)
+				styleMap.set('height',this._height)
+				styleMap.set('border',this._set_border_color)
+				styleMap.set('backgroundColor',this._set_background_color)
+				styleMap.set('backgroundImage',this._set_background_img)
+				styleMap.set('borderRadius',this._radius)
+				let opacity = "1"
+				if (this._disabled || this._loading) {
+					opacity = '0.5';
+				}
+				
+				styleMap.set('opacity',opacity)
+		
+				return styleMap;
+			}
+		},
+		watch: {
+	
+			_color() {
+				this.customStyles(false);
+			},
+			color() {
+				this.customStyles(false);
+			},
+			bgColor() {
+				this.customStyles(false);
+			},
+			borderColor() {
+				this.customStyles(false);
+			},
+			skin() {
+				this.customStyles(false);
+			},
+		},
+		created() {
+			this.customStyles(false);
+		},
+		methods: {
+			touchStart() {
+				if (this._disabled || this._loading) return;
+				this.customStyles(true);
+				this._isHover = true;
+			},
+			touchCacel() {
+				if (this._disabled || this._loading) return;
+				this.customStyles(false);
+				this._isHover = false
+			},
+			touchEnd() {
+				if (this._disabled || this._loading) return;
+				this.customStyles(false);
+				this._isHover = false
+
+			},
+			formSubmit() {
+				let pelement = this.findParent(this);
+				if (pelement == null) return;
+				let parent : XFormComponentPublicInstance  = pelement as XFormComponentPublicInstance;
+				parent.submit();
+			},
+			findParent(parent:VueComponent|null):VueComponent|null{
+				
+				if(parent == null) return null;
+				// #ifdef WEB||APP-IOS||MP-WEIXIN
+				if(parent.$parent?.id?.indexOf('xForm')>-1) return parent.$parent;
+				// #endif
+				// #ifdef APP-ANDROID
+				if(parent.$parent instanceof XFormComponentPublicInstance) return parent.$parent;
+				// #endif
+				
+				let parents = this.findParent(parent.$parent)
+				
+				// #ifdef WEB||APP-IOS||MP-WEIXIN
+				if(parents?.id?.indexOf('xForm')>-1) return parents;
+				// #endif
+				// #ifdef APP-ANDROID
+				if(parents instanceof XFormComponentPublicInstance) return parents;
+				// #endif
+				return null;
+			},
+			clickListen(e : UniPointerEvent) {
+				if (!this._disabled && !this._loading) {
+					/**
+					 * 点击时触发
+					 * 
+					 * @property Event {Event} 触摸事件
+					 */
+					this.$emit('click', e)
+
+					if (this.formType == 'form') {
+						this.formSubmit();
+					}
+
+				}
+				if (this._disabled == false && this.url != "" && this._loading == false) {
+					if(this.navigateMode == 'navigateTo'){
+						uni.navigateTo({
+							url: this.url,
+							fail:(error)=>{
+								console.error(error)
+							}
+						})
+					}else if(this.navigateMode == 'redirectTo'){
+						uni.redirectTo({
+							url: this.url,
+							fail:(error)=>{
+								console.error(error)
+							}
+						})
+					}else if(this.navigateMode == 'switchTab'){
+						uni.switchTab({
+							url: this.url,
+							fail:(error)=>{
+								console.error(error)
+							}
+						})
+					}else if(this.navigateMode == 'reLaunch'){
+						uni.reLaunch({
+							url: this.url,
+							fail:(error)=>{
+								console.error(error)
+							}
+						})
+					}else if(this.navigateMode == 'navigateBack'){
+						uni.navigateBack({
+							fail:(error)=>{
+								console.error(error)
+							}
+						})
+					}
+					
+				}
+			},
+			customStyles(hover : boolean) {
+				
+				let dePrimarycolor = getDefaultColor(xConfig.color);
+				let color = getDefaultColor(this._color);
+				let hoverColor = this.color == 'info' ? getDefaultColor(xConfig.color) : color
+				let colorInit : UTSJSONObject = getDefaultColorObj(color, hoverColor);
+				let borderStyle = "solid"
+
+				if (this.skin == 'text') {
+					colorInit = getTextColorObj(color, hoverColor,xConfig.dark=='dark')
+				}
+				if (this.skin == 'thin') {
+					colorInit = getThinColorObj(color, hoverColor,xConfig.dark=='dark')
+				}
+				if (this.skin == 'outline' || this.skin == 'dashed') {
+					colorInit = getOutlineColorObj(color, hoverColor)
+				}
+				if (this.skin == 'dashed') {
+					borderStyle = 'dashed'
+				}
+
+				let defaultObj : UTSJSONObject = colorInit.getJSON("default")!
+				// let defaultHover:UTSJSONObject = colorInit.getJSON("hover")!
+				let defaultActive : UTSJSONObject = colorInit.getJSON("active")!
+
+				let borderWidth = checkIsCssUnit(this.border.toString(), 'rpx')
+				let dbordercolor = getDefaultColor(this.borderColor)
+				let background = getDefaultColor(this.bgColor)
+				let fontcolor = getDefaultColor(this.fontColor)
+				let realColor = fontcolor
+				let realBackground = background
+				let realBackImg= ''
+				let shadowX = this._shadow[0].toString();
+				let shadowY = this._shadow[1].toString();
+				
+				if (shadowX != shadowX && this._shadow[0] != 0) {
+					this.boxShadow = `0 ${shadowX}px ${shadowY}px ${this._iconBtn ? 'transparent' : defaultObj.getString("shadow")!}`
+				}
+				this._set_border_color = `${borderWidth} ${borderStyle} ${dbordercolor == "" ? defaultObj.getString("borderColor")! : dbordercolor}`
+				realBackground = background == "" ? defaultObj.getString("background")! : background
+
+				if (this.color == 'info') {
+					realColor = dePrimarycolor;
+				} else {
+					realColor = fontcolor == "" ? defaultObj.getString("fontColor")! : fontcolor
+					
+				}
+				if (hover) {
+					if (shadowX != shadowX && this._shadow[0] != 0) {
+						this.boxShadow = `0 ${shadowX}px ${shadowY}px ${this._iconBtn ? 'transparent' : defaultActive.getString("shadow")!}`
+					}
+					this._set_border_color = `${borderWidth} ${borderStyle} ${dbordercolor == "" ? defaultActive.getString("borderColor")! : dbordercolor}`
+					realBackground = background == "" ? defaultActive.getString("background")! : background
+					realColor = fontcolor == "" ? defaultActive.getString("fontColor")! : fontcolor
+				}
+
+				if (this.linearGradient.length > 0) {
+					let dirs = this.linearGradient[0]
+					if (this.linearGradient[0] == 'top') {
+						dirs = 'to top'
+					} else if (this.linearGradient[0] == 'bottom') {
+						dirs = 'to bottom'
+					} else if (this.linearGradient[0] == 'left') {
+						dirs = 'to left'
+					} else if (this.linearGradient[0] == 'right') {
+						dirs = 'to right'
+					}
+					realBackground = ``
+					realBackImg  = `linear-gradient(${dirs},${this.linearGradient[1]},${this.linearGradient[2]})`
+				}
+				if(this.fontDarkColor!=''&&xConfig.dark=='dark'){
+					realColor = getDefaultColor(this.fontDarkColor)
+				}
+				this._set_background_color = realBackground
+				this._set_background_img = realBackImg
+				this._set_font_color = realColor
+				
+
+			},
+			
+			// #ifdef MP-WEIXIN
+			
+			getuserinfo(event:UniEvent){
+				this.$emit('getuserinfo',event)
+			},
+			contact(event:UniEvent){
+				this.$emit('contact',event)
+			},
+			getphonenumber(event:UniEvent){
+				this.$emit('getphonenumber',event)
+			},
+			getrealtimephonenumber(event:UniEvent){
+				this.$emit('getrealtimephonenumber',event)
+			},
+			error(event:UniEvent){
+				this.$emit('error',event)
+			},
+			opensetting(event:UniEvent){
+				this.$emit('opensetting',event)
+			},
+			launchapp(event:UniEvent){
+				this.$emit('launchapp',event)
+			},
+			chooseavatar(event:UniEvent){
+				this.$emit('chooseavatar',event)
+			},
+			chooseaddress(event:UniEvent){
+				this.$emit('chooseaddress',event)
+			},
+			chooseinvoicetitle(event:UniEvent){
+				this.$emit('chooseinvoicetitle',event)
+			},
+			addgroupapp(event:UniEvent){
+				this.$emit('addgroupapp',event)
+			},
+			subscribe(event:UniEvent){
+				this.$emit('subscribe',event)
+			},
+			login(event:UniEvent){
+				this.$emit('login',event)
+			},
+			agreeprivacyauthorization(event:UniEvent){
+				this.$emit('agreeprivacyauthorization',event)
+			},
+			
+			// #endif
+			
+			
+		}
+	}
+</script>
+<template>
+	<view 
+	<!-- #ifdef APP||H5 -->
+	@touchcancel="touchCacel"
+	@touchend="touchEnd"
+	@touchstart="touchStart" 
+	@click="clickListen"
+	<!-- #endif -->
+	
+	<!-- #ifdef WEB -->
+	@mousedown="touchStart"
+	@mouseup="touchEnd"
+	@mouseleave="touchEnd"
+	<!-- #endif -->
+	
+
+	:style="_styleMap" class="parentButton" :class="[_disabled||_loading?'noDrag':'']">
+		<view :class="['xButton',_loading?'load':'']" >
+			<x-icon v-if="_icon!=''&&!_loading" :style="{marginRight:_iconBtn?'0px':' 3px'}" :font-size="_iconSize"
+				:color="_set_font_color" :name="_icon"></x-icon>
+			<x-icon v-if="_loading" color="white" :spin="true" name="loader-fill"></x-icon>
+			
+			
+			<!-- #ifdef MP -->
+			<view v-if="!_iconBtn" :style="{fontWeight:_fontWeight,'color':_set_font_color,fontSize:_fontSize,lineHeight:lineHeight}">
+				<!--
+				@slot 默认插槽
+				-->
+				<slot></slot>
+			</view>
+			<!-- #endif -->
+			<!-- #ifndef MP -->
+			<text v-if="!_iconBtn" :style="{fontWeight:_fontWeight,'color':_set_font_color,fontSize:_fontSize,lineHeight:lineHeight}">
+				<!--
+				@slot 默认插槽
+				-->
+				<slot></slot>
+			</text>
+			<!-- #endif -->
+			
+			
+		</view>
+		<!-- #ifdef MP-WEIXIN -->
+		<button 
+		:disabled="_disabled||_loading" 
+		:open-type="openType" 
+		:lang="lang"
+		:sessionFrom="sessionFrom"
+		:sendMessageTitle="sendMessageTitle"
+		:sendMessagePath="sendMessagePath"
+		:sendMessageImg="sendMessageImg"
+		:appParameter="appParameter"
+		:showMessageCard="showMessageCard"
+		:phoneNumberNoQuotaToast="phoneNumberNoQuotaToast"
+		
+		@touchcancel="touchCacel"
+		@touchend="touchEnd"
+		@touchstart="touchStart" 
+		@click="clickListen"
+		
+		@getuserinfo="getuserinfo"
+		@contact="contact"
+		@getphonenumber="getphonenumber"
+		@getrealtimephonenumber="getrealtimephonenumber"
+		@error="error"
+		@opensetting="opensetting"
+		@launchapp="launchapp"
+		@chooseavatar="chooseavatar"
+		@chooseaddress="chooseaddress"
+		@chooseinvoicetitle="chooseinvoicetitle"
+		@addgroupapp="addgroupapp"
+		@subscribe="subscribe"
+		@login="login"
+		@agreeprivacyauthorization="agreeprivacyauthorization"
+		class="xButtonReal">
+		</button>
+		<!-- #endif -->
+	</view>
+</template>
+<style scoped lang="scss">
+	.parentButton {
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+		position: relative;
+		/* #ifdef WEB*/
+		box-sizing: border-box;
+		cursor: pointer;
+		/* #endif */
+	}
+	/* #ifdef WEB*/
+	.parentButton.noDrag{
+		cursor:no-drop;
+	}
+	.parentButton:hover{
+		
+	}
+	.parentButton:active{
+	
+	}
+	/* #endif */
+	
+	/* #ifdef MP-WEIXIN */
+	.xButtonReal{
+		width: 100%;
+		height: 100%;
+		position: absolute;
+		left: 0;
+		top: 0;
+		box-sizing: border-box;
+		border: none;
+		background: transparent !important;
+		border-width: 0;
+		margin: 0;
+		padding: 0;
+		pointer-events: all;
+		&::after{
+			border: none;
+			border-width: 0;
+		}
+	}
+	/* #endif */
+
+
+	.xButton {
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+		width: 100%;
+		height: 100%;
+		
+	}
+
+	.loadingMask {
+		position: absolute;
+
+		background-color: rgba(200, 200, 200, 0.6);
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+		/* #ifndef APP */
+		box-sizing: border-box;
+		width: 100%;
+		height: 100%;
+		/* #endif */
+		/* #ifdef APP*/
+		box-sizing: border-box;
+		width: 100%;
+		height: 100%;
+		/* #endif */
+	}
+</style>

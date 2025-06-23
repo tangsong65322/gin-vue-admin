@@ -1,0 +1,12 @@
+/**
+ * 震动
+ * @param {number} duriation 震动时间单位ms,ios,微信没有用。
+ */
+export function vibrator(duriation : number):boolean {
+	try {
+		navigator.vibrate(duriation);
+	} catch (error) {
+		console.error("WEB震动失败:",error)
+	}
+	return true;
+}

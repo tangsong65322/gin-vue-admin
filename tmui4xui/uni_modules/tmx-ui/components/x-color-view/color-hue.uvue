@@ -1,0 +1,344 @@
+<template>
+
+	<view class="colorViewGridBox" 
+	ref="gridBoxref"
+	@touchstart.stop="mStart" 
+	@touchmove.stop="mMove" @touchend="mEnd" @touchcancel="mEnd"
+		:style="{minHeight:boxHeight+'px'}"
+		<!-- #ifdef WEB -->
+		@mousedown="mmStart"
+		<!-- #endif -->
+		>
+		<!-- #ifndef APP -->
+		<view class="colorViewGridHueBox" 
+			:style="{width:boxWidth+'px',height:boxHeight+'px',margin:`${(btnSize/2)}px`}">
+			<view class="colorViewGridHueBoxMask">
+
+			</view>
+		</view>
+		<!-- #endif -->
+
+		<!-- #ifdef APP -->
+		<canvas v-if="isInitDom" ref="canvas"
+			:style="{width:boxWidth+'px',height:boxHeight+'px',margin:`${(btnSize/2)}px`}"></canvas>
+		<!-- #endif -->
+		<view class="colorViewGridBoxGridBar"
+			:style="{width:btnSize+'px',height:btnSize+'px',top:barTop+'px',left:barLeft+'px',backgroundColor:valuestr,opacity:isShowBar?'1':'0'}">
+		</view>
+	</view>
+</template>
+
+<script lang="ts" setup>
+	import { ref, getCurrentInstance } from "vue"
+	import { hexToRgb, hslToRgb, hslaToRgbCss, rgbToHex, rgbToHsl, rgbToHexNoAlpha } from "../../core/util/xCoreColorUtil.uts";
+	const props = defineProps({
+		hexValue: {
+			type: String,
+			default: ""
+		}
+	})
+	const emits = defineEmits<{
+		/**
+		 * 值变化时触发。
+		 * @param {string} hexstr - 当前的颜色值
+		 */
+		(e : 'change', hexstr : string) : void,
+	}>()
+	const proxy = getCurrentInstance()?.proxy
+	let boxWidth = ref(0)
+	let boxHeight = ref(300)
+	let tid = 0;
+	const btnSize = ref(24)
+	let barLeft = ref(0)
+	let barTop = ref(0)
+	const isMoving = ref(false)
+	let nowselectedStr = ref('')
+	let windTop = uni.getWindowInfo().windowTop
+	const canvas = ref<UniCanvasElement | null>(null)
+	let isInitDom = ref(false)
+	const valuestr = ref(`rgba(255,255,255,1)`)
+	const isShowBar = ref(false)
+	let xColorviewEventId =''
+	const gridBox = ref<NodeInfo|null>(null);
+	const gridBoxref = ref<UniElement | null>(null)
+	
+	const setPostion = (x : number, y : number) => {
+		let node = gridBox.value! as NodeInfo;
+		let bsize  = btnSize.value
+		
+		let _x = x - node.left! - bsize / 2;
+		let _y = y - node.top! - windTop - bsize / 2;
+		let pos_x = Math.max(0, Math.min(boxWidth.value - btnSize.value, _x))
+		let pos_y = Math.max(0, Math.min(boxHeight.value - btnSize.value, _y))
+		
+		// #ifdef MP-WEIXIN
+		pos_x = Math.max(0, Math.min(boxWidth.value , _x))
+		pos_y = Math.max(-bsize/2, Math.min(boxHeight.value - bsize/2, _y))
+		// #endif
+		// #ifdef WEB
+		pos_x = Math.max(0, Math.min(boxWidth.value, _x))
+		pos_y = Math.max(0, Math.min(boxHeight.value, _y))
+		// #endif
+		
+		barLeft.value = pos_x
+		barTop.value = pos_y
+		let xBlv = Math.max(0, Math.min(Math.floor(pos_x / (boxWidth.value - btnSize.value) * 100), 100))
+		let yBlv = Math.max(0, Math.min((pos_y / (boxHeight.value - btnSize.value) * 100), 100))
+		// 计算饱和度s:0-100
+		let s = 0
+		if (xBlv > 0 && xBlv <= 50) {
+			s = xBlv / 50 * 100
+		} else if (xBlv > 50) {
+			s = 100
+		}
+		// 计算亮度
+		let l = 100 - xBlv
+		//计算饱和度
+		let h = yBlv / 100 * 360
+		let rgba = hslToRgb({ h: h, s: s, l: l, a: 1 } as UTSJSONObject)
+		let color = rgbToHexNoAlpha(rgba)
+		if (valuestr.value == color) return;
+		
+		valuestr.value = color
+		emits('change', color)
+	}
+	const mStart = (evt : UniTouchEvent) => {
+		if(!isInitDom.value) return;
+		evt.preventDefault()
+		// #ifdef MP-WEIXIN||WEB
+		evt.stopPropagation()
+		// #endif
+		isMoving.value = true
+		isShowBar.value = true;
+		
+		uni.createSelectorQuery()
+			.in(proxy)
+			.select('.colorViewGridBox')
+			.boundingClientRect()
+			.exec(nodes => {
+				gridBox.value = nodes[0] as NodeInfo;
+				setPostion(evt.changedTouches[0].clientX, evt.changedTouches[0].clientY)
+			})
+	}
+
+	
+	const mMove = (evt : UniTouchEvent) => {
+		if (!isMoving.value) return;
+		evt.preventDefault()
+		// #ifdef MP-WEIXIN||WEB
+		evt.stopPropagation()
+		// #endif
+		setPostion(evt.changedTouches[0].clientX, evt.changedTouches[0].clientY)
+	}
+	const mEnd = (evt : UniTouchEvent) => {
+		if (!isMoving.value) return;
+		isMoving.value = false
+	}
+	
+	// #ifdef WEB
+	const mmStart = (evt:UniMouseEvent)=>{
+		isMoving.value = true;
+		xColorviewEventId = Math.random().toString(16).substring(2,16)
+		isShowBar.value = true;
+		setPostion(evt.clientX, evt.clientY)
+	}
+	const mmMove = (evt:UniMouseEvent)=>{
+		if (!isMoving.value) return
+		// #ifdef MP-WEIXIN||WEB
+		evt.stopPropagation()
+		evt.preventDefault()
+		// #endif
+		setPostion(evt.clientX, evt.clientY)
+	}
+	const mmEnd = (evt:UniMouseEvent)=>{
+		if (!isMoving.value) return
+		isMoving.value = false;
+		xColorviewEventId=''
+	}
+	
+	document.body.addEventListener('mousemove',mmMove)
+	document.body.addEventListener('mouseup',mmEnd)
+	document.body.addEventListener('mouseleave',mmEnd)
+	// #endif
+	
+
+	const drawBgHsla = (ctx : CanvasRenderingContext2D) => {
+
+		// 绘制渐变
+		let liner = ctx.createLinearGradient(boxWidth.value / 2, 0, boxWidth.value / 2, boxHeight.value / 2)
+		liner.addColorStop(0, '#ff0000')
+		liner.addColorStop(0.3333, '#ffff00')
+		liner.addColorStop(0.6666, '#00ff00')
+		liner.addColorStop(1, '#00ffff')
+		ctx.fillStyle = liner
+		ctx.fillRect(0, 0, boxWidth.value, boxHeight.value)
+
+		let liner2 = ctx.createLinearGradient(boxWidth.value / 2, boxHeight.value / 2, boxWidth.value / 2, boxHeight.value)
+		liner2.addColorStop(0, '#00ffff')
+		liner2.addColorStop(0.3333, '#0000ff')
+		liner2.addColorStop(0.6666, '#ff00ff')
+		liner2.addColorStop(1, '#ff0000')
+		ctx.fillStyle = liner2
+		ctx.fillRect(0, boxHeight.value / 2, boxWidth.value, boxHeight.value / 2)
+
+		// 绘制遮罩.
+		let liner3 = ctx.createLinearGradient(0, boxHeight.value / 2, boxWidth.value, boxHeight.value / 2)
+		liner3.addColorStop(0, '#ffffff')
+		liner3.addColorStop(0.5, 'rgba(0,0,0,0)')
+		liner3.addColorStop(1, '#000000')
+		ctx.fillStyle = liner3
+		ctx.fillRect(0, 0, boxWidth.value, boxHeight.value)
+
+	}
+	const getInitDraw = () => {
+		if (canvas.value == null) return;
+		let dom = canvas.value as UniCanvasElement;
+		let dpr = uni.getWindowInfo().pixelRatio
+		dom.width = dom.offsetWidth * dpr;
+		dom.height = dom.offsetHeight * dpr;
+		let ctx = dom.getContext('2d')!
+		ctx.scale(dpr, dpr)
+
+		drawBgHsla(ctx)
+	}
+	const valueStrToPosition = () => {
+		if (valuestr.value == '') return;
+		uni.createSelectorQuery()
+			.in(proxy)
+			.select('.colorViewGridBox')
+			.boundingClientRect()
+			.exec(nodes => {
+				let node = nodes[0] as NodeInfo;
+				let hsl = rgbToHsl(hexToRgb(valuestr.value))
+
+				let h = hsl.getNumber('h')!
+				let s = hsl.getNumber('s')!
+				let l = hsl.getNumber('l')!
+				let a = 1
+				let pos_x = 0
+				let pos_y = 0
+
+				let xBlv = 0
+				let yBlv = 0
+				if (s == 0) {
+					isShowBar.value = false;
+					return;
+				}
+				if (s >= l) {
+					xBlv = 100 - l
+				} else {
+					xBlv = s / 100 * 50
+				}
+				// if (s > 0 && s < 100) {
+				// 	xBlv = s / 100 * 50
+
+				// } else {
+				// 	xBlv = 100 - l
+				// }
+
+				pos_x = xBlv / 100 * (node.width! - btnSize.value)
+				pos_x = Math.max(0, Math.min((node.width! - btnSize.value), pos_x))
+
+				if (h > 0) {
+					yBlv = h / 360
+				}
+				pos_y = yBlv * (node.height! - btnSize.value)
+
+				pos_y = Math.max(0, Math.min((node.height! - btnSize.value), pos_y))
+
+				barTop.value = pos_y
+				barLeft.value = pos_x
+
+				isShowBar.value = true;
+
+			})
+
+	}
+
+	watch(() : string => props.hexValue, (newval : string) => {
+		if (newval == '' || valuestr.value == newval) return;
+		valuestr.value = newval
+		valueStrToPosition()
+	})
+	onBeforeUnmount(() => {
+		clearTimeout(tid)
+		
+		// #ifdef WEB
+		document.body.removeEventListener('mousemove',mmMove)
+		document.body.removeEventListener('mouseup',mmEnd)
+		document.body.removeEventListener('mouseleave',mmEnd)
+		// #endif
+		
+	})
+	onBeforeMount(() => {
+		valuestr.value = props.hexValue
+	})
+	onMounted(() => {
+		clearTimeout(tid)
+		uni.createSelectorQuery()
+			.in(proxy)
+			.select('.colorViewGridBox')
+			.boundingClientRect()
+			.exec(nodes => {
+				let node = nodes[0] as NodeInfo;
+				boxHeight.value = Math.max(Math.min(270, node.width!), 270) - btnSize.value
+				boxWidth.value = Math.max(node.width!, 270) - btnSize.value
+				isInitDom.value = true
+				gridBox.value = node
+				tid = setTimeout(function () {
+					valueStrToPosition()
+					getInitDraw()
+
+				}, 80);
+			})
+
+	})
+</script>
+
+<style scoped>
+	.colorViewGridHueBox {
+		background-image: linear-gradient(to bottom, red 0, #ff0 16.66666%, #0f0 33.333333%, #0ff 50%, #00f 66.66666%, #f0f 83.333333%, red 100%);
+		position: relative;
+		pointer-events: none;
+		/* border-radius: 6px;
+		overflow: hidden; */
+		/* #ifdef  MP-WEIXIN||WEB  */
+		box-sizing: border-box;
+		/* #endif */
+
+	}
+
+	.colorViewGridBox {
+	
+		/* #ifdef MP-WEIXIN||WEB */
+		position: relative;
+		box-sizing: border-box;
+		cursor: cell;
+		/* #endif */
+	}
+
+	.colorViewGridHueBoxMask {
+		background-image: linear-gradient(to right, rgba(255, 255, 255, 1) 0%, rgba(0, 0, 0, 0), #000000 100%);
+		position: absolute;
+		width: 100%;
+		height: 100%;
+		pointer-events: none;
+		top: 0px;
+		left: 0px;
+	}
+
+	.colorViewGridBoxGridBar {
+		position: absolute;
+		width: 24px;
+		height: 24px;
+		border: 3px solid white;
+		box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+		border-radius: 24px;
+		background-color: rgba(0, 0, 0, 0.1);
+		pointer-events: none;
+		/* #ifdef MP-WEIXIN||WEB */
+		box-sizing: border-box;
+		/* #endif */
+
+	}
+</style>

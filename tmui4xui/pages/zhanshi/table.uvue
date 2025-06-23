@@ -1,0 +1,266 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">表格 xTable</x-text>
+			<x-text  color="#999999" >
+				格式与antd一样，我觉得那样的格式比较合理。可以单独设置样式和整体列设置样式。也可以单独设置列宽，项目列宽虽然 可以auto，但数据多的情况下不要用，还是定义具体的百分比或者数字比较快的渲染。
+				支持具名指定单元格插槽及行插槽，用于复杂的布局（使用插槽时，不可排序）
+			</x-text>
+		</x-sheet>
+		<x-sheet :padding="['0']">
+			<x-table  ripple-color="#f6f7ff" ripple-dark-color="#161821" max-height="900rpx" :list="list" :columns="columns3" ></x-table>
+		</x-sheet>
+		
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">超出左右上下滚动</x-text>
+			<x-text color="#999999">
+				多行滚动自动固定顶部ios,安卓会并排固定在顶部。在web端只有最后一个固定在顶部
+				尽量不要使用多行固定的功能，以防未知问题，或者性能问题。如果数据不多应该问题不大。
+			</x-text>
+		</x-sheet>
+		<x-sheet :padding="['0']">
+			<x-table :refresh="refresfun" :multiRowFloat="true" cellWidth="42%" max-height="450rpx" :list="list" :columns="columns" >
+				<!-- #ifdef APP || WEB -->
+				<template v-slot:age="{sucore}">
+					<x-text color="primary">{{(sucore as UTSJSONObject).getAny('age')}}</x-text>
+				</template>
+				<template v-slot:address="{sucore}">
+					<x-button @click="editeActions(sucore)" size="small" >编辑</x-button>
+				</template>
+				<!-- #endif -->
+			</x-table>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b ">定义样式</x-text>
+		</x-sheet>
+		<x-sheet :padding="['0']" >
+			<x-table header-bg-color="primary" darkHeaderBgColor='primary' header-font-color="white" cellWidth="50%" max-height="450rpx" :list="list2" :columns="columns2" ></x-table>
+		</x-sheet>
+		<view style="height:50px"></view>
+		
+		<x-modal v-model:show="showEdite">
+			<x-input v-model="editevalue" dark-bg-color=""></x-input>
+			<x-text class="mt-12">
+				确认后列表数据不会变动，我没有写业务逻辑，我这只是展示用法。
+			</x-text>
+		</x-modal>
+		
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	import { xTableColumns } from "@/uni_modules/tmx-ui/interface.uts"
+	export default {
+		data() {
+			const dataSource2 = [
+				{
+					key: '1',
+					name: '胡彦斌1',
+					age: "32",
+					address: '西湖区',
+					test:"第4数据"
+				} as UTSJSONObject,
+				{
+					key: '2',
+					name: '胡彦祖2',
+					age: "36",
+					address: '湖底公园1号',
+					style:{
+						age:{
+							bgStyle:"background:#7e6539",
+							textStyle:"font-size:16px;color:#ffffff"
+							
+						} as UTSJSONObject
+					} as UTSJSONObject,
+					test:"第4数据"
+				} as UTSJSONObject,
+				{
+					key: '3',
+					name: '胡彦斌3',
+					age: "40",
+					address: '公园1号',
+					test:"第4数据"
+				} as UTSJSONObject
+			] as UTSJSONObject[]
+			const dataSource = [
+				{
+					key: '1',
+					name: '胡彦斌1',
+					age: "32",
+					address: '西湖区湖底湖底公园',
+					// 本行是否悬浮在顶部，滚动时
+					float:true,
+					test:"第4数据"
+				} as UTSJSONObject,
+				{
+					key: '2',
+					name: '胡彦祖2',
+					age: "36",
+					address: '西湖区湖底公园1号',
+					float:true,
+					test:"第4数据"
+				} as UTSJSONObject,
+				{
+					key: '3',
+					name: '胡彦斌3',
+					age: '40',
+					address: '西湖区湖底公园1号',
+					test:"第4数据"
+					
+				} as UTSJSONObject,
+				{
+					key: '4',
+					name: '胡彦祖4',
+					age: "42",
+					address: '西湖区湖底公园1号',
+					test:"第4数据"
+				} as UTSJSONObject,
+				{
+					key: '5',
+					name: '胡彦祖5',
+					age: "37",
+					address: '西湖区湖底公园1号',
+					test:"第4数据"
+				} as UTSJSONObject,
+				{
+					key: '6',
+					name: '胡彦斌6',
+					age: "38",
+					address: '西湖区湖底公园1号',
+					test:"第4数据"
+				} as UTSJSONObject,
+				{
+					key: '7',
+					name: '胡彦祖7',
+					age: '39',
+					address: '西湖区湖底公园1号',
+					test:"第4数据"
+				} as UTSJSONObject,
+				{
+					key: '8',
+					name: '胡彦祖8',
+					age: '29',
+					address: '西湖区湖底公园1号',
+					test:"第4数据"
+				} as UTSJSONObject,
+				{
+					key: '9',
+					name: '胡彦祖9',
+					age: '19',
+					address: '西湖区湖底公园1号',
+					test:"第4数据"
+				} as UTSJSONObject,
+			] as UTSJSONObject[];
+			
+			const columnsData = [
+				{
+					title: '姓名',
+					key: 'name',
+				} as xTableColumns,
+				{
+					title: '年龄',
+					key: 'age'
+					
+				} as xTableColumns,
+				{
+					title: '住址',
+					key: 'address',
+				} as xTableColumns,
+				{
+					title: '第4列',
+					key: 'test',
+				} as xTableColumns
+			] as xTableColumns[];
+			const columnsData2 = [
+				{
+					title: '姓名',
+					key: 'name',
+				} as xTableColumns,
+				{
+					title: '年龄',
+					key: 'age',
+					width:"160rpx",
+					style:{
+						age:{
+							bgStyle:"background:#69349e",
+							textStyle:"font-size:16px;color:#ffffff",
+						} as UTSJSONObject
+					} as UTSJSONObject
+				} as xTableColumns,
+				{
+					title: '住址',
+					key: 'address',
+				} as xTableColumns,
+				{
+					title: '第4列',
+					key: 'test',
+				} as xTableColumns
+			] as xTableColumns[];
+			const columnsData3 = [
+				{
+					title: '姓名',
+					key: 'name',
+					style:{
+						name:{
+							// 单元格对齐方式flex-start,center,flex-end(默认是center)
+							align:"flex-start"
+						} as UTSJSONObject
+					} as UTSJSONObject
+				} as xTableColumns,
+				{
+					title: '年龄',
+					key: 'age',
+					desc:true
+				} as xTableColumns,
+				{
+					title: '住址',
+					key: 'address',
+				} as xTableColumns,
+				{
+					title: '第4列',
+					key: 'test',
+				} as xTableColumns
+			] as xTableColumns[];
+			return {
+				showEdite:false,
+				editevalue:'',
+				list:dataSource,
+				columns:columnsData,
+				columns2:columnsData2,
+				columns3:columnsData3,
+				list2:dataSource2,
+			};
+		},
+		methods:{
+			editeActions(data:any|null){
+				if(data==null) return;
+				let value = (data! as UTSJSONObject).getAny('age')
+				if(value!=null){
+					let p = value! as string;
+					this.editevalue = p;
+					this.showEdite = true;
+				}
+			},
+			refresfun(type:string):Promise<any|null>{
+				return new Promise((res)=>{
+					setTimeout(function() {
+						res(true)
+					}, 3500);
+				})
+			}
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

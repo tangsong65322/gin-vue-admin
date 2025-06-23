@@ -1,0 +1,247 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view
+	@scroll="onScrollTop"
+	 class="xTreeFlatBox"
+	 :scroll-top="scrollTop"
+	:scroll-y="true" direction="vertical" :style="{width:_width,height:_height}"
+	>
+		<scroll-view @scroll="onScrollLeft" :scroll-left="scrollLeft" :scroll-x="true" direction="horizontal" :style="{width: _width,height: canvasHeight+'px'}">
+			<canvas :key="keyids" @click="onclickCanvas" :id="id" ref="canvas" :style="{width:canvasWidth+'px',height:canvasHeight+'px'}"></canvas>
+		</scroll-view>
+	</scroll-view>
+	<!-- #endif -->
+	<!-- #ifdef MP -->
+	<view ref="xTreeFlatBox" class="xTreeFlatBox" :style="{width:_width,height:_height}">
+		<scroll-view @scroll="onScrollAll" class="xTreeFlatBoxScroll" :scroll-top="scrollTop" :scroll-left="scrollLeft" :scroll-x="true" :scroll-y="true" direction="all" :style="{width: '100%',height: '100%'}">
+			<canvas :key="keyids" @click="onclickCanvas" :id="id" ref="canvas" :style="{width:canvasWidth+'px',height:canvasHeight+'px'}"></canvas>
+		</scroll-view>
+	</view>
+	<!-- #endif -->
+	<!-- #ifdef WEB -->
+	<view ref="xTreeFlatBox" class="xTreeFlatBox" :style="{width:_width,height:_height}">
+		<canvas :key="keyids" @click="onclickCanvas" :id="id" ref="canvas" :style="{width:canvasWidth+'px',height:canvasHeight+'px'}"></canvas>
+	</view>
+	<!-- #endif -->
+</template>
+
+<script lang="ts" setup>
+
+	import { computed, ref, onMounted,PropType } from "vue"
+	import { xDate } from "../../core/util/xDate.uts"
+	import { checkIsCssUnit, getUnit } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { XTREEFLAT_NODES } from "../../interface.uts"
+	import {XTREEFLAT_CONFIG,XTREEFLAT_CHILDREN } from "./interface.uts"
+	import { XTreeFlatOpts } from "../../interface.uts"
+	import { OrgChartRenderer } from "./draw.uts"
+	type propsTypeAsSelef = {
+		/** 画板宽,总宽不要小于节点展开后的宽,可以尽量设置大点 */
+		canvasWidth:number,
+		/** 画板高,总高不要小于节点展开后的高,可以尽量设置大点 */
+		canvasHeight:number,
+		/** 组件宽 */
+		width:string,
+		/** 组件高,不能为auto */
+		height:string,
+		/** 动态数据 */
+		list:XTREEFLAT_NODES[],
+		opts:any|null
+	}
+	
+	/**
+	 * @name 思维导图 xTreeFlat
+	 * @page /pages/index/tree-flat
+	 * @category 其它组件
+	 * @description 主要用来展示平面树平面结构,思维导图的展示
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	defineOptions({name:"xTreeFlat"})
+	
+	const xTreeFlatBox = ref<UniElement | null>(null)
+	
+	const id = "xTreeFlat-"+Math.random().toString(16).substring(4,20)
+	const proxy = getCurrentInstance()?.proxy??null;
+	const scrollLeft  = ref(0)
+	const scrollTop  = ref(0)
+	const scrollLeft_onlyRead  = ref(0)
+	const scrollTop_onlyRead  = ref(0)
+	const boxNodeinfo = ref<NodeInfo|null>(null)
+	
+	const props = withDefaults(defineProps<propsTypeAsSelef>(),{
+		/** 画板宽,总宽不要小于节点展开后的宽,可以尽量设置大点 */
+		canvasWidth:800,
+		/** 画板高,总高不要小于节点展开后的高,可以尽量设置大点 */
+		canvasHeight:800,
+		/** 组件宽,可以为auto,百分比,数字字符,带单位字符 */
+		width:'100%',
+		/** 组件高,不能为auto */
+		height:'600',
+		/** 动态数据 */
+		list:[] as XTREEFLAT_NODES[],
+		opts:null as XTreeFlatOpts|null
+	})
+	
+	
+
+	const _width = computed(():string=>checkIsCssUnit(props.width,xConfig.unit))
+	const _height = computed(():string=>checkIsCssUnit(props.height,xConfig.unit))
+	const render = ref<null|OrgChartRenderer>(null)
+	const canvasWidth = ref(props.canvasWidth)
+	const canvasHeight = ref(props.canvasHeight)
+	const keyids = ref(23)
+	const emits = defineEmits([
+		/**
+		 * 引擎初始化完成,可以进行通过ref来异步设置数据
+		 */
+		'init',
+		/** 当list数据被编辑变动时触发 */
+		'change',
+		/**
+		 * 当前节点被点击时触发
+		 * @param {item:XTREEFLAT_CHILDREN} 被点击的节点数据
+		 */
+		'click'
+	])
+	const setScrollPosition = ()=>{
+		// #ifdef WEB
+		let ele = xTreeFlatBox.value;
+		if(ele==null) return;
+		ele.scrollLeft = scrollLeft.value
+		ele.scrollTop = scrollTop.value
+		// #endif
+	}
+	const setData = (list:XTREEFLAT_NODES[])=>{
+		if(render==null||boxNodeinfo.value==null){
+			console.error('render未初始化')
+			return;
+		}
+		render.value!.setData(list)
+		let dboxwidth = render.value!.getDrawBounds()
+		
+		scrollTop_onlyRead.value = scrollTop.value
+		scrollLeft_onlyRead.value = scrollLeft.value
+		scrollTop.value = dboxwidth.y - (boxNodeinfo.value!.height!-dboxwidth.height)/2
+		scrollLeft.value = dboxwidth.x - (boxNodeinfo.value!.width!-dboxwidth.width)/2
+		setScrollPosition()
+		
+	}
+	
+	const onScrollTop = (evt:UniScrollEvent)=>{
+		scrollTop_onlyRead.value = evt.detail.scrollTop
+	}
+	const onScrollLeft = (evt:UniScrollEvent)=>{
+		scrollLeft_onlyRead.value = evt.detail.scrollLeft
+	}
+	const onScrollAll = (evt:UniScrollEvent)=>{
+		nextTick(()=>{
+			scrollTop_onlyRead.value = evt.detail.scrollTop
+			scrollLeft_onlyRead.value = evt.detail.scrollLeft
+		})
+	}
+	
+	const onclickCanvas = (evt:UniPointerEvent)=>{
+		if(render.value==null||boxNodeinfo.value==null){
+			return;
+		}
+		// #ifdef WEB
+		let ele = xTreeFlatBox.value;
+		if(ele==null) return;
+		scrollTop_onlyRead.value = ele.scrollTop||0
+		scrollLeft_onlyRead.value = ele.scrollLeft||0
+		// #endif
+		render.value!.addEventClick(evt,scrollTop_onlyRead.value,scrollLeft_onlyRead.value)
+	}
+	const onRenderClick = (item:XTREEFLAT_CHILDREN)=>{
+		emits('click',item)
+	}
+	const onInit = ()=>{
+		uni.createSelectorQuery()
+		.in(proxy)
+		.select(".xTreeFlatBox")
+		.boundingClientRect()
+		.exec(result=>{
+			if(result.length == 0) return;
+			let node = result[0]! as NodeInfo
+			canvasWidth.value = Math.max(props.canvasWidth,node.width!)
+			canvasHeight.value = Math.max(props.canvasHeight,node.height!)
+			keyids.value +=10
+			nextTick(()=>{
+				uni.createCanvasContextAsync({
+					id: id,
+					component: proxy,
+					success: (context : CanvasContext) => {
+						let opts = {} as XTreeFlatOpts
+						if(props.opts!=null){
+							opts = props.opts! as XTreeFlatOpts
+						}
+						render.value = new OrgChartRenderer( {
+							width:canvasWidth.value,
+							height:canvasHeight.value,
+							canvas:context,
+							nodeInfo:node,
+							bgColor:opts?.bgColor,
+							nodeBgColor:opts?.nodeBgColor,
+							fontColor:opts?.fontColor,
+							fontSize: opts?.fontSize,
+							lineColor:opts?.lineColor,
+							lineWidth:opts?.lineWidth,
+							padding: opts?.padding,
+							gutter:opts?.gutter,
+							parentLineGutter :opts?.parentLineGutter,
+							enbleOpenChildren :opts?.enbleOpenChildren,
+							nodeRadius : opts?.nodeRadius
+						} )
+						boxNodeinfo.value = node
+						render.value!.onListen(onRenderClick)
+						
+						if(props.list.length>0){
+							setData(props.list)
+						}
+						/**
+						 * 引擎初始化完成,可以进行通过ref来异步设置数据
+						 */
+						emits('init')
+					}
+				})
+			})
+		})
+		
+	}
+	
+	onMounted(()=>{
+		// #ifdef APP||WEB
+		setTimeout(function() {
+			onInit();
+		}, 50);
+		// #endif
+	})
+	onReady(()=>{
+		// #ifdef MP
+		onInit();
+		// #endif
+	})
+	
+	
+	defineExpose({setData})
+	
+</script>
+
+<style scoped>
+	.xTreeFlatBox{
+		position: relative;
+		/* #ifdef WEB */
+		overflow: auto;
+		/* #endif */
+	}
+	/* #ifdef MP||WEB */
+	.xTreeFlatBoxScroll{
+		position: absolute;
+	}
+	/* #endif */
+
+</style>

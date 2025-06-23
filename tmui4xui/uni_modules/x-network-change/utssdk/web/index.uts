@@ -1,0 +1,50 @@
+import { xNetworkType } from "../interface"
+let netSuccess : any = null;
+let netFail : any = null;
+export function xNetChange(call : (conecting : boolean) => void) {
+	netSuccess = () => {
+		call(true)
+	}
+	netFail = () => {
+		call(false)
+	}
+	window.addEventListener('online', netSuccess)
+	window.addEventListener('offline', netFail)
+}
+export function xUnNetChange() {
+	if (netSuccess) {
+		window.removeEventListener('online', netSuccess!)
+	}
+	if (netFail) {
+		window.removeEventListener('offline', netFail!)
+	}
+}
+
+//当前是否有网络。
+export function isNetworkAvailable() : Promise<boolean> {
+	return Promise.resolve(window.navigator.onLine);
+}
+
+export function getNetworkType() : Promise<xNetworkType | null> {
+	if ('connection' in navigator) {
+		const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+		if (!window.navigator.onLine) {
+			return Promise.resolve(null);
+		}
+		if (connection?.type != undefined) {
+			if (connection.type == 'cellular') {
+				return Promise.resolve("Mobile");
+			} else if (['wifi', 'wimax', 'ethernet'].includes(connection.type)) {
+				return Promise.resolve("Wifi");
+			} else {
+				return Promise.resolve("Other");
+			}
+		} else {
+			return Promise.resolve("Mobile");
+		}
+
+	} else {
+		console.log('浏览器不支持Network Information API');
+		return Promise.resolve(null);
+	}
+}

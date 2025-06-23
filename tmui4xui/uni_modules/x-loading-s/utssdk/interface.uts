@@ -1,0 +1,22 @@
+export type XLOADINGS_TYPE = {
+	iconColor?:string,
+	contentBgColor?:string,
+	maskBgColor?:string,
+	iconSize?:number,
+	iconCode?:string,
+	title?:string,
+	titleSize?:number,
+	titleColor?:string,
+	size?:number
+}
+export type XLOADINGS_TYPE_PRIVATE = {
+	iconColor:string,
+	contentBgColor:string,
+	maskBgColor:string,
+	iconSize:number,
+	iconCode:string,
+	title:string,
+	titleSize:number,
+	titleColor:string,
+	size:number
+}

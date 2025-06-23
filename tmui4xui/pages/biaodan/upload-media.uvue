@@ -1,0 +1,173 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">图片上传 xUploadMedia</x-text>
+			<x-text color="#999999" class="text-size-b">
+				允许长按图片进行拖动排序，上传中会禁止排序。
+			</x-text>
+		</x-sheet>
+
+		<x-sheet>
+			<x-upload-media :beforeUpload="beforeUpload" :header="headerestotken" :before-del="beforeRemove" v-model="list"
+				:column="4"></x-upload-media>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">上传视频</x-text>
+			<x-upload-media mode="video" ref="uploader" :auto-start="false" :column="4"></x-upload-media>
+			<x-button class="mt-20" :block="true" @click="upload">ref触发上传</x-button>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">通过before-complete干预上传结果</x-text>
+			<x-upload-media :before-complete="beforeComputed" :header="headerestotken" v-model="list3"
+				:column="4"></x-upload-media>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">演示循环数组绑定并改变顺序</x-text>
+			<!-- 要注意,如果我循环变动key一定要唯一不能相同或者为Index数字vue3会有diff导致不刷新数据. -->
+			<view v-for="(item,index) in (testlist as FORMLIST[])" :key="item.name">
+				<view class="flex flex-row flex-row-center-between" style="height: 50px;">
+					<x-text>{{(item as FORMLIST).name}}</x-text>
+					<view class="flex flex-row">
+						<x-button class="mr-12" size="mini" @click="moveto(index,'qian')">前移</x-button>
+						<x-button size="mini" @click="moveto(index,'hou')">后移</x-button>
+					</view>
+				</view>
+				<x-upload-media :column="4" :key="item.name" v-model="(item.value as XUPLOADFILE_FILE_VALUE[])"
+					:auto-start="true"></x-upload-media>
+			</view>
+		</x-sheet>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	import { XUPLOADFILE_FILE_VALUE, XUPLOADFILE_FILE_INFO } from "@/uni_modules/tmx-ui/interface.uts"
+	type FORMLIST = {
+		name : string,
+		value : XUPLOADFILE_FILE_VALUE[]
+	}
+	const formlist = [
+		{
+			name: "数据A",
+			value: [
+				{ url: "https://store.tmui.design/api_v2/public/random_picture?random=231266" },
+			] as XUPLOADFILE_FILE_VALUE[]
+		} as FORMLIST,
+		{
+			name: "靓仔B",
+			value: [
+				{ url: "https://store.tmui.design/api_v2/public/random_picture?random=212643246" },
+			] as XUPLOADFILE_FILE_VALUE[]
+		} as FORMLIST,
+		{
+			name: "小猫猫C",
+			value: [
+				{ url: "https://store.tmui.design/api_v2/public/random_picture?random=4234" },
+			] as XUPLOADFILE_FILE_VALUE[]
+		} as FORMLIST
+	] as FORMLIST[]
+
+	export default {
+		data() {
+			return {
+				headerestotken: { accessToken: "99999" } as UTSJSONObject,
+				testlist: formlist as FORMLIST[],
+				list: [
+					{ url: 'https://tmui.design/images/logoGreat.png' },
+					{ url: 'https://store.tmui.design/api_v2/public/random_picture?random=212' },
+					{ url: 'https://store.tmui.design/api_v2/public/random_picture?random=2' },
+					{ url: 'https://store.tmui.design/api_v2/public/random_picture?random=6' },
+					{ url: 'https://store.tmui.design/api_v2/public/random_picture?random=6' },
+					{ url: 'https://store.tmui.design/api_v2/public/random_picture?random=6' },
+				] as XUPLOADFILE_FILE_VALUE[],
+				list2: [
+					{ url: 'https://tmui.design/images/logoGreat.png' },
+					{ url: 'https://store.tmui.design/api_v2/public/random_picture?random=212' },
+					{ url: 'https://store.tmui.design/api_v2/public/random_picture?random=2' },
+					{ url: 'https://store.tmui.design/api_v2/public/random_picture?random=6' },
+					{ url: 'https://store.tmui.design/api_v2/public/random_picture?random=6' },
+					{ url: 'https://store.tmui.design/api_v2/public/random_picture?random=6' },
+				] as XUPLOADFILE_FILE_VALUE[],
+				list3: [] as XUPLOADFILE_FILE_VALUE[],
+				
+			};
+		},
+		onLoad() {
+		},
+		methods: {
+			moveto(index : number, type : string) {
+				let p = this.testlist.slice(0)
+				let nowitem = this.testlist.slice(0)[index]
+				let prevIndex = Math.max(index - 1, 0);
+				let nextIndex = Math.min(index + 1, p.length - 1)
+				if (index == 0 && type == 'qian') return
+				if (index == p.length - 1 && type == 'hou') return
+
+				let prevItem = p[prevIndex]
+				let nextItem = p[nextIndex]
+
+				if (type == 'qian') {
+					p[prevIndex] = nowitem
+					p[index] = prevItem
+				} else {
+
+
+					p[nextIndex] = nowitem
+					p[index] = nextItem
+				}
+				this.testlist = p.slice(0)
+			},
+			qinkogn() {
+				this.list = [] as XUPLOADFILE_FILE_VALUE[]
+			},
+			beforeUpload(item:XUPLOADFILE_FILE_INFO):Promise<XUPLOADFILE_FILE_INFO>{
+				console.log(item)
+				return Promise.resolve(item)
+			},
+			/** 删除前的回调函数。 */
+			beforeRemove(index : number, item : XUPLOADFILE_FILE_INFO) : Promise<boolean> {
+				console.log(index)
+				return Promise.resolve(true)
+			},
+			//上传后，通过回调自行设置是成功还是失败
+			beforeComputed(item : XUPLOADFILE_FILE_INFO) : XUPLOADFILE_FILE_INFO {
+
+				let json = {} as UTSJSONObject;
+				if (item.response != '') {
+					try {
+						json = JSON.parseObject(item.response)!
+					} catch (e) {
+						//TODO handle the exception
+					}
+				}
+
+				let code = json['code']
+				if (code != null) {
+					let realCode = code as number;
+					if (realCode != 200) {
+						item.status = 5
+						item.statusText = '没有权限'
+					}
+				}
+
+				return item;
+			},
+			upload() {
+				let up = this.$refs['uploader'] as XUploadMediaComponentPublicInstance
+				up.upload();
+			}
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

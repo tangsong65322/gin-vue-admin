@@ -1,0 +1,103 @@
+import { xRequest } from "../../uni_modules/tmx-ui/index.uts";
+import { xRequestMethond, xRequestOptions,xRequestResult } from "../../uni_modules/tmx-ui/interface";
+import { useUseStore } from "./useUseStore";
+import {  resultDataType,resultListType,LISTPAGEART_TYPE } from "./interface"
+function rq<T>(url : string, method : xRequestMethond = "POST", customData : UTSJSONObject = {} as UTSJSONObject,useCache:boolean = false):Promise<T|null> {
+	let xrq = new xRequest()
+	let token = useUseStore.token
+	xRequest.setHostUrl("https://mockapi.eolink.com/LRViGGZ8e6c1e8b4a636cd82bca1eb15d2635ed8c74e774")
+	//表单数据格式 'Content-Type': 'application/x-www-form-urlencoded',
+	//json格式 'Content-Type': 'application/json',
+	//上传格式 'Content-Type': 'multipart/form-data',
+	return new Promise((resovel,rej)=>{
+	
+		xrq.request({
+			url: url,
+			method: method,
+			data: customData,
+			useCache:useCache,
+			loadToastText:"请求中",
+			header: {
+				"token": token,
+				"Content-Type": "application/json"
+			} as UTSJSONObject
+		} as xRequestOptions)
+		.then((resBydata)=>{
+			let res = resBydata! as xRequestResult;
+			
+			if(res.statusCode!=200){
+				uni.showModal({
+					title:"系统错误",
+					content:`错误码:${res.statusCode},发生了系统错误,请重试`
+				})
+				rej(null)
+				return;
+			}
+			let reqData = res.data as any|null;
+			
+			if(typeof reqData == 'string'){
+				reqData = JSON.parseObject(reqData! as string)
+			}
+			if(typeof reqData != 'object' || reqData==null){
+				uni.showModal({
+					title:"服务器异常",
+					content:`服务器没有正确返回json数据格式,请联系管理员`
+				})
+				rej(null)
+				return;
+			}
+			
+			let rdata = reqData! as  UTSJSONObject;
+			
+			let msgdata = JSON.stringify(rdata) as string
+			
+			let d = JSON.parse<resultDataType|null>(msgdata)
+			
+			if(d==null) {
+				rej(null)
+				return;
+			}
+			
+			if(d.code == -1){
+				uni.showToast({
+					title:"未登录",
+					icon:"none"
+				})
+				// 这里可以跳转到登录页面.或者不执行.
+				rej(null)
+				return
+			}
+			
+			if(d.code != 0){
+				uni.showToast({
+					title:d.msg,
+					icon:"none"
+				})
+				// 这里可以跳转到登录页面.或者不执行.
+				rej(null)
+				return
+			}
+			
+			
+			resovel(d.data as T|null)
+			
+		})
+		.catch(()=>{
+			rej(null)
+		})
+	})
+}
+
+
+export class api {
+	//请求文章列表.
+	public static  async getArtListArt<T>(arg:UTSJSONObject):Promise<T[]|null>{
+		let result = await rq<any>('/admin/get_actilList/','POST',arg,true);
+		if(result==null) return Promise.reject(null)
+		
+		let pds = JSON.stringify(result! as UTSJSONObject)! as string
+		let ds = JSON.parse<resultListType<T>>(pds);
+		
+		return Promise.resolve(ds!.datalist)
+	}
+}

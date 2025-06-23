@@ -1,0 +1,89 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">提及 xMention</x-text>
+			<x-text color="#999999">此组件的输入体验与微信基本相符,体验比较完善它不与选择视图绑定,通过事件控制将会完美的支持自定界面.</x-text>
+		</x-sheet>
+	
+		<x-sheet v-for="(item,index) in chat" :key="index" >
+			<x-text :label="item" :height-light="pengyouListNames" height-light-color="red" ></x-text>
+		</x-sheet>
+		<x-sheet>
+			
+			<x-mention dark-bg-color="#333" 
+			style="border-radius: 6px;"
+			@confirm="onconfirm" ref="mention" @mention="onmention" :beforeRemove="beforeRemove" @removemention="removemention"
+				v-model="(keyword as string)"></x-mention>
+				
+				<x-text class="mt-n8 opacity-5" font-size="12" color="#999999">可以像微信一样选择朋友并在编辑朋友删除字符让之前选择的失效.然后继续选择,会在删除前和删除后通过事件通知.</x-text>
+		</x-sheet>
+
+		<x-drawer :showClose="true" :show-footer="false" title="请选择朋友" v-model:show="(show as boolean)" size="500px">
+			<view>
+				<x-cell @click="cellClick(item.name)" v-for="(item,index) in pengyouList" :card="false" :key="index"
+					:title="item.name" :bottom-border-insert="false"></x-cell>
+			</view>
+		</x-drawer>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script setup lang="uts">
+	import { ref } from "vue"
+	type PENGYOU_TYPE = {
+		name : string,
+		id : string
+	}
+	const show = ref<boolean>(false)
+	const keyword = ref("")
+	const mention = ref<XMentionComponentPublicInstance | null>(null)
+	const pengyouList = ref<PENGYOU_TYPE[]>([])
+	const pengyouListNames = computed(():string[] => pengyouList.value.map((el:PENGYOU_TYPE):string=> ('@'+el.name)))
+	const chat = ref<string[]>([])
+	const tags = ref<string[]>([])
+
+	// 添加虚拟数据
+	for (let i = 0; i < 10; i++) {
+		pengyouList.value.push({
+			name: "朋友" + i,
+			id: i.toString()
+		} as PENGYOU_TYPE)
+	}
+
+	const onmention = () => {
+
+		show.value = true;
+	}
+	const cellClick = (str : string) => {
+		if(mention.value==null) return;
+		keyword.value += str + ' '
+		show.value = false;
+		mention.value!.setFoucus(true)
+		tags.value.push(str)
+	}
+	//删除前需要校验当前删除的标签是不是朋友标签,因为如果用户把光标移动有名称内删除,打乱了标签,其实已经不构成是标签了,就不需要删除了.
+	const beforeRemove = (tag : string) : boolean => {
+		let index = pengyouList.value.findIndex((el : PENGYOU_TYPE) : boolean => el.name == tag)
+		console.log("即将删除标签:", tag, index > 1 ? '是' : '否')
+		return index > -1
+	}
+	const removemention = (tag : string) => {
+		console.log("被删除标签:", tag)
+	}
+	const onconfirm = (nowval:string)=>{
+		chat.value.push(nowval)
+		keyword.value = ''
+	}
+</script>
+
+<style lang="scss">
+
+</style>

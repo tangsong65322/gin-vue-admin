@@ -1,0 +1,73 @@
+<script lang="ts" setup>
+	import { type PropType } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+
+	/**
+	 * @name 布局 xRow
+	 * @description 内部标签只可旋转x-col子组件。
+	 * @page /pages/index/row
+	 * @category 常用组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	defineOptions({ name: "xRow" })
+	export type xFormPropsType = {
+		/**
+		 * 默认12列数
+		 */
+		col:number,
+		/**
+		 * 默认start，子元素左右对齐排列
+		 */
+		justify:"start" | "end" | "center" | "space-between" | "space-around",
+		/**
+		 * 默认flex-start，子元素上下对齐排列
+		 */
+		 align:"center" | "flex-start" | "flex-end" | "stretch" | "baseline",
+		 /**
+		 * 是否自动断行
+		 */
+		 wrap:boolean
+	}
+	const props = withDefaults(defineProps<xFormPropsType>(), {
+		col:12,
+		justify:"start",
+		align:"flex-start",
+		wrap:true
+	})
+	const _justify = computed(():string=>{
+		let str = "flex-start";
+		if (props.justify == 'end') {
+			str = "flex-end"
+		} else if (props.justify == 'start') {
+			str = "flex-start"
+		} else {
+			str = props.justify
+		}
+
+		return str;
+	})
+	const _align = computed(():string=>props.align)
+	provide('xRowCol',computed(()=>props.col))
+</script>
+<template>
+	<view class="xRow"
+		:style="{'justify-content':_justify,'align-items':_align,'flex-wrap':wrap?'wrap':'nowrap'}">
+		<!-- 
+		 @slot 内部标签只可旋转x-col子组件。
+		 -->
+		<slot></slot>
+	</view>
+</template>
+<style scoped>
+	.xRow {
+		display: flex;
+		flex-direction: row;
+
+	}
+</style>

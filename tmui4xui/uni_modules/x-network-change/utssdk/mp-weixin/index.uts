@@ -1,0 +1,55 @@
+import { xNetworkType } from "../interface"
+let netSuccess : any | null = null;
+let netFail : any | null = null;
+let callfun = (conecting : boolean) => { }
+const statChangeCall = (res : any) => {
+	console.log(res)
+	callfun(res?.isConnected ?? false)
+}
+export function xNetChange(call : (conecting : boolean) => void) {
+	callfun = call
+	wx.onNetworkStatusChange(statChangeCall)
+}
+export function xUnNetChange() {
+	wx.offNetworkStatusChange(statChangeCall)
+}
+//当前是否有网络。
+export function isNetworkAvailable() : Promise<boolean> {
+	return new Promise((res) => {
+		wx.getNetworkType({
+			success(res) {
+				const networkType = res.networkType
+				if (networkType === 'none') {
+					res(false)
+				} else {
+					res(true)
+				}
+			},
+			fail(err) {
+				res(false)
+			}
+		})
+	})
+}
+//获取当前网络状态。
+export function getNetworkType() : Promise<xNetworkType | null> {
+	return new Promise((res) => {
+		wx.getNetworkType({
+			success(res) {
+				const networkType = res.networkType
+				if (networkType === 'none') {
+					res(null)
+				} else if (networkType == 'wifi') {
+					res('WiFi')
+				} else if (['2g', '3g', '4g', '5g'].includes(networkType){
+					res('Mobile')
+				} else {
+					res('Other')
+				}
+			},
+			fail(err) {
+				res(null)
+			}
+		})
+	})
+}

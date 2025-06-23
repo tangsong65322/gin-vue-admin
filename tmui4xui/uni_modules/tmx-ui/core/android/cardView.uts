@@ -1,0 +1,242 @@
+import Context from 'android.content.Context'
+import LinearLayout from 'android.widget.LinearLayout';
+import RelativeLayout from 'android.widget.RelativeLayout';
+import ViewGroup from 'android.view.ViewGroup';
+import View from 'android.view.View';
+import TextView from 'android.widget.TextView';
+import ImageView from 'android.widget.ImageView';
+import Gravity from 'android.view.Gravity';
+import Color from 'android.graphics.Color';
+import Activity from 'android.app.Activity';
+// import CardView from 'androidx.cardview.widget.CardView';
+import { ref, } from "vue"
+import TextUtils from 'android.text.TextUtils';
+import GradientDrawable from 'android.graphics.drawable.GradientDrawable'
+import MotionEvent from 'android.view.MotionEvent';
+	
+import {hexToRgb,getDefaultColor} from "../util/xCoreColorUtil.uts"
+import {getUid, dp2px} from "../util/xCoreUtil.uts"
+
+import xView from "./view.uts";
+
+
+class xCardView extends xView {
+	override view:any;
+	bgLayer:xView;
+	contentView:any
+	wrap:RelativeLayout
+	contentParams:LinearLayout.LayoutParams
+	constructor(context : Context){
+		super(context);
+		let box = new LinearLayout(context);
+		box.setOrientation(LinearLayout.VERTICAL)
+		box.setLayoutParams(new LinearLayout.LayoutParams(
+			ViewGroup.LayoutParams.MATCH_PARENT,
+			(0).toInt(),
+			(0).toFloat()
+		))
+		let wrap = new RelativeLayout(context);
+		let content = new LinearLayout(context);
+		
+		let RLay = new RelativeLayout.LayoutParams(
+			ViewGroup.LayoutParams.MATCH_PARENT,
+			ViewGroup.LayoutParams.WRAP_CONTENT
+		)
+		wrap.setLayoutParams(RLay)
+		
+		
+		
+		this.bgLayer = new xView(context);
+		
+		
+		content.setBackground(this.bgLayer.bgView);
+		content.setClipToOutline(true);
+		this.contentParams = new LinearLayout.LayoutParams(
+			ViewGroup.LayoutParams.MATCH_PARENT,
+			ViewGroup.LayoutParams.WRAP_CONTENT
+		)
+		content.setLayoutParams(this.contentParams)
+		content.setOrientation(LinearLayout.VERTICAL)
+		this.contentView = content;
+		this.wrap =wrap;
+		wrap.addView(this.bgLayer.getView())
+		wrap.addView(content as View)
+		box.addView(wrap as View)
+		
+		this.view = box;
+	}
+	override getView():LinearLayout{
+		return this.view as LinearLayout;
+	}
+	
+	override setBackgroundColor(colorStr : string) : xCardView {
+		
+		
+		this.bgLayer.setBackgroundColor(colorStr)
+		return this;
+	}
+	
+	override setRadius(radius:any) : xCardView{
+		this.bgLayer.setRadius(radius)
+		return this;
+	}
+	
+	override setBorder(w?:number,colorStr?:string,dashed?:boolean):xCardView{
+		this.bgLayer.setBorder(w,colorStr,dashed)
+		return this;
+	}
+	
+	override setHeight(height : number) : xCardView {
+		console.error("不支持，请通过linerView设置，并将本CardView加入其中来设置高度。")
+		
+		return this;
+	}
+	
+	override setPadding(n:any):xCardView{
+		let view = this.contentView as ViewGroup;
+		if(Array.isArray(n)){
+			let rd = n as number[];
+			if(rd.length==0){
+				let rds = 0;
+				let rdf = dp2px(rds).toInt();
+				view.setPadding(rdf,rdf,rdf,rdf)
+			}else if(rd.length==1){
+				let rdf = dp2px(rd[0]).toInt();
+				view.setPadding(rdf,rdf,rdf,rdf)
+			}else if(rd.length==2){
+				view.setPadding(dp2px(rd[0]).toInt(),dp2px(rd[1]).toInt(),dp2px(rd[0]).toInt(),dp2px(rd[1]).toInt())
+			}else if(rd.length==3){
+				let rds = 0;
+				let rdf = rds.toInt();
+				view.setPadding(dp2px(rd[0]).toInt(),dp2px(rd[1]).toInt(),dp2px(rd[2]).toInt(),rdf)
+			}else if(rd.length==4){
+				view.setPadding(dp2px(rd[0]).toInt(),dp2px(rd[1]).toInt(),dp2px(rd[2]).toInt(),dp2px(rd[3]).toInt())
+			}
+		}else{
+			
+			let rd = n as number;
+			let rdf = dp2px(rd).toInt();
+			view.setPadding(rdf,rdf,rdf,rdf)
+		}
+		
+		return this;
+	}
+	
+	override setDisabled(dis:boolean) : xCardView{
+		this.bgLayer.setDisabled(dis)
+		return this;
+	}
+	
+	override setSwiper(fun?:(event: MotionEvent,detail?:UTSJSONObject)=>void) : xCardView{
+		if(typeof fun !== 'undefined'){
+			this.bgLayer.setSwiper(fun)
+		}
+		return this;
+	}
+	override setDoubleClick(fun?:(event: MotionEvent)=>void) : xCardView{
+		if(typeof fun !== 'undefined'){
+			this.bgLayer.setDoubleClick(fun)
+		}
+		return this;
+	}
+	override setClick(fun?:(event: MotionEvent)=>void) : xCardView{
+		if(typeof fun !== 'undefined'){
+			this.bgLayer.setClick(fun)
+		}
+		return this;
+	}
+	override setTouchStart(fun?:(event: MotionEvent)=>void) : xCardView{
+		if(typeof fun !== 'undefined'){
+			this.bgLayer.setTouchStart(fun)
+		}
+		return this;
+	}
+	override setTouchMove(fun?:(event: MotionEvent)=>void) : xCardView{
+		if(typeof fun !== 'undefined'){
+			this.bgLayer.setTouchMove(fun)
+		}
+		return this;
+	}
+	override setTouchEnd(fun?:(event: MotionEvent)=>void) : xCardView{
+		if(typeof fun !== 'undefined'){
+			this.bgLayer.setTouchEnd(fun)
+		}
+		return this;
+	}
+	override setTouchCancel(fun?:(event: MotionEvent)=>void) : xCardView{
+		if(typeof fun !== 'undefined'){
+			this.bgLayer.setTouchCancel(fun)
+		}
+		return this;
+	}
+	override setTouchLongPress(fun?:(event: MotionEvent)=>void) : xCardView{
+		if(typeof fun !== 'undefined'){
+			this.bgLayer.setTouchCancel(fun)
+		}
+		
+		return this;
+	}
+	
+	
+	setAlign(cr:Int) : xCardView{
+		let view = this.contentView as LinearLayout;
+		view.setGravity(cr)
+		return this;
+	}
+	setLayoutParams(width?:number,height?:number,layouWidth?:number):xCardView{
+		let view = this.contentView as LinearLayout;
+		let w = (0).toInt();
+		let h = ViewGroup.LayoutParams.WRAP_CONTENT;
+		let flex = (1).toFloat();
+		
+		if(typeof width =='number'){
+			let tw = width!;
+			w = tw.toInt();
+		}
+		if(typeof height =='number'){
+			let th = height!;
+			h = th.toInt();
+		}
+		if(typeof layouWidth =='number'&&layouWidth!=-1){
+			let tf = layouWidth!;
+			flex = tf.toFloat();
+			console.log('null',layouWidth)
+			let layoutParams_crd = new LinearLayout.LayoutParams(
+				w,
+				h,
+				flex
+			)
+			this.contentParams = layoutParams_crd
+		}else{
+			console.log('null')
+			let layoutParams_crd = new LinearLayout.LayoutParams(
+				w,
+				h
+			)
+			this.contentParams = layoutParams_crd
+		}
+		
+		
+		
+		
+		// 未知原因设置这个会闪退。
+		// view.setLayoutParams(layoutParams_crd);
+		return this;
+	}
+	
+	append(children : View,...args: View[]):xCardView{
+		let view = this.contentView as ViewGroup;
+		view.addView(children)
+		args.forEach((el)=>view.addView(el))
+		
+		return this;
+	}
+	appendChild(children : View):xCardView {
+		let view = this.contentView as ViewGroup;
+		view.addView(children)
+		
+		return this;
+	}
+}
+
+export default xCardView;

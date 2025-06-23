@@ -1,0 +1,501 @@
+import { X_MODAL_TYPE, X_MODAL_TYPE_PRIVATE } from "../interface.uts"
+import { defaultConfig, configCover } from "../libs/config.uts"
+import { UIView, UIViewController, NSLayoutConstraint, UIScrollView, NSLineBreakMode, UIFont, UILabel, UITapGestureRecognizer, UITextView, UITextItemInteraction, UITextViewDelegate, UIScrollViewDelegate, UITextItem, UIAction, UIEvent, UIUserInterfaceStyle, UIDataDetectorTypes, UIColor } from 'UIKit';
+import { CGRect, CGPoint, CGFloat, CGAffineTransform } from 'CoreFoundation';
+import { Alignment , Color } from 'SwiftUI';
+import { UInt32, KeyPath } from 'Swift';
+import { NSString, Data, NSAttributedString, URL, AttributedString } from 'Foundation';
+import { CABasicAnimation, CAAnimationDelegate, CAMediaTimingFillMode, CAAnimation, CAMediaTimingFunction, CAMediaTimingFunctionName, CALayer } from 'QuartzCore';
+import { Selector, NSObject, NSObjectProtocol } from "ObjectiveC";
+import { String } from "Swift";
+type callTYPE =  (str:string)=>void
+let maskerDom : null | UIView = null;
+let tid = 0
+class AllModalObjectLisen {
+	private callback : () => void
+	constructor(callback : () => void) {
+		this.callback = callback;
+		super.init()
+	}
+
+	@objc cancelClick() {
+		// console.log("取消被点击")
+		this.callback()
+	}
+	@objc confirmClick() {
+		// console.log("确认被点击")
+		this.callback()
+	}
+	@objc maskClick() {
+		// console.log("遮罩被点击")
+		this.callback()
+	}
+	@objc containerClick() {
+		// console.log("内容区域点击了")
+
+	}
+}
+class AnimaionStop implements CAAnimationDelegate {
+
+	animationDidStop(_ : CAAnimation, @argumentLabel("finished") flag : boolean) {
+		console.log("动画关闭2", flag)
+		closeModal()
+	}
+}
+
+class contentTextDeleage18 implements UITextViewDelegate {
+	private callback :callTYPE
+	constructor(callback : callTYPE) {
+		this.callback = callback;
+		super.init()
+	}
+	textView(tv : UITextView, url : URL, characterRange : NSRange, interaction : UITextItemInteraction) : boolean {
+		// this.optsRealConfig.clickLink(url.absoluteString)
+		console.log('点击')
+		return false;
+	}
+}
+			
+// new AllModalObjectLisen()
+let cancellListen : AllModalObjectLisen | null = null;
+let confirmlListen : AllModalObjectLisen | null = null;
+let masklListen : AllModalObjectLisen | null = null;
+let containerlListen : AllModalObjectLisen | null = null;
+let closeinganimationListen : AnimaionStop | null = null;
+
+let linkDelegage : UITextViewDelegate | null = null;
+function closeModal() {
+	DispatchQueue.main.async(execute = () : void => {
+		if (maskerDom != null) {
+			maskerDom!.removeFromSuperview()
+			maskerDom = null;
+			masklListen = null;
+			cancellListen = null;
+			confirmlListen = null;
+			containerlListen = null;
+		}
+	})
+}
+export const close = (call : () => void, isClose : boolean) => {
+	if (!isClose) return;
+	closeModal()
+	call()
+}
+export function showModal(opts : X_MODAL_TYPE) {
+	DispatchQueue.main.async(execute = () : void => {
+		if (maskerDom != null) {
+			clearTimeout(tid)
+			maskerDom!.removeFromSuperview()
+		}
+		let parent = UTSiOS.getCurrentViewController() as UIViewController;
+		let parentView = parent.view as UIView
+
+		let config = configCover(opts)
+		let titleHeight = 50;
+		let footerHeight = 74
+		let contentHeight = config.height - titleHeight;
+		let width = config.width;
+		let height = config.height + titleHeight
+
+		maskerDom = new UIView()
+
+		if (maskerDom == null) return;
+		let cg = parentView.frame as CGRect
+		maskerDom!.frame = cg
+		maskerDom!.backgroundColor = UTSiOS.colorWithString(config.maskBgColor)
+
+		// 内容区域外框。
+		let container = new UIView();
+		container.layer.cornerRadius = 16
+		container.layer.masksToBounds = true;
+		container.backgroundColor = UTSiOS.colorWithString(config.contentBgColor)
+		// 内容区域外框
+		let scaleAni = new CABasicAnimation(keyPath = "transform.scale")
+		scaleAni.fromValue = 0
+		scaleAni.toValue = 1
+		scaleAni.duration = 0.3
+		scaleAni.autoreverses = true
+		scaleAni.timingFunction = new CAMediaTimingFunction(name = CAMediaTimingFunctionName.easeInEaseOut)
+		let opacityAni = new CABasicAnimation(keyPath = "opacity")
+		opacityAni.fromValue = 0
+		opacityAni.toValue = 1
+		opacityAni.duration = 0.3
+		
+		opacityAni.timingFunction = new CAMediaTimingFunction(name = CAMediaTimingFunctionName.easeInEaseOut)
+		container.layer.add(scaleAni, forKey = "scaleAnimation")
+		// UIView.animate(withDuration = 0.3, animations = ()=>{
+		//     container.transform = new CGAffineTransform(scaleX= 1.5, y= 1.5)
+		// })
+		container.layer.add(opacityAni, forKey = "opacityAnimation")
+		maskerDom!.layer.add(opacityAni, forKey = "opacityAnimation")
+		
+
+
+
+		container.translatesAutoresizingMaskIntoConstraints = false
+		maskerDom!.addSubview(container)
+		NSLayoutConstraint.activate([
+			// 中心约束
+			container.centerXAnchor.constraint(equalTo = maskerDom!.centerXAnchor),
+			container.centerYAnchor.constraint(equalTo = maskerDom!.centerYAnchor),
+			// 宽约束100
+			container.widthAnchor.constraint(equalToConstant = new CGFloat(width!)),
+			// 高为至少100
+			container.heightAnchor.constraint(greaterThanOrEqualToConstant = new CGFloat(height))
+		])
+		// 添加标题
+		let titleDiv = new UILabel();
+		titleDiv.textColor = UTSiOS.colorWithString(config.titleColor)
+		titleDiv.text = new String(config.title)
+		titleDiv.font = UIFont.systemFont(ofSize = new CGFloat(18))
+		titleDiv.frame = new CGRect(x = 0, y = 0, width = (width!).toInt(), height = titleHeight.toInt())
+		titleDiv.textAlignment = NSTextAlignment.center
+		container.addSubview(titleDiv)
+		// 添加scroll
+		let content = new UIScrollView();
+		content.frame = new CGRect(x = 0, y = titleHeight.toInt(), width = (width!).toInt(), height = config.height!.toInt())
+		content.isScrollEnabled = true;
+		content.bounces = true
+		container.addSubview(content)
+		let contextText = new UITextView();
+		contextText.isEditable = false;
+		contextText.isSelectable = true;
+		// contextText.isUserInteractionEnabled = true;
+		// contextText.delaysContentTouches = true;
+		// contextText.dataDetectorTypes = [UIDataDetectorTypes.link,UIDataDetectorTypes.phoneNumber]
+		
+		
+		if (UTSiOS.available("iOS 13.0, *")) {
+			contextText.overrideUserInterfaceStyle = UIUserInterfaceStyle.light
+		}
+		// config.content
+		const htmlContentData : Data = new String(config.content).data(using = String.Encoding.utf8)!
+		const opts = new Map<NSAttributedString.DocumentReadingOptionKey,any>([
+			[NSAttributedString.DocumentReadingOptionKey.documentType, NSAttributedString.DocumentType.html],
+			[NSAttributedString.DocumentReadingOptionKey.characterEncoding, String.Encoding.utf8.rawValue]
+		])
+		let attributedString = UTSiOS.try(new NSAttributedString(data = htmlContentData, options = opts, documentAttributes = null), "?")
+		let mutableAttrStr = NSMutableAttributedString(attributedString =  attributedString!)
+		mutableAttrStr.addAttribute(NSAttributedString.Key.foregroundColor, value=config.contentColor, range= NSRange(location= 0, length= attributedString!.length))
+		contextText.attributedText = mutableAttrStr
+		contextText.textColor = UTSiOS.colorWithString(config.contentColor)
+		contextText.backgroundColor = UTSiOS.colorWithString(config.contentBgColor)
+		
+		linkDelegage = new contentTextDeleage18(config.clickLink as callTYPE) as UITextViewDelegate
+		contextText.delegate = linkDelegage!
+		// contextText.text = new String(config.content)
+		contextText.font = UIFont.systemFont(ofSize = new CGFloat(15))
+		// contextText.lineBreakMode = NSLineBreakMode.byWordWrapping
+		// contextText.backgroundColor = UTSiOS.colorWithString("red")
+		// contextText.numberOfLines = 0
+		// 根据内容调整UILabel的大小
+		contextText.sizeToFit()
+		contextText.translatesAutoresizingMaskIntoConstraints = false
+		content.addSubview(contextText)
+
+
+
+
+		if (config.contentAlign == 'center') {
+			contextText.textAlignment = NSTextAlignment.center
+			NSLayoutConstraint.activate([
+				// 顶部约束
+				contextText.topAnchor.constraint(equalTo = content.topAnchor, constant = 0),
+				contextText.bottomAnchor.constraint(equalTo = content.bottomAnchor, constant = 0),
+				// contextText.widthAnchor.constraint(equalToConstant = new CGFloat((width!-32))),
+				// 左侧约束
+				contextText.leadingAnchor.constraint(equalTo = content.leadingAnchor, constant = 16),
+				// 右侧约束
+				contextText.trailingAnchor.constraint(equalTo = content.safeAreaLayoutGuide.trailingAnchor, constant = -16),
+				contextText.centerXAnchor.constraint(equalTo = content.centerXAnchor),
+				contextText.centerYAnchor.constraint(equalTo = content.centerYAnchor),
+			])
+		} else {
+			NSLayoutConstraint.activate([
+				// 顶部约束
+				contextText.topAnchor.constraint(equalTo = content.topAnchor, constant = 0),
+				contextText.bottomAnchor.constraint(equalTo = content.bottomAnchor, constant = 0),
+				// contextText.widthAnchor.constraint(equalToConstant = new CGFloat((width!-32))),
+				// 左侧约束
+				contextText.leadingAnchor.constraint(equalTo = content.leadingAnchor, constant = 16),
+				// 右侧约束
+				contextText.trailingAnchor.constraint(equalTo = content.safeAreaLayoutGuide.trailingAnchor, constant = -16)
+			])
+		}
+
+		if (!config.isSplitBtn&&config.lineColor!=''&&config.lineColor!='transparent'){
+			// 添加边线顶。
+			let footerDivTopBorder = new UIView()
+			footerDivTopBorder.translatesAutoresizingMaskIntoConstraints = false
+			footerDivTopBorder.backgroundColor = UTSiOS.colorWithString(config.lineColor)
+			container.addSubview(footerDivTopBorder)
+			NSLayoutConstraint.activate([
+				footerDivTopBorder.heightAnchor.constraint(equalToConstant = 0.5),
+				footerDivTopBorder.widthAnchor.constraint(equalTo = container.safeAreaLayoutGuide.widthAnchor),
+				// 顶部约束
+				footerDivTopBorder.topAnchor.constraint(equalTo = content.bottomAnchor, constant = 15),
+			])
+		}
+		
+
+		// 底部容器
+		let footerDiv = new UIView()
+		footerDiv.translatesAutoresizingMaskIntoConstraints = false
+		// footerDiv.backgroundColor = UTSiOS.colorWithString("#333333")
+		
+		container.addSubview(footerDiv)
+		if (config.isSplitBtn) {
+			NSLayoutConstraint.activate([
+				footerDiv.heightAnchor.constraint(equalToConstant = 50),
+				// footerDiv.widthAnchor.constraint(equalTo = container.safeAreaLayoutGuide.widthAnchor),
+				// 顶部约束
+				footerDiv.topAnchor.constraint(equalTo = content.bottomAnchor, constant = 16),
+				footerDiv.bottomAnchor.constraint(equalTo = container.bottomAnchor, constant = -16),
+				// 左侧约束
+				footerDiv.leadingAnchor.constraint(equalTo = container.leadingAnchor, constant = 16),
+				// 右侧约束
+				footerDiv.trailingAnchor.constraint(equalTo = container.trailingAnchor, constant = -16)
+			])
+		} else {
+			
+			
+			NSLayoutConstraint.activate([
+				footerDiv.heightAnchor.constraint(equalToConstant = 50),
+				// 顶部约束
+				footerDiv.topAnchor.constraint(equalTo = content.bottomAnchor, constant = 16),
+				footerDiv.bottomAnchor.constraint(equalTo = container.bottomAnchor, constant = 0),
+				// 左侧约束
+				footerDiv.leadingAnchor.constraint(equalTo = container.leadingAnchor, constant = 0),
+				// 右侧约束
+				footerDiv.trailingAnchor.constraint(equalTo = container.trailingAnchor, constant = 0)
+			])
+		}
+		
+		
+
+		// 添加取消按钮。
+		let cancelDiv = new UILabel();
+		cancelDiv.font = new UIFont(name = "remixicon", size = new CGFloat(15))
+		let cancelIcontext = ""
+		if (config.cancelIcon != '') {
+			let codePoint = new UInt32(config.cancelIcon, radix = 16)
+			let stricon = new NSString(format = "%C", codePoint!)
+			cancelIcontext = new String(stricon);
+		}
+
+		cancelDiv.textColor = UTSiOS.colorWithString(config.cancelColor)
+		cancelDiv.text = new String(cancelIcontext != '' ? (cancelIcontext + ' ' + config.cancelText) : config.cancelText)
+		// cancelDiv.font = UIFont.systemFont(ofSize = new CGFloat(15))
+		cancelDiv.textAlignment = NSTextAlignment.center
+		cancelDiv.backgroundColor = UTSiOS.colorWithString(config.cancelBgColor)
+
+
+
+		if (config.isSplitBtn) {
+			cancelDiv.layer.cornerRadius = 25
+			cancelDiv.layer.masksToBounds = true;
+		}
+		// 添加确认按钮。
+		let confirmDiv = new UILabel();
+		confirmDiv.font = new UIFont(name = "remixicon", size = new CGFloat(15))
+		let confirmIcontext = ""
+		if (config.confirmIcon != '') {
+			let codePoint = new UInt32(config.confirmIcon, radix = 16)
+			let stricon = new NSString(format = "%C", codePoint!)
+			confirmIcontext = new String(stricon);
+		}
+		confirmDiv.textColor = UTSiOS.colorWithString(config.confirmColor)
+		confirmDiv.text = new String(confirmIcontext != '' ? (confirmIcontext + ' ' + config.confirmText) : config.confirmText)
+
+		confirmDiv.textAlignment = NSTextAlignment.center
+		confirmDiv.backgroundColor = UTSiOS.colorWithString(config.confirmBgColor)
+		if (config.isSplitBtn) {
+			confirmDiv.layer.cornerRadius = 25
+			confirmDiv.layer.masksToBounds = true;
+		}
+		cancelDiv.translatesAutoresizingMaskIntoConstraints = false
+		confirmDiv.translatesAutoresizingMaskIntoConstraints = false
+
+
+
+		if (config.isSplitBtn) {
+			if (config.showCancel) {
+				footerDiv.addSubview(cancelDiv)
+				footerDiv.addSubview(confirmDiv)
+				NSLayoutConstraint.activate([
+					// 顶部约束
+					cancelDiv.topAnchor.constraint(equalTo = footerDiv.topAnchor, constant = 0),
+					cancelDiv.bottomAnchor.constraint(equalTo = footerDiv.bottomAnchor, constant = 0),
+					// 左侧约束
+					cancelDiv.leadingAnchor.constraint(equalTo = content.safeAreaLayoutGuide.leadingAnchor, constant = 16),
+					cancelDiv.trailingAnchor.constraint(equalTo = confirmDiv.safeAreaLayoutGuide.trailingAnchor, constant = 8),
+					cancelDiv.widthAnchor.constraint(equalTo = footerDiv.safeAreaLayoutGuide.widthAnchor, multiplier = 0.5),
+
+					// 顶部约束
+					confirmDiv.topAnchor.constraint(equalTo = footerDiv.topAnchor, constant = 0),
+					confirmDiv.bottomAnchor.constraint(equalTo = footerDiv.bottomAnchor, constant = 0),
+					// 左侧约束
+					confirmDiv.leadingAnchor.constraint(equalTo = cancelDiv.safeAreaLayoutGuide.trailingAnchor, constant = 8),
+					confirmDiv.trailingAnchor.constraint(equalTo = footerDiv.safeAreaLayoutGuide.trailingAnchor, constant = 0),
+					// confirmDiv.widthAnchor.constraint(equalTo = footerDiv.safeAreaLayoutGuide.widthAnchor,multiplier=0.5),
+					// confirmDiv.heightAnchor.constraint(equalTo = footerDiv.safeAreaLayoutGuide.heightAnchor)
+				])
+			} else {
+				footerDiv.addSubview(confirmDiv)
+				NSLayoutConstraint.activate([
+					// 顶部约束
+					confirmDiv.topAnchor.constraint(equalTo = footerDiv.topAnchor, constant = 0),
+					confirmDiv.bottomAnchor.constraint(equalTo = footerDiv.bottomAnchor, constant = 0),
+					// 左侧约束
+					confirmDiv.leadingAnchor.constraint(equalTo = footerDiv.safeAreaLayoutGuide.leadingAnchor, constant = 0),
+					confirmDiv.trailingAnchor.constraint(equalTo = footerDiv.safeAreaLayoutGuide.trailingAnchor, constant = 0),
+				])
+			}
+
+		} else {
+			if (config.showCancel) {
+				footerDiv.addSubview(cancelDiv)
+				footerDiv.addSubview(confirmDiv)
+				NSLayoutConstraint.activate([
+					// 顶部约束
+					cancelDiv.topAnchor.constraint(equalTo = footerDiv.topAnchor, constant = 0),
+					cancelDiv.bottomAnchor.constraint(equalTo = footerDiv.bottomAnchor, constant = 0),
+					// 左侧约束
+					cancelDiv.leadingAnchor.constraint(equalTo = content.safeAreaLayoutGuide.leadingAnchor, constant = 0),
+					cancelDiv.trailingAnchor.constraint(equalTo = confirmDiv.safeAreaLayoutGuide.trailingAnchor, constant = 0),
+					cancelDiv.widthAnchor.constraint(equalTo = footerDiv.safeAreaLayoutGuide.widthAnchor, multiplier = 0.5),
+
+					// 顶部约束
+					confirmDiv.topAnchor.constraint(equalTo = footerDiv.topAnchor, constant = 0),
+					confirmDiv.bottomAnchor.constraint(equalTo = footerDiv.bottomAnchor, constant = 0),
+					// 左侧约束
+					confirmDiv.leadingAnchor.constraint(equalTo = cancelDiv.safeAreaLayoutGuide.trailingAnchor, constant = 0),
+					confirmDiv.trailingAnchor.constraint(equalTo = footerDiv.safeAreaLayoutGuide.trailingAnchor, constant = 0),
+					// confirmDiv.widthAnchor.constraint(equalTo = footerDiv.safeAreaLayoutGuide.widthAnchor,multiplier=0.5),
+					// confirmDiv.heightAnchor.constraint(equalTo = footerDiv.safeAreaLayoutGuide.heightAnchor)
+				])
+			} else {
+				footerDiv.addSubview(confirmDiv)
+				NSLayoutConstraint.activate([
+					// 顶部约束
+					confirmDiv.topAnchor.constraint(equalTo = footerDiv.topAnchor, constant = 0),
+					confirmDiv.bottomAnchor.constraint(equalTo = footerDiv.bottomAnchor, constant = 0),
+					// 左侧约束
+					confirmDiv.leadingAnchor.constraint(equalTo = footerDiv.safeAreaLayoutGuide.leadingAnchor, constant = 0),
+					confirmDiv.trailingAnchor.constraint(equalTo = footerDiv.safeAreaLayoutGuide.trailingAnchor, constant = 0),
+				])
+			}
+			
+			// 添加按钮的右边线。
+			if (!config.isSplitBtn&&config.lineColor!=''&&config.lineColor!='transparent'&&config.showCancel){
+				// 添加边线顶。
+				let cancelRightBorder = new UIView()
+				cancelRightBorder.translatesAutoresizingMaskIntoConstraints = false
+				cancelRightBorder.backgroundColor = UTSiOS.colorWithString(config.lineColor)
+				footerDiv.addSubview(cancelRightBorder)
+				NSLayoutConstraint.activate([
+					cancelRightBorder.heightAnchor.constraint(equalTo = cancelDiv.heightAnchor),
+					cancelRightBorder.widthAnchor.constraint(equalToConstant = 0.5),
+					// 顶部约束
+					cancelDiv.topAnchor.constraint(equalTo = content.bottomAnchor, constant = 16),
+					cancelRightBorder.leadingAnchor.constraint(equalTo = confirmDiv.safeAreaLayoutGuide.leadingAnchor, constant = 1),
+				])
+			}
+		}
+
+		cancelDiv.isUserInteractionEnabled = true;
+		confirmDiv.isUserInteractionEnabled = true;
+		container.isUserInteractionEnabled = true;
+		maskerDom!.isUserInteractionEnabled = true;
+
+		function closeanimation() {
+			if (maskerDom == null) return;
+			let scaleAni = new CABasicAnimation(keyPath = "transform.scale")
+			scaleAni.fromValue = 1
+			scaleAni.toValue = 0
+			scaleAni.duration = 0.3
+			scaleAni.fillMode = CAMediaTimingFillMode.forwards
+			scaleAni.timingFunction = new CAMediaTimingFunction(name = CAMediaTimingFunctionName.easeInEaseOut)
+			scaleAni.isRemovedOnCompletion = false
+			let opactiyAni = new CABasicAnimation(keyPath = "opacity")
+			opactiyAni.fromValue = 1
+			opactiyAni.toValue = 0
+			opactiyAni.duration = 0.3
+			opactiyAni.timingFunction = new CAMediaTimingFunction(name = CAMediaTimingFunctionName.easeInEaseOut);
+			opactiyAni.isRemovedOnCompletion = false
+			opacityAni.fillMode = CAMediaTimingFillMode.forwards
+			container.layer.add(scaleAni, forKey = "scaleAnimation")
+			container.layer.add(opactiyAni, forKey = "opacityAnimation")
+
+
+			let opactiyAniBymsk = new CABasicAnimation(keyPath = "opacity")
+			opactiyAniBymsk.fromValue = 1
+			opactiyAniBymsk.toValue = 0
+			opactiyAniBymsk.duration = 0.3
+			opactiyAniBymsk.timingFunction = new CAMediaTimingFunction(name = CAMediaTimingFunctionName.easeInEaseOut);
+			opactiyAniBymsk.isRemovedOnCompletion = false
+			opactiyAniBymsk.fillMode = CAMediaTimingFillMode.forwards
+			maskerDom!.layer.add(opactiyAniBymsk, forKey = "opacityAnimation")
+
+			class AniDelete implements NSObject, CAAnimationDelegate {
+				animationDidStop(_ : CAAnimation, @argumentLabel("finished") flag : boolean) {
+					console.log("动画关闭2", flag)
+					closeModal()
+				}
+			}
+
+			scaleAni.delegate = new AniDelete()
+			// closeinganimationListen = new AnimaionStop()
+
+			tid = setTimeout(function () {
+				container.layer.opacity = 0
+				closeModal()
+			}, 280);
+		}
+
+
+
+		function callbackFun(type : string) {
+			if (type == 'container') return;
+
+			if (type == 'cancel') {
+				config.cancel()
+				config.close()
+				closeanimation()
+			}
+			if (type == 'confirm') {
+				config.confirm()
+				config.close()
+				closeanimation()
+			}
+			if (type == 'mask' && config.clickMaskClose) {
+				config.close()
+				closeanimation()
+			}
+		}
+
+		cancellListen = new AllModalObjectLisen(() => { callbackFun('cancel') });
+		confirmlListen = new AllModalObjectLisen(() => { callbackFun('confirm') });
+		masklListen = new AllModalObjectLisen(() => { callbackFun('mask') });
+		containerlListen = new AllModalObjectLisen(() => { callbackFun('container') });
+
+
+		let tapGestureCancel = new UITapGestureRecognizer()
+		tapGestureCancel.addTarget(cancellListen, action = new Selector("cancelClick"))
+		let tapGestureConfirm = new UITapGestureRecognizer()
+		tapGestureConfirm.addTarget(confirmlListen, action = new Selector("confirmClick"))
+		let tapGestureMask = new UITapGestureRecognizer()
+		tapGestureMask.addTarget(masklListen, action = new Selector("maskClick"))
+		let tapGestureContainer = new UITapGestureRecognizer()
+		tapGestureContainer.addTarget(containerlListen, action = new Selector("containerClick"))
+
+
+		cancelDiv.addGestureRecognizer(tapGestureCancel)
+		confirmDiv.addGestureRecognizer(tapGestureConfirm)
+		maskerDom!.addGestureRecognizer(tapGestureMask)
+		container.addGestureRecognizer(tapGestureContainer)
+
+
+		parentView.addSubview(maskerDom!)
+	})
+}

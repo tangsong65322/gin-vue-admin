@@ -1,0 +1,177 @@
+<script lang="ts">
+	import { getDefaultColor, colorAddDeepen } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit, getUid } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { PropType, SlotsType } from "vue";
+	import { RADIO_ITEM_INFO } from '../../interface.uts';
+
+	type XRADIO_LISTITEM_TYPE = {
+		ele : XRadioComponentPublicInstance,
+		id : string,
+		data : RADIO_ITEM_INFO
+	}
+
+	/**
+	 * @name 单选框组 xRadioGroup
+	 * @description 使用时,从1.1.2开始允许是非直接xRadio子节点布局,但考虑到性能建议是直接子节点.
+	 * @page /pages/index/radio
+	 * @category 表单组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		name:"xRadioGroup",
+		data() {
+			return {
+				oldvalueList: [] as XRADIO_LISTITEM_TYPE[],
+				checkvaluelist: "",
+				tid: 0,
+				isDestroy: false,
+				id: "xRadioGroup-" + getUid(),
+			}
+		},
+		emits: [
+			/**
+			 * 选项变化时触发。
+			 * @param {string} val - 当前选中的值,null表示未选中
+			 */
+			'change', 'update:modelValue'],
+		props: {
+			/**
+			 * 当前选中的值。null表示未选中。
+			 */
+			modelValue: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 对齐方式
+			 */
+			direction: {
+				type: String as PropType<"row" | "column">,
+				default: "row"
+			}
+		},
+		computed: {
+			//当前所有可选的id列表
+			oldvalueList_ids() : string[] {
+				return this.oldvalueList.map((el : XRADIO_LISTITEM_TYPE) : string => el.id)
+			}
+		},
+
+		watch: {
+			modelValue(newValue : string) {
+
+				if (newValue != this.checkvaluelist) {
+					this.checkvaluelist = newValue
+					this.setOldCheckboxValue();
+					this.pushAllChildren();
+				}
+			}
+		},
+		beforeUnmount() {
+			this.isDestroy = true;
+			clearTimeout(this.tid)
+		},
+		mounted() {
+			this.checkvaluelist = this.modelValue;
+			this.isDestroy = false;
+		},
+
+		methods: {
+			addItem(t : XRadioComponentPublicInstance, item : RADIO_ITEM_INFO, ischange : boolean) {
+				let index = this.oldvalueList.findIndex((el : XRADIO_LISTITEM_TYPE) : boolean => el.id == item.id);
+				let nowitem = item
+				let _this = this;
+				this.clearAll();
+				if (!ischange) {
+					if (this.checkvaluelist == item.value && item.nowvalue != item.value) {
+						nowitem.nowvalue = nowitem.value;
+					} else {
+						nowitem.nowvalue = nowitem.unvalue;
+					}
+				}
+
+				if (index > -1) {
+					this.oldvalueList.splice(index, 1, {
+						ele: t,
+						id: nowitem.id,
+						data: nowitem
+					} as XRADIO_LISTITEM_TYPE)
+
+				} else {
+
+					this.oldvalueList.push({
+						ele: t,
+						id: nowitem.id,
+						data: nowitem
+					} as XRADIO_LISTITEM_TYPE)
+				}
+
+
+				if (ischange) {
+					let fl = this.oldvalueList.filter((el : XRADIO_LISTITEM_TYPE) : boolean => el.data.nowvalue == el.data.value)
+					this.checkvaluelist = fl.length == 1 ? fl[0].data.value : ""
+					/**
+					 * 等同v-model=""
+					 */
+					this.$emit("update:modelValue", this.checkvaluelist)
+					/**
+					 * 选项变化时触发。
+					 * @param val {string} 当前选中的值,null表示未选中
+					 */
+					this.$emit("change", this.checkvaluelist)
+				}
+
+				clearTimeout(this.tid)
+				this.tid = setTimeout(function () {
+					_this.pushAllChildren();
+				}, 100);
+			},
+			//当前选中的值
+			setOldCheckboxValue() {
+				this.oldvalueList.forEach((item : XRADIO_LISTITEM_TYPE) => {
+					if (this.checkvaluelist == item.data.value) {
+						item.data.nowvalue = item.data.value
+					} else {
+						item.data.nowvalue = item.data.unvalue
+					}
+				})
+			},
+			clearAll() {
+				this.oldvalueList.forEach((item : XRADIO_LISTITEM_TYPE) => {
+					item.data.nowvalue = item.data.unvalue
+				})
+			},
+			pushAllChildren() {
+				if (this.isDestroy) return;
+				try {
+					this.oldvalueList.forEach((el : XRADIO_LISTITEM_TYPE) => {
+						el.ele.setSelected(this.checkvaluelist)
+					})
+				} catch (e) {
+					//TODO handle the exception
+				}
+			},
+			getAllSelecteds():string{
+				return this.checkvaluelist
+			}
+		},
+	}
+</script>
+<template>
+	<view class="xRadioGroup" :style="{'flex-direction':direction}">
+		<!-- 
+		@slot 从1.1.2开始允许是非直接xRadioGroup子节点布局,但考虑到性能建议是直接子节点.
+		 -->
+		<slot></slot>
+	</view>
+</template>
+<style>
+	.xRadioGroup {
+		display: flex;
+		flex-wrap: wrap;
+	}
+</style>

@@ -1,0 +1,106 @@
+<template>
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+	<view style="flex:1;display: flex;flex-direction: column;">
+		<scroll-view class="flex-1" :scroll-y="true">
+			<x-sheet>
+				<x-text font-size="18" class=" text-weight-b mb-8">底部导航 xTabbar</x-text>
+				<x-text  color="#999999" >本组件使用全局来控制选中荐和数据，因此在在各个页面放置本组件后。不需要再赋值当前选中项和数据了。解决以往很多同学不会用的问题。</x-text>
+			</x-sheet>
+			
+			<x-sheet :margin="['12']">
+				<x-text font-size="18" class=" text-weight-b mb-8">凸起</x-text>
+				<x-text  color="#999999" >使用时-1表示关闭</x-text>
+				<view class="mt-20 flex flex-row">
+					<x-button @click="outIndex=2" class="mr-20">打开凸起</x-button>
+					<x-button @click="outIndex=-1" >关闭凸起</x-button>
+				</view>
+			</x-sheet>
+		
+			<x-sheet :margin="['12']">
+				<x-text font-size="18" class=" text-weight-b mb-8">个性化，开启isCanvasRender</x-text>
+				<x-text  color="#999999" >使用插槽name=item可以动态修改更个性化的底部导航样式。</x-text>
+			</x-sheet>
+			<x-tabbar :outIndex="outIndex" :is-canvas-render="false" class="mb-24" color="rgba(0,0,0,0.64)"  out-bg-color="#16ee9c" selected-color="#000000" :linear-gradient="['to right','#20f8be','#1cd86b']" position="relative" >
+			</x-tabbar>
+			<x-tabbar :outReserve="true" :outIndex="1"  class="mb-24" color="rgba(0,0,0,0.64)"  out-bg-color="#ffffff" out-icon-color="#16ee9c" selected-color="#000000" :linear-gradient="['to right','#20f8be','#1cd86b']" position="relative" >
+			</x-tabbar>
+			<x-sheet :margin="['12']">
+				<x-text font-size="18" class=" text-weight-b">个性化，关闭isCanvasRender</x-text>
+				<x-text  color="#999999" >非isCanvasRender渲染，没有镂空等异形渲染效果。效果没有开启的好看。请自行选择使用效果。</x-text>
+			</x-sheet>
+			<x-tabbar :isCanvasRender="false"   class="mb-24" color="#fff" out-icon-color="#921fff" out-bg-color="#ffffff" selected-color="#ff0" :linear-gradient="['to right','#921fff','#2952ff']" position="relative" >
+			</x-tabbar>
+			<x-sheet :margin="['12']">
+				<x-text font-size="18" class=" text-weight-b mb-8">关于占位问题</x-text>
+				<x-text  color="#999999" >
+					组件通过v-model:autoTabbarHeight="autoTabbarHeight"来对外输入占位高度。
+					例本页面就是通过属性控制占位达到一屏效果，请下拉体验。
+					也要可以通过xStore.xTabbarConfig.tabaarHeight读取
+					当前高：{{tabbaerHeight}}
+				</x-text>
+			</x-sheet>
+			<x-sheet v-for="index in 12" :key="index">
+				<x-text>{{index+1}} / 24向下滑动页面，占位一屏。</x-text>
+			</x-sheet>
+			
+			<!-- 占位 -->
+			<view :style="{height:autoTabbarHeight+'px'}"></view>
+			
+			<x-tabbar :outIndex="outIndex" v-model:autoTabbarHeight="autoTabbarHeight" color="#808080" >
+				<template v-slot:item="{isactive,children,selfindex}">
+					<text v-if="selfindex!=2" :style="{color:(isactive as boolean)?_color:'#808080'}">
+						{{(children as TABBAR_ITEM).title}}
+					</text>
+				</template>
+			</x-tabbar>
+		</scroll-view>
+		
+	</view>
+	
+</template>
+
+<script>
+	import { TABBAR_ITEM_INFO,NAVIGATE_TYPE,TABBAR_ITEM } from "@/uni_modules/tmx-ui/interface.uts"
+	import { xStore } from "@/uni_modules/tmx-ui/index.uts"
+
+	export default {
+		data() {
+			return {
+				autoTabbarHeight:0,
+				outIndex:2,
+				list:[
+					{title:"首页",icon:"home-smile-2-line",selectedIcon:"home-smile-2-fill",dotType:'dot'} as TABBAR_ITEM_INFO,
+					{title:"分类",icon:"drive-line",selectedIcon:"drive-fill"} as TABBAR_ITEM_INFO,
+					{title:"购物车",icon:"shopping-basket-line",selectedIcon:"shopping-basket-fill"} as TABBAR_ITEM_INFO,
+					{title:"统计",icon:"bar-chart-2-line",selectedIcon:"bar-chart-2-fill",dotLabel:'99+',} as TABBAR_ITEM_INFO,
+					{title:"我的",icon:"group-line",selectedIcon:"group-fill"} as TABBAR_ITEM_INFO
+				] as TABBAR_ITEM_INFO[]
+			};
+		},
+		computed:{
+			_color():string {
+				return xStore.xConfig.color
+			},
+			tabbaerHeight():number{
+				return xStore.xTabbarConfig.tabaarHeight
+			}
+		},
+		beforeMount() {
+			xStore.xTabbarConfig.list = this.list;
+		},
+		methods:{
+
+			changBadge(){
+				this.list[3]!.dotLabel = '2'
+			}
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

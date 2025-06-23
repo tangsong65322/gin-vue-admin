@@ -1,0 +1,307 @@
+<template>
+	<text class="xMoney" :style="{color:_fontColor}">
+		<!--
+		@slot 默认插槽
+		@prop {string} inter - 整数部分
+		@prop {string} digit - 小数部分
+		@prop {string} cn - 大写金额
+		@prop {string} lineHeight - 行高，在安卓上你要写行高不然被裁剪。
+		-->
+		<slot :inter="money_str.val" :digit="money_str.xs" :cn="money_rmb" :lineHeight="_maxLineheight">
+			<text class="xMoneyHz" v-if="_symbolPosition=='left'&&!_showCn"
+				:style="{fontSize:_preFontSize,color:_fontColor}">
+				{{_symbolText}}
+			</text>
+			<text
+				:style="{fontSize:_fontSize,lineHeight:_maxLineheight,color:_fontColor}">{{_showCn?money_rmb:money_str.val}}</text>
+			<text  v-if="_showCn" :style="{fontSize:_preFontSize,lineHeight:_maxLineheight}"></text>
+			<text  v-if="!_showCn"
+				:style="{fontSize:_preFontSize,lineHeight:_maxLineheight,color:_fontColor}">{{money_str.xs!=''?'.':''}}{{money_str.xs}}</text>
+			<text  v-if="_symbolPosition=='right'&&!_showCn"
+				:style="{fontSize:_preFontSize,lineHeight:_maxLineheight,color:_fontColor}">{{_symbolText}}</text>
+		</slot>
+
+	</text>
+</template>
+
+<script lang="ts" setup>
+
+	import { ref, computed } from 'vue'
+	import { checkIsCssUnit, getUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	type valuType = {
+		val : string,
+		zs : string,
+		xs : string
+	}
+	
+	/**
+	 * @name 金额栅格 xMoney
+	 * @page /pages/index/money
+	 * @category 展示组件
+	 * @description 对金额进行栅格化
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	defineOptions({name:"xMoney"})
+	
+	const props = defineProps({
+		/**
+		 * 小数点后几位
+		 */
+		digit: {
+			type: Number,
+			default: 2
+		},
+		/**
+		 * 开启千分位
+		 */
+		thousand: {
+			type: Boolean,
+			default: false
+		},
+		/**
+		 * 千分位的分隔符
+		 */
+		thousandUnit: {
+			type: String,
+			default: ","
+		},
+		/**
+		 * 千分位的长度，
+		 * 默认是3位一位，如果为4就是万分位依此类推
+		 */
+		thousandLen: {
+			type: Number,
+			default: 3
+		},
+		/**
+		 * 货币符号
+		 */
+		symbolText: {
+			type: String,
+			default: '￥'
+		},
+		/**
+		 * 货币符号位置
+		 * left:左侧
+		 * right:右侧
+		 */
+		symbolPosition: {
+			type: String,
+			default: 'left'
+		},
+		/**
+		 * 文字颜色
+		 */
+		color: {
+			type: String,
+			default: 'primary'
+		},
+		/**
+		 * 暗黑时的文字颜色
+		 */
+		darkColor: {
+			type: String,
+			default: ''
+		},
+		/**
+		 * 文字大小
+		 */
+		fontSize: {
+			type: String,
+			default: '16'
+		},
+		/**
+		 * 货币符号及小数字号大小
+		 */
+		preFontSize: {
+			type: String,
+			default: '16'
+		},
+		/**
+		 * 是否显示中文金额
+		 */
+		showCn: {
+			type: Boolean,
+			default: false
+		}
+
+	})
+	const moneyValue = defineModel({ type: Number, default: 0 })
+	const _symbolText = computed(() : string => props.symbolText)
+	const _symbolPosition = computed(() : string => props.symbolPosition)
+	const _fontSize = computed(() : string => checkIsCssUnit(props.fontSize, xConfig.unit))
+	const _preFontSize = computed(() : string => checkIsCssUnit(props.preFontSize, xConfig.unit))
+	const _maxLineheight = computed(() : string => {
+		let minfsz = parseInt(_preFontSize.value)
+		let maxfsz = parseInt(_fontSize.value)
+		let diff = Math.max(minfsz, maxfsz) * 1.5+2
+		return diff + getUnit(_fontSize.value)
+	})
+	const _maxLineheightCover = computed(() : string => {
+		let minfsz = parseInt(_preFontSize.value)
+		let maxfsz = parseInt(_fontSize.value)
+		let diff = Math.max(minfsz, maxfsz)
+		return diff + getUnit(_fontSize.value)
+	})
+	const _fontColor = computed(() : string => {
+		if (xConfig.dark == 'dark'&&props.darkColor!='') return getDefaultColor(props.darkColor)
+		return getDefaultColor(props.color)
+	})
+	const _showCn = computed(() : boolean => props.showCn)
+	/**
+	 * uts,js因为精度不行，不可以直接用自带的toFiexd，需要转换为字符串计算拆分。
+	 */
+	function toFixed(value : number, digits : number) : valuType {
+
+		if (typeof digits !== 'number' || digits < 0 || typeof value !== 'number') {
+			return {
+				val: '',
+				zs: '',
+				xs: ''
+			} as valuType;
+		}
+		const zs = Math.floor(value).toString();
+		let integerPart = zs;
+
+		const valueStr = value.toString()
+		let digIndex = valueStr.lastIndexOf('.');
+		const decimalPart = digIndex > -1 ? valueStr.substring(valueStr.lastIndexOf('.') + 1) : ''
+		let decimalString = decimalPart;
+
+		if (digits > 0) {
+			if (decimalString.length > digits) {
+				decimalString = decimalString.substring(0, digits)
+			} else {
+				// 补零以匹配所需的位数
+				while (decimalString.length < digits) {
+					decimalString = decimalString + '0';
+				}
+			}
+
+		}
+		// 如果 digits 为 0，则返回整数部分
+		if (digits === 0) {
+			return {
+				val: integerPart,
+				zs: integerPart,
+				xs: ''
+			} as valuType;
+		}
+		if (props.thousand) {
+			let regx = new RegExp(`(\\d)(?=(\\d{${props.thousandLen}})+(?!\\d))`, 'g');
+			integerPart = integerPart.replace(regx, `$1${props.thousandUnit}`)
+		}
+		return {
+			val: integerPart,
+			zs: zs,
+			xs: decimalString
+		} as valuType
+	}
+	function convertCurrency(money : number, zs : number, xs : string) : string {
+		//汉字的数字
+		var cnNums = new Array(
+			"零",
+			"壹",
+			"贰",
+			"叁",
+			"肆",
+			"伍",
+			"陆",
+			"柒",
+			"捌",
+			"玖"
+		);
+		//基本单位
+		var cnIntRadice = new Array<string>("", "拾", "佰", "仟");
+		//对应整数部分扩展单位
+		var cnIntUnits = new Array<string>("", "万", "亿", "兆");
+		//对应小数部分单位
+		var cnDecUnits = new Array<string>("角", "分", "毫", "厘");
+		//整数金额时后面跟的字符
+		var cnInteger = "整";
+		//整型完以后的单位
+		var cnIntLast = "元";
+		//最大处理的数字
+		var maxNum = 999999999999999.9999;
+		//金额整数部分
+		var integerNum = zs;
+		//金额小数部分
+		var decimalNum = xs;
+
+		//输出的中文金额字符串
+		var chineseStr = "";
+
+		if (money >= maxNum) {
+			//超出最大处理数字
+			return "";
+		}
+		if (money == 0) {
+			chineseStr = cnNums[0] + cnIntLast + cnInteger;
+			return chineseStr;
+		}
+
+		//整型部分转换
+		if (integerNum > 0) {
+			var zeroCount = 0;
+			let IntStr = integerNum.toString()
+			var IntLen = IntStr.length;
+			for (var i = 0; i < IntLen; i++) {
+				var n = IntStr.substring(i, i + 1);
+				var p = IntLen - i - 1;
+				var q = p / 4;
+				var m = p % 4;
+				if (n == "0") {
+					zeroCount++;
+				} else {
+					if (zeroCount > 0) {
+						chineseStr += cnNums[0];
+					}
+					//归零
+					zeroCount = 0;
+					chineseStr += cnNums[parseInt(n)] + cnIntRadice[m];
+				}
+				if (m == 0 && zeroCount < 4) {
+					chineseStr += cnIntUnits[q];
+				}
+			}
+			chineseStr += cnIntLast;
+		}
+		//小数部分
+		if (decimalNum != "") {
+			var decLen = decimalNum.length;
+			for (var i = 0; i < decLen; i++) {
+				var n = decimalNum.substring(i, i + 1);
+				if (n != "0") {
+					chineseStr += cnNums[parseInt(n)] + cnDecUnits[i];
+				}
+				
+			}
+		}
+		
+		if (chineseStr == "") {
+			chineseStr += cnNums[0] + cnIntLast + cnInteger;
+		} else if (decimalNum == "") {
+			chineseStr += cnInteger;
+		}
+		
+		return chineseStr;
+	}
+
+	const money_str = computed(() : valuType => toFixed(moneyValue.value, props.digit))
+	const money_rmb = computed(() : string => {
+		let obj = toFixed(moneyValue.value, props.digit)
+		let cn = convertCurrency(moneyValue.value, parseInt(obj.zs), obj.xs);
+		return cn
+	})
+</script>
+
+<style>
+	.xMoney {
+		text-align: right;
+	}
+</style>

@@ -1,0 +1,514 @@
+<script lang="ts">
+	import { getUid } from '../../core/util/xCoreUtil.uts'
+	import { xConfig } from "../../config/xConfig.uts"
+	import { xAnimate } from "../../core/util/xAnimate.uts"
+	// #ifdef APP||WEB
+	import { xTween } from "@/uni_modules/tmx-ui/index.uts"
+	import { XANIMATE_OPIONS, xTweenAnimate, xTweenCallbackFunType, xTweenEventCallFunType } from "@/uni_modules/tmx-ui/interface.uts"
+	// #endif
+	/**
+	 * @name 遮罩 xOverlay
+	 * @description 旋转制作弹层类页面。
+	 * @page /pages/index/overlay
+	 * @category 反馈组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				_width: 0,
+				_height: 0,
+				showOverflay: false,
+				element: null as Element | null,
+				//是否动画中
+				actioning: false,
+				status: "",
+				id: "xoverflay" + getUid(),
+				tid: 0,
+				windtop: 0,
+				xani: null as xAnimate | null,
+				// #ifdef APP||WEB
+				tw: new xTween()
+				// #endif
+			}
+		},
+		emits: [
+			/**
+			 * 点击遮罩事件
+			 */
+			'click',
+			/**
+			 * 关闭是触发
+			 */
+			'close',
+			/**
+			 * 打开时触发
+			 */
+			'open',
+			/**
+			 * 打开前执行
+			 */
+			'beforeOpen',
+			/**
+			 * 关闭前执行
+			 */
+			'beforeClose',
+			/**
+			 * 等同v-model:show
+			 */
+			'update:show',
+		],
+		props: {
+			/**
+			 * 自定义遮罩样式
+			 */
+			customStyle: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 内容层样式
+			 */
+			customContentStyle: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 是否显示底部关闭按钮
+			 */
+			showClose: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 遮罩是否允许点击被关闭
+			 */
+			overlayClick: {
+				type: Boolean,
+				default: true
+			},
+			/**
+			 * 禁用弹跳动画,overlayClick设置为false时,点底部会有弹跳.
+			 */
+			disabledAni:{
+				type:Boolean,
+				default:false
+			},
+			/**
+			 * 显示可v-model:show双向绑定
+			 */
+			show: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 动画时间
+			 */
+			duration: {
+				type: Number,
+				default: 300
+			},
+			/**
+			 * 打开dom的延迟量，如果你打开 弹窗在ios正常。
+			 * 请不要修改此值。如果遇到打不开，或者 打开 后没动画，关闭不了等可能是sdk bug导致 
+			 * 此时需要加大值来避免。具体加多少以你弹窗内的节点复杂度有关，需要你自行压力测试。
+			 * 此值仅在ios下生效。
+			 */
+			watiDuration: {
+				type: Number,
+				default: 120
+			},
+			/**
+			 * 层级
+			 */
+			zIndex:{
+				type: Number,
+				default: 1100
+			},
+		},
+		watch: {
+			show(_newval : boolean) {
+				if (_newval) {
+					this.showAlert()
+				} else {
+					this.closeAlert()
+				}
+			}
+		},
+		computed: {
+			_customStyle() : string {
+				return this.customStyle
+			},
+			_customContentStyle() : string {
+				return this.customContentStyle
+			},
+			_show() : boolean {
+				return this.show
+			},
+
+			_showClose() : boolean {
+				return this.showClose
+			},
+			_duration() : number {
+				return this.duration
+			},
+			_animationFun() : string {
+				return xConfig.animationFun
+			},
+			__height() : string {
+				let h = '100%';
+				// #ifdef WEB
+				h = `calc(100% - ${this.windtop}px)`
+				// #endif
+
+				return h;
+			},
+		},
+
+		mounted() {
+		
+			let sys = uni.getWindowInfo()
+			// #ifndef APP
+			this._width = sys.windowWidth
+			this._height = sys.windowHeight;
+			this.windtop = sys.windowTop;
+			// #endif
+			// #ifdef APP
+			this._width = sys.windowWidth
+			this._height = sys.windowHeight + 44;
+			// #endif
+
+			if (this._show) {
+				this.showAlert();
+			}
+		},
+		beforeUnmount() {
+			this.tw.destroy()
+
+			clearTimeout(this.tid)
+		},
+		methods: {
+			overflayMoveTouch(evt : UniTouchEvent) {
+				evt.preventDefault()
+			},
+			onClickOverflowy() {
+				/**
+				 * 点击遮罩事件
+				 */
+				this.$emit("click")
+				if (!this.overlayClick) {
+					if(!this.disabledAni){
+						// #ifdef APP || WEB
+						let el = this.$refs['xoverflayWrapBox'] as UniElement | null;
+						if (this.xani != null) {
+							this.xani!.stop();
+						}
+						if (el != null) {
+							this.xani = new xAnimate(el!, { duration: 50, isDescPlay: true } as XANIMATE_OPIONS)
+							this.xani!.attr('scale', '1', '0.95', false)
+							this.xani!.attr('scale', '0.95', '1.05', false)
+							this.xani!.attr('scale', '1.05', '1', false)
+								.play()
+						}
+						// #endif
+					}
+					
+					return;
+				}
+				this.closeAlert();
+			},
+			closeAlert() {
+				let _this = this;
+				if (this.actioning) return;
+				if (this.status == 'close') return;
+				this.actioning = true;
+				this.status = 'close'
+				
+				/**
+				 * 关闭前执行
+				 */
+				this.$emit('beforeClose')
+				let element = _this.$refs['xoverflay'] as UniElement
+				let elementBody = _this.$refs['xoverflayWrapBox'] as UniElement
+				const ani = element.animate({'backgroundColor':'rgba(0,0,0,0)'},{duration:_this.duration,fill:'forwards'})
+				ani?.play()
+				const ani2 = elementBody.animate(
+				{transform:'scale(0.6)',opacity:'0'}
+				,{duration:_this.duration,fill:'forwards',easing:"cubic-bezier(.42,.38,.15,.93)"})
+				
+				
+				function compeleted(){
+				
+					_this.actioning = false;
+					/**
+					 * 关闭时执行
+					 */
+					_this.$emit('close')
+					/**
+					 * 等同v-model:show
+					 */
+					_this.$emit('update:show', false)
+					_this.showOverflay = false;
+				}
+				
+				//意外结束了，也执行完成。防止意外原因导致显示不出来
+				ani2!.oncancel = (event:UniAnimationPlaybackEvent)=>{
+					element.style.setProperty('background-color', `rgba(0,0,0,0)`)
+					elementBody.style.setProperty('transform', `scale(0.6)`)
+					elementBody.style.setProperty('opacity', 0)
+					compeleted()
+				}
+				
+				ani2!.onfinish = (event:UniAnimationPlaybackEvent)=>{
+					compeleted()
+				}
+				
+				// #ifdef MP
+				setTimeout(function() {
+					compeleted()
+				}, _this.duration);
+				// #endif
+				ani2!.play()
+				
+			},
+			showAlert() {
+				
+				let _this = this;
+	
+				if (this.actioning) return;
+				if (this.status == 'open') return;
+				this.showOverflay = true;
+				this.actioning = true;
+				this.status = 'open'
+				/**
+				 * 打开前执行
+				 */
+				this.$emit('beforeOpen')
+				clearTimeout(this.tid)
+				this.tid = setTimeout(function () {
+					let element = _this.$refs['xoverflay'] as UniElement
+					let elementBody = _this.$refs['xoverflayWrapBox'] as UniElement
+					
+					// #ifdef MP
+					element.style.setProperty('background-color', `rgba(0,0,0,0)`)
+					element.style.setProperty('transition-duration', `${_this.duration}ms`)
+					elementBody.style.setProperty('transform', `scale(0.6)`)
+					elementBody.style.setProperty('opacity', 0)
+					// #endif
+					
+					// const ani = element.animate({'backgroundColor':'rgba(0,0,0,0.4)'},{duration:_this.duration,fill:'forwards'})
+					// ani?.play()
+					
+					const ani2 = elementBody.animate(
+					{transform:'scale(1)',opacity:1}
+					,{duration:_this.duration,fill:'forwards',easing:"cubic-bezier(0.42,0.38,0.15,0.93)"})
+					
+					if(ani2==null){
+					
+						console.error("xOverlay动画创建失败，请向我反馈你使用的场景。")
+						 return;
+					}
+					//意外结束了，也执行完成。防止意外原因导致显示不出来
+					ani2.oncancel = (event:UniAnimationPlaybackEvent)=>{
+						_this.actioning = false;
+						element.style.setProperty('background-color', `rgba(0,0,0,0.4)`)
+						elementBody.style.setProperty('transform', `scale(1)`)
+						elementBody.style.setProperty('opacity', 1)
+					}
+					ani2.onfinish = (event:UniAnimationPlaybackEvent)=>{
+						_this.actioning = false;
+						/**
+						 * 打开执行的事件
+						 */
+						_this.$emit('open')
+					}
+					
+					// #ifdef MP
+					setTimeout(function() {
+						_this.actioning = false;
+						/**
+						 * 打开执行的事件
+						 */
+						_this.$emit('open')
+					}, _this.duration);
+					// #endif
+					
+					ani2!.play()
+				},50)
+				
+			},
+			openOverlay() {
+				this.showAlert();
+			},
+			wrapClick(evt : UniPointerEvent) {
+				// evt.stopPropagation()
+			},
+		},
+	}
+</script>
+<template>
+	<view>
+		<view @click="openOverlay">
+			<!--
+			@slot 标签触发显示遮罩，免于使用变量控制
+			@prop {Boolean} show - 当前是否已显示
+			-->
+			<slot name="trigger" :show="show"></slot>
+		</view>
+		<!-- #ifdef WEB -->
+		<teleport to="uni-page-body">
+		<!-- #endif -->
+		<!-- #ifdef MP-WEIXIN -->
+		<root-portal >
+		<!-- #endif -->
+			<view v-if="showOverflay" :id="id" ref="xoverflay" class="xoverflay"
+				:style="[{width:'100%',height:__height,top:windtop+'px',zIndex:zIndex}]">
+				<view @click.stop="onClickOverflowy" 
+				
+				:class="[
+					status=='open'?'xoverflayMaskShow':'',
+					status=='close'?'xoverflayMaskHide':'',
+				]" 
+				class="xoverflayWrapBoxContent" :style="_customStyle">
+					<view ref="xoverflayWrapBox" 
+					:class="[
+						status=='open'?'xoverflayShow':'',
+						status=='close'?'xoverflayHide':'',
+					]" 
+					class="xoverflayWrapBox" @click.stop="" :style="_customContentStyle">
+						<!--
+						默认插槽
+						-->
+						<slot name="default"></slot>
+						<view v-if="_showClose" class="closeOverBtn">
+							<x-icon @click="closeAlert" color="white" font-size="38" name="close-circle-fill"></x-icon>
+						</view>
+					</view>
+				</view>
+
+				<!-- <view @click.stop="onClickOverflowy" class="xoverflayWrapBoxMasker" @touchmove.stop="overflayMoveTouch"></view> -->
+			</view>
+		
+		
+		<!-- #ifdef MP-WEIXIN -->
+		</root-portal >
+		<!-- #endif -->
+		<!-- #ifdef WEB -->
+		</teleport >
+		<!-- #endif -->
+	
+	</view>
+
+</template>
+<style scoped>
+	.xoverflayWrapBox {
+		pointer-events: auto;
+		transform: scale(0);
+		opacity: 0;
+	}
+
+	.closeOverBtn {
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		margin-top: 32rpx;
+		z-index: 105;
+		opacity: 0.7;
+	}
+
+	.xoverflayWrapBoxMasker {
+		width: 100%;
+		height: 100%;
+		left: 0px;
+		top: 0px;
+		position: absolute;
+		z-index: 1;
+	}
+
+	.xoverflayWrapBoxContent {
+		width: 100%;
+		height: 100%;
+		left: 0px;
+		top: 0px;
+		position: absolute;
+		z-index: 3;
+
+	}
+
+	.xoverflay {
+		background-color: rgba(0, 0, 0, 0);
+		/* opacity: 0; */
+		position: fixed;
+		/* z-index: 1100; */
+		left: 0px;
+		top: 0px;
+		/* 		transition-duration: 350ms;
+		transition-property: opacity; */
+
+	}
+	/* #ifdef MP-WEIXIN */
+	.xoverflayShow{
+		
+		animation:showAniMation 250ms cubic-bezier(.42,.38,.15,.93) forwards ;
+	}
+	.xoverflayHide{
+		animation:hideAniMation 250ms cubic-bezier(.42,.38,.15,.93) forwards ;
+	}
+	.xoverflayMaskShow{
+		background-color: rgba(0, 0, 0, 0.4);
+		animation:showAniMaskMation 200ms linear  ;
+		opacity:1;
+	}
+	.xoverflayMaskHide{
+		background-color: rgba(0, 0, 0, 0);
+		opacity:0;
+		transition-duration: 250ms;
+		transition-property: background-color, opacity;
+		transition-timing-function: linear;
+		/* animation:hideAniMaskMation 200ms linear  ; */
+	}
+	
+	@keyframes showAniMaskMation {
+		0%{
+			background-color: rgba(0, 0, 0, 0);
+		}
+		100%{
+			background-color: rgba(0, 0, 0, 0.4);
+		}
+	}
+	@keyframes hideAniMaskMation {
+		0%{
+			background-color: rgba(0, 0, 0, 0.4);
+		}
+		100%{
+			background-color: rgba(0, 0, 0, 0);
+		}
+	}
+	
+	
+	@keyframes showAniMation {
+		0%{
+			transform: scale(0.6);
+			opacity: 0;
+		}
+		100%{
+			transform: scale(1);
+			opacity: 1;
+		}
+	}
+	@keyframes hideAniMation {
+		0%{
+			transform: scale(1);
+			opacity: 1;
+		}
+		100%{
+			transform: scale(0.6);
+			opacity: 0;
+		}
+	}
+	
+	/* #endif */
+</style>

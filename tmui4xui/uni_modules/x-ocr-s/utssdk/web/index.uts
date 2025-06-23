@@ -1,0 +1,103 @@
+async function loadScript(url) {
+    return new Promise(res=>{
+		var script = document.createElement('script');
+		script.type = 'text/javascript';
+		script.src = url;
+		
+		// 当脚本加载完成后，执行回调
+		script.onload = function() {
+		   res()
+		};
+		
+		// 处理旧版浏览器的onreadystatechange事件
+		script.onreadystatechange = function() {
+		    if (this.readyState === 'loaded' || this.readyState === 'complete') {
+		        script.onload();
+		    }
+		};
+		
+		// 将脚本添加到head中，开始加载
+		document.head.appendChild(script);
+	})
+}
+
+async function loadScripts(scripts) {
+    await (async function loadNextScript(i) {
+        if (i < scripts.length) {
+            await loadScript(scripts[i]);
+			await loadNextScript(i + 1)
+        }
+    })(0);
+	
+}
+let ocr = window?.paddlejs?.ocr??null;
+let jsFiles = [
+	'/static/tmui4xLibs/lib/ocrLib.js'
+];
+const decoderText =async (imgpath:string,callback)=>{
+	if(!window?.paddlejs){
+		await loadScripts(jsFiles)
+		ocr = paddlejs.ocr
+		await ocr.init()
+	}
+	let img = new Image()
+	img.src = imgpath
+	img.onload = async function(){
+		const canvas = document.createElement('canvas')
+		canvas.width = 800;
+		canvas.height = 800
+		const res = await ocr.recognize(img, { canvas });
+		let texts = res.text
+		let bounds = []
+		for(let i=0;i<res.points.length;i++){
+			let item = res.points[i]
+			bounds.push({
+				x:item[0][0],
+				y:item[0][1],
+				width:item[1][0]-item[0][0],
+				height:item[3][1]+item[0][1]
+			})
+		}
+		
+		callback(texts,JSON.stringify(bounds))
+	}
+	
+}
+export async function chooseImageBuilder(callback : (str : string[], source : string[]) => void, langs : string | null) {
+
+	uni.chooseImage({
+		count: 1,
+		success:async (evt : ChooseImageSuccess)=> {
+			uni.showLoading({title:'...',mask:true})
+			if (evt.tempFilePaths.length > 0) {
+				let imgpath = evt.tempFilePaths[0] as string;
+				try {
+					await decoderText(imgpath,callback)
+				} catch (error) {
+					console.error(error)
+					callback([] as string[],[] as string[])
+				}
+			}
+			uni.hideLoading()
+		},
+		fail() {
+			console.warn("图片选择失败")
+			callback([] as string[],[] as string[])
+		}
+	})
+	
+
+}
+export async function downloadUrlImageBuilder(url : string, callback : (str : string[], source : string[]) => void, langs : string | null) { 
+	uni.showLoading({title:'...',mask:true})
+	try {
+		await decoderText(url,callback)
+	} catch (error) {
+		console.error(error)
+		callback([] as string[],[] as string[])
+	}
+	uni.hideLoading()
+}
+export async function localFilePathImageBuilder(pathfile : string, callback : (str : string[], source : string[]) => void, langs : string | null) { 
+	downloadUrlImageBuilder(pathfile,callback)
+}

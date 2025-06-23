@@ -1,0 +1,116 @@
+var _x = 0
+var _realx = 0
+var _y = 0
+var isMoving = false
+var leftPos = 0
+var opts = {
+	disabled: false,
+	max: 0,
+	min: 0,
+	step: 1,
+	_step: 0,
+	btnSize: 0,
+	boxwidth: 0,
+	boxLeft:[0,0]
+}
+var btnIndex = 0
+function isLeftOrRight(a, b, c, diffX) {
+	if (diffX > 0) {
+		return c;
+	} else if (diffX < 0) {
+		return a;
+	}
+	return b;
+}
+
+function mStart(evt, ins,lindex) {
+	if (opts.disabled) return false;
+	btnIndex = lindex;
+	_realx = evt.changedTouches[0].clientX;
+	var ele1 = ins.selectComponent('.xSliderBtn')
+	var ele2 = ins.selectComponent('.xSliderBtn2')
+	var ele = lindex == 0 ? ele1 : ele2
+	opts = ele.getDataset().opts;
+
+	leftPos = parseFloat(ele.getComputedStyle(['left']).left)
+	_x = evt.changedTouches[0].clientX - leftPos;
+	_y = evt.changedTouches[0].clientY;
+	isMoving = false
+	ins.callMethod('setOpts', {
+		isMoveIndex: btnIndex
+	})
+	return false
+}
+
+function mMove(evt, ins) {
+	var ele1 = ins.selectComponent('.xSliderBtn')
+	var ele2 = ins.selectComponent('.xSliderBtn2')
+	var ele = btnIndex == 0 ? ele1 : ele2
+	var bgid = ele.getDataset().bgid;
+	if (opts.disabled) return false;
+	isMoving = true
+
+	var x = evt.changedTouches[0].clientX - _x
+	var diffX = evt.changedTouches[0].clientX - _realx
+	var maxX = opts.boxwidth - opts.btnSize;
+
+	if (opts.step > 0) {
+		var step = opts._step;
+		var distanceToMove = Math.abs(diffX);
+
+		var qz = Math.floor(x / step) * step;
+
+		if (distanceToMove > 1) {
+			x = isLeftOrRight(qz - step, x, qz + step, diffX);
+		}
+
+	}
+	
+	x = Math.max(Math.min(maxX,x),0)
+	
+	ele.setStyle({
+		'left': x + 'px'
+	})
+	
+	var bgNode = ins.selectComponent('#'+bgid)
+	opts.boxLeft[btnIndex] = x
+	var minwidth = Math.abs(opts.boxLeft[0] - opts.boxLeft[1])+5
+	var minleft = Math.min(opts.boxLeft[0], opts.boxLeft[1])+5
+	bgNode.setStyle({
+		'left': minleft + 'px',
+		'width': minwidth + 'px',
+	})
+	
+	ins.callMethod('setOpts', {
+		x: x,
+		index:btnIndex,
+		isMoveIndex:btnIndex,
+		boxLeft:opts.boxLeft
+	})
+	ins.callMethod('setMoveChanges', {
+		x: x,
+		index:btnIndex
+	})
+	
+
+	
+	return false
+}
+
+function mEnd(evt, ins) {
+	if (opts.disabled) return false;
+	var ele1 = ins.selectComponent('.xSliderBtn')
+	var ele2 = ins.selectComponent('.xSliderBtn2')
+	var ele = btnIndex == 0 ? ele1 : ele2
+	ins.callMethod('setMoveEnd')
+	return false
+}
+
+module.exports = {
+	mStart: function(evt, ins){mStart(evt, ins,0)},
+	mMove: function(evt, ins){mMove(evt, ins,0)},
+	mEnd: function(evt, ins){mEnd(evt, ins,0)},
+	mStart2: function(evt, ins){mStart(evt, ins,1)},
+	mMove2: function(evt, ins){mMove(evt, ins,1)},
+	mEnd2: function(evt, ins){mEnd(evt, ins,1)},
+}

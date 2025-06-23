@@ -1,0 +1,169 @@
+<script lang="ts">
+	import { type PropType } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { XGRID_ITEM_INFO } from "../../interface.uts"
+
+	/**
+	 * @name 宫格 xGrid
+	 * @description 内部只可放置x-grid-item。
+	 * @page /pages/index/grid
+	 * @category 导航组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | x | ☑️ | 4.14+ | 1.0.0 |
+	 */
+	export default {
+		data() {
+			return {
+			}
+		},
+		props: {
+			/**
+			 * 显示几列
+			 */
+			col: {
+				type: Number,
+				default: 3
+			},
+			/**
+			 * 项目高度
+			 */
+			itemHeight: {
+				type: String,
+				default: '70'
+			},
+			/**
+			 * 统一设置子组件的背景
+			 */
+			itemBgColor: {
+				type: String,
+				default: 'white'
+			},
+			/**
+			 * 整体宫格的背景
+			 */
+			bgColor: {
+				type: String,
+				default: 'transparent'
+			},
+			/**
+			 * 整体宫格的背景暗黑，如果为空，读取全局sheetDark
+			 */
+			darkBgColor: {
+				type: String,
+				default: 'transparent'
+			},
+			/**
+			 * 整体宽度
+			 */
+			width: {
+				type: String,
+				default: 'auto'
+			},
+			/**
+			 * 图标颜色
+			 */
+			iconColor: {
+				type: String,
+				default: '#333333'
+			},
+			/**
+			 * 暗黑时图标颜色
+			 */
+			darkIconColor: {
+				type: String,
+				default: '#FFFFFF'
+			},
+			/**
+			 * 文字颜色
+			 */
+			textColor: {
+				type: String,
+				default: '#888888'
+			},
+			/**
+			 * 文字暗黑颜色
+			 */
+			textDarkColor: {
+				type: String,
+				default: ''
+			},
+			/**
+			 * 文字大小
+			 */
+			fontSize: {
+				type: String,
+				default: '13'
+			},
+			/**
+			 * 图标大小
+			 */
+			iconSize: {
+				type: String,
+				default: '25'
+			},
+		},
+		computed: {
+			_col() : number {
+				return this.col
+			},
+			_itemHeight() : string {
+				return checkIsCssUnit(this.itemHeight, xConfig.unit)
+			},
+			_width() : string {
+				return checkIsCssUnit(this.width, xConfig.unit)
+			},
+			_itemBgColor() : string {
+
+				return getDefaultColor(this.itemBgColor)
+			},
+			_bgColor() : string {
+				if (xConfig.dark == 'dark') {
+					if (this.darkBgColor != "") return getDefaultColor(this.darkBgColor)
+					return getDefaultColor(xConfig.sheetDarkColor)
+				}
+				return getDefaultColor(this.bgColor)
+			},
+			_itemGloablStyle() : XGRID_ITEM_INFO {
+				return {
+					iconColor: getDefaultColor(this.iconColor),
+					iconSize: checkIsCssUnit(this.iconSize, xConfig.unit),
+					fontColor: getDefaultColor(this.textColor),
+					fontDarkColor: getDefaultColor(this.textDarkColor),
+					fontSize: checkIsCssUnit(this.fontSize, xConfig.unit),
+					darkIconColor: getDefaultColor(this.darkIconColor),
+					
+				} as XGRID_ITEM_INFO
+			},
+		},
+		provide() {
+			return {
+				xGridRows: this._col,
+				xGridHeight: this._itemHeight,
+				xGridItemBgColor: this._itemBgColor,
+				xGridItemGlobalProptype: this._itemGloablStyle
+			}
+		}
+	}
+</script>
+<template>
+	<view class="xGrid" :style="{width:_width,backgroundColor:_bgColor}">
+		<!-- 
+		 @slot 插槽内只可放置x-grid-item
+		 -->
+		<slot></slot>
+	</view>
+</template>
+<style scoped>
+	.xGrid {
+		display: flex;
+		flex-direction: row;
+		align-items: flex-start;
+		justify-content: flex-start;
+		flex-wrap: wrap;
+	}
+</style>

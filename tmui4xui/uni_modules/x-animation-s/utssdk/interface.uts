@@ -1,0 +1,83 @@
+export type XDANIMATION_TRANSLATE_OPTIONS = {
+	/** 播放元素 */
+	ele : UniElement|null,
+	/** 播放时间 */
+	duration?: number,
+	/** 延迟 */
+	delay?: number,
+	/** 0平行移x,1平移y,2平移x,y */
+	translation?: number, 
+	/** 起始位置 */
+	from?: number,
+	/** 移动的距离 */
+	len?: number,
+	/** 播放次数,-1循环永久播放,0表示1次,依次类推 */
+	loop?: number,
+	/** 开始回调 */
+	start?: (() => void)|null,
+	/** 结束回调 */
+	end?: (() => void)
+}
+
+export type XDANIMATION_ROTATE_OPTIONS = {
+	/** 播放元素 */
+	ele : UniElement|null,
+	/** 播放时间 */
+	duration?: number,
+	/** 延迟 */
+	delay?: number,
+	/** 起始角度,默认是0 */
+	from?: number,
+	/** 旋转的角度 */
+	deg?: number,
+	/** 播放次数,-1循环永久播放,0表示1次,依次类推 */
+	loop?: number,
+	/** 开始回调 */
+	start?: (() => void)|null,
+	/** 结束回调 */
+	end?: (() => void)
+}
+export type XDANIMATION_SCALE_OPTIONS = {
+	/** 播放元素 */
+	ele : UniElement|null,
+	/** 播放时间 */
+	duration?: number,
+	/** 延迟 */
+	delay?: number,
+	/** 0缩放x,1缩放y,2缩放x,y */
+	direction?: number, 
+	/** 缩放起始值,默认是0 */
+	from?:number,
+	/** 缩放的值 */
+	scale?: number,
+	/** 播放次数,-1循环永久播放,0表示1次,依次类推 */
+	loop?: number,
+	/** 开始回调 */
+	start?: (() => void)|null,
+	/** 结束回调 */
+	end?: (() => void)
+}
+export type XDANIMATION_FLIP3D_OPTIONS = {
+	/** 播放元素 */
+	ele : UniElement|null,
+	/** 播放时间 */
+	duration?: number,
+	/** 延迟 */
+	delay?: number,
+	/** 0: X轴, 1: Y轴 */
+	axis?: number, 
+	/** 起始角度,默认是0 */
+	from?: number,
+	/** 旋转角度 */
+	deg?: number,
+	/** 播放次数,-1循环永久播放,0表示1次,依次类推 */
+	loop?: number,
+	/** 视角距离 */
+	cameraDistance?: number,
+	/** Z轴缩放 */
+	scaleZ?: number,
+	/** 开始回调 */
+	start?: (() => void)|null,
+	/** 结束回调 */
+	end?: (() => void)
+}

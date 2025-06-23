@@ -1,0 +1,12 @@
+import { Data } from 'Foundation';
+export const base64ToArrayBuffer = (data : string) : ArrayBuffer => {
+	let dadx = new Data(base64Encoded = data)
+	if(dadx == null) return new ArrayBuffer(0)
+	return ArrayBuffer.fromData(dadx!)
+	
+}
+
+export const arrayBufferToBase64 = (data : ArrayBuffer) : string => {
+	let dadx = data.toData()
+	return dadx.base64EncodedString()
+}

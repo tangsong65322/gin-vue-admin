@@ -1,0 +1,134 @@
+import UniversalCryptoHelper from 'uts.sdk.modules.utsXcryptoS.UniversalCryptoHelper';
+import { RSARANDOMKEY } from "../interface.uts"
+
+export function md5(str : string) : string {
+	return UniversalCryptoHelper.md5(str);
+}
+export function base64Encode(str : string) : string {
+	return UniversalCryptoHelper.base64Encode(str);
+}
+export function base64Decode(str : string) : string {
+	return UniversalCryptoHelper.base64Decode(str);
+}
+export function sha256(str : string) : string {
+	return UniversalCryptoHelper.sha256(str);
+}
+export function hmacSha256(key:string,data : string) : string {
+	return UniversalCryptoHelper.hmacSha256(key,data);
+}
+
+export function sha512(str : string) : string {
+	return UniversalCryptoHelper.sha512(str)
+}
+
+export function hmacSha512(key : string, data : string) : string {
+	return UniversalCryptoHelper.hmacSha512(key,data)
+}
+
+export function sha1(str : string) : string {
+	return UniversalCryptoHelper.sha1(str);
+}
+/**
+ * Aes
+ * @param {string} key utf8字符串它会根据keySize来截取和补足0
+ * @param {string} data 待加密的字符
+ * @param {string} mode ECB,CBC
+ * @param {string} iv 固定是16位,不足会补齐0
+ * @param {string} keySize 对key的加密补位,也就是加密位数16为128,24为192,32为256
+ */
+export function aesEncrypt(key:string,data : string,mode:string = "ECB",iv:string|null = null,keySize:number|null=null) : string {
+	console.log("长度:",(keySize==null?16:keySize).toInt())
+	return UniversalCryptoHelper.aesEncrypt(data,key,mode,iv,(keySize==null?16:keySize).toInt());
+}
+/**
+ * Aes
+ * @param {Uint8Array} key Uint8Array数据它会根据keySize来截取和补足0
+ * @param {Uint8Array} data 待加密的Uint8Array
+ * @param {string} mode ECB,CBC
+ * @param {Uint8Array} iv 固定是16位,不足会补齐0
+ * @param {number} keySize 对key的加密补位,也就是加密位数16为128,24为192,32为256
+ * @returns {Uint8Array} 数据
+ */
+export function aesEncrypt2(key:Uint8Array,data : Uint8Array,mode:string = "ECB",iv:Uint8Array|null = null,keySize:number|null=null) : Uint8Array {
+	
+	function u8tbr(d:Uint8Array):ByteArray{
+		let bar = new ByteArray(d.length.toInt())
+		for(let i = 0;i<d.length;i++){
+			bar[i.toInt()] = d[i.toInt()].toByte()
+		}
+		return bar
+	}
+	function brtu8(d:ByteArray):Uint8Array{
+		let bar = new Uint8Array(d.size)
+		for(let i = 0;i<d.size;i++){
+			bar[i.toInt()] = d[i.toInt()] & 0xFF
+		}
+		return bar
+	}
+	const result:ByteArray = UniversalCryptoHelper.aesEncrypt2(u8tbr(data),u8tbr(key),mode,iv==null?null:u8tbr(iv),(keySize==null?16:keySize).toInt());
+	
+	return brtu8(result)
+}
+
+/**
+ * DAes
+ * @param {string} key utf8字符串它会根据keySize来截取和补足0
+ * @param {string} data 加密后的base64的字符
+ * @param {string} mode ECB,CBC
+ * @param {string} iv 固定是16位,不足会补齐0
+ * @param {string} keySize 对key的加密补位,也就是加密位数16为128,24为192,32为256
+ */
+export function aesDecrypt(key:string,data : string,mode:string = "ECB",iv:string|null = null,keySize:number|null=null) : string {
+	return UniversalCryptoHelper.aesDecrypt(data,key,mode,iv,(keySize==null?16:keySize).toInt());
+}
+export function aesDecrypt2(key:Uint8Array,data : Uint8Array,mode:string = "ECB",iv:Uint8Array|null = null,keySize:number|null=null) : Uint8Array {
+	
+	function u8tbr(d:Uint8Array):ByteArray{
+		let bar = new ByteArray(d.length.toInt())
+		for(let i = 0;i<d.length;i++){
+			bar[i.toInt()] = d[i.toInt()].toByte()
+		}
+		return bar
+	}
+	function brtu8(d:ByteArray):Uint8Array{
+		let bar = new Uint8Array(d.size)
+		for(let i = 0;i<d.size;i++){
+			bar[i.toInt()] = d[i.toInt()] & 0xFF
+		}
+		return bar
+	}
+	const result:ByteArray = UniversalCryptoHelper.aesDecrypt2(u8tbr(data),u8tbr(key),mode,iv==null?null:u8tbr(iv),(keySize==null?16:keySize).toInt());
+	
+	return brtu8(result);
+}
+
+export function desEncrypt(key:string,data : string,mode:string = "ECB",iv:string|null = null) : string {
+	return UniversalCryptoHelper.desEncrypt(data,key,mode,iv);
+}
+export function desDecrypt(key:string,data : string,mode:string = "ECB",iv:string|null = null) : string {
+	return UniversalCryptoHelper.desDecrypt(data,key,mode,iv);
+}
+
+// 获取公钥和私钥对
+export function generateRSAKeyPair(keySize : number = 2048) : RSARANDOMKEY {
+	const crypt = UniversalCryptoHelper.generateRSAKeyPair(keySize.toInt())
+	return {
+		publicKey: crypt.publicKey,
+		privateKey: crypt.privateKey
+	} as RSARANDOMKEY
+}
+
+export function rsaEncrypt(publicKey:string,data : string) : string {
+	return UniversalCryptoHelper.rsaEncrypt(data,publicKey);
+}
+export function rsaDecrypt(privateKey:string,data : string) : string {
+	return UniversalCryptoHelper.rsaDecrypt(data,privateKey);
+}
+//返回的是hex字符串
+export function rc4Encrypt(key:string,data : string) : string {
+	return UniversalCryptoHelper.rc4Encrypt(data,key);
+}
+// key是hex字符
+export function rc4Decrypt(key:string,data : string) : string {
+	return UniversalCryptoHelper.rc4Decrypt(data,key);
+}

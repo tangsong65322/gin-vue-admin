@@ -1,0 +1,59 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">宫格 Grid</x-text>
+			<x-text color="#999999" >快速导航布局</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-grid :col="4" icon-color="primary" dark-icon-color="primary">
+				<x-grid-item  icon="money-cny-circle-fill" text="摇现金"></x-grid-item>
+				<x-grid-item icon="shopping-bag-fill" text="百亿补贴"></x-grid-item>
+				<x-grid-item icon="price-tag-2-fill" text="活动日历"></x-grid-item>
+				<x-grid-item icon="wallet-3-fill" text="领淘金币"></x-grid-item>
+				<x-grid-item icon="gift-fill" text="会员福利"></x-grid-item>
+				<x-grid-item icon="coupon-5-fill" text="省钱卡"></x-grid-item>
+				<x-grid-item icon="shopping-bag-fill" text="百亿补贴"></x-grid-item>
+				<x-grid-item icon="money-cny-circle-fill" text="摇现金"></x-grid-item>
+			</x-grid>
+		</x-sheet>
+		<x-sheet>
+			<x-grid :col="3" item-height="90" text-color="#333333">
+				<x-grid-item iconColor="danger" icon="money-cny-circle-fill" text="摇现金">
+					<x-badge label="HOT" bg-color="orange">
+						<x-icon name="money-cny-circle-fill" color="danger" font-size="25" class="mb-5"></x-icon>
+						<x-text font-size="13">摇现金</x-text>
+					</x-badge>
+					
+				</x-grid-item>
+				<x-grid-item iconColor="error" icon="shopping-bag-fill" text="百亿补贴"></x-grid-item>
+				<x-grid-item iconColor="warn" icon="price-tag-2-fill" text="活动日历"></x-grid-item>
+				<x-grid-item iconColor="parisviolet" icon="wallet-3-fill" text="领淘金币"></x-grid-item>
+				<x-grid-item >
+					<x-badge :count="36">
+						<x-icon name="gift-fill" color="australiangold" font-size="25" class="mb-5"></x-icon>
+						<x-text  font-size="13">会员福利</x-text>
+					</x-badge>
+				</x-grid-item>
+				<x-grid-item iconColor="success" icon="coupon-5-fill" text="省钱卡"></x-grid-item>
+			</x-grid>
+		</x-sheet>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script lang="uts" setup>
+
+	
+</script>
+
+<style>
+
+</style>

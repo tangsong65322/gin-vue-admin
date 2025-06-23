@@ -1,0 +1,284 @@
+<script lang="ts">
+	import { type PropType } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+
+	/**
+	 * @name 查看更多 xMore
+	 * @description 让内容超过指定高时自动隐藏内容.
+	 * @page /pages/index/more
+	 * @category 展示组件
+	 * @constant平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				boxHeight: 0,
+				opened: false,
+				resizeObserver: null as UniResizeObserver | null,
+			}
+		},
+		emits: [
+			/**
+			 * 状态切换时变换
+			 * @param { boolean } opened - 当前打开的状态
+			 */
+			'change',
+			/**
+			 * 点击展开的按钮时触发
+			 * @param {boolean} opened - 当前打开的状态,可以通过此判断是点打开还是点关闭
+			 */
+			'click',
+			'update:modelValue'
+		],
+		props: {
+			/**
+			 * 组件宽度
+			 */
+			width: {
+				type: String,
+				default: "auto"
+			},
+			/**
+			 * 被关闭时的高度。
+			 */
+			height: {
+				type: String,
+				default: "60"
+			},
+			/**
+			 * 当前打开的状态
+			 */
+			modelValue: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 激活后的文本色,默认是读取全局色
+			 */
+			activeColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 未激活后的文本色
+			 */
+			unActiveColor: {
+				type: String,
+				default: "#a6a6a6"
+			},
+			/**
+			 * 打开和关闭状态的文本
+			 */
+			text: {
+				type: Array as PropType<string[]>,
+				default: () : string[] => ["展开更多", "收起更多"]
+			},
+			/**
+			 * 遮罩的渐变的背景色
+			 */
+			maskBgColor: {
+				type: Array as PropType<string[]>,
+				default: () : string[] => ['rgba(255, 255, 255, 1)', 'rgba(255, 255, 255, 0.3)']
+			},
+			/**
+			 * 暗黑时遮罩的渐变的背景色
+			 */
+			darkMaskBgColor: {
+				type: Array as PropType<string[]>,
+				default: () : string[] => ['rgba(24, 24, 24, 1.0)', 'rgba(24, 24, 24, 0.3)']
+			},
+			/**
+			 * 是否禁用展开。
+			 */
+			disabled: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 是否显示开启和关闭按钮,
+			 * 因为各个手机屏幕可能不一样,可能会根据行数自行决定是否
+			 * 要显示展开和关闭按钮,请通过此自行判断.
+			 */
+			showMoreBtn:{
+				type: Boolean,
+				default: true
+			}
+		},
+		computed: {
+			_showMoreBtn() : boolean {
+				return this.showMoreBtn;
+			},
+			_disabled() : boolean {
+				return this.disabled;
+			},
+			_width() : string {
+				return checkIsCssUnit(this.width, xConfig.unit)
+			},
+			_height() : string {
+				return checkIsCssUnit(this.height, xConfig.unit)
+			},
+			_activeColor() : string {
+				if (this.activeColor == "") return getDefaultColor(xConfig.color);
+				return getDefaultColor(this.activeColor);
+			},
+			_unActiveColor() : string {
+				return getDefaultColor(this.unActiveColor);
+			},
+			
+			_text() : string[] {
+				return this.text
+			},
+			_maskBgColor() : string {
+				if (xConfig.dark == 'dark') {
+					return `linear-gradient(to top, ${this.darkMaskBgColor[0]}, ${this.darkMaskBgColor[1]})`
+				}
+				return `linear-gradient(to top, ${this.maskBgColor[0]}, ${this.maskBgColor[1]})`
+			},
+		},
+		watch: {
+			modelValue(newvalue : boolean) {
+				if (this.opened == newvalue) return;
+				this.getNodeInfo(newvalue);
+			}
+		},
+		mounted() {
+			this.getNodeInfo(this.modelValue)
+			
+			let t = this;
+			let ele = this.$refs['xMoreWrap'] as UniElement
+			// #ifdef APP||WEB
+			if(ele==null) return;
+			if (this.resizeObserver == null) {
+				this.resizeObserver = new UniResizeObserver((entries : Array<UniResizeObserverEntry>) => {
+				  entries.forEach(entry => {
+					if (entry.target == ele) {
+						t.getNodeInfoByreset()
+					}
+				  })
+				})
+			}
+			this.resizeObserver!.observe(ele!)
+			// #endif
+			// #ifdef MP
+			t.getNodeInfoByreset()
+			// #endif
+			
+		},
+		beforeUnmount() {
+			this.resizeObserver?.disconnect()
+		},
+		methods: {
+			getNodeInfoByreset() {
+				uni.createSelectorQuery().in(this)
+					.select(".xMoreWrap")
+					.boundingClientRect().exec((ret) => {
+						let nodeinfo = ret[0] as NodeInfo
+						this.boxHeight = nodeinfo.height!
+					})
+			},
+			getNodeInfo(istrue : boolean) {
+				uni.createSelectorQuery().in(this)
+					.select(".xMoreWrap")
+					.boundingClientRect().exec((ret) => {
+						let nodeinfo = ret[0] as NodeInfo
+						this.boxHeight = nodeinfo.height!
+						this.opened = istrue
+						/**
+						 * 等同v-model
+						 */
+						this.$emit("update:modelValue", istrue)
+					})
+			},
+			onClick() {
+				this.$emit('click', this.opened)
+
+				if (this._disabled) return;
+				let ctrue = !this.opened
+				this.getNodeInfo(ctrue);
+				/**
+				 * 状态切换时变换
+				 * @param opened { boolean } 当前打开的状态
+				 */
+				this.$emit("change", ctrue)
+			}
+		},
+	}
+</script>
+<template>
+	<view>
+		<view class="xMore" :style="{width:_width,height:opened?boxHeight+'px':_height}">
+			<view class="xMoreWrap" ref="xMoreWrap">
+				<!-- 
+				@slot 默认插槽 
+				 -->
+				<slot></slot>
+			</view>
+			<view v-if="!opened&&showMoreBtn" class="xMoreMasker" :style="{'background-image':_maskBgColor}">
+			</view>
+		</view>
+		<view v-if="_showMoreBtn" class="xMoreTextBox" @click="onClick" :disabled="_disabled">
+			<text class="xMoreText" :style="{color:opened? _activeColor:_unActiveColor}">
+				{{opened?_text[1]:_text[0]}}
+			</text>
+			<x-icon font-size="14" :color="opened? _activeColor:_unActiveColor"
+				:name="opened?'arrow-up-s-line':'arrow-down-s-line'"></x-icon>
+		</view>
+	</view>
+</template>
+<style scoped>
+	.xMoreTextBox {
+		/* background-color: rgba(255, 255, 255, 0.8); */
+		padding: 20rpx 0;
+		width: 100%;
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		/* #ifdef WEB */
+		cursor: pointer;
+		/* #endif */
+	}
+
+	/* #ifdef WEB */
+
+	.xMoreTextBox[disabled=true] {
+		cursor: no-drop;
+	}
+
+	/* #endif */
+	.xMoreText {
+		font-size: 14px;
+		color: #a6a6a6;
+		text-align: center;
+	}
+
+	.xMore {
+		overflow: hidden;
+		transition-duration: 350ms;
+		transition-property: height;
+		transition-timing-function: cubic-bezier(0, 0.55, 0.45, 1);
+		position: relative;
+	}
+
+	.xMoreWrap {
+	}
+
+	.xMoreMasker {
+		position: absolute;
+		left: 0px;
+		bottom: 0px;
+		width: 100%;
+		height: 100%;
+		/* background-image: linear-gradient(to top, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0.3)); */
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: flex-end;
+	}
+</style>

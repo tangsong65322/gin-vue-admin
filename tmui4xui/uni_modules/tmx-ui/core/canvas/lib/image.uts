@@ -1,0 +1,197 @@
+import { Shape } from './shape.uts';
+import { IShapeOptional, ShapeSetAttrType } from '../interface.uts';
+import { ICanvas } from '@/uni_modules/tmx-ui/core/canvas/ICanvas.uts';
+
+/**
+ * 图片
+ * @description 注意创建添加完图片后。要通过方法setSrc(xx)来设置加载图片
+ * @version 1.0.0
+ * @date 2025/2/6
+ * @copright 不允许外发给别人，只可在tmui4x是使用
+ */
+export class ImageShape extends Shape {
+	private image : any | null = null;
+	loaded : boolean = false;
+	src : string = '';
+	private srcWidth : number = 0;
+	private srcHeight : number = 0;
+	private cropX : number = 0;
+	private cropY : number = 0;
+	private cropWidth : number = 0;
+	private cropHeight : number = 0;
+	private useCrop : boolean = false;
+	private canvasContext : CanvasContext;
+
+	constructor(src : string, config : IShapeOptional,canvas:ICanvas) {
+		super(config,canvas);
+		this.canvasContext = canvas.canvas!
+		this.src = src;
+		this.type = 'ImageShape';
+		if (this.visible) {
+			this.setSrc(this.src)
+		}
+	}
+
+	setSrc(src : string) : ImageShape {
+		if (!this.visible) return this;
+		this.src = src;
+		this.loaded = false;
+		if (this.src != '') {
+			this.loadImage();
+		}
+		return this;
+	}
+
+	private loadImage() : void {
+		if (this.loaded) return;
+		const image = this.canvasContext.createImage();
+		image.src = this.src;
+		let _this = this;
+		image.onload = () => {
+			_this.image = image;
+			_this.loaded = true;
+			if (_this.width == 0) _this.width = image.width;
+			if (_this.height == 0) _this.height = image.height;
+			_this.srcWidth = image.width;
+			_this.srcHeight = image.height;
+			_this.needsUpdate = true;
+			_this.canvas.update()
+		};
+	
+
+	}
+
+	crop(x : number, y : number, width : number, height : number) : ImageShape {
+		this.cropX = x;
+		this.cropY = y;
+		this.cropWidth = width;
+		this.cropHeight = height;
+		this.useCrop = true;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	resetCrop() : ImageShape {
+		this.useCrop = false;
+		this.needsUpdate = true;
+		return this;
+	}
+
+	override draw(ctx : CanvasRenderingContext2D) : void {
+
+		if (!this.loaded || this.image == null) return;
+		super.draw(ctx);
+
+		// #ifdef APP||WEB
+		if (this.useCrop) {
+			ctx.drawImage(
+				this.image! as Image,
+				this.cropX,
+				this.cropY,
+				this.cropWidth,
+				this.cropHeight,
+				this.x,
+				this.y,
+				this.width,
+				this.height
+			);
+		} else {
+			ctx.drawImage(
+				this.image! as Image,
+				this.x,
+				this.y,
+				this.width,
+				this.height
+			);
+		}
+		// #endif
+		// #ifdef MP
+		if (this.useCrop) {
+			ctx.drawImage(
+				this.image!,
+				this.cropX,
+				this.cropY,
+				this.cropWidth,
+				this.cropHeight,
+				this.x,
+				this.y,
+				this.width,
+				this.height
+			);
+		} else {
+			ctx.drawImage(
+				this.image!,
+				this.x,
+				this.y,
+				this.width,
+				this.height
+			);
+		}
+		// #endif
+
+		ctx.restore()
+	}
+
+	override isPointInPath(x : number, y : number, shapeId : string) : boolean {
+		if (!this.visible || !this.loaded || (shapeId != "" && shapeId != this.id)) return false;
+
+		const realX = x - this.x - this.offsetX;
+		const realY = y - this.y - this.offsetY;
+
+		if (this.rotation != 0) {
+			const angle = -this.rotation * Math.PI / 180;
+			const cos = Math.cos(angle);
+			const sin = Math.sin(angle);
+			let centerX = 0;
+			let centerY = 0;
+			
+			// 根据不同的旋转中心点设置centerX和centerY
+			switch(this.rotateCenter) {
+				case 'topLeft':
+					centerX = 0;
+					centerY = 0;
+					break;
+				case 'topRight':
+					centerX = this.width;
+					centerY = 0;
+					break;
+				case 'bottomLeft':
+					centerX = 0;
+					centerY = this.height;
+					break;
+				case 'bottomRight':
+					centerX = this.width;
+					centerY = this.height;
+					break;
+				case 'center':
+				default:
+					centerX = this.width/2;
+					centerY = this.height/2;
+					break;
+			}
+			
+			const dx = realX - centerX;
+			const dy = realY - centerY;
+			const rotatedX = centerX + dx * cos - dy * sin;
+			const rotatedY = centerY + dx * sin + dy * cos;
+			return rotatedX >= 0 && rotatedX <= this.width * this.scaleX && rotatedY >= 0 && rotatedY <= this.height * this.scaleY;
+		}
+
+		return realX >= 0 && realX <= this.width * this.scaleX && realY >= 0 && realY <= this.height * this.scaleY;
+	}
+	
+	override getAttr(key: string): any | null {
+		const superValue = super.getAttr(key);
+		if(superValue!=null) return superValue;
+		switch (key) {
+			case 'src': return this.src;
+			case 'cropX': return this.cropX;
+			case 'cropY': return this.cropY;
+			case 'cropWidth': return this.cropWidth;
+			case 'cropHeight': return this.cropHeight;
+			case 'useCrop': return this.useCrop;
+			default: return null;
+		}
+	}
+
+}

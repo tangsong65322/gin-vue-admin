@@ -1,0 +1,18 @@
+	/**
+	 * 侧边分类数据
+	 */
+	export type SLIDER_TREE_ITEM = {
+		id : string,
+		title : string,
+		children : SLIDER_TREE_ITEM[],
+		disabled : boolean,
+		/** 当前选中的id数组 */
+		selected : string[],
+		checked:boolean
+	}
+	
+	export type NODES_PATH_MENU_TYPE = {
+		indexPath:number[],
+		ids:string[],
+		pathData:SLIDER_TREE_ITEM[]
+	}

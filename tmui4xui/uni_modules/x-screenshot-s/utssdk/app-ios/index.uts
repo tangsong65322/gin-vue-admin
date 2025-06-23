@@ -1,0 +1,58 @@
+import { UIButton, UIControl, UIImage, UIView, UIImageView, UIImageWriteToSavedPhotosAlbum, UIGraphicsImageRenderer } from "UIKit";
+import { URL, FileManager, NSAttributedString } from 'Foundation';
+function savePhotoTocache(image : UIImage) : string {
+	let fileid = Math.random().toString(16).substring(2, 11);
+	let userDir = FileManager.default.urls(for = FileManager.SearchPathDirectory.cachesDirectory, in = FileManager.SearchPathDomainMask.userDomainMask).first!
+	let filename = fileid + '.jpg';
+	let destinationURL = userDir.appendingPathComponent(filename)
+	let imageData = image.jpegData(compressionQuality = 1);
+	let real = UTSiOS.try(imageData!.write(to = destinationURL), "?");
+	if (real == null) return ""
+	return destinationURL.path
+}
+function getScreenImage(callback : (str : string) => void) {
+	if (UTSiOS.available("iOS 10.0, *")) {
+		let parent = UTSiOS.getCurrentViewController() as UIViewController;
+		let rootView = parent.view as UIView
+		let renderer = new UIGraphicsImageRenderer(size = rootView.bounds.size);
+		renderer.image(actions = (context : UIGraphicsImageRendererContext) => {
+			rootView.drawHierarchy(in = rootView.bounds, afterScreenUpdates = true)
+			let image = context.currentImage
+			callback(savePhotoTocache(image))
+		})
+	}
+
+}
+/**
+ * 获取窗口截图
+ */
+export function getRootShotImage(callback : (str : string) => void) {
+	getScreenImage((str : string) => {
+		callback(str)
+	})
+}
+/**
+ * 获取指定元素截图
+ */
+export function getElementShotImage(ele:UniElement|null, callback : (str : string) => void) {
+	if (ele == null) {
+		callback("")
+		return;
+	}
+	let view = ele!.getIOSView() as UIView | null;
+	if (view == null) {
+		callback("")
+		return;
+	}
+	let rootView = view! as UIView;
+	if (UTSiOS.available("iOS 10.0, *")) {
+		let renderer = new UIGraphicsImageRenderer(size = rootView.bounds.size);
+		renderer.image(actions = (context : UIGraphicsImageRendererContext) => {
+			rootView.drawHierarchy(in = rootView.bounds, afterScreenUpdates = true)
+			let image = context.currentImage
+			callback(savePhotoTocache(image))
+			// UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
+		})
+	}
+	
+}

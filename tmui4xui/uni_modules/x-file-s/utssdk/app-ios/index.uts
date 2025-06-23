@@ -1,0 +1,197 @@
+import { xFileSListType,fileListType } from "../interface"
+import { UIDocumentPickerViewController, UIDocumentPickerMode, UIDocumentPickerDelegate, UIViewController } from "UIKit"
+import { URL, URLResourceKey, URLResourceValues, Data, FileManager } from "Foundation"
+import { UTType } from "UniformTypeIdentifiers"
+import Swift from "Swift"
+
+function getUid(rdix = 1, length = 12) : string {
+	let ix = "";
+	// #ifdef APP
+	ix = Math.floor(Math.random() * rdix * Math.floor(Math.random() * Date.now())).toString().substring(0, length as Int);
+	// #endif
+	return ix;
+}
+let filelistAll = [] as fileListType[]
+export class xFileSystem {
+
+	mimeTypeFilter : string[] = []
+
+	filelist = [] as fileListType[]
+	multiple : boolean = true;
+	actionSeleCtedFiles : ActionsClass | null = null
+	maxFileSize = 30 * 1024 * 1024;
+	constructor(typeFilter : string[] | null, tempmultiple : boolean | null, maxSize : number | null) {
+		if (typeFilter != null) {
+			let tms = typeFilter! as string[];
+			this.mimeTypeFilter = tms;
+
+		}
+		if (tempmultiple != null) {
+			let tm = tempmultiple as boolean;
+			this.multiple = tm
+		}
+		if (maxSize != null) {
+			this.maxFileSize = maxSize!
+		}
+	}
+	destory(){
+		
+	}
+	openDocument(callfun : (list : any) => void) {
+		let _this = this;;
+		DispatchQueue.main.async(execute = () : void => {
+			_this.actionSeleCtedFiles = new ActionsClass((files : URL[]) => {
+				let keysToFetch = new Swift.Set<URLResourceKey>();
+				keysToFetch.insert(URLResourceKey.totalFileAllocatedSizeKey)
+				// 获得当前用户的缓存目录路径主目录。
+				let userDir = FileManager.default.urls(for = FileManager.SearchPathDirectory.cachesDirectory, in = FileManager.SearchPathDomainMask.userDomainMask).first!
+				
+				for (let item in files) {
+					let ditem = item;
+					
+					try {
+						let ds = UTSiOS.try(ditem.resourceValues(forKeys = keysToFetch), "?")
+					
+						if (ds != null) {
+							let fSize = ds?.totalFileAllocatedSize ?? 0
+							let fName = ditem.lastPathComponent;
+							let fPath = ditem.absoluteString;
+							let fType = fName.substring((fName.lastIndexOf('.') + 1).toInt())
+							let realFilePath = ''
+							let cacheFilePath = fPath
+							let status = 0
+							let ifleid = getUid(1, 8);
+							let tempath = UTSiOS.getDataPath() as string
+
+							let destinationFileName = ifleid + "." + fType
+							let destinationURL = userDir.appendingPathComponent(destinationFileName)
+
+							let real = UTSiOS.try(FileManager.default.copyItem(at = ditem, to = destinationURL), "?");
+							let itemobj = {
+								name: fName,
+								type: fType,
+								id: ifleid,
+								uri:"",
+								realFilePath: destinationFileName,
+								cacheFilePath: destinationFileName,
+								size: fSize,
+								status: fSize > _this.maxFileSize ? 4 : 0
+
+							} as fileListType;
+							
+							if(!_this.isInfilelist(itemobj)){
+						
+								_this.filelist.push(itemobj)
+								filelistAll.push(itemobj)
+							}
+							
+						}
+					} catch (e) {
+						//TODO handle the exception
+						
+					}
+				}
+			
+				let list = [] as string[]
+				for (file in _this.filelist) {
+					list.push(JSON.stringify(file)!)
+				}
+				callfun(JSON.stringify(list))
+				_this.filelist = [] as fileListType[]
+
+			})
+			try {
+				if (UTSiOS.available("iOS 14.0, *")) {
+					let filter : UTType[] = [] as UTType[];
+					for (let i = 0; i < _this.mimeTypeFilter.length; i++) {
+						let contentType = new UTType(filenameExtension = _this.mimeTypeFilter[i])
+						if (contentType != null) {
+							filter.push(new UTType(filenameExtension = _this.mimeTypeFilter[i])!)
+						}
+					}
+					if(filter.length==0){
+						filter.push(UTType.item)
+					}
+
+					let documentPickerController = new UIDocumentPickerViewController(forOpeningContentTypes = filter,asCopy = true)
+					documentPickerController.delegate = _this.actionSeleCtedFiles
+					documentPickerController.allowsMultipleSelection = _this.multiple // 是否允许选择多个文件
+					UTSiOS.getCurrentViewController().present(documentPickerController, animated = true, completion = null)
+				} else {
+					let documentPickerController = new UIDocumentPickerViewController(documentTypes = ['public.data'], in = UIDocumentPickerMode.import)
+					documentPickerController.delegate = _this.actionSeleCtedFiles
+					documentPickerController.allowsMultipleSelection = _this.multiple // 是否允许选择多个文件
+					UTSiOS.getCurrentViewController().present(documentPickerController, animated = true, completion = null)
+				}
+
+
+			} catch (e) {
+				console.error(e)
+			}
+		})
+
+	}
+	//读取文件
+	copyFileToPath(item : xFileSListType, basedir : string) : string {
+		// let filepath = ''
+		// for (file in this.filelist) {
+		// 	if (file.id == id) {
+		// 		filepath = file.cacheFilePath
+		// 		break;
+		// 	}
+		// }
+		return item.cacheFilePath;
+	}
+	isInfilelist(file:fileListType):boolean{
+		return filelistAll.some((el):boolean=>{
+			return el.name==file.name&&el.type==file.type
+		})
+	}
+	/**
+	 * 返回一个空文件列表数组
+	 */
+	clear():fileListType[]{
+		filelistAll = [] as fileListType[];
+		this.filelist = [] as fileListType[];
+		return [] as fileListType[]
+	}
+	// ios不作删除自行管理缓存文件。
+	remove(id : string) : fileListType[] {
+		let index = -1;
+		for(let i=0;i<filelistAll.length;i++){
+			let item = filelistAll[i]
+			if(item.id==id){
+				filelistAll.splice(i,1)
+				break;
+			}
+		}
+		return filelistAll.map((el):fileListType=>{
+			return {
+				name:el.name,
+				type:el.type,
+				id:el.id,
+				uri:'',
+				realFilePath:el.realFilePath,
+				cacheFilePath:el.cacheFilePath,
+				size:el.size,
+				status:el.status
+			} as fileListType
+		});
+	}
+}
+
+@MainActor
+class ActionsClass implements UIDocumentPickerDelegate {
+	callSuccessFiles = (files : URL[]) => { }
+	constructor(call : (files : URL[]) => void) {
+		super()
+		this.callSuccessFiles = call;
+	}
+	documentPicker(controller : UIDocumentPickerViewController, @argumentLabel("didPickDocumentsAt") urls : URL[]) {
+
+		this.callSuccessFiles(urls)
+	}
+	documentPickerWasCancelled(controller : UIDocumentPickerViewController) {
+		console.log("User cancelled the document picker")
+	}
+}

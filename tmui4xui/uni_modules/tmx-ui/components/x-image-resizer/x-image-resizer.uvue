@@ -1,0 +1,1037 @@
+<template>
+	<view class="xImageResizer" @touchstart="conStart" @touchmove="conMove" @touchend="conEnd"
+	<!-- #ifdef WEB -->
+	@mousedown="conStartByweb"
+	@mousewheel="conwheelByweb"
+	<!-- #endif -->
+	>
+
+		<image v-if="isLoadImg" :style="{
+			 width:imginfoNow.width+'px',
+			 height:imginfoNow.height+'px',
+			 top:imginfoNow.top+'px',
+			 left:imginfoNow.left+'px',
+			 transitionDuration:isMovingImg||jiaoIsMoving||isMouseWheeling?'0ms':'250ms',
+			 transform:`scale(${horizontal},${vertical})`
+		 }" class="xImageResizerImage" ref="imagedom" :src="_src">
+		</image>
+		<!-- 裁剪框 -->
+		<view class="xImageResizerRect" :style="{
+			width:maskSize.width+'px',
+			height:maskSize.height+'px',
+			top:maskSize.top+'px',
+			left:maskSize.left+'px',
+			transitionDuration:jiaoIsMoving||firstInit?'0ms':'300ms'
+		}">
+			<view class="xImageResizerRectCont" :style="{opacity:jiaoIsMoving?'1':'0.5'}">
+				<!-- 横向线1 -->
+				<view :style="{opacity:jiaoIsMoving?'1':'0'}" class="xImageResizerLine1 xImageResizerLine"></view>
+				<!-- 横向线2 -->
+				<view :style="{opacity:jiaoIsMoving?'1':'0'}" class="xImageResizerLine2 xImageResizerLine"></view>
+				<!-- 竖向线1 -->
+				<view :style="{opacity:jiaoIsMoving?'1':'0'}" class="xImageResizerLine3 xImageResizerLine"></view>
+				<!-- 竖向线2 -->
+				<view :style="{opacity:jiaoIsMoving?'1':'0'}" class="xImageResizerLine4 xImageResizerLine"></view>
+			</view>
+			<!-- 左上 -->
+			<view 
+				
+				@touchstart="jiaoMstart(($event as UniTouchEvent),0)"
+				@touchmove="jiaoMmove(($event as UniTouchEvent),0)" 
+				@touchend="jiaoMend(($event as UniTouchEvent),0)"
+				
+				<!-- #ifdef WEB -->
+				@mousedown="jiaoMstartByweb(($event as UniMouseEvent),0)"
+				<!-- #endif -->
+				class="xImageRItem xImageRItem_lefttop"
+				></view>
+			<!-- 右上 -->
+			<view @touchstart="jiaoMstart(($event as UniTouchEvent),1)"
+				@touchmove="jiaoMmove(($event as UniTouchEvent),1)" @touchend="jiaoMend(($event as UniTouchEvent),1)"
+				
+				<!-- #ifdef WEB -->
+				@mousedown="jiaoMstartByweb(($event as UniMouseEvent),1)"
+				<!-- #endif -->
+				
+				class="xImageRItem xImageRItem_righttop"></view>
+			<!-- 右下 -->
+			<view @touchstart="jiaoMstart(($event as UniTouchEvent),2)"
+				@touchmove="jiaoMmove(($event as UniTouchEvent),2)" @touchend="jiaoMend(($event as UniTouchEvent),2)"
+				<!-- #ifdef WEB -->
+				@mousedown="jiaoMstartByweb(($event as UniMouseEvent),2)"
+				<!-- #endif -->
+				class="xImageRItem xImageRItem_bottomright"></view>
+			<!-- 左下 -->
+			<view @touchstart="jiaoMstart(($event as UniTouchEvent),3)"
+				@touchmove="jiaoMmove(($event as UniTouchEvent),3)" @touchend="jiaoMend(($event as UniTouchEvent),3)"
+				<!-- #ifdef WEB -->
+				@mousedown="jiaoMstartByweb(($event as UniMouseEvent),3)"
+				<!-- #endif -->
+				class="xImageRItem xImageRItem_bottomleft">
+			</view>
+
+		</view>
+
+
+		<!-- canvas裁剪. -->
+		<canvas 
+		v-if="showCanvas" 
+		:key="canvasIdKey"
+		:style="{
+			width:maskSize.width+'px',
+			height:maskSize.height+'px',
+			top:maskSize.top+'px',
+			left:maskSize.left+'px',
+		}" :id="canvasUid" ref="xImageResizerViewCanvas" class="xImageResizerViewCanvas"></canvas>
+		<view class="xImageResizerViewFooter">
+			<view class="xImageResizerCell">
+				<view style="display: flex;flex-direction: row;" >
+					<view 
+					@touchend.stop="toogleDir('h')" 
+					@click.stop="toogleDirByweb('h')"
+					>
+						<x-icon font-size="24" color="white" :name="horizontal==-1?'flip-horizontal-2-fill':'flip-horizontal-2-line'"></x-icon>
+					</view>
+					<view 
+					@touchend.stop="toogleDir('v')"  
+					@click.stop="toogleDirByweb('v')"
+					>
+						<x-icon style="margin:0 16px" font-size="24" color="white" :name="vertical==-1?'flip-vertical-2-fill':'flip-vertical-2-line'"></x-icon>
+					</view>
+				</view>
+				<view @touchend.stop="reset" @click.stop="reset">
+					<x-text color="white">还原</x-text>
+				</view>
+			</view>
+			<view class="xImageResizerCell">
+				<view 
+				@touchend.stop="cancel" 
+				@click.stop="cancelByweb"
+				>
+					<x-text color="white">取消</x-text>
+				</view>
+				<view 
+				@touchend.stop="confirm" 
+				@click.stop="confirmByweb"
+				>
+					<x-text color="white">完成</x-text>
+				</view>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script setup lang="ts">
+
+	
+	import { ref, Ref, reactive } from "vue";
+	import { xSIZE, xPOINT, xImageInfo, xSIZEiMage, translateScalePosition, alignImageToFrame, calculatePinchZoom, xCalculatePinchZoomOpts,maskRatioScaleToPhotoSizePosition } from "./resizemtx";
+	import {toPngFile} from "@/uni_modules/x-base642file-s"
+	
+	/**
+	 * @name 图片裁剪 xImageResizer
+	 * @description 兼容PC操作，可双指缩放，单指平移，翻转，也可支持电脑端滚轮缩放，鼠标平移，裁剪框四角缩放，功能齐全，操作方便。
+	 * web端裁剪后返回的是Base64数据，其它端是文件连接。
+	 * @page /pages/index/color-view
+	 * @category 其它组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	defineOptions({ name: "xImageResizer" })
+	const emits = defineEmits<{
+		/**
+		 * 确认时返回文件
+		 * ios,安卓返回的是缓存文件路径
+		 * web返回的是Bolb文件对象
+		 * 微信返回的是base64图片数据
+		 */
+		(e : 'confirm',filepath:any):void,
+		/**
+		 * 取消裁剪时触
+		 */
+		(e : 'cancel'):void,
+	}>()
+	const props = defineProps({
+		/**
+		 * 裁剪框宽，px单位，裁剪后的图片不是这个大小，而是按比例缩放
+		 */
+		cropWidth: {
+			type: Number,
+			default: 300
+		},
+		/**
+		 * 裁剪框高，px单位，裁剪后的图片不是这个大小，而是按比例缩放
+		 */
+		cropHeight: {
+			type: Number,
+			default: 300
+		},
+		/**
+		 * 压缩质量0-1
+		 */
+		compress:{
+			type:Number,
+			default:1
+		},
+		/**
+		 * 待裁剪的图片，任意地址，网络（web要注意跨域），本地地址，相对地址均可。
+		 */
+		src:{
+			type:String,
+			default:'http://gips1.baidu.com/it/u=1971954603,2916157720&fm=3028&app=3028&f=JPEG&fmt=auto?w=1920&h=2560'
+		}
+	})
+	// @ts-igonre
+	const _src = computed(():string=>props.src)
+	const proxy = getCurrentInstance()?.proxy
+	const jiaoIsMoving = ref(false)
+	const isLoadImg = ref(false)
+	const isMovingImg = ref(false)
+	const isMouseWheeling = ref(false)
+	const touchlen = ref<any>({})
+	const firstInit = ref(true)
+	const canvasUid = 'xImage_'+(Math.random().toString(16).substring(2,8))
+	let nowMoveJiaoIndex = 0
+	const backmaskSize = {
+		width: 200,
+		height: 300,
+		top: 0,
+		left: 0,
+		scale: 1
+	} as xSIZEiMage
+	const horizontal = ref(1)
+	const vertical = ref(1)
+	const imginfo = reactive<xImageInfo>({
+		width: 0,
+		height: 0,
+		top: 0,
+		left: 0,
+		src: _src.value,
+	})
+	const maskSize = reactive<xSIZE>({
+		width: 200,
+		height: 300,
+		top: 0,
+		left: 0
+	})
+	const imginfoNow = reactive<xSIZEiMage>({
+		width: 0,
+		height: 0,
+		top: 0,
+		left: 0,
+		scale: 1
+	})
+	const parent = reactive<xSIZE>({
+		width: 0,
+		height: 0,
+		top: 0,
+		left: 0
+	})
+	// 最小操作按钮宽高
+	const barMinSize = 64
+	const showCanvas = ref(false)
+	const canvasIdKey = ref(1)
+	const mousewheelTimeId = ref(1)
+
+	const nowPoniter = reactive<xPOINT>({ x: 0, y: 0 })
+	//原始的点击时的最开始的坐标.
+	const nowOriPoniter = reactive<xPOINT>({ x: 0, y: 0 })
+	let nowPinchOpts = {
+		initialPoints: [] as xPOINT[],
+		currentPoints: [] as xPOINT[],
+		originWidth: 0,
+		originHeight: 0,
+		cropWidth: 0,
+		cropHeight: 0,
+		initialScale: 0,
+		width: 0,
+		height: 0,
+		top: 0,
+		left: 0,
+		scale: 0
+	} as xCalculatePinchZoomOpts
+	const setDefaultMaskPosition = () => {
+
+		let top_mask = (parent.height - backmaskSize.height) / 2
+		let left_mask = (parent.width - backmaskSize.width) / 2
+		backmaskSize.top = top_mask
+		backmaskSize.left = left_mask
+		maskSize.top = top_mask
+		maskSize.left = left_mask
+		maskSize.width = backmaskSize.width
+		maskSize.height = backmaskSize.height
+		isLoadImg.value = false
+
+		uni.getImageInfo({
+			src: _src.value,
+			success(res) {
+				imginfo.width = res.width
+				imginfo.height = res.height
+				imginfoNow.width = res.width
+				imginfoNow.height = res.height
+				imginfo.src = res.path
+				translateScalePosition(imginfo, imginfoNow, maskSize, parent)
+				isLoadImg.value = true
+				backmaskSize.scale = imginfoNow.scale
+				firstInit.value = true;
+			},
+			fail() {
+
+			}
+		})
+	}
+	const toogleDir = (type:string)=>{
+		// #ifdef WEB
+		let isMobile = /Android|webOS|iPhone|iPod|BlackBerry/i.test(window.navigator.userAgent)
+		if(!isMobile) return;
+		// #endif
+		
+		if(type=='h'){
+			horizontal.value =horizontal.value ==-1?1:-1
+		}else{
+			vertical.value =vertical.value ==-1?1:-1
+		}
+	}
+	const toogleDirByweb = (type:string)=>{
+		
+		// #ifdef WEB
+		let isMobile = /Android|webOS|iPhone|iPod|BlackBerry/i.test(window.navigator.userAgent)
+		if(isMobile) return;
+		if(type=='h'){
+			horizontal.value =horizontal.value ==-1?1:-1
+		}else{
+			vertical.value =vertical.value ==-1?1:-1
+		}
+		// #endif
+	}
+	const jiao_start = (x:number,y:number,index:number)=>{
+		nowPoniter.x = x
+		nowPoniter.y = y
+		nowOriPoniter.x = x
+		nowOriPoniter.y = y
+	}
+	
+	const jiao_move= (x:number,y:number,index:number)=>{
+		let diffx = x - nowPoniter.x
+		let diffy = y - nowPoniter.y
+		let minHeight = barMinSize / (backmaskSize.width/backmaskSize.height)
+		let maxleft = (parent.width - backmaskSize.width)/2
+		let maxright = (parent.width - backmaskSize.width)/2 + backmaskSize.width - barMinSize
+		let maxtop = (parent.height - backmaskSize.height)/2
+		let maxbottom = (parent.height - backmaskSize.height)/2 + backmaskSize.height - minHeight
+		if (index == 0) {
+			let difflen = diffy
+			if (Math.abs(diffx) > Math.abs(diffy)) {
+				difflen = diffx
+			}
+		
+			if (maskSize.width >= backmaskSize.width) {
+				difflen = Math.max(0, difflen)
+			}
+			if (maskSize.width <= barMinSize) {
+				difflen = Math.min(difflen, maskSize.width - barMinSize)
+			}
+			if (maskSize.height <= barMinSize) {
+				difflen = Math.min(difflen, maskSize.height - minHeight)
+			}
+		
+			let width = maskSize.width - difflen
+			let height = maskSize.height - difflen
+		
+			width = Math.max(barMinSize, Math.min(width, backmaskSize.width))
+			height = Math.max(minHeight, Math.min(height, backmaskSize.height))
+		
+		
+			maskSize.width = width
+			maskSize.height = height
+			
+			maskSize.top = Math.max(Math.min(maskSize.top + difflen,maxbottom),maxtop)
+			maskSize.left = Math.max(Math.min(maskSize.left + difflen,maxright),maxleft)
+		}
+		if (index == 1) {
+			let difflen = diffy
+			// if(Math.abs(diffx)>Math.abs(diffy)){
+			// 	difflen = diffx
+			// }
+		
+			if (maskSize.width >= backmaskSize.width) {
+				difflen = Math.max(0, difflen)
+			}
+		
+			if (maskSize.width <= barMinSize) {
+				difflen = Math.min(difflen, maskSize.width - barMinSize)
+			}
+			if (maskSize.height <= barMinSize) {
+				difflen = Math.min(difflen, maskSize.height - minHeight)
+			}
+		
+			let width = maskSize.width - difflen
+			let height = maskSize.height - difflen
+		
+			width = Math.max(barMinSize, Math.min(width, backmaskSize.width))
+			height = Math.max(minHeight, Math.min(height, backmaskSize.height))
+		
+		
+			maskSize.width = width
+			maskSize.height = height
+		
+			maskSize.top = Math.max(Math.min(maskSize.top + difflen,maxbottom),maxtop)
+			// maskSize.left = maskSize.left - difflen
+		}
+		if (index == 2) {
+			let difflen = diffy
+			if (Math.abs(diffx) > Math.abs(diffy)) {
+				difflen = diffx
+			}
+			
+			// if (maskSize.width <= barMinSize) {
+			// 	difflen = Math.max(difflen, barMinSize)
+			// }
+			// if (maskSize.height <= barMinSize) {
+			// 	difflen = Math.max(difflen, minHeight)
+			// }
+			
+			let width = maskSize.width + difflen
+			let height = maskSize.height + difflen
+			width = Math.max(barMinSize, Math.min(width, backmaskSize.width))
+			height = Math.max(minHeight, Math.min(height, backmaskSize.height))
+			maskSize.width = width
+			maskSize.height = height
+		}
+		if (index == 3) {
+			let difflen = diffx
+			if (maskSize.width >= backmaskSize.width) {
+				difflen = Math.max(0, difflen)
+			}
+			if (maskSize.width <= barMinSize) {
+				difflen = Math.min(difflen, maskSize.width - barMinSize)
+			}
+			if (maskSize.height <= barMinSize) {
+				difflen = Math.min(difflen, maskSize.height - minHeight)
+			}
+			let width = maskSize.width - difflen
+			let height = maskSize.height - difflen
+			width = Math.max(barMinSize, Math.min(width, backmaskSize.width))
+			height = Math.max(minHeight, Math.min(height, backmaskSize.height))
+		
+			maskSize.width = width
+			maskSize.height = height
+			// maskSize.top = maskSize.top + difflen
+			
+			maskSize.left = Math.max(Math.min(maskSize.left + difflen,maxright),maxleft)
+		}
+		
+		nowPoniter.x = x
+		nowPoniter.y = y
+	}
+	
+	const jiaoMstart = (evt : UniTouchEvent, index : number) => {
+		evt.preventDefault()
+		evt.stopPropagation()
+		showCanvas.value = false;
+		if (evt.touches.length == 2) return;
+		jiaoIsMoving.value = true;
+		jiao_start(evt.changedTouches[0].clientX,evt.changedTouches[0].clientY,index)
+	}
+	const jiaoMmove = (evt : UniTouchEvent, index : number) => {
+		evt.preventDefault()
+		evt.stopPropagation()
+		if (!jiaoIsMoving.value || evt.touches.length == 2) return;
+		jiao_move(evt.changedTouches[0].clientX,evt.changedTouches[0].clientY,index)
+	}
+	const jiaoMend = (evt : UniTouchEvent, index : number) => {
+		evt.preventDefault()
+		evt.stopPropagation()
+		if (!jiaoIsMoving.value || evt.touches.length == 2) {
+			jiaoIsMoving.value = false;
+			return;
+		}
+		// jiaoIsMoving.value = false;
+		let diffx = evt.changedTouches[0].clientX - nowOriPoniter.x
+		let diffy = evt.changedTouches[0].clientY - nowOriPoniter.y
+
+		if (diffx == diffy && diffx == 0) {
+			jiaoIsMoving.value = false;
+			return;
+		}
+		// setDefaultMaskPosition()
+		maskRatioScaleToPhotoSizePosition(backmaskSize,maskSize,imginfo,imginfoNow,index)
+		
+		setTimeout(function() {
+			jiaoIsMoving.value = false;
+		}, 40);
+	}
+
+	// #ifdef WEB
+	const jiaoMstartByweb = (evt : UniMouseEvent, index : number) => {
+		evt.preventDefault()
+		evt.stopPropagation()
+		showCanvas.value = false;
+		jiaoIsMoving.value = true;
+		nowMoveJiaoIndex = index
+		jiao_start(evt.clientX,evt.clientY,index)
+		
+	}
+	const jiao_moveByweb = (evt : UniMouseEvent, index : number) => {
+		evt.preventDefault()
+		evt.stopPropagation()
+		if (!jiaoIsMoving.value) return;
+		
+		jiao_move(evt.clientX,evt.clientY,nowMoveJiaoIndex)
+	}
+	const jiao_endByweb = (evt : UniMouseEvent, index : number) => {
+		evt.preventDefault()
+		evt.stopPropagation()
+		if (!jiaoIsMoving.value) {
+			jiaoIsMoving.value = false;
+			return;
+		}
+		let diffx = evt.clientX - nowOriPoniter.x
+		let diffy = evt.clientY - nowOriPoniter.y
+		
+		if (diffx == diffy && diffx == 0) {
+			jiaoIsMoving.value = false;
+			return;
+		}
+		// setDefaultMaskPosition()
+		
+		maskRatioScaleToPhotoSizePosition(backmaskSize,maskSize,imginfo,imginfoNow,nowMoveJiaoIndex)
+		setTimeout(function() {
+			jiaoIsMoving.value = false;
+		}, 10);
+	}
+	
+	
+	document.body.addEventListener('mousemove',jiao_moveByweb)
+	document.body.addEventListener('mouseup',jiao_endByweb)
+	document.body.addEventListener('mouseleave',jiao_endByweb)
+	
+	// #endif
+
+	const conStart_start = (x:number,y:number)=>{
+		nowPoniter.x = x
+		nowPoniter.y = y
+		nowOriPoniter.x = x
+		nowOriPoniter.y = y
+	}
+	const conStart_move = (x:number,y:number)=>{
+		let diffx = x - nowPoniter.x
+		let diffy = y - nowPoniter.y
+		
+		imginfoNow.top = diffy + imginfoNow.top
+		imginfoNow.left = diffx + imginfoNow.left
+		
+		nowPoniter.x = x
+		nowPoniter.y = y
+	}
+	const conStart_end = (x:number,y:number)=>{
+		let diffx = x - nowOriPoniter.x
+		let diffy = y- nowOriPoniter.y
+		
+		if (diffx == diffy && diffx == 0) return;
+		
+		let resultAlign = alignImageToFrame(imginfoNow, maskSize)
+		
+		imginfoNow.left = resultAlign.left
+		imginfoNow.top = resultAlign.top
+	}
+	const conStart = (evt : UniTouchEvent) => {
+		evt.preventDefault()
+		evt.stopPropagation()
+		showCanvas.value = false;
+		isMovingImg.value = true;
+		if (evt.touches.length == 2) {
+			nowPinchOpts = {
+				initialPoints: [
+					{ x: evt.touches[0].clientX, y: evt.touches[0].clientY } as xPOINT,
+					{ x: evt.touches[1].clientX, y: evt.touches[1].clientY } as xPOINT,
+				] as xPOINT[],
+				currentPoints: [
+					{ x: evt.touches[0].clientX, y: evt.touches[0].clientY } as xPOINT,
+					{ x: evt.touches[1].clientX, y: evt.touches[1].clientY } as xPOINT,
+				] as xPOINT[],
+				width: imginfoNow.width,
+				height: imginfoNow.height,
+				originWidth: imginfo.width,
+				originHeight: imginfo.height,
+				cropWidth: maskSize.width,
+				cropHeight: maskSize.height,
+				initialScale: backmaskSize.scale,
+				top: imginfoNow.top,
+				left: imginfoNow.left,
+				scale: imginfoNow.scale
+			} as xCalculatePinchZoomOpts
+
+			return;
+		}
+	
+		conStart_start(evt.changedTouches[0].clientX,evt.changedTouches[0].clientY)
+	}
+	const conMove = (evt : UniTouchEvent) => {
+		if (!isMovingImg.value) return;
+		evt.preventDefault()
+		evt.stopPropagation()
+
+		if (evt.touches.length == 2) {
+			nowPinchOpts = {
+				initialPoints: nowPinchOpts.initialPoints,
+				currentPoints: [
+					{ x: evt.touches[0].clientX, y: evt.touches[0].clientY } as xPOINT,
+					{ x: evt.touches[1].clientX, y: evt.touches[1].clientY } as xPOINT,
+				] as xPOINT[],
+				width: imginfoNow.width,
+				height: imginfoNow.height,
+				originWidth: imginfo.width,
+				originHeight: imginfo.height,
+				cropWidth: maskSize.width,
+				cropHeight: maskSize.height,
+				initialScale: backmaskSize.scale,
+				top: imginfoNow.top,
+				left: imginfoNow.left,
+				scale: imginfoNow.scale
+			} as xCalculatePinchZoomOpts
+			let result = calculatePinchZoom(nowPinchOpts)
+			touchlen.value = result
+			imginfoNow.width = result.width
+			imginfoNow.height = result.height
+			imginfoNow.top = result.top
+			imginfoNow.left = result.left
+			imginfoNow.scale = result.scale
+			nowPinchOpts.initialPoints = [
+				{ x: evt.touches[0].clientX, y: evt.touches[0].clientY } as xPOINT,
+				{ x: evt.touches[1].clientX, y: evt.touches[1].clientY } as xPOINT,
+			] as xPOINT[]
+			return;
+		}
+
+
+		conStart_move(evt.changedTouches[0].clientX,evt.changedTouches[0].clientY)
+		
+	}
+	const conEnd = (evt : UniTouchEvent) => {
+		if (!isMovingImg.value) return;
+		evt.preventDefault()
+		evt.stopPropagation()
+		// if (evt.touches.length == 2) {
+
+		// 	return;
+		// }
+		conStart_end(evt.changedTouches[0].clientX,evt.changedTouches[0].clientY)
+		
+		isMovingImg.value = false;
+	}
+
+	// #ifdef WEB
+	const conStartByweb = (evt : UniMouseEvent) => {
+		evt.preventDefault()
+		evt.stopPropagation()
+		showCanvas.value = false;
+		isMovingImg.value = true;
+		conStart_start(evt.clientX,evt.clientY)
+		
+	}
+	const conMoveByweb = (evt : UniMouseEvent) => {
+		if (!isMovingImg.value) return;
+		evt.preventDefault()
+		evt.stopPropagation()
+		
+		conStart_move(evt.clientX,evt.clientY)
+	}
+	const conEndByweb = (evt : UniMouseEvent) => {
+		if (!isMovingImg.value) return;
+		evt.preventDefault()
+		evt.stopPropagation()
+		// if (evt.touches.length == 2) {
+		
+		// 	return;
+		// }
+	
+		conStart_end(evt.clientX,evt.clientY)
+		isMovingImg.value = false;
+	}
+	// 鼠标滚轮滑动缩放。
+	const conwheelByweb =  (evt:WheelEvent )=>{
+		showCanvas.value = false;
+		isMouseWheeling.value = true;
+		let lv = 0.03;
+		let scale = imginfoNow.scale
+		if(evt.deltaY>0){
+			scale-=lv
+			
+		}else{
+			scale+=lv
+		}
+		scale = Math.max(backmaskSize.scale,Math.min(scale,3))
+		let width = imginfo.width * scale
+		let height = imginfo.height * scale
+		
+		imginfoNow.top = imginfoNow.top - (height - imginfoNow.height)/2
+		imginfoNow.left = imginfoNow.left - (width - imginfoNow.width)/2
+		imginfoNow.width = width
+		imginfoNow.height = height
+		
+		imginfoNow.scale = scale
+		conStart_end(evt.clientX,evt.clientY)
+		clearTimeout(mousewheelTimeId.value)
+		mousewheelTimeId.value = setTimeout(function() {
+			isMouseWheeling.value = false;
+		}, 150);
+	
+		
+	}
+	
+	
+	document.body.addEventListener('mousemove',conMoveByweb)
+	document.body.addEventListener('mouseup',conEndByweb)
+	document.body.addEventListener('mouseleave',conEndByweb)
+	
+	// #endif
+
+	const onInitResize = () => {
+		uni.createSelectorQuery()
+			.in(proxy)
+			.select('.xImageResizer')
+			.boundingClientRect()
+			.exec((nodes) => {
+				let node = nodes[0] as NodeInfo
+				parent.width = node.width!
+				parent.height = node.height!
+				parent.top = node.top!
+				parent.left = node.left!
+				backmaskSize.width = props.cropWidth
+				backmaskSize.height = props.cropHeight
+				setDefaultMaskPosition()
+			})
+
+	}
+
+	const reset = () => {
+		horizontal.value = 1;
+		vertical.value = 1
+		onInitResize();
+	}
+	
+	const setCanvasPosition = ()=>{
+		if(proxy==null) return;
+		
+		function setdraw(canvas:UniCanvasElement,ctx:CanvasRenderingContext2D,conx:CanvasContext){
+			uni.showLoading({title:"...",mask:true})
+			let dpr = uni.getWindowInfo().pixelRatio
+			canvas.width = canvas.offsetWidth * dpr
+			canvas.height = canvas.offsetHeight * dpr
+			let width = imginfo.width
+			let height = imginfo.height
+			
+			let loadimgs_on:Image|null = null;
+			// #ifdef APP||WEB
+			loadimgs_on = new Image(width,height)
+			// #endif
+			// #ifdef MP-WEIXIN
+			loadimgs_on = conx.createImage()
+			// #endif
+			
+			let loadimgs = loadimgs_on!
+			loadimgs.src = _src.value
+			function draw(){
+				ctx.save();
+				let dx = (imginfoNow.left - maskSize.left) * dpr
+				let dy = (imginfoNow.top - maskSize.top) * dpr
+				ctx.scale(horizontal.value, vertical.value);
+				if(horizontal.value==-1){
+					dx = -dx -imginfoNow.width*dpr;
+				}
+				if(vertical.value==-1){
+					ctx.translate(0,vertical.value*canvas.height)
+					dy = (maskSize.height*dpr-dy )- imginfoNow.height*dpr
+				}
+				// #ifndef APP-ANDROID
+				ctx.drawImage(
+					loadimgs,
+					0,
+					0,
+					imginfo.width,
+					imginfo.height,
+					dx,
+					dy,
+					imginfoNow.width*dpr,
+					imginfoNow.height*dpr
+				)
+				// #endif
+				// #ifdef APP-ANDROID
+			
+				ctx.drawImage(
+					loadimgs,
+					dx,
+					dy,
+					imginfoNow.width*dpr,
+					imginfoNow.height*dpr
+				)
+				// #endif
+				
+				
+				// #ifdef APP
+				let imageBase64 = canvas.toDataURL()
+				toPngFile(imageBase64).then((file:string)=>{
+					uni.compressImage({
+						src:file,
+						quality:props.compress*100,
+						success(compressSuccess){
+							emits('confirm',compressSuccess.tempFilePath)
+						},
+						fail(){
+							emits('confirm',file)
+						}
+					})
+				})
+				// #endif
+				// #ifdef WEB
+				try {
+					let imageBase64 = canvas.toDataURL('image/jpeg',props.compress)
+					emits('confirm',imageBase64)
+				} catch (error) {
+					//TODO handle the exception
+					console.error("图片跨域了.")
+				}
+				// #endif
+				// #ifdef MP-WEIXIN
+				let filBase64 = conx.toDataURL('image/jpeg',props.compress)
+				toPngFile(filBase64).then((file:string)=>{
+					emits('confirm',file)
+				})
+				// #endif
+				
+				uni.hideLoading()
+				ctx.restore()
+			}
+			
+			loadimgs.onload = ()=>{
+				draw()
+			}
+			
+		}
+		
+		
+		uni.createCanvasContextAsync({
+			id:canvasUid,
+			component:proxy,
+			success(context){
+				let ctx = context.getContext('2d')!;
+				let canvas = ctx.canvas
+				
+				setdraw(canvas,ctx,context)
+			},
+			fail(){
+				uni.showToast({title:'错误',icon:'none'})
+			}
+		})
+	}
+	const confirm = ()=>{
+		
+		// #ifdef WEB
+		let isMobile = /Android|webOS|iPhone|iPod|BlackBerry/i.test(window.navigator.userAgent)
+		if(!isMobile) return;
+		// #endif
+	
+		showCanvas.value = true;
+		canvasIdKey.value+=1
+		setTimeout(function() {
+			setCanvasPosition()
+		}, 120);
+	
+	}
+	const confirmByweb = ()=>{
+		// #ifdef WEB
+		let isMobile = /Android|webOS|iPhone|iPod|BlackBerry/i.test(window.navigator.userAgent)
+		if(isMobile) return;
+		showCanvas.value = true;
+		setCanvasPosition()
+		// #endif
+	}
+	const cancel = ()=>{
+		// #ifdef WEB
+		let isMobile = /Android|webOS|iPhone|iPod|BlackBerry/i.test(window.navigator.userAgent)
+		if(!isMobile) return;
+		// #endif
+		
+		emits('cancel')
+		
+	}
+	const cancelByweb = ()=>{
+		// #ifdef WEB
+		let isMobile = /Android|webOS|iPhone|iPod|BlackBerry/i.test(window.navigator.userAgent)
+		if(isMobile) return;
+		emits('cancel')
+		// #endif
+	}
+	
+	watch(():string=>_src.value,()=>{
+		nextTick(() => {
+			onInitResize()
+		})
+	})
+	onMounted(() => {
+		nextTick(() => {
+			onInitResize()
+		})
+	})
+	onBeforeUnmount(()=>{
+		// #ifdef WEB
+		document.body.removeEventListener('mousemove',jiao_moveByweb)
+		document.body.removeEventListener('mouseup',jiao_endByweb)
+		document.body.removeEventListener('mouseleave',jiao_endByweb)
+		
+		document.body.removeEventListener('mousemove',conMoveByweb)
+		document.body.removeEventListener('mouseup',conEndByweb)
+		document.body.removeEventListener('mouseleave',conEndByweb)
+		
+		
+		// #endif
+	})
+</script>
+
+<style scoped>
+	.xImageResizerCell {
+		display: flex;
+		flex-direction: row;
+		justify-content: space-between;
+		padding: 0 20px;
+		height: 50px;
+		align-items: center;
+	}
+
+	.xImageResizerViewFooter {
+		position: absolute;
+		width: 100%;
+		bottom: 12px;
+		left: 0px;
+		z-index: 10;
+	}
+
+	.xImageResizerLine {
+		transition-property: opacity;
+		transition-timing-function: linear;
+		transition-duration: 300ms;
+	}
+
+	.xImageResizerLine1,
+	.xImageResizerLine2 {
+		width: 100%;
+		height: 1px;
+		background-color: white;
+		position: absolute;
+	}
+
+	.xImageResizerLine3,
+	.xImageResizerLine4 {
+		width: 1px;
+		height: 100%;
+		background-color: white;
+		position: absolute;
+	}
+
+	.xImageResizerLine1 {
+		top: 33.3333%;
+	}
+
+	.xImageResizerLine2 {
+		top: 66.6666%;
+	}
+
+	.xImageResizerLine3 {
+		left: 33.3333%;
+	}
+
+	.xImageResizerLine4 {
+		left: 66.6666%;
+	}
+
+	.xImageResizerRect {
+		width: 100px;
+		height: 100px;
+		padding: 1px;
+		position: absolute;
+		z-index: 8;
+		transition-property: width, height, top, left;
+		transition-timing-function: linear;
+	}
+
+	.xImageResizerViewCanvas {
+		pointer-events: none;
+		position: absolute;
+		z-index: 7;
+	}
+
+	.xImageResizerRectCont {
+		width: 100%;
+		border: 1px solid white;
+		height: 100%;
+		pointer-events: none;
+		/* #ifdef WEB */
+		box-sizing: border-box;
+		/* #endif */
+		transition-property: opacity;
+		transition-timing-function: linear;
+		transition-duration: 300ms;
+
+	}
+
+	.xImageRItem_lefttop {
+		top: 0;
+		left: 0;
+		border-top: 1px solid white;
+		border-left: 1px solid white;
+	}
+
+	.xImageRItem_righttop {
+		top: 0;
+		right: 0;
+		border-top: 1px solid white;
+		border-right: 1px solid white;
+	}
+
+	.xImageRItem_bottomright {
+		bottom: 0;
+		right: 0;
+		border-bottom: 1px solid white;
+		border-right: 1px solid white;
+	}
+
+	.xImageRItem_bottomleft {
+		bottom: 0;
+		left: 0;
+		border-left: 1px solid white;
+		border-bottom: 1px solid white;
+	}
+
+	.xImageRItem {
+		width: 32px;
+		height: 32px;
+		position: absolute;
+		transition-property: opacity;
+		transition-duration: 0.3s;
+		transition-timing-function: linear;
+	}
+	/* #ifdef WEB */
+	.xImageRItem:hover{
+		cursor: move;
+		background-color: rgba(255, 255, 255, 0.5);
+	}
+	/* #endif */
+	.xImageResizerImage {
+		pointer-events: none;
+		opacity: 0.6;
+		position: absolute;
+		transition-property: top, left;
+		transition-timing-function: linear;
+	}
+
+	.xImageResizer {
+		position: relative;
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+	}
+</style>

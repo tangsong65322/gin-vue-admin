@@ -1,0 +1,21 @@
+import Vibrator from "android.os.Vibrator"
+import Context from 'android.content.Context'
+
+/**
+ * 震动
+ * @param {number} duriation 震动时间单位ms
+ */
+export function vibrator(duriation : number):boolean {
+	try {
+		const context = UTSAndroid.getAppContext() as Context
+		let vb = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator;
+		if (vb!.hasVibrator()) {
+			vb!.vibrate(duriation.toLong());
+		} else {
+			return false
+		}
+	} catch (e) {
+		console.error(e)
+	}
+	return false
+}

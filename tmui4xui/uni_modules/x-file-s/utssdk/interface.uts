@@ -1,0 +1,21 @@
+export type xFileSListType = {
+	name:string,
+	type:string,
+	id:string,
+	uri:string,
+	/** web平台文件对象 */
+	file?:any,
+	/** 个人用户自定数据 */
+	request?:any,
+	/** 安卓机/ios机下面的真实sd路径 */
+	realFilePath:string,
+	/** uniapp应用协议文件路径，可用uni.getFileSystemManager进行删除或者查询到 */
+	cacheFilePath:string,
+	/** 文件大小 */
+	size?:number
+	/**
+	 * 0等待，1失败，2成功,3上传中,4超过大小。
+	 */
+	status?:0|1|2|3|4
+}
+export type fileListType = xFileSListType

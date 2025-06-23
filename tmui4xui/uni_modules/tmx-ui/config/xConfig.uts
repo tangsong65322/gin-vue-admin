@@ -1,0 +1,296 @@
+import { getDefaultColor } from "../core/util/xCoreColorUtil.uts"
+import { TABBAR_ITEM_INFO, xPageStyle, XPRIVATECONFIG, XTABBARCONFIG, XCONFIG } from "../interface.uts"
+import { getDarkMode, isCustomTheme, WebObserveTheme, setThemeDarkModel } from "./observeAppTheme.uts"
+
+/**
+ * 内部组件私有
+ */
+export const xProvitae = reactive({
+	/**
+	 * 供给需要页面滚动参数时组件使用。
+	 */
+	scrollTop: -1,
+	windowInnerWidth: 0,
+	windowInnerHeight: 0,
+	windowWidth: 0,
+	windowHeight: 0,
+	pageStyle: new Map<string, xPageStyle>(),
+	pageReady:false
+
+} as XPRIVATECONFIG)
+
+
+/**
+ * x-ui配置
+ */
+export const xConfig = reactive({
+	theme:new Map<string,string>([]),
+	/** 全局的主题色 */
+	color: "#0579FF",
+	/** 主题配置,auto,dark,light */
+	dark: 'auto',
+	/** 设计基准默认是375，如果修改会影响组件的尺寸，比如你设置为414，那么假设12号最终计算过程是414/375*12=13.248px,如果你小于375则不计算。 */
+	designSize: 375,
+	/** 当屏幕宽大于或者等于667时再直接采用以375为基座，按照designSize比例来的原始尺寸，即尺寸不会变大也不会变小了 */
+	maximumCalculatedSize:667,
+	/** 设计单位px,rpx */
+	unit: 'px',
+	/** 语言 */
+	language: "zh-Hans",
+	/** 如果你使用unit为rpx时，fontScale不要去设置,如果unit为px时，可以设置此值来缩放大小。 */
+	fontScale: 1,
+	/** x-text默认的字号，如果你使用unit为rpx时，fontScale不要去设置 */
+	fontSize: "16",
+
+	navigationBarTextStyleDark: "#ffffff",
+	/** 注意局部的page.json节点配置会覆盖这里 */
+	navigationBarTextStyleLight: "#000000",
+
+	navigationBarBackgroundColorDark: "#000000",
+	/** 注意局部的page.json节点配置会覆盖这里 */
+	navigationBarBackgroundColorLight: "#f5f5f5",
+
+	backgroundColorContentDark: "#000000",
+	/** 注意局部的page.json节点配置会覆盖这里 */
+	backgroundColorContentLight: "#f5f5f5",
+
+	tabarBackgroundColorDark: "#0a0a0a",
+	tabarBackgroundColorLight: "#FFFFFF",
+
+
+	/** 一般容器sheet的暗黑背景 */
+	sheetDarkColor: '#141414',
+	sheetDarkBorderColor: ["#232323"],
+
+	/** 输入框暗黑背景 */
+	inputDarkColor: '#272727',
+	/** 输入框默认的亮系背景色方便统一设计稿 */
+	inputBgColor: '#f5f5f5',
+	/** 输入框默认的统一提示placeholderStyle方便统一设计稿 */
+	placeholderStyle: '#888888',
+	borderDarkColor: '#1c1c1c',
+	
+	/** l输入框的圆角 */
+	inputRadius: "12",
+	inputFocusBorder:[],
+	/** 按钮的圆角 */
+	buttonRadius: "12",
+	/** 统一的标签圆角 */
+	tagRadius: "3",
+	/** 列表cell组件为card时的圆角 */
+	cellRadius: "12",
+	/** 列表为cellCard组件时的边距 */
+	cellMargin:['12px','0','12px','6px'],
+
+	/** 容器的全局圆角 */
+	sheetRadius: ["14"],
+	/** 容器的全局间隙 */
+	sheetMargin: ["14", "0", "14", "14"],
+	/** 容器的全局内间隙 */
+	sheetPadding: ["14"],
+	/**
+	 * 影响：
+	 * 抽屉打开方向为上和下时的圆角
+	 * 浮动面板
+	 * 动作菜单
+	 * */
+	drawerRadius: "26",
+	/** 对话框modal的圆角 */
+	modalRadius: "18",
+	/** 开关的圆角 */
+	switchRadius: "32",
+	/**进度条的圆角 */
+	progressRadius: "32",
+	/** 未选中时的颜色 */
+	unRadioAndCheckBoxColor: "#cfcfcf",
+	/** 单选按钮组的圆角 */
+	radioButtonRadius: "10",
+	/** 弹窗，弹层，对话框等等所有的动画类型。 */
+	animationFun: 'cubic-bezier(.42,.38,.15,.93)',
+	/** 卡片的圆角 */
+	cardRound: '16',
+	closeIcon:"close-circle-fill"
+
+} as XCONFIG)
+
+/**
+ * 获取当前的主题配色。
+ */
+export const getThemePrimary = () : string => {
+	return getDefaultColor(xConfig.color) as string
+}
+/**
+ * 设置全局主题色
+ */
+export const setThemePrimary = (scolor : string) : string => {
+	xConfig.color = getDefaultColor(scolor)
+	return xConfig.color as string
+}
+
+/**
+ * 设置暗黑主题配置
+ * @param {string} value - auto,dark,light
+ */
+export const setDarkModel = (value : 'dark' | 'auto' | 'light') => {
+	uni.setStorageSync('tmuiXuiOsThemeSet', value)
+	let darkmodl = getDarkMode();
+	xConfig.dark = darkmodl
+	setThemeDarkModel();
+}
+/**
+ * 获取当前的主题
+ */
+export const getDarkModel = () : 'dark' | 'auto' | 'light' => {
+	let darkmodl = uni.getStorageSync('tmuiXuiOsThemeSet');
+	let m = darkmodl == null ? 'dark' : darkmodl
+	return m as 'dark' | 'auto' | 'light'
+}
+
+
+/**
+ * 全局的tabbar配置。
+ */
+export const xTabbarConfig = reactive({
+	tabbarActiveIndex: 0,
+	tabaarHeight:60,
+	list: [] as TABBAR_ITEM_INFO[]
+} as XTABBARCONFIG)
+
+/**
+ * 处理xConfig配置表
+ */
+export const setConfig = (config:any|null)=>{
+	
+	if(config == null) return;
+	let cfg = config! as UTSJSONObject
+	if(cfg.getString('color')!=null&&cfg.getString('color')!=''){
+		xConfig.color = cfg.getString('color')!
+		
+	}
+	if(cfg.getAny('theme')!=null){
+		let theme = cfg.getAny('theme')! as Map<string,string>
+		xConfig.theme = theme
+	}
+	if(cfg.getString('dark')!=null&&cfg.getString('dark')!=''){
+		xConfig.dark = cfg.getString('dark')!
+		setDarkModel(xConfig.dark)
+	}
+	if(cfg.getNumber('designSize')!=null){
+		xConfig.designSize = cfg.getNumber('designSize')!
+	}
+	if(cfg.getNumber('maximumCalculatedSize')!=null){
+		xConfig.maximumCalculatedSize = cfg.getNumber('maximumCalculatedSize')!
+	}
+
+	if(cfg.getString('unit')!=null&&cfg.getString('unit')!=''){
+		xConfig.unit = cfg.getString('unit')! as "px"|"rpx"
+	}
+	if(cfg.getString('language')!=null&&cfg.getString('language')!=''){
+		xConfig.language = cfg.getString('language')!
+	}
+	if(cfg.getNumber('fontScale')!=null){
+		xConfig.fontScale = cfg.getNumber('fontScale')!
+	}
+	if(cfg.getString('fontSize')!=null&&cfg.getString('fontSize')!=''){
+		xConfig.fontSize = cfg.getString('fontSize')!
+	}
+	
+	if(cfg.getString('navigationBarTextStyleDark')!=null){
+		xConfig.navigationBarTextStyleDark = cfg.getString('navigationBarTextStyleDark')!
+	}
+	if(cfg.getString('navigationBarTextStyleLight')!=null){
+		xConfig.navigationBarTextStyleLight = cfg.getString('navigationBarTextStyleLight')!
+	}
+	if(cfg.getString('navigationBarBackgroundColorDark')!=null){
+		xConfig.navigationBarBackgroundColorDark = cfg.getString('navigationBarBackgroundColorDark')!
+	}
+	if(cfg.getString('navigationBarBackgroundColorLight')!=null){
+		xConfig.navigationBarBackgroundColorLight = cfg.getString('navigationBarBackgroundColorLight')!
+	}
+	if(cfg.getString('backgroundColorContentDark')!=null){
+		xConfig.backgroundColorContentDark = cfg.getString('backgroundColorContentDark')!
+	}
+	if(cfg.getString('backgroundColorContentLight')!=null){
+		xConfig.backgroundColorContentLight = cfg.getString('backgroundColorContentLight')!
+	}
+	if(cfg.getString('tabarBackgroundColorDark')!=null){
+		xConfig.tabarBackgroundColorDark = cfg.getString('tabarBackgroundColorDark')!
+	}
+	if(cfg.getString('tabarBackgroundColorLight')!=null){
+		xConfig.tabarBackgroundColorLight = cfg.getString('tabarBackgroundColorLight')!
+	}
+	if(cfg.getString('sheetDarkColor')!=null){
+		xConfig.sheetDarkColor = cfg.getString('sheetDarkColor')!
+	}
+	if(cfg.getArray<string>('sheetDarkBorderColor')!=null){
+		xConfig.sheetDarkBorderColor = cfg.getArray<string>('sheetDarkBorderColor')!
+	}
+	if(cfg.getString('inputDarkColor')!=null){
+		xConfig.inputDarkColor = cfg.getString('inputDarkColor')!
+	}
+	if(cfg.getString('sheetDarkColor')!=null){
+		xConfig.borderDarkColor = cfg.getString('borderDarkColor')!
+	}
+	if(cfg.getString('inputRadius')!=null){
+		xConfig.inputRadius = cfg.getString('inputRadius')!
+	}
+	if(cfg.getArray<string>('inputFocusBorder')!=null){
+		xConfig.inputFocusBorder = cfg.getArray<string>('inputFocusBorder')!
+	}
+	
+	if(cfg.getString('buttonRadius')!=null){
+		xConfig.buttonRadius = cfg.getString('buttonRadius')!
+	}
+	if(cfg.getString('tagRadius')!=null){
+		xConfig.tagRadius = cfg.getString('tagRadius')!
+	}
+	if(cfg.getString('cellRadius')!=null){
+		xConfig.cellRadius = cfg.getString('cellRadius')!
+	}
+	
+	if(cfg.getArray<string>('sheetRadius')!=null){
+		xConfig.sheetRadius = cfg.getArray<string>('sheetRadius')!
+	}
+	if(cfg.getArray<string>('sheetMargin')!=null){
+		xConfig.sheetMargin = cfg.getArray<string>('sheetMargin')!
+	}
+	if(cfg.getArray<string>('sheetPadding')!=null){
+		xConfig.sheetPadding = cfg.getArray<string>('sheetPadding')!
+	}
+	
+	
+	if(cfg.getString('drawerRadius')!=null){
+		xConfig.drawerRadius = cfg.getString('drawerRadius')!
+	}
+	if(cfg.getString('modalRadius')!=null){
+		xConfig.modalRadius = cfg.getString('modalRadius')!
+	}
+	if(cfg.getString('switchRadius')!=null){
+		xConfig.switchRadius = cfg.getString('switchRadius')!
+	}
+	if(cfg.getString('progressRadius')!=null){
+		xConfig.progressRadius = cfg.getString('progressRadius')!
+	}
+	if(cfg.getString('unRadioAndCheckBoxColor')!=null){
+		xConfig.unRadioAndCheckBoxColor = cfg.getString('unRadioAndCheckBoxColor')!
+	}
+	if(cfg.getString('radioButtonRadius')!=null){
+		xConfig.radioButtonRadius = cfg.getString('radioButtonRadius')!
+	}
+	if(cfg.getString('animationFun')!=null){
+		xConfig.animationFun = cfg.getString('animationFun')!
+	}
+	if(cfg.getString('cardRound')!=null){
+		xConfig.cardRound = cfg.getString('cardRound')!
+	}
+	if(cfg.getString('closeIcon')!=null){
+		xConfig.closeIcon = cfg.getString('closeIcon')!
+	}
+	if(cfg.getString('inputBgColor')!=null){
+		xConfig.inputBgColor = cfg.getString('inputBgColor')!
+	}
+	if(cfg.getString('placeholderStyle')!=null){
+		xConfig.placeholderStyle = cfg.getString('placeholderStyle')!
+	}
+	
+}

@@ -1,0 +1,285 @@
+import {
+	CONNECT_STATUS, MQTT_EVENT_TYPE, MQTT_EVENT_CALL, MQTT_EVENT_PUBLISH, MQTT_SUBSCRIBE, MQTT_EVENTS_CALL,
+	MQTT_PUBLISH_TOPIC, MQTT_CONNECT_OPTS
+} from "../interface.uts"
+import {
+	CocoaMQTT, CocoaMQTTWebSocket, CocoaMQTT5Delegate, CocoaMQTT5, MqttConnectProperties,
+	CocoaMQTTDISCONNECTReasonCode,
+	CocoaMQTTAUTHReasonCode,
+	MqttDecodeUnsubAck,
+	MqttDecodeSubAck,
+	CocoaMQTT5Message,
+	MqttDecodePublish,
+	MqttDecodePubAck,
+	MqttDecodePubRec,
+	MqttDecodeConnAck,
+	CocoaMQTTCONNACKReasonCode,
+	CocoaMQTTConnState,
+	CocoaMQTTQoS, MqttPublishProperties, CocoaMQTTError, CocoaMQTTMessage
+
+} from "CocoaMQTT"
+
+// https://github.com/anatoliykant/SwiftMQTT
+import { UInt16 } from 'Swift';
+import { Bundle, CFArray, SecPKCS12Import } from 'Foundation';
+import { kCFStreamSSLCertificates } from 'CFNetwork';
+import { NSObject } from 'ObjectiveC';
+
+
+// https://github.com/emqx/CocoaMQTT
+// https://cocoapods.org/pods/CocoaMQTT
+// 文档：https://www.emqx.com/en/blog/ios-mqtt5-client
+
+
+class MQTTDELETED implements CocoaMQTT5Delegate {
+	// 授权状态
+	mqtt5(mqtt5 : CocoaMQTT5, @argumentLabel("didReceiveAuthReasonCode") reasonCode : CocoaMQTTAUTHReasonCode) {
+		console.log(4)
+	}
+	// 连接丢失状态
+	mqtt5(mqtt5 : CocoaMQTT5, @argumentLabel("didReceiveDisconnectReasonCode") reasonCode : CocoaMQTTDISCONNECTReasonCode) {
+		console.log(3)
+	}
+	// 取消订阅 MqttDecodeUnsubAck
+	mqtt5(mqtt5 : CocoaMQTT5, @argumentLabel("didUnsubscribeTopics") topics : string[], unsubAckData : any) {
+		console.log(2)
+	}
+	// 订阅 MqttDecodeSubAck
+	mqtt5(mqtt5 : CocoaMQTT5, @argumentLabel("didSubscribeTopics") success : NSDictionary, failed : string[], subAckData : any) {
+		console.log(1)
+	}
+	// 收到消息 MqttDecodePublish
+	mqtt5(mqtt5 : CocoaMQTT5, @argumentLabel("didReceiveMessage") message : CocoaMQTT5Message, id : number, publishData : any) {
+		console.log(8)
+	}
+	// 重复发送消息 MqttDecodePubRec
+	mqtt5(mqtt5 : CocoaMQTT5, @argumentLabel("didPublishRec") id : number, pubRecData : any) {
+		console.log(8)
+	}
+	// 推送消息异常 MqttDecodePubAck
+	mqtt5(mqtt5 : CocoaMQTT5, @argumentLabel("didPublishAck") id : number, pubAckData : any) {
+		console.log(8)
+	}
+	// 推送消息
+	mqtt5(mqtt5 : CocoaMQTT5, @argumentLabel("didPublishMessage") message : CocoaMQTT5Message, id : number) {
+		console.log(8)
+	}
+
+	// 推送消息 MqttDecodeConnAck
+	mqtt5(mqtt5 : CocoaMQTT5, @argumentLabel("didConnectAck") ack : CocoaMQTTCONNACKReasonCode, connAckData : any) {
+		console.log(8)
+	}
+
+
+
+
+}
+let xmqtt : CocoaMQTT | null = null
+const connectDeleted : MQTTDELETED | null = null;
+export class xMqtt {
+	mqtt : CocoaMQTT | null = null;
+	mqttConnectOptions : MqttConnectProperties | null = null;
+	connectStatus : CONNECT_STATUS = 'wait'
+	events = new Map<string, MQTT_EVENTS_CALL>();
+	constructor() { }
+
+
+	/**
+	 * @param type {MQTT_EVENT_TYPE} 事件名称
+	 * @param call {MQTT_EVENT_CALL} 事件回调
+	 */
+	@UTSJS.keepAlive
+	addEventListener(type : MQTT_EVENT_TYPE, call : MQTT_EVENT_CALL) : string {
+		let id = Date.now().toString() + (Math.random() * 100).toString()
+		this.events.set(id,
+			{
+				type,
+				value: call
+			} as MQTT_EVENTS_CALL
+		)
+
+		return id;
+	}
+	/**
+	 * @param id {string} addEventListener返回的事件id
+	 */
+	removeEventListener(id : string) : xMqtt {
+		this.events.delete(id)
+		return this;
+	}
+
+	private buildCallEvents(type : MQTT_EVENT_TYPE, toppic : string | null, str : string) {
+		this.events.forEach((value : MQTT_EVENTS_CALL, key : string) => {
+			if (value.type == type) {
+				value.value(type, toppic, str)
+			}
+		})
+	}
+	create(opts : MQTT_CONNECT_OPTS) : xMqtt {
+		let t = this;
+
+		let clientID = opts.clientId!
+		let websocket = CocoaMQTTWebSocket(uri = opts.path)
+		let mqtt5 = new CocoaMQTT(clientID = clientID, host = opts.server, port = opts.port!.toUInt16(), socket = websocket)
+		mqtt5.willMessage = new CocoaMQTTMessage(topic = "/will", string = "dieout")
+
+		// let connectProperties = MqttConnectProperties()
+		// connectProperties.topicAliasMaximum = 0
+		// connectProperties.sessionExpiryInterval = 0
+		// connectProperties.receiveMaximum = 100
+		// connectProperties.maximumPacketSize = 5000
+		// mqtt5.connectProperties = connectProperties
+		mqtt5.username = opts.userName
+		mqtt5.password = opts.passWord
+		mqtt5.keepAlive = opts.keepAliveInterval.toUInt16()
+		mqtt5.enableSSL = opts.useSSL
+		mqtt5.autoReconnect = opts.reconnect
+		mqtt5.allowUntrustCACertificate = true
+		let sslCart = opts.certName==null?"":(opts.certName)
+		let isP12 = false;
+		// let sslSettings = new Map<string, NSObject>()
+		if (sslCart != "" && opts.useSSL) {
+			isP12 = sslCart.lastIndexOf(".p12") > -1;
+			if (isP12) {
+				let passwordSsl = opts.certPassword == null ? "" : (opts.certPassword)
+				if (passwordSsl != "") {
+					let crtpath = Bundle.main.path(forResource = String(sslCart.substring(0, sslCart.lastIndexOf("."))), ofType = "p12")
+					let temsslSettings = getClientCertFromP12File(resourcePath = crtpath == null ? "" : (crtpath!), certPassword = String(passwordSsl))
+					if (temsslSettings != null) {
+						mqtt5.sslSettings = temsslSettings!
+					} else {
+						console.error("提供的P12证书有误或者文件不存在.")
+					}
+				} else {
+					console.error("提供了p12证书,但未提供证书密码.")
+				}
+			} else {
+				let crtpath = Bundle.main.path(forResource = String(sslCart.substring(0, sslCart.lastIndexOf("."))), ofType = "crt")
+
+				// ca文件.
+				let temsslSettings = getClientCertFromCrtFile(resourcePath = crtpath == null ? "" : (crtpath!))
+				if (temsslSettings != null) {
+					// console.log(temsslSettings)
+					mqtt5.sslSettings = temsslSettings!
+				} else {
+					console.error("提供的Ca证书有误或者文件不存在.")
+				}
+
+			}
+
+		}
+
+		mqtt5.cleanSession = true
+		// mqtt5.delegate = new MQTTDELETED()
+		mqtt5.didDisconnect = (client : CocoaMQTT, errorcode ?: any) => {
+			let code = errorcode as CocoaMQTTError | null
+
+			if (errorcode instanceof CocoaMQTTError) {
+				t.connectStatus = 'error'
+				t.buildCallEvents('error', null, '连接错误')
+
+			} else {
+				t.connectStatus = 'error'
+				t.buildCallEvents('error', null, '地址错误，或者没有网络。')
+			}
+
+		}
+
+		mqtt5.didConnectAck = (client : CocoaMQTT, cack ?: any) => {
+			t.connectStatus = 'open'
+			t.buildCallEvents('open', null, '已连接')
+
+
+			console.log('success')
+		}
+		mqtt5.didChangeState = (client : CocoaMQTT, state : CocoaMQTTConnState) => {
+			if (state == CocoaMQTTConnState.connecting) {
+				console.log('连接中')
+			}
+			if (state == CocoaMQTTConnState.connected) {
+				console.log('连接成功')
+			}
+			if (state == CocoaMQTTConnState.disconnected) {
+				console.log('连接失败')
+				t.connectStatus = 'dissconnect'
+				t.buildCallEvents('dissconnect', null, '已断开连接')
+			}
+		}
+
+		mqtt5.didReceiveMessage = (client : CocoaMQTT, message : CocoaMQTTMessage, id : UInt16) => {
+			let topic = message.topic
+			let msg = message.string
+			t.connectStatus = 'message'
+			t.buildCallEvents('message', topic, msg == null ? '' : (msg!))
+		}
+
+
+
+		this.mqtt = mqtt5;
+
+		return this;
+	}
+
+	connect() : xMqtt {
+		if (this.mqtt == null) return this;
+		this.mqtt!.connect()
+		return this;
+	}
+	/**
+	 * 推送消息
+	 * @param call {MQTT_EVENT_PUBLISH}
+	 */
+	publish(msg : MQTT_PUBLISH_TOPIC, call : MQTT_EVENT_PUBLISH) : xMqtt {
+		if (this.mqtt == null) return this;
+		let topic = msg.topic
+		let message = msg.message
+		let qos : CocoaMQTTQoS = CocoaMQTTQoS.qos0
+		if (msg.qos == 1) {
+			qos = CocoaMQTTQoS.qos1
+		} else if (msg.qos == 2) {
+			qos = CocoaMQTTQoS.qos2
+		}
+		this.mqtt!.publish(new CocoaMQTTMessage(topic = topic!, string = message!, qos = qos, retained = msg.retained))
+		call(true)
+		return this;
+	}
+	/**
+	 * 订阅
+	 * @param data {MQTT_SUBSCRIBE[]} 订阅的消息数组
+	 */
+	subscribe(data : MQTT_SUBSCRIBE[]) : xMqtt {
+		let t = this;
+		if (this.mqtt == null) return this;
+		for (let i = 0; i < data.length; i++) {
+			let qos : CocoaMQTTQoS = CocoaMQTTQoS.qos0
+			if (data[i].qos == 1) {
+				qos = CocoaMQTTQoS.qos1
+			} else if (data[i].qos == 2) {
+				qos = CocoaMQTTQoS.qos2
+			}
+			this.mqtt!.subscribe(data[i].topic, qos = qos)
+		}
+		return this;
+	}
+
+	/**
+	 * 取消订阅
+	 * @param topics {string[]} 主题数组
+	 */
+	unsubscribe(topics : string[]) : xMqtt {
+		if (this.mqtt == null) return this;
+		for (let i = 0; i < topics.length; i++) {
+			this.mqtt!.unsubscribe(topics[i])
+		}
+		return this;
+	}
+	/**
+	 * 断开连接
+	 */
+	disconnect() : xMqtt {
+		if (this.mqtt == null) return this;
+		this.mqtt!.disconnect()
+		return this;
+	}
+
+}

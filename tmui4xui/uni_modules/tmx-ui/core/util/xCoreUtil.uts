@@ -1,0 +1,333 @@
+import { getDefaultColor } from "./xCoreColorUtil.uts";
+import { xConfig } from "../../config/xConfig.uts"
+/**
+ * 数字转16进制
+ */
+function toHex(numbers : number) : string {
+	// let i = 0 as number
+	// if (numbers === i) {
+	// 	return '00';
+	// }
+	// let hex = '';
+	// const hexChars = '0123456789abcdef';
+	// while (numbers > 0) {
+	// 	const remainder = numbers % 16;
+	// 	hex = hexChars[remainder] + hex;
+	// 	numbers = Math.floor(numbers / 16);
+	// }
+	let n = numbers.toString(16) as string;
+	if(n.length==1){
+		n = '0'+n
+	}
+	return n;
+}
+
+/**
+ * 随机一个uid
+ * @param rdix 随机因子
+ * @param length 取的长度
+ * @param isAddStr 是否限制随机结果中的长度,不允许输出长度
+ * @returns String
+ */
+function getUid(rdix = 1, length = 12) : string {
+	let ix = "";
+	// #ifndef APP
+	ix = Math.floor(Math.random() * rdix * Math.floor(Math.random() * Date.now())).toString().substring(0, length);
+	// #endif
+
+	// #ifdef APP
+	ix = Math.floor(Math.random() * rdix * Math.floor(Math.random() * Date.now())).toString().substring(0, length as Int);
+	// #endif
+	return ix;
+}
+
+
+/**
+ * 给定一个值，来填充边距所需要的数组值
+ * @param val any
+ * @returns [左，上，右，下]
+ */
+function toFillMarginAr(val : number[]) : number[] {
+
+	let ar : number[] = [];
+
+	if (val.length == 1) {
+		let firstEl = val[0];
+		ar = [firstEl, firstEl, firstEl, firstEl]
+
+	} else if (val.length == 2) {
+		ar = [val[0], val[1], val[0], val[1]]
+
+	} else if (val.length == 3) {
+		ar = [val[0], val[1], val[2], 0]
+	}
+
+
+	return ar;
+}
+
+
+function rpx2px(n : number, _w = 750) : number {
+	let r = n
+	// #ifdef APP
+	r = uni.rpx2px(n);
+	// #endif
+	// #ifdef H5
+
+	function getLayoutRatio() : number {
+		const devicePixelRatio = window.devicePixelRatio || 1;
+		const screenWidth = window.innerWidth
+
+		if (screenWidth <= 950) {
+			// 小屏幕设备
+			return screenWidth / 750;
+		} else {
+			return 0.5
+		}
+	}
+
+	if (uni?.rpx2px) {
+		r = uni.rpx2px(n)
+	} else {
+		r = getLayoutRatio() * n
+	}
+	// #endif
+
+	return r
+}
+
+function px2dp(n : number) : number {
+	let w = n;
+	// #ifdef APP
+
+	const mets = UTSAndroid.getAppContext()!.resources!.getDisplayMetrics()
+	// 屏幕逻辑像素的宽度
+	let width = mets.widthPixels;
+	// 屏幕宽度
+	let screenWidth = uni.getWindowInfo().screenWidth
+	w = n / (width / screenWidth);
+	// #endif
+	return w
+}
+
+function checkIsCssUnit(str : string|number, unit : string) : string {
+	if(typeof str != 'string'){
+		return (str as number).toString() + unit;
+	}
+	let s = str as string;
+	if (s.indexOf("px") > -1 || s.indexOf("%") > -1 || s.indexOf("auto") > -1 || s.indexOf("vw") > -1 || s.indexOf("vh") > -1) {
+		return s;
+	}
+	
+	return s + (unit==''?'px':unit)
+}
+
+// function checkIsCssUnit(str : string|number, unit : string) : string {
+// 	let screenWidth = uni.getWindowInfo().windowWidth;
+// 	let base = 0;
+// 	let baseUnit = unit == ''?xConfig.unit:unit;
+// 	if(typeof str != 'string'){
+// 		base = str as number;
+// 	}else if(typeof str == 'string'){
+// 		let s = str as string;
+// 		if (
+// 		s.indexOf("px") > -1 ||
+// 		s.indexOf("rpx") > -1 ||
+// 		s.indexOf("%") > -1 || 
+// 		s.indexOf("auto") > -1 || 
+// 		s.indexOf("vw") > -1 ||
+// 		s.indexOf("rem") > -1 || 
+// 		s.indexOf("em") > -1 || 
+// 		s.indexOf("in") > -1 || 
+// 		s.indexOf("vh") > -1) 
+// 		{
+// 			return s;
+// 		}
+// 		base = parseFloat(s);
+// 		base = isNaN(base)?0:base
+// 	}
+	
+// 	if(baseUnit=='rpx'){
+// 		let baseDesize = Math.max(xConfig.designSize,375)
+// 		let baseMaxWidth = Math.max(xConfig.maximumCalculatedSize,375)
+// 		let origSize = 375;
+// 		let ratio = 1 - baseDesize / origSize;
+// 		let maxRatio = screenWidth / baseMaxWidth;
+// 		let baseSize = base - (ratio*base)
+// 		// 说明超过了设定缩放的最大屏幕尺寸。
+// 		if(maxRatio>=1){
+// 			base = baseSize;
+// 		}else{
+// 			const calcRatio = Math.max(screenWidth/baseDesize,1)
+// 			base = calcRatio*baseSize ;
+// 		}
+// 		let baseunitReal = 'px'
+// 		// #ifdef H5
+// 		if(base<12){
+// 			base = base/16
+// 			baseunitReal = "rem"
+// 		}
+// 		// #endif
+// 		return base + baseunitReal
+// 	}
+	
+// 	return base + baseUnit
+// }
+
+function fillArrayCssValue(val : Array<string>) : string[] {
+	let ar : string[] = val.map((el : string) : string => {
+		return checkIsCssUnit(el, xConfig.unit)
+	})
+	if (ar.length == 0) return [];
+	if (ar.length == 1) return [ar[0], ar[0], ar[0], ar[0]]
+	if (ar.length == 2) {
+		return [ar[1], ar[0], ar[1], ar[0]]
+	}
+	if (ar.length == 3) return [ar[1], ar[2], '0px', ar[0]]
+	return [ar[1], ar[2], ar[3], ar[0]];
+}
+function fillArrayCssValueByround(val : Array<string>) : string[] {
+	let ar : string[] = val.map((el : string) : string => {
+		return checkIsCssUnit(el, xConfig.unit)
+	})
+	if (ar.length == 0) return [];
+	if (ar.length == 1) return [ar[0], ar[0], ar[0], ar[0]]
+	if (ar.length == 2) {
+		return [ar[1], ar[0], ar[1], ar[0]]
+	}
+	if (ar.length == 3) return [ar[0], ar[1], ar[0], '0px']
+	return [ar[0], ar[1], ar[2], ar[3]];
+}
+function fillArrayCssValueBycolor(val : Array<string>) : string[] {
+	let ar : string[] = val.map((el : string) : string => {
+		return getDefaultColor(el)
+	})
+	if (ar.length == 0) return [];
+	if (ar.length == 1) return [ar[0], ar[0], ar[0], ar[0]]
+	if (ar.length == 2) {
+		return [ar[1], ar[0], ar[1], ar[0]]
+	}
+	if (ar.length == 3) return [ar[1], ar[2], '0px', ar[0]]
+	return [ar[1], ar[2], ar[3], ar[0]];
+}
+
+/**
+ * 对数组进行分组。按数量分组
+ */
+function splitArray<T>(target : Array<T>, value : number) : Array<Array<T>> {
+	var result = [] as Array<Array<T>>;
+	for (var i = 0; i < target.length; i += value) {
+		let ml = target.slice(i, i + value);
+		result.push(ml);
+	}
+	return result;
+}
+/**
+ * 对数组进行分组。按指定组数量
+ */
+function splitArrayByGroup<T>(target : Array<T>, group : number) : Array<Array<T>> {
+	var groupSize = Math.ceil(target.length / group);
+	var result = [] as Array<Array<T>>;
+	for (var i = 0; i < target.length; i += groupSize) {
+		result.push(target.slice(i, i + groupSize));
+	}
+	return result;
+}
+
+/**
+ * 获取字符的css单位。
+ */
+function getUnit(n ?: string) : string {
+	if (n == null || n == '') return xConfig.unit;
+	let unit = n.replace(/[\d|\-|\+|\.]/g, '');
+	if (unit == "") {
+		unit = xConfig.unit;
+	}
+	return unit;
+}
+
+/**
+ * 设置当前页面是否刷新。
+ */
+function setPagePullRefresh(enbledpull : boolean) {
+	// #ifdef APP
+	let pages = getCurrentPages()
+	let page = pages[pages.length - 1]
+	// let pageJson = page.$getPageStyle()
+	// pageJson.set("enablePullDownRefresh",enbledpull)
+	page.$setPageStyle({ "enablePullDownRefresh": enbledpull } as UTSJSONObject)
+	// #endif
+}
+
+/**
+ * 获取当前的下拉状态。
+ */
+function getPagePullRefresh() : boolean {
+	// #ifdef APP
+	let pages = getCurrentPages()
+	let page = pages[pages.length - 1]
+	let pageJson = page.$getPageStyle()
+	
+	let enb = pageJson.get("enablePullDownRefresh") as boolean|null;
+	if(enb==null) return false;
+	return enb as boolean;
+	// #endif
+	return false;
+}
+
+/**
+ * 防抖
+ */
+function debounce(
+	func : (args : any) => void,
+	wait : number,
+	immediate ?: boolean
+) : (args : any) => number | null {
+	let timeout : number | null = null;
+	let callNow = immediate == null ? true : (immediate! as boolean);
+
+	// 返回的函数是实际被调用的防抖函数
+	return (args : any) : number | null => {
+		if (timeout != null && callNow == true) {
+			return timeout;
+		}
+		if (timeout != null) {
+			clearTimeout(timeout! as number);
+			timeout = null;
+		}
+
+		// 决定是否立即执行函数
+		if (callNow == true) {
+
+			func(args)
+			timeout = setTimeout(() => {
+				timeout = null;
+			}, wait);
+			return timeout;
+		}
+		// 否则，设置定时器以稍后执行函数
+		timeout = setTimeout(() => {
+			func(args)
+
+		}, wait);
+		return timeout
+	}
+}
+export {
+	toHex,
+	toFillMarginAr,
+	getUid,
+	checkIsCssUnit,
+	px2dp,
+	rpx2px,
+	splitArray,
+	splitArrayByGroup,
+	fillArrayCssValue,
+	fillArrayCssValueByround,
+	fillArrayCssValueBycolor,
+	getUnit,
+	setPagePullRefresh,
+	getPagePullRefresh,
+	debounce
+
+}

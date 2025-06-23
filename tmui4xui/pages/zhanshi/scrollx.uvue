@@ -1,0 +1,70 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">横向滚动 xScrollx</x-text>
+			<x-text color="#999999">用于内容导航时滚动指示</x-text>
+		</x-sheet>
+
+		<x-sheet>
+			
+			<x-scrollx scrollPosColor="warn" :scrollbarWidth="50" :scrollPosBarWidth="10">
+				<view class="flex flex-row flex-row-center-start nowrap">
+					<x-grid width="400" :col="4" icon-color="primary" dark-icon-color="primary">
+						<x-grid-item icon="money-cny-circle-fill" text="摇现金"></x-grid-item>
+						<x-grid-item icon="shopping-bag-fill" text="百亿补贴"></x-grid-item>
+						<x-grid-item icon="price-tag-2-fill" text="活动日历"></x-grid-item>
+						<x-grid-item icon="wallet-3-fill" text="领淘金币"></x-grid-item>
+						<x-grid-item icon="gift-fill" text="会员福利"></x-grid-item>
+						<x-grid-item icon="coupon-5-fill" text="省钱卡"></x-grid-item>
+						<x-grid-item icon="shopping-bag-fill" text="百亿补贴"></x-grid-item>
+						<x-grid-item icon="money-cny-circle-fill" text="摇现金"></x-grid-item>
+					</x-grid>
+					<x-grid width="400" :col="4" icon-color="primary" dark-icon-color="primary">
+						<x-grid-item icon="money-cny-circle-fill" text="摇现金"></x-grid-item>
+						<x-grid-item icon="shopping-bag-fill" text="百亿补贴"></x-grid-item>
+						<x-grid-item icon="price-tag-2-fill" text="活动日历"></x-grid-item>
+						<x-grid-item icon="wallet-3-fill" text="领淘金币"></x-grid-item>
+						<x-grid-item icon="gift-fill" text="会员福利"></x-grid-item>
+						<x-grid-item icon="coupon-5-fill" text="省钱卡"></x-grid-item>
+						<x-grid-item icon="shopping-bag-fill" text="百亿补贴"></x-grid-item>
+						<x-grid-item icon="money-cny-circle-fill" text="摇现金"></x-grid-item>
+					</x-grid>
+				</view>
+			</x-scrollx>
+		</x-sheet>
+		
+		
+
+	<!-- 	<x-sheet>
+			<x-scrollx>
+				<x-image class="mr-10" v-for="(item,index) in 6" :key="index" width="100" height="100"
+					:src="`https://store.tmui.design/api_v2/public/random_picture?random=183${index}`"></x-image>
+			</x-scrollx>
+		</x-sheet> -->
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+
+			};
+		}
+	}
+</script>
+
+<style >
+	
+
+</style>

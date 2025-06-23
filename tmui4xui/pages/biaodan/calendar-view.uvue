@@ -1,0 +1,78 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">日历 xCalendar</x-text>
+			<x-text color="#999999">日历面板，支持指定日期样式设置，角标，底部文本设置等</x-text>
+			<x-text color="#999999">注意区别：appx端是canvas绘制，h5是view节点，因此appx端右角标文件只能限制2个字符，英文3个字符</x-text>
+		</x-sheet>
+		<x-sheet :padding="['0']" :margin="['12','0','12','12']"
+			:linear-gradient="_isDark?([] as string[]):['bottom','#d1eaed','#effdff']">
+			<x-calendar-view @change="onchange" v-if="show" :date-style="dateStyle" :disabled-days="['2024-5-31']" v-model="date"></x-calendar-view>
+			<view class="pa-32">
+				<x-button :block="true" @click="setdate">设置日期样式数据</x-button>
+			</view>
+		</x-sheet>
+		<x-sheet >
+			<x-text font-size="18" class=" text-weight-b ">禁用头，尾，禁用用户操作和切换，可以实现自定日历。</x-text>
+		</x-sheet>
+		<x-sheet :padding="['0']" >
+			<x-calendar-view @change="onchange" v-if="show" :disabled="true" :hideHeader="true" :disabledSwiper="true"></x-calendar-view>
+		</x-sheet>
+		
+		<view style="height:50px"></view>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	import { xCalendarDateStyle_type } from "@/uni_modules/tmx-ui/interface.uts"
+	import { xConfig } from "@/uni_modules/tmx-ui/config/xConfig.uts"
+	export default {
+		data() {
+			return {
+				date: "2024-2-26",
+				dateStyle: [] as xCalendarDateStyle_type[],
+				show:false
+			};
+		},
+		computed: {
+			_isDark() : boolean {
+				return xConfig.dark == 'dark'
+			}
+		},
+		onReady() {
+			this.show = true;
+		},
+		methods: {
+			onchange(dates:string){
+				console.log(dates)
+			},
+			setdate() {
+				this.date = "2024-5-8"
+			
+				this.dateStyle = [
+					{ date: '2024-5-3', color: '#00aa7f', label: '推荐', fontColor: 'white' } as xCalendarDateStyle_type,
+					{ date: '2024-5-20', label: '完成', fontColor: 'orange' } as xCalendarDateStyle_type,
+					{ date: '2024-5-21', label: '爆满', fontColor: 'red' } as xCalendarDateStyle_type,
+					{ date: '2024-5-31', label: '禁用' } as xCalendarDateStyle_type,
+					{ date: '2024-5-18', dot: true } as xCalendarDateStyle_type,
+					{ date: '2024-5-17', dot: true, dotColor: "orange", dotLabel: "36" } as xCalendarDateStyle_type,
+					{ date: '2024-5-1', dot: true, dotColor: "#52c428", dotLabel: "假", label: "劳动节", fontColor: "#52c428" } as xCalendarDateStyle_type,
+					{ date: '2024-5-4', dot: true, dotColor: "#aa55ff", dotLabel: "休", label: "劳动节", fontColor: "#52c428" } as xCalendarDateStyle_type,
+				] as xCalendarDateStyle_type[]
+			}
+		},
+	}
+</script>
+
+<style lang="scss">
+
+</style>

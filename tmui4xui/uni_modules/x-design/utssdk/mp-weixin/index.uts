@@ -1,0 +1,50 @@
+import { hexToRgb } from '../libs/color.uts'
+
+
+
+export class xModalPage {
+	contentView : HTMLDivElement | null = null;
+	rootWin : HTMLDivElement | null = null;
+	constructor() {
+		
+	}
+	setView(ele : HTMLDivElement | null) {
+		
+	}
+	show() {
+		
+
+	}
+	hide() {
+		
+	}
+	destroy() {
+
+	}
+}
+
+export class xdBlur {
+	constructor(element : UniNativeViewElement) {
+		
+	}
+	setFilterBg( blur : number, bgcolor : string,ele : HTMLDivElement|null=null) {
+		let colorrgba = hexToRgb(bgcolor)
+		let r = (colorrgba?.r??255)
+		let g = (colorrgba?.g??255)
+		let b = (colorrgba?.b??255)
+		let a = (colorrgba?.a??1)
+		let br = blur
+		ele?.style.setProperty('background-color',`rgba(${r},${g},${b},${a})`)
+		ele?.style.setProperty('backdrop-filter',`blur(${Math.min(br,10)}px)`)
+	}
+	public static setFilterSelfBg(ele : HTMLDivElement,bg:HTMLDivElement, blur : number, bgcolor : string) {
+		let colorrgba = hexToRgb(bgcolor)
+		let r = (colorrgba?.r??255)
+		let g = (colorrgba?.g??255)
+		let b = (colorrgba?.b??255)
+		let a = (colorrgba?.a??1)
+		let br = blur
+		bg.style.setProperty('background-color',`rgba(${r},${g},${b},${a})`)
+		bg.style.setProperty('backdrop-filter',`blur(${Math.min(br,10)}px)`)
+	}
+}

@@ -1,0 +1,392 @@
+<script lang="ts">
+	import { getUid } from '../../core/util/xCoreUtil.uts';
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { type PropType } from 'vue'
+	import { xConfig } from "../../config/xConfig.uts"
+
+	/**
+	 * @name 开关 xSwitch
+	 * @description 开关，用于直观的展示选项表单的选择。
+	 * @page /pages/index/switch
+	 * @category 表单组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				id: ("xSwitch" + getUid()) as string,
+				boxwidth: 0,
+				boxheight: 0,
+				opened: false
+			}
+		},
+		emits: [
+			/**
+			 * 状态变换时触发。
+			 * @param {boolean} status - 当前的开关状态
+			 */
+			'change',
+			/**
+			 * 组件被点击时触发。
+			 * @param {boolean} status - 当前的开关状态，这里的状态是在变更前。
+			 */
+			'click', 'update:modelValue',
+		],
+		props: {
+			/**
+			 * 激活时的背景色,空值时取全局的值。
+			 */
+			color: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 未激活时的背景
+			 */
+			bgColor: {
+				type: String,
+				default: "info"
+			},
+			/**
+			 * 未激活时的暗黑背景
+			 * 空取inputDarkColor
+			 */
+			darkBgColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 按钮的背景色
+			 */
+			btnColor: {
+				type: String,
+				default: "white"
+			},
+			/**
+			 * 尺寸
+			 */
+			size: {
+				type: String as PropType<"small" | "noraml" | "large">,
+				default: "normal"
+			},
+			/**
+			 * 间隙，px单位
+			 */
+			space: {
+				type: Number,
+				default: 2
+			},
+			/**
+			 * 当前打开的状态，默认为false
+			 * 等同v-model=""
+			 */
+			modelValue: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 是否禁用
+			 */
+			disabled: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 是否加载中
+			 */
+			loading: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 开关文字数组第一个为开，后一个为关
+			 */
+			label: {
+				type: Array as PropType<string[]>,
+				default: () : string[] => [],
+				validator(val : string[]) : boolean {
+					if (!Array.isArray(val)) return false;
+					if (val.length == 0) return true;
+					if (val.length != 2) {
+						console.error("x:必须长度为2")
+						return false;
+					}
+					return true
+				}
+			},
+			/**
+			 * 圆角。空值时取全局值。
+			 */
+			round: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 激活时的按钮图标，不提供不显示
+			 */
+			activeIcon:{
+				type:String,
+				default:""
+			},
+			/**
+			 * 未激活时的图标，不提供不显示
+			 */
+			icon:{
+				type:String,
+				default:""
+			}
+		},
+		mounted() {
+			
+			this.opened = this.modelValue;
+			this.getNodes();
+		},
+		computed: {
+			_activeIcon() : string {
+				return this.activeIcon
+			},
+			_icon() : string {
+				return this.icon
+			},
+			_round() : string {
+				if (this.round == "") {
+					return checkIsCssUnit(xConfig.switchRadius, xConfig.unit)
+				}
+				return checkIsCssUnit(this.round, xConfig.unit)
+			},
+			_bgColor() : string {
+				if(xConfig.dark=='dark'){
+					if(this.darkBgColor!='') return this.darkBgColor
+					return xConfig.inputDarkColor;
+				}
+				return getDefaultColor(this.bgColor)
+			},
+			_activeBgColor() : string {
+				if (this.color == "") {
+					return getDefaultColor(xConfig.color)
+				}
+				return getDefaultColor(this.color)
+			},
+			_btnColor() : string {
+				return getDefaultColor(this.btnColor)
+			},
+			_size() : string {
+				if (this.size == "small") return "22px"
+				if (this.size == "large") return "38px"
+				
+				return "32px"
+			},
+			_fontSize() : string {
+				if (this.size == "small") return "10px"
+				if (this.size == "large") return "12px"
+				return "11px"
+			},
+			_sizeWidth() : string {
+				if (this.size == "small") return "44px"
+				if (this.size == "large") return "76px"
+				
+				return "64px"
+			},
+			_space() : number {
+				return this.space
+			},
+			_contentWidth() : number {
+				return this.boxwidth - this._space * 2
+			},
+			_contentHeight() : number {
+				return this.boxheight - this._space * 2
+			},
+			_maxLeftPos() : number {
+				return this._contentWidth - this._contentHeight
+			},
+			_label() : string[] {
+				return this.label;
+			},
+			_loading() : boolean {
+				return this.loading;
+			},
+			_disabled() : boolean {
+				return this.disabled;
+			},
+			_animationFun() : string {
+				return xConfig.animationFun
+			}
+		},
+		watch: {
+			modelValue(newvalue : boolean) {
+				if (newvalue != this.opened) {
+					this.opened = newvalue;
+				}
+			}
+		},
+		methods: {
+			onClick() {
+				/**
+				 * 组件被点击时触发。
+				 * @param status {boolean} 当前的开关状态，这里的状态是在变更前。
+				 */
+				this.$emit("click", this.opened)
+				if (this._loading || this._disabled) return;
+				this.opened = !this.opened
+				
+				/**
+				 * 等同v-model=""
+				 */
+				this.$emit("update:modelValue", this.opened)
+				
+				this.$nextTick(()=>{
+					/**
+					 * 状态变换时触发。
+					 * @param status {boolean} 当前的开关状态
+					 */
+					this.$emit("change", this.opened)
+				})
+				
+			},
+			getNodes() {
+				let t = this;
+				let width = parseInt(this._sizeWidth)
+				let height  = parseInt(this._size)
+				this.boxwidth = width;
+				this.boxheight = height;
+				
+				// 以下代码在sdk中有bug需要等sdk渲染完成才能具的知道结果。如何知道结果不清楚。
+				// uni.createSelectorQuery().in(this)
+				// 	.select(".xSwitch")
+				// 	.boundingClientRect().exec((ret) => {
+				// 		let nodeinfo = ret[0] as NodeInfo;
+				// 		t.boxwidth = nodeinfo.width! as number;
+				// 		t.boxheight = nodeinfo.height! as number;
+				// 	})
+			},
+
+		}
+	}
+</script>
+<template>
+	<view @click="onClick" :id="id" class="xSwitch" ref="xSwitch" :style="{
+		height:_size,
+		width:_sizeWidth,
+		backgroundColor:_bgColor,
+		borderRadius:_round
+	}">
+		<view :class="[_disabled?'xSwitchDisabled':'',opened?'xSwitchBgOn':'xSwitchOff']" class="xSwitchBg"
+			:style="{backgroundColor:_activeBgColor,borderRadius:_round,'transition-timing-function':_animationFun}">
+		</view>
+		<view :class="[_disabled?'xSwitchDisabled':'']" class="xSwitchWrap" :style="{
+			left:_space+'px',
+			top:_space+'px',
+			width:_contentWidth+'px',
+			height:_contentHeight+'px',
+			borderRadius:_round
+		}">
+			<view v-if="_label.length==2" class="xSwitchText">
+				<text class="xSwitchTextLeft" :style="{fontSize:_fontSize}">{{!opened?'':_label[0]}}</text>
+				<text class="xSwitchTextRight" :style="{fontSize:_fontSize}">{{opened?'':_label[1]}}</text>
+			</view>
+			<view class="xSwitchBtn"  :style="{
+				width:_contentHeight+'px',
+				height:_contentHeight+'px',
+				transform:`translateX(${opened?_maxLeftPos:0}px)`,
+				backgroundColor:_btnColor,
+				borderRadius:_round,
+				'transition-timing-function':_animationFun
+			}">
+				<x-icon v-if="_loading" :spin="true" font-size="13" name="loader-line" :color="_activeBgColor"></x-icon>
+				
+				<view v-if="!_loading" :class="[opened?'xSwitchIconOn':'xSwitchIconOff','xSwitchIcon']" >
+					<x-icon v-if="(opened?_activeIcon:_icon)!=''" :font-size="((_contentHeight*0.6).toString())" 
+					:color="(opened?_activeBgColor:_bgColor)"
+					:name="(opened?_activeIcon:_icon)" ></x-icon>
+				</view>
+			</view>
+		</view>
+	</view>
+</template>
+<style scoped>
+	.xSwitchIcon{
+		transition-property: transform, opacity;
+		transition-timing-function: ease-in;
+		transition-duration: 250ms;
+		width:100%;
+		height:100%;
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+	}
+	
+	.xSwitchDisabled {
+		opacity: 0.7;
+		/* #ifdef WEB */
+		cursor: no-drop !important;
+		/* #endif */
+	}
+
+	.xSwitchTextLeft {
+		color: white;
+	}
+
+	.xSwitchTextRight {
+		color: #acacac;
+	}
+
+	.xSwitch {
+		height: 32rpx;
+		position: relative;
+		/* #ifdef WEB */
+		cursor: pointer;
+		/* #endif */
+	}
+
+	.xSwitchBg {
+		width: 100%;
+		height: 100%;
+		transition-duration: 350ms;
+		transition-property: opacity, transform;
+		/* transition-timing-function: ease; */
+	}
+
+	.xSwitchBgOn {
+		opacity: 1;
+		transform: scale(1);
+	}
+
+	.xSwitchOff {
+		opacity: 0;
+		transform: scale(0.9);
+	}
+
+	.xSwitchWrap {
+		position: absolute;
+	}
+
+	.xSwitchText {
+		width: 100%;
+		height: 100%;
+		display: flex;
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		padding: 0 12%;
+		box-sizing: border-box;
+	}
+
+	.xSwitchBtn {
+		position: absolute;
+		/* border-radius: 200rpx; */
+		transition-duration: 350ms;
+		left: 0px;
+		top: 0;
+		transition-property: transform;
+		/* transition-timing-function:  cubic-bezier(.18,.89,.32,1); */
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+	}
+</style>

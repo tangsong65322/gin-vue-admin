@@ -1,0 +1,321 @@
+<script lang="ts">
+	import { PropType } from "vue";
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+
+	import { xTween } from "@/uni_modules/tmx-ui/index.uts"
+	import { XANIMATE_OPIONS, xTweenAnimate, xTweenCallbackFunType, xTweenEventCallFunType} from "@/uni_modules/tmx-ui/interface.uts"
+	
+	/**
+	 * @name 动画 xAnimation
+	 * @page /pages/index/animation
+	 * @description 动画组件
+	 * @category 其它组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				element: null as Element | null,
+				id: "xAnimation" + getUid() as String,
+				playStatus: 'complete' as 'reset' | 'playing' | 'complete',
+				playFag: '',
+				tid: 0,
+				tw:new xTween()
+			}
+		},
+
+		emits: [
+			/**
+			 * 播放前执行
+			 */
+			'beforePlay',
+			/**
+			 * 播放完成执行
+			 */
+			'complete',
+			/**
+			 * 播放时触发
+			 */
+			'play',
+			/**
+			 * 同步控制播放参数
+			 * 等同v-model:control
+			 */
+			'update:control',
+			/**
+			 * 当前播放的状态
+			 * 等同vmodel:status
+			 * 它是单向输出的
+			 */
+			'update:status'],
+		props: {
+			/**
+			 * 是否自动播放
+			 */
+			autoPlay: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 动画播放的时间+50+5
+			 */
+			duration: {
+				type: Number,
+				default: 350
+			},
+			/**
+			 * 动画名称
+			 */
+			name: {
+				type: String,
+				default: 'fadeIn'
+			},
+			/**
+			 * 缓动动画名称
+			 */
+			ease: {
+				type: String,
+				default: 'tmxEase'
+			},
+
+			/**
+			 * 自动监测是否播放。如果标志为play就开始播放动画，但
+			 * 如果动画在播放中这个值不会有任何响应，而且需要v-model:playing用法来双向绑定读取此属性
+			 * 你可以通过播放事件来确定修改此值。
+			 *  
+			 */
+			control: {
+				type: String as PropType<'play' | 'default'>,
+				default: 'default'
+			},
+			/**
+			 * 播放状态，只能用来读取此值，不可更改，使用时请v-model:status来读取动态的状态值
+			 *  
+			 */
+			status: {
+				type: String as PropType<'reset' | 'playing' | 'complete'>,
+				default: 'complete'
+			},
+		},
+		watch: {
+			control() {
+				if (this.playStatus == 'playing' || this.control != 'play') {
+					this.$emit('update:control', 'default')
+					return;
+				}
+				this.play();
+				
+			},
+			name(){
+				this.resetStatusInitType();
+				this.autoPlaySetFlex()
+				if (this.autoPlay) {
+					this.play();
+				}
+			}
+		},
+		computed: {
+			_animationFun() : string {
+				return xConfig.animationFun
+			}
+		},
+		mounted() {
+		
+			this.tw.startRender()
+			this.resetStatusInitType();
+			this.autoPlaySetFlex()
+			if (this.autoPlay) {
+				this.play();
+			}
+		},
+		beforeUnmount() {
+			this.tw.destroy()
+			clearTimeout(this.tid)
+		},
+		methods: {
+
+			resetStatusInitType() {
+				// ||this.playStatus == 'reset'
+				let element = this.$refs["xAnimation"] as UniElement
+				if (element == null) return;
+				this.playStatus = 'reset'
+				this.$emit('update:status', 'reset')
+
+				if (this.playFag == '') {
+					
+					if (this.name == 'fadeIn') {
+						element.style.setProperty("opacity", 0)
+						element.style.setProperty("transform", 'scale(1) translateX(0%) translateY(0%)')
+					}
+					if (this.name == 'fadeOut') {
+						element.style.setProperty("opacity", 1)
+						element.style.setProperty("transform", 'scale(1) translateX(0%) translateY(0%)')
+					}
+					if (this.name == 'zoomIn') {
+						element.style.setProperty("opacity", 0)
+						element.style.setProperty("transform", 'scale(0) translateX(0%) translateY(0%)')
+						
+					}
+					if (this.name == 'zoomOut') {
+						element.style.setProperty("opacity", 1)
+						element.style.setProperty("transform", 'scale(1) translateX(0%) translateY(0%)')
+					
+					}
+					if (this.name == 'leftIn') {
+						element.style.setProperty("transform", 'translateX(-100%) scale(1) translateY(0%)')
+					}
+					if (this.name == 'leftOut') {
+						element.style.setProperty("transform", 'translateX(0%) scale(1) translateY(0%)')
+					}
+					if (this.name == 'rightIn') {
+						element.style.setProperty("opacity", 0)
+						element.style.setProperty("transform", 'translateX(100%) scale(1) translateY(0%)')
+					}
+					if (this.name == 'rightOut') {
+						element.style.setProperty("opacity", 1)
+						element.style.setProperty("transform", 'translateX(0%) scale(1) translateY(0%)')
+					}
+					if (this.name == 'topIn') {
+						element.style.setProperty("opacity", 0)
+						element.style.setProperty("transform", 'translateY(-100%) scale(1) translateX(0%)')
+					}
+					if (this.name == 'topOut') {
+						element.style.setProperty("opacity", 1)
+						element.style.setProperty("transform", 'translateY(0%) scale(1) translateX(0%)')
+					}
+					if (this.name == 'bottomIn') {
+						element.style.setProperty("opacity", 0)
+						element.style.setProperty("transform", 'translateY(-100%) scale(1) translateX(0%)')
+					}
+					if (this.name == 'bottomOut') {
+						element.style.setProperty("opacity", 1)
+						element.style.setProperty("transform", 'translateY(0%) scale(1) translateX(0%)')
+					}
+				}
+			},
+			autoPlaySetFlex() {
+				let element = this.$refs["xAnimation"] as UniElement
+				if (element == null) return;
+				element.style.setProperty("display", 'flex')
+			},
+			/**
+			 * 播放动画
+			 * @public
+			 */
+			play(){
+				let _this = this;
+				let element = this.$refs["xAnimation"] as UniElement
+				if (element == null || this.playStatus == 'playing') return;
+				if (this.playStatus != 'reset') {
+					this.resetStatusInitType()
+				}
+				/**
+				 * 播放前触发
+				 */
+				this.$emit('beforePlay')
+				this.playStatus = 'playing'
+				this.$emit('update:status', 'playing')
+				let atr = this.name
+				this.tw.stop()
+				this.tw.removeAnimate()
+				this.tw
+				.addAnimate({
+					duration:this.duration,
+					ease:this.ease,
+					enter:(item : xTweenEventCallFunType) =>{
+						if(atr == 'fadeIn'){
+							element.style.setProperty('opacity',(item.progress).toString())
+						}else if(atr == 'fadeOut'){
+							element.style.setProperty('opacity',(1-item.progress).toString())
+						}else if(atr == 'zoomIn'){
+							
+							element.style.setProperty("opacity", item.progress)
+							element.style.setProperty("transform", `scale(${item.progress})`)
+						}else if(atr == 'zoomOut'){
+							element.style.setProperty("opacity", (1-item.progress))
+							element.style.setProperty("transform", `scale(${1-item.progress})`)
+						}else if(atr == 'leftIn'){
+							let left = (1-item.progress)*100*-1
+							element.style.setProperty('opacity',(item.progress).toString())
+							element.style.setProperty("transform", `translateX(${left.toString()}%)`)
+							
+						}else if(atr == 'leftOut'){
+							let left = (item.progress)*100*-1
+							element.style.setProperty('opacity',(1-item.progress).toString())
+							element.style.setProperty("transform", `translateX(${left.toString()}%)`)
+						}else if(atr == 'rightIn'){
+							let left = (1-item.progress)*100
+							element.style.setProperty('opacity',(item.progress).toString())
+						
+							element.style.setProperty("transform", `translateX(${left.toString()}%)`)
+							
+						}else if(atr == 'rightOut'){
+							let left = (item.progress)*100
+							element.style.setProperty('opacity',(1-item.progress).toString())
+							element.style.setProperty("transform", `translateX(${left.toString()}%)`)
+						}else if(atr == 'topIn'){
+							let left = (1-item.progress)*100*-1
+							element.style.setProperty('opacity',(item.progress).toString())
+							element.style.setProperty("transform", `translateY(${left.toString()}%)`)
+							
+						}else if(atr == 'topOut'){
+							let left = (item.progress)*100*-1
+							element.style.setProperty('opacity',(1-item.progress).toString())
+							element.style.setProperty("transform", `translateY(${left.toString()}%)`)
+						}else if(atr == 'bottomIn'){
+							let left = (1-item.progress)*100
+							element.style.setProperty('opacity',(item.progress).toString())
+							element.style.setProperty("transform", `translateY(${left.toString()}%)`)
+							
+						}else if(atr == 'bottomOut'){
+							let left = (item.progress)*100
+							element.style.setProperty('opacity',(1-item.progress).toString())
+							element.style.setProperty("transform", `translateY(${left.toString()}%)`)
+						}
+						
+						
+					},
+					complete: (_ : xTweenEventCallFunType) => {
+						_this.playStatus = 'complete'
+						/**
+						 * 播放完成触发
+						 */
+						_this.$emit('complete')
+						_this.$emit('update:status', 'complete')
+						_this.$emit('update:control', 'default');
+					}
+				} as xTweenAnimate)
+				this.tw.play()
+				
+				
+			}
+	
+		}
+	}
+</script>
+<template>
+	<view ref="xAnimation"   class="xAnimation" :id="id">
+		<!-- #ifdef APP||WEB -->
+		<!--
+		@slot 默认插槽,下面的数据微信没有
+		@prop {object} status - 状态 {state:'reset'|'playing'|'complete',flag:'play'|'default'}
+		-->
+		<slot :status="{state:playStatus,flag:playFag}"></slot>
+		<!-- #endif -->
+		<!-- #ifdef MP-WEIXIN -->
+		<slot ></slot>
+		<!-- #endif -->
+	</view>
+</template>
+<style>
+	.xAnimation {
+		display: none;
+		flex-direction: column;
+		/* transition-property: opacity, transform;
+		transition-duration: 350ms; */
+	}
+</style>

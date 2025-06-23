@@ -1,0 +1,837 @@
+/**
+ * xAnimate
+ * @author tmzdy
+ * @copyright tmui4.0附带核心基类
+ * @version 1.0.0
+ * @description 通过nodeElement元素来控制属性动画变得更为简单方便
+ * 
+ */
+import { XANIMATE_OPIONS } from "../../interface.uts"
+import { getUid } from "./xCoreUtil.uts";
+import { hexToRgb,getDefaultColor,rgbToHex } from "./xCoreColorUtil.uts";
+import bezier from "./bezier.uts"
+// #ifdef APP-ANDROID
+import Choreographer from "android.view.Choreographer";
+import FrameCallback from "android.view.Choreographer.FrameCallback";
+// #endif
+
+// #ifdef APP-IOS
+// import * as UIKit from 'UIKit';
+// #endif
+
+type ATTRGERTS = {
+	from : string,
+	to : string,
+	unit : string,
+	now : string,
+	progress : number,
+	name : string
+}
+type callbackFunType = (x:number)=>number
+type easingFunType = {
+	x:number,
+	y:number,
+	m:number,
+	n:number,
+}
+
+export class xAnimate {
+	easingList = new Map<string,number[]>([
+			["linear",[0.250, 0.250, 0.750, 0.750]],
+			["ease",[0.250, 0.100, 0.250, 1.000]],
+			["easeIn",[0.420, 0.000, 1.000, 1.000]],
+			["easeOut",[0.000, 0.000, 0.580, 1.000]],
+			["easeInOut",[0.420, 0.000, 0.580, 1.000]],
+			["easeInQuad", [0.550, 0.085, 0.680, 0.530]],
+			["easeOutQuad", [0.250, 0.460, 0.450, 0.940]],
+			["easeInOutQuad", [0.455, 0.030, 0.515, 0.955]],
+			["easeInCubic", [0.550, 0.055, 0.675, 0.190]], 
+			["easeOutCubic", [0.215, 0.610, 0.355, 1.000]],
+			["easeInOutCubic", [0.645, 0.045, 0.355, 1.000]],
+			["easeInQuart", [0.895, 0.030, 0.685, 0.220]],
+			["easeOutQuart", [0.165, 0.840, 0.440, 1.000]],
+			["easeInOutQuart", [0.770, 0.000, 0.175, 1.000]],
+			["easeInQuint", [0.755, 0.050, 0.855, 0.060]],
+			["easeOutQuint", [0.230, 1.000, 0.320, 1.000]],
+			["easeInOutQuint", [0.860, 0.000, 0.070, 1.000]],
+			["easeInSine", [0.470, 0.000, 0.745, 0.715]],
+			["easeOutSine", [0.390, 0.575, 0.565, 1.000]],
+			["easeInOutSine", [0.445, 0.050, 0.550, 0.950]],
+			["easeInExpo", [0.950, 0.050, 0.795, 0.035]],
+			["easeOutExpo", [0.190, 1.000, 0.220, 1.000]],
+			["easeInOutExpo", [1.000, 0.000, 0.000, 1.000]],
+			["easeInCirc", [0.600, 0.040, 0.980, 0.335]],
+			["easeOutCirc", [0.075, 0.820, 0.165, 1.000]],
+			["easeInOutBack", [0.680, -0.550, 0.265, 1.550]],
+		]);
+	private tid = null as null | number;
+	element = null as null|UniElement;
+	// 当前播放的动画函数
+	timingFunction = 'linear';
+	//当前设置的播放时间
+	duration = 500;
+	//元素id
+	ele = "";
+	// 当前是否播放中
+	running = false
+	//当前是否暂停中
+	pauseing = false
+	//当前的播放进度
+	progress = 0
+	reverse = false;
+	//设置true时，loop>1播放时会来回播放动画，而不是从起始开始而是
+	// 始-终-始这样的模式播放。
+	tyty = false;
+	_tyty = false;
+	// 循环播放次数-1表示无限循环.
+	loop = 1
+	// 播放计数
+	private _loop = 0
+	
+	// 是否停止动画。
+	private _isStopping = true
+	private attrIndex = 0;
+	
+	private completeCallBack = () => { }
+	private startCallBack = () => { }
+	private doCallBack = (propress:number) => { }
+
+	private tagetsAttr = [] as ATTRGERTS[]
+	
+	private startTime = 0
+	private easing = null as null | callbackFunType;
+	/** 是否让动画顺序挨过按attr添加的属性顺序执行动画，而不是统一一起执行。 */
+	private isDescPlay = false
+	
+	private enterCallFun = ()=>{}
+	// #ifdef APP-ANDROID
+	private ChoreographerDemo = null as Choreographer|null
+	private FrameCallbackCallFun = null as FrameCallback|null
+	// #endif
+	
+	// #ifdef APP-IOS
+	// private CADisplayLink = null as UIKit.CADisplayLink|null
+	private dhid = 0
+	// #endif
+	
+	
+	// #ifdef WEB || APP-IOS
+	private canFrameIds = null
+	// #endif
+	
+	/**
+	 * 创建xAnimate动画实例
+	 * @param ele 元素UniElement
+	 * @param options 动画参数 XANIMATE_OPIONS
+	 */
+	constructor(ele:UniElement|null,options : XANIMATE_OPIONS) {
+		
+		// this.element = uni.getElementById(options.ele);
+		this.element = ele;
+		
+		this.duration = options.duration == null?this.duration:options.duration!
+		this.loop = options.loop == null?this.loop:options.loop!
+		this.tyty = options.tyty == null?this.tyty:options.tyty!
+		this.isDescPlay = options.isDescPlay == null?this.isDescPlay:options.isDescPlay!
+		
+		
+		let easingName =  options.timingFunction == null?'linear':options.timingFunction!
+		let ecall = this.easingList.get(easingName);
+		if(ecall!=null){
+			let ecallps = ecall!
+			this.easing = bezier(ecallps[0],ecallps[1],ecallps[2],ecallps[3]);
+		}
+		if(options.bezier!=null){
+			let ecallps = options.bezier!
+			this.easing = bezier(ecallps[0],ecallps[1],ecallps[2],ecallps[3]);
+		}
+		if(options.complete!=null){
+			this.completeCallBack = options.complete!
+		}
+		if(options.start!=null){
+			this.startCallBack = options.start!
+		}
+		if(options.frame!=null){
+			this.doCallBack = options.frame!
+		}
+		
+		
+		
+		
+	}
+	
+	private getUnit(n ?: string) : string {
+		if (n == null) return 'px';
+		let unit = n.replace(/[\d|\-|\+]/g, '');
+		if(unit=="."){
+			unit = ""
+		}
+		return unit;
+	}
+	/**
+	 * 添加自定义动画
+	 */
+	addTimingFunction(name:string,nubs:number[]){
+		this.easingList.set(name,nubs)
+	}
+	/**
+	 * 设置动画反转状态
+	 */
+	setAniReverse(n:boolean|null=null){
+		if(n!=null){
+			this.reverse  = n!
+		}else{
+			this.reverse = !this.reverse
+		}
+	}
+	/**
+	 * 设置播放动画的次数
+	 */
+	setLoops(n:number|null = null){
+		if(n!=null){
+			this.loop = n!;
+		}
+	}
+	/**
+	 * 设置单次动画播放的持续时间
+	 */
+	setDurations(n:number|null = null){
+		if(n!=null){
+			this.duration = n!;
+		}
+	}
+	/**
+	 * 连续播放的模式切换
+	 */
+	setTytys(n:boolean|null = null){
+		if(n!=null){
+			this.tyty = n!;
+		}
+	}
+	/**
+	 * 添加动画属性
+	 * @param {string} name 属性名，目前支持官方的css属性,相同的name会被覆盖
+	 * @param {string} from 起始值，允许数字字符，带单位2px,20%这样的，但必须和to相同单位
+	 * @param {string} to 结束值，允许数字字符，带单位2px,20%这样的，但必须和from相同单位
+	 * @param {boolean} only 是否让其是唯一性，重复添加相同的name会被最后一次替换。
+	 */
+	attr(name:string,from : string, to : string ,only:boolean = true):xAnimate {
+		let unit = this.isColorStyle(name)?'':this.getUnit(from);
+		let from_n = this.isColorStyle(name)?getDefaultColor(from):parseFloat(from).toString()
+		let to_n = this.isColorStyle(name)?getDefaultColor(to):parseFloat(to).toString()
+		let index = this.tagetsAttr.findIndex((item:ATTRGERTS):boolean => item.name == name);
+		if(!only){
+			index=-1;
+		}
+		if(index==-1){
+			this.tagetsAttr.push({
+				from: from_n.toString(),
+				to: to_n.toString(),
+				unit,
+				progress: 0,
+				now: from_n,
+				name: name
+			} as ATTRGERTS)
+		}else{
+			this.tagetsAttr[index] = {
+				from: from_n.toString(),
+				to: to_n.toString(),
+				unit,
+				progress: 0,
+				now: from_n,
+				name: name
+			} as ATTRGERTS
+		}
+		
+		return this;
+	}
+	private interpolate(startValue:number, endValue:number, progress:number):number {
+	  return startValue + (endValue - startValue) * progress;
+	}
+	private isColorStyle(val:string):boolean{
+		return val.indexOf('background')>-1||val.indexOf('color')>-1;
+	}
+	private _setAttr(name:string,current:number,unit:string,progress:number,item:ATTRGERTS){
+		if(this.element==null) return
+		
+		if(name=='scaleX'){
+			this.element!.style!.setProperty("transform",`scaleX(${current})`)
+		}else if(name=='scaleY'){
+			this.element!.style!.setProperty("transform",`scaleY(${current})`)
+		}else if(name=='scale'){
+			this.element!.style!.setProperty("transform",`scale(${current})`)
+		}else if(name=='rotateX'){
+			this.element!.style!.setProperty("transform",`rotateX(${(current).toString()+unit})`)
+		}else if(name=='rotateY'){
+			this.element!.style!.setProperty("transform",`rotateY(${(current).toString()+unit})`)
+		}else if(name=='rotate'){
+			this.element!.style!.setProperty("transform",`rotate(${(current).toString()+unit})`)
+		}else if(name=='translateX'){
+			this.element!.style!.setProperty("transform",`translateX(${(current).toString()+unit})`)
+		}else if(name=='translateY'){
+			this.element!.style!.setProperty("transform",`translateY(${(current).toString()+unit})`)
+		}else if(name=='translate'){
+			this.element!.style!.setProperty("transform",`translate(${(current).toString()+unit},${(current).toString()+unit})`)
+		}else if(this.isColorStyle(name)){
+			let startRgba = hexToRgb(item.from)
+			let dndRgba = hexToRgb(item.to)
+			let r = this.interpolate(startRgba.getNumber('r')!,dndRgba.getNumber('r')!,progress);
+			let g = this.interpolate(startRgba.getNumber('g')!,dndRgba.getNumber('g')!,progress);
+			let b = this.interpolate(startRgba.getNumber('b')!,dndRgba.getNumber('b')!,progress);
+			let a = this.interpolate(startRgba.getNumber('a')!,dndRgba.getNumber('a')!,progress);
+			this.element!.style!
+			.setProperty(name,`rgba(${r.toFixed(0)},${g.toFixed(0)},${b.toFixed(0)},${a.toFixed(1)})`)
+		}else{
+			
+			this.element!.style!.setProperty(name,current.toFixed(2)+unit)
+		}
+		
+	}
+	private _run_web() {
+		
+		// #ifdef H5 || APP-IOS
+		
+		let _this = this;
+		_this.startTime = 0
+		
+		cancelAnimationFrame(_this.canFrameIds)
+		function run(){
+			if (_this.startTime<=0) {
+				_this.startTime = Date.now(); // 记录动画开始时间
+			}
+			const progress = Math.min((Date.now() - _this.startTime) / _this.duration + _this.progress, 1); // 计算当前进度
+			if(_this.element!=null){
+				if(!_this.isDescPlay){
+					for(let i=0;i<_this.tagetsAttr.length;i++){
+						let item = _this.tagetsAttr[i]
+						item.progress = progress
+						if(!_this.isColorStyle(item.name)){
+							let fromN = parseFloat(item.from)
+							let toN = parseFloat(item.to)
+							let easeInt = 1
+							if(_this.easing!=null){
+								let eas = _this.easing!
+								easeInt = eas(progress)
+							}
+							
+							let current = fromN + (toN - fromN) * (easeInt==1?progress:easeInt); // 根据进度计算当前值
+							if(_this.reverse||_this._tyty ){
+								current = toN + (fromN - toN) * (easeInt==1?progress:easeInt);
+							}
+							if(_this.element!=null){
+								_this._setAttr(item.name,current,item.unit,progress,item)
+							}
+						}else{
+							if(_this.element!=null){
+								
+								_this._setAttr(item.name,0,item.unit,progress,item)
+							}
+						}
+					}
+				}else{
+					if(_this.attrIndex<_this.tagetsAttr.length){
+						let item = _this.tagetsAttr[_this.attrIndex]
+						item.progress = progress
+						
+						if(!_this.isColorStyle(item.name)){
+							let fromN = parseFloat(item.from)
+							let toN = parseFloat(item.to)
+							let easeInt = 1
+							if(_this.easing!=null){
+								let eas = _this.easing!
+								easeInt = eas(progress)
+							}
+							
+							let current = fromN + (toN - fromN) * (easeInt==1?progress:easeInt); // 根据进度计算当前值
+							if(_this.reverse||_this._tyty ){
+								current = toN + (fromN - toN) * (easeInt==1?progress:easeInt);
+							}
+							if(_this.element!=null){
+								_this._setAttr(item.name,current,item.unit,progress,item)
+							}
+						}else{
+							if(_this.element!=null){
+								_this._setAttr(item.name,0,item.unit,progress,item)
+							}
+						}
+						
+					}
+				}
+				
+			}
+			
+			
+			if(_this.pauseing){
+				cancelAnimationFrame(_this.canFrameIds)
+				_this.running = false
+				console.log(_this.pauseing,"动画暂停")
+				_this.progress = progress
+				return;
+			}
+			
+			// console.log(_this.running,"动画结束")
+			if(progress>=1||_this._isStopping){
+				
+				if(_this.isDescPlay&&_this.attrIndex<_this.tagetsAttr.length){
+					_this.attrIndex +=1;
+					_this.progress = 0
+					_this._run_web();
+					return;
+				}
+				
+				cancelAnimationFrame(_this.canFrameIds)
+				_this.attrIndex = 0;
+				_this.progress = 0
+				if(_this.tyty){
+					_this._tyty = !_this._tyty
+				}
+				if(_this.loop==-1){
+					_this._run_web();
+					return;
+				}else{
+					_this._loop+=1;
+					if(_this._loop<_this.loop){
+						_this._run_web();
+						return;
+					}
+				}
+				
+				_this.running = false
+				_this.completeCallBack()
+				return;
+			}
+			
+			if (progress < 1 && _this.running) {
+				_this.doCallBack(progress)
+				_this.canFrameIds = requestAnimationFrame(run)
+			}
+		}
+		_this.startCallBack()
+		
+		run()
+		// #endif
+	}
+	
+	private _run_weapp() {
+		// #ifdef MP
+		let _this = this;
+		_this.startTime = 0
+		clearTimeout(_this.dhid)
+		function run(){
+			if (_this.startTime<=0) {
+				_this.startTime = Date.now(); // 记录动画开始时间
+			}
+			const progress = Math.min((Date.now() - _this.startTime) / _this.duration + _this.progress, 1); // 计算当前进度
+			if(_this.element!=null){
+				if(!_this.isDescPlay){
+					for(let i=0;i<_this.tagetsAttr.length;i++){
+						let item = _this.tagetsAttr[i]
+						item.progress = progress
+						if(!_this.isColorStyle(item.name)){
+							let fromN = parseFloat(item.from)
+							let toN = parseFloat(item.to)
+							let easeInt = 1
+							if(_this.easing!=null){
+								let eas = _this.easing!
+								easeInt = eas(progress)
+							}
+							
+							let current = fromN + (toN - fromN) * (easeInt==1?progress:easeInt); // 根据进度计算当前值
+							if(_this.reverse||_this._tyty ){
+								current = toN + (fromN - toN) * (easeInt==1?progress:easeInt);
+							}
+							if(_this.element!=null){
+								_this._setAttr(item.name,current,item.unit,progress,item)
+							}
+						}else{
+							if(_this.element!=null){
+								
+								_this._setAttr(item.name,0,item.unit,progress,item)
+							}
+						}
+					}
+				}else{
+					if(_this.attrIndex<_this.tagetsAttr.length){
+						let item = _this.tagetsAttr[_this.attrIndex]
+						item.progress = progress
+						
+						if(!_this.isColorStyle(item.name)){
+							let fromN = parseFloat(item.from)
+							let toN = parseFloat(item.to)
+							let easeInt = 1
+							if(_this.easing!=null){
+								let eas = _this.easing!
+								easeInt = eas(progress)
+							}
+							
+							let current = fromN + (toN - fromN) * (easeInt==1?progress:easeInt); // 根据进度计算当前值
+							if(_this.reverse||_this._tyty ){
+								current = toN + (fromN - toN) * (easeInt==1?progress:easeInt);
+							}
+							if(_this.element!=null){
+								_this._setAttr(item.name,current,item.unit,progress,item)
+							}
+						}else{
+							if(_this.element!=null){
+								_this._setAttr(item.name,0,item.unit,progress,item)
+							}
+						}
+						
+					}
+				}
+				
+			}
+			
+			
+			if(_this.pauseing){
+				clearTimeout(_this.dhid)
+				_this.running = false
+				console.log(_this.pauseing,"动画暂停")
+				_this.progress = progress
+				return;
+			}
+			
+			// console.log(_this.running,"动画结束")
+			if(progress>=1||_this._isStopping){
+				
+				if(_this.isDescPlay&&_this.attrIndex<_this.tagetsAttr.length){
+					_this.attrIndex +=1;
+					_this.progress = 0
+					_this._run_weapp();
+					return;
+				}
+				
+				clearTimeout(_this.dhid)
+				_this.attrIndex = 0;
+				_this.progress = 0
+				if(_this.tyty){
+					_this._tyty = !_this._tyty
+				}
+				if(_this.loop==-1){
+					_this._run_weapp();
+					return;
+				}else{
+					_this._loop+=1;
+					if(_this._loop<_this.loop){
+						_this._run_weapp();
+						return;
+					}
+				}
+				
+				_this.running = false
+				_this.completeCallBack()
+				return;
+			}
+			
+			
+			if (progress < 1 && _this.running) {
+				_this.dhid = setTimeout(()=>{
+					_this.doCallBack(progress)
+					run()
+				}, 6); // 递归调用自身，实现动画效果
+			}
+			
+		}
+		_this.startCallBack()
+		run()
+		
+		// #endif
+		
+	}
+	
+	private _run_andriod() {
+		// #ifdef APP-ANDROID
+		let _this = this;
+		_this.startTime = 0
+		let dhid = 0
+		if(this.ChoreographerDemo==null){
+			this.ChoreographerDemo = Choreographer.getInstance();
+		}else{
+			if(this.FrameCallbackCallFun!=null){
+				_this.ChoreographerDemo!.removeFrameCallback(this.FrameCallbackCallFun!)
+			}
+		}
+		class frameCallback extends Choreographer.FrameCallback {
+		    override doFrame(frameTimeNanos:Long) {
+		        
+				if (_this.startTime<=0) {
+					_this.startTime = Date.now(); // 记录动画开始时间
+				}
+				const progress = Math.min((Date.now() - _this.startTime) / _this.duration + _this.progress, 1); // 计算当前进度
+				if(_this.element!=null){
+					
+					if(!_this.isDescPlay){
+						for(let i=0;i<_this.tagetsAttr.length;i++){
+							let item = _this.tagetsAttr[i]
+							if(!_this.isColorStyle(item.name)){
+								let fromN = parseFloat(item.from)
+								let toN = parseFloat(item.to)
+								let easeInt = 1
+								if(_this.easing!=null){
+									let eas = _this.easing!
+									easeInt = eas(progress)
+								}
+								
+								let current = fromN + (toN - fromN) * (easeInt==1?progress:easeInt); // 根据进度计算当前值
+								if(_this.reverse||_this._tyty ){
+									current = toN + (fromN - toN) * (easeInt==1?progress:easeInt);
+								}
+								if(_this.element!=null){
+									_this._setAttr(item.name,current,item.unit,progress,item)
+								}
+							}else{
+								if(_this.element!=null){
+									_this._setAttr(item.name,0,item.unit,progress,item)
+								}
+							}
+						}
+					}else{
+						if(_this.attrIndex<_this.tagetsAttr.length){
+							let item = _this.tagetsAttr[_this.attrIndex]
+							item.progress = progress
+							
+							if(!_this.isColorStyle(item.name)){
+								let fromN = parseFloat(item.from)
+								let toN = parseFloat(item.to)
+								let easeInt = 1
+								if(_this.easing!=null){
+									let eas = _this.easing!
+									easeInt = eas(progress)
+								}
+								
+								let current = fromN + (toN - fromN) * (easeInt==1?progress:easeInt); // 根据进度计算当前值
+								if(_this.reverse||_this._tyty ){
+									current = toN + (fromN - toN) * (easeInt==1?progress:easeInt);
+								}
+								if(_this.element!=null){
+									_this._setAttr(item.name,current,item.unit,progress,item)
+								}
+							}else{
+								if(_this.element!=null){
+									_this._setAttr(item.name,0,item.unit,progress,item)
+								}
+							}
+							
+						}
+					}
+					
+					
+				}
+				
+				
+				
+				if(progress>=1||_this._isStopping){
+					
+					if(_this.isDescPlay&&_this.attrIndex<_this.tagetsAttr.length){
+						_this.attrIndex +=1;
+						_this.progress = 0
+						_this._run_andriod();
+						return;
+					}
+					
+					
+					_this.progress = 0
+					if(_this.tyty){
+						_this._tyty = !_this._tyty
+					}
+					if(_this.loop==-1){
+						_this._run_andriod();
+						return;
+					}else{
+						_this._loop+=1;
+						if(_this._loop<_this.loop){
+							_this._run_andriod();
+							return;
+						}
+					}
+					_this.running = false
+					_this.completeCallBack()
+					return;
+				}
+				
+				if(_this.pauseing){
+					_this.running = false
+					console.log(_this.pauseing,"动画暂停")
+					_this.progress = progress
+					return;
+				}
+				
+				
+				if (progress < 1 && _this.running) {
+					_this.doCallBack(progress)
+					_this.ChoreographerDemo!.postFrameCallback(this);
+				}
+			
+				
+		    }
+		};
+		
+		_this.startCallBack()
+		this.FrameCallbackCallFun = new frameCallback()
+		_this.ChoreographerDemo!.postFrameCallback(this.FrameCallbackCallFun!);
+		
+		// #endif
+		
+	}
+	
+	private __run_web() {
+		// #ifdef H5
+		let _this = this;
+		cancelAnimationFrame(_this.canFrameIds)
+		function run(){
+			_this.enterCallFun()
+			if(_this._isStopping){
+				_this.running = false
+				cancelAnimationFrame(_this.canFrameIds)
+				return;
+			}
+			if (_this.running) {
+				_this.canFrameIds = requestAnimationFrame(run)
+			}
+		}
+		run()
+		// #endif
+	}
+	
+	private __run_andriod() {
+		// #ifdef APP-ANDROID
+		let _this = this;
+		
+		if(this.ChoreographerDemo==null){
+			this.ChoreographerDemo = Choreographer.getInstance();
+		}else{
+			if(this.FrameCallbackCallFun!=null){
+				_this.ChoreographerDemo!.removeFrameCallback(this.FrameCallbackCallFun!)
+			}
+		}
+		class frameCallback extends Choreographer.FrameCallback {
+		    override doFrame(frameTimeNanos:Long) {
+				_this.enterCallFun()
+				if(_this._isStopping){
+					_this.running = false
+					return;
+				}
+				if (_this.running) {
+					_this.ChoreographerDemo!.postFrameCallback(this);
+				}
+		    }
+		};
+		this.FrameCallbackCallFun = new frameCallback()
+		_this.ChoreographerDemo!.postFrameCallback(this.FrameCallbackCallFun!);
+		
+		// #endif
+		
+	}
+	
+	
+	private __run_weapp(){
+		// #ifdef MP
+		let _this = this;
+		clearTimeout(_this.dhid)
+		function run(){
+			_this.enterCallFun()
+			if(_this._isStopping){
+				_this.running = false
+				clearTimeout(_this.dhid)
+				return;
+			}
+			if (_this.running) {
+				_this.dhid = setTimeout(run, 6);
+			}
+		}
+		run()
+		// #endif
+	}
+	/**
+	 * 启动动画
+	 */
+	play():xAnimate {
+		if(this.running) return this;
+		this.running = true;
+		// 开始动画
+		this._isStopping = false;
+		this.pauseing = false;
+		this._loop = 0
+		this.attrIndex =0;
+		// #ifdef H5 || APP-IOS
+		this._run_web();
+		// #endif
+		// #ifdef APP-ANDROID
+		this._run_andriod();
+		// #endif
+		// #ifdef MP
+		this._run_weapp();
+		// #endif
+		
+		return this;
+	}
+
+	/**
+	 * 停止，会让动画直接结束，把目标值直接前进到结束的地方。
+	 */
+	stop():xAnimate {
+		let _this = this;
+		this._isStopping = true;
+		this.progress = 0
+		this.attrIndex = _this.tagetsAttr.length
+		
+		// #ifdef WEB || APP-IOS
+		cancelAnimationFrame(_this.canFrameIds)
+		// #endif
+		
+		// #ifdef APP-ANDROID
+		
+		if(this.ChoreographerDemo==null){
+			this.ChoreographerDemo = Choreographer.getInstance();
+		}else{
+			if(this.FrameCallbackCallFun!=null){
+				this.ChoreographerDemo!.removeFrameCallback(this.FrameCallbackCallFun!)
+			}
+		}
+		// #endif
+		
+		// #ifdef MP
+		clearTimeout(_this.dhid)
+		// setTimeout(function(){
+		// 	for(let i=0;i<_this.tagetsAttr.length;i++){
+		// 		let item = _this.tagetsAttr[i]
+		// 		item.now = item.to;
+		// 		if(_this.element!=null){
+		// 			_this.element!.style!.setProperty(item.name,(_this.reverse?item.from:item.to)+item.unit)
+		// 		}
+		// 	}
+		// 	_this.reverse = false;
+		// },10)
+		// _this.running = false;
+		// #endif
+		return this;
+	}
+	/**
+	 * 暂停，会保留当前的动画效果，不会直接结束。
+	 */
+	pause():xAnimate {
+		this.pauseing = true;
+		return this;
+	}
+	/**
+	 * 刷新回调函数
+	 */
+	enterFrame(evt:()=>void){
+		this.stop()
+		this.enterCallFun=evt;
+		this.running = true;
+		this._isStopping = false
+		// #ifdef WEB || APP-IOS
+		this.__run_web()
+		// #endif
+		// #ifdef APP-ANDROID
+		this.__run_andriod();
+		// #endif
+	
+		// #ifdef MP
+		this.__run_weapp();
+		// #endif
+		
+	}
+
+}

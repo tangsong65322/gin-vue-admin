@@ -1,0 +1,126 @@
+<script lang="ts">
+	import { checkIsCssUnit, getUid } from '../../core/util/xCoreUtil.uts'
+	import { BARRAGE_ITEM_AR } from "../x-barrage/interface.uts"
+	import { PropType } from "vue"
+	
+	/**
+	 * 
+	 * @name 弹幕子节点 BarrageItem
+	 * @page /pages/index/barrage
+	 * @category 反馈组件
+	 * @description 弹幕内部私有组件，不要引用。
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | x | ☑️ | 4.14+ | 1.0.0 |
+	 */
+	export default {
+		data() {
+			return {
+				id: 'xBarrage-' + getUid(),
+				real_w: 0,
+				real_h: 0,
+				totalWidth: 10000,
+				dur: 0,
+				endX: 0,
+				rightX: 0,
+				status: 'none',
+			}
+		},
+		props: {
+			/**
+			 * 速度
+			 */
+			speed: {
+				type: Number,
+				default: 30
+			},
+			label: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 速度
+			 */
+			boxWidth: {
+				type: Number,
+				default: 0
+			},
+			index: {
+				type: Number,
+				default: 0
+			},
+			data: {
+				type: Array as PropType<BARRAGE_ITEM_AR[]>,
+				default: () : BARRAGE_ITEM_AR[] => [] as BARRAGE_ITEM_AR[]
+			}
+		},
+		mounted() {
+			this.getNodes();
+		},
+		methods: {
+			getNodes() {
+				if (this.status == 'play') return;
+				uni.createSelectorQuery().in(this)
+					.select(".xBarrageItemTextContentBox")
+					.boundingClientRect().exec((ret) => {
+						let nodeinfo = ret[0] as NodeInfo;
+						this.real_w = nodeinfo.width!;
+						this.real_h = nodeinfo.height!;
+						let syw = this.boxWidth + this.real_w;
+						this.totalWidth = syw
+						this.dur = Math.ceil(syw / this.speed) * 1000;
+						this.endX = this.boxWidth + this.real_w
+						this.status = 'play'
+					})
+			},
+		}
+	}
+</script>
+<template>
+
+	<view class="xBarrageItemTextContent" :style="{width:totalWidth+'px'}">
+		<view class="xBarrageItemTextContentBox" :style="{
+			'transition-duration':dur+'ms',
+			'transform':`translateX(-${endX}px)`,
+			'transition-delay':index*800,
+			
+		}">
+			<text v-for="(item) in data" :key="item.id" class="xBarrageItemText">{{item.label}}</text>
+		</view>
+	</view>
+</template>
+<style scoped>
+	.xBarrageItemTextContent {
+		position: absolute;
+		left: 0px;
+		display: flex;
+		flex-direction: row;
+		justify-content: flex-end;
+	}
+
+	.xBarrageItemTextContentBox {
+		transition-property: transform;
+		transition-timing-function: linear;
+		/* transform: translateX(100%); */
+		display: flex;
+		flex-direction: row;
+	}
+
+	.xBarrageItemText {
+		padding: 0 10px;
+		height: 24px;
+		background-color: rgba(0, 0, 0, 0.64);
+		color: white;
+		font-size: 14px;
+		text-overflow: ellipsis;
+		max-width: 110px;
+		border-radius: 20px;
+		line-height: 24px;
+		text-align: center;
+		margin-right: 20px;
+
+
+
+	}
+</style>

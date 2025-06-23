@@ -1,0 +1,15 @@
+import {XLOADINGS_TYPE,XLOADINGS_TYPE_PRIVATE} from "../interface.uts"
+import {defaultConfig,configCover} from "../libs/config.uts"
+
+
+export const showLoading = (opts : XLOADINGS_TYPE|null) => {
+	let realopts = opts==null?({} as XLOADINGS_TYPE):(opts!)
+	let config = configCover(realopts)
+	wx.showLoading({
+		title:opts?.title??"...",
+		mask:true
+	})
+}
+export const hideXloading = ()=>{
+	wx.hideLoading()
+}

@@ -1,0 +1,65 @@
+import { XTIPS_TYPE, XTIPS_TYPE_PRIVATE } from "../interface.uts"
+export const defaultConfig = {
+	iconColor: 'rgb(5,121,255)',
+	contentBgColor: 'rgba(255,255,255,1)',
+	maskBgColor: 'rgba(0,0,0,0)',
+	iconSize: 20,
+	iconCode: 'F449',
+	title: '',
+	titleSize: 16,
+	titleColor: 'rgb(5,121,255)',
+	duration: 2000,
+	size: 130,
+	close: () => { },
+
+	maskDisableClik: false,
+	position:'top',
+	offset:50
+
+} as XTIPS_TYPE_PRIVATE
+
+export const defaultStatusIcon = new Map<string, string>([
+	['warn', 'ECA1'],
+	['error', 'EB97'],
+	['success', 'EB79'],
+	['info', 'F449'],
+])
+
+export function configCover(opts : XTIPS_TYPE) : XTIPS_TYPE_PRIVATE {
+	let iconColor = opts.iconColor != null ? (opts.iconColor!) : defaultConfig.iconColor;
+	let contentBgColor = opts.contentBgColor != null ? (opts.contentBgColor!) : defaultConfig.contentBgColor;
+	let maskBgColor = opts.maskBgColor != null ? (opts.maskBgColor!) : defaultConfig.maskBgColor;
+	let iconSize = opts.iconSize != null ? (opts.iconSize!) : defaultConfig.iconSize;
+	let iconCode : string = opts.iconCode != null ? (opts.iconCode!) : defaultConfig.iconCode;
+	if (defaultStatusIcon.has(iconCode)) {
+		iconCode = defaultStatusIcon.get(iconCode)!
+	}
+	let title = opts.title != null ? (opts.title!) : defaultConfig.title;
+	let titleSize = opts.titleSize != null ? (opts.titleSize!) : defaultConfig.titleSize;
+	let titleColor = opts.titleColor != null ? (opts.titleColor!) : defaultConfig.titleColor;
+	let duration = opts.duration != null ? (opts.duration!) : defaultConfig.duration;
+	let close = opts.close != null ? (opts.close!) : defaultConfig.close;
+	let size = opts.size != null ? (opts.size!) : defaultConfig.size;
+	let position = opts.position != null ? (opts.position!) : defaultConfig.position;
+	let offset = opts.offset != null ? (opts.offset!) : defaultConfig.offset;
+	let maskDisableClik = false;
+
+	// #ifdef APP-ANDROID
+	maskDisableClik = opts.maskDisableClik == null ? defaultConfig.maskDisableClik : (opts.maskDisableClik!);
+	// #endif
+	// #ifdef WEB
+	maskDisableClik = opts.maskDisableClik == null ? (defaultConfig.maskDisableClik) : (opts.maskDisableClik);
+	// #endif
+
+	// #ifdef APP-IOS
+	maskDisableClik = opts.maskDisableClik == null ? (!defaultConfig.maskDisableClik) : (!opts.maskDisableClik);
+	// #endif
+
+	return {
+		iconColor,
+		contentBgColor,
+		maskBgColor,
+		iconSize,
+		iconCode, title, titleSize, titleColor, duration, close, size, maskDisableClik,position,offset
+	} as XTIPS_TYPE_PRIVATE
+}

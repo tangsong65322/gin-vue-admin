@@ -1,0 +1,63 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">数字输入框 xInputNumber</x-text>
+			<x-text color="#999999" >定义多样化,属性几乎与xInput一样，唯一不同的是这个只能数字，所以更多dmeo样式见xInput页面</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18"  class="text-weight-b ">仅能输入整数</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-input-number :show-clear="true" v-model="(val as number)" darkBgColor="" ></x-input-number>
+		</x-sheet>
+		
+		<x-sheet>
+			<x-text font-size="18"  class="text-weight-b ">输入小数并保留小数位</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-input-number type="digit" inputmode="decimal" v-model="(val2 as number)" darkBgColor="" >
+				<template v-slot:inputLeft>
+					<x-text color="primary" class="pl-16">投资金额:</x-text>
+				</template>
+				<template v-slot:inputRight>
+					<x-text class="px-16">万元</x-text>
+				</template>
+			</x-input-number>
+		</x-sheet>
+		
+		<x-sheet>
+			<x-text font-size="18"  class="text-weight-b ">小数位长度2</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-input-number  leftText="商品价格" rightText="元" type="digit" :decimalLen="3" inputmode="decimal" v-model="(val3 as number)" darkBgColor="" ></x-input-number>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18"  class="text-weight-b ">最小0，最大100</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-input-number :min="0" :max="100" leftText="商品价格" rightText="元" type="digit" inputmode="decimal" v-model="(val4 as number)" darkBgColor="" ></x-input-number>
+		</x-sheet>
+	
+		
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script setup>
+	const val = ref(3)
+	const val2 = ref(3.3)
+	const val3 = ref(8.000)
+	const val4 = ref(8.0)
+</script>
+
+<style>
+		
+</style>

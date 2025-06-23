@@ -1,0 +1,170 @@
+<script lang="ts">
+	import { type PropType } from "vue"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+
+	/**
+	 * 
+	 * @name 分割线 xDivider
+	 * @description 横和竖向，内容左，中，右。
+	 * @page /pages/index/divider
+	 * @category 展示组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+
+			}
+		},
+		props: {
+			/**
+			 * 对齐方式
+			 */
+			align: {
+				type: String as PropType<"left" | "right" | "center">,
+				default: "center"
+			},
+			/**
+			 * 文本
+			 */
+			label: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 线的颜色
+			 */
+			color: {
+				type: String,
+				default: "#f5f5f5"
+			},
+			/**
+			 * 线的暗黑颜色，如果不提供取全局的borderDarkColor
+			 */
+			darkColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 线粗细度。
+			 */
+			lineWidth: {
+				type: String,
+				default: "1"
+			},
+			/**
+			 * 竖向时的高度
+			 */
+			height: {
+				type: String,
+				default: "10"
+			},
+			/**
+			 * 文本颜色
+			 */
+			labelColor: {
+				type: String,
+				default: "#a2a2a2"
+			},
+			/**
+			 * 线条样式
+			 */
+			model: {
+				type: String as PropType<"solid" | "dotted">,
+				default: "solid"
+			},
+			/**
+			 * 字体大小
+			 */
+			fontSize: {
+				type: String,
+				default: "11"
+			},
+			/**
+			 * 是否是竖向
+			 */
+			vertical: {
+				type: Boolean,
+				default: false
+			}
+		},
+		computed: {
+			_label() : string {
+				return this.label
+			},
+			_lineWidth() : string {
+				return checkIsCssUnit(this.lineWidth, xConfig.unit)
+			},
+			_fontSize() : string {
+				
+				return checkIsCssUnit(this.fontSize, xConfig.unit)
+			},
+			_height() : string {
+				return checkIsCssUnit(this.height, xConfig.unit)
+			},
+
+			_color() : string {
+				if(xConfig.dark=='dark'){
+					if(this.darkColor!='') return getDefaultColor(this.darkColor)
+					return xConfig.borderDarkColor
+				}
+				return getDefaultColor(this.color)
+			},
+			_model() : string {
+				return this.model
+			},
+			_labelColor() : string {
+				return getDefaultColor(this.labelColor)
+			},
+			_vertical() : boolean {
+				return this.vertical
+			},
+
+		},
+	}
+</script>
+<template>
+	<view class="xDivider"
+		:style="{height:_vertical?_height:'auto','border-left':_vertical?`${_lineWidth} ${_model} ${_color}`:'none'}">
+		<view v-if="!_vertical" class="xDividerLeft"
+			:style="{flex:align=='left'?1:6,'border-bottom':`${_lineWidth} ${_model} ${_color}`}"></view>
+		<!-- 
+		 @slot 默认文本插槽。建议通过属性label填写，如果你有特殊要求可以
+		 在插槽中自定义样式和布局。
+		 -->
+		<slot>
+			<text v-if="_label!=''&&!_vertical" class="xDividerText"
+				:style="{color:_labelColor,fontSize:_fontSize}">{{_label}}</text>
+		</slot>
+		<view v-if="!_vertical" class="xDividerRight"
+			:style="{flex:align=='right'?1:6,'border-bottom':`${_lineWidth} ${_model} ${_color}`}"></view>
+	</view>
+</template>
+<style>
+	.xDivider {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.xDividerText {
+		padding: 0 24rpx;
+	}
+
+	.xDividerLeft {
+		flex: 6;
+	}
+
+	.xDividerRight {
+		flex: 6;
+	}
+
+	.xDividerLeft,
+	.xDividerRight {}
+</style>

@@ -1,0 +1,202 @@
+<script lang="ts">
+	import { getDefaultColor, colorAddDeepen } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit, getUid } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { type PropType, SlotsType } from "vue";
+	import { CHECKBOX_ITEM_INFO } from '../../interface.uts';
+
+	type XCHECKBOX_LISTITEM_TYPE = {
+		ele : XCheckboxComponentPublicInstance,
+		id : string,
+		data : CHECKBOX_ITEM_INFO
+	}
+
+	/**
+	 * @name 多选框组 xCheckboxGroup
+	 * @page /pages/index/checkbox-group
+	 * @category 表单组件
+	 * @description 使用时,从1.1.2开始允许是非直接x-checkbox子节点布局,但考虑到性能建议是直接子节点.
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		name: "xCheckboxGroup",
+		data() {
+			return {
+				oldvalueList: [] as XCHECKBOX_LISTITEM_TYPE[],
+				checkvaluelist: [] as string[],
+				tid: 0,
+				isDestroy: false,
+				id: "xCheckboxGroup-" + getUid(),
+			}
+		},
+		emits: [
+			/**
+			 * 选项变化时触发。
+			 * @param {Number[]} val - 当前选中的值
+			 */
+			'change',
+			'update:modelValue'],
+		props: {
+			/**
+			 * 当前选中的值。
+			 */
+			modelValue: {
+				type: Array as PropType<string[]>,
+				default: () : String[] => {
+					return [] as String[]
+				}
+			},
+			/**
+			 * 对齐方式
+			 */
+			direction: {
+				type: String as PropType<"row" | "column">,
+				default: "row"
+			},
+			/**
+			 * 最大选择数量，-1表示不限制。
+			 */
+			max: {
+				type: Number,
+				default: -1
+			}
+		},
+		computed: {
+			//当前所有可选的id列表
+			oldvalueList_ids() : string[] {
+				return this.oldvalueList.map((el : XCHECKBOX_LISTITEM_TYPE) : string => el.id)
+			},
+			_max() : number {
+				return this.max;
+			}
+		},
+
+		watch: {
+			modelValue(newValue : string[]) {
+				let n = newValue.join("")
+				let v = this.checkvaluelist.join("")
+				if (n != v) {
+					this.checkvaluelist = newValue
+					this.setOldCheckboxValue();
+					this.pushAllChildren();
+				}
+			}
+		},
+		beforeUnmount() {
+			this.isDestroy = true;
+			clearTimeout(this.tid)
+		},
+		mounted() {
+			this.checkvaluelist = this.modelValue;
+			this.isDestroy = false;
+		},
+		methods: {
+
+			addItem(t : XCheckboxComponentPublicInstance, item : CHECKBOX_ITEM_INFO, ischange : boolean) {
+				let _this = this;
+				let index = this.oldvalueList.findIndex((el : XCHECKBOX_LISTITEM_TYPE) : boolean => el.id == item.id);
+				let nowitem = item
+
+				let fl = this.oldvalueList.filter((el : XCHECKBOX_LISTITEM_TYPE) : boolean => el.data.nowvalue == el.data.value)
+
+				if (!ischange) {
+					if (this.checkvaluelist.includes(item.value) && item.nowvalue != item.value) {
+						nowitem.nowvalue = nowitem.value;
+					}
+				}
+				// fl.length>=this._max&&this._max>-1&&
+
+				if (index > -1) {
+					let oldItem = this.oldvalueList[index]
+					if (fl.length >= this._max && this._max > -1 && ischange && oldItem.data.nowvalue != oldItem.data.value) {
+						uni.showToast({ title: "已是最大选择数量", icon: 'none', mask: true })
+						this.pushAllChildren();
+						return;
+					}
+					this.oldvalueList.splice(index, 1, {
+						ele: t,
+						id: nowitem.id,
+						data: nowitem
+					} as XCHECKBOX_LISTITEM_TYPE)
+
+				} else {
+
+
+					this.oldvalueList.push({
+						ele: t,
+						id: nowitem.id,
+						data: nowitem
+					} as XCHECKBOX_LISTITEM_TYPE)
+				}
+
+				this.getcheckvaluelist()
+
+				if (ischange) {
+					/**
+					 * 等同v-model=""
+					 */
+					this.$emit("update:modelValue", this.checkvaluelist)
+					/**
+					 * 选项变化时触发。
+					 * @param val {number[]} 当前选中的值
+					 */
+					this.$emit("change", this.checkvaluelist)
+				}
+
+				clearTimeout(this.tid)
+				this.tid = setTimeout(function () {
+					_this.pushAllChildren();
+				}, 100);
+			},
+			//当前选中的值
+			setOldCheckboxValue() {
+				this.oldvalueList.forEach((item : XCHECKBOX_LISTITEM_TYPE) => {
+					if (this.checkvaluelist.includes(item.data.value)) {
+						item.data.nowvalue = item.data.value
+					} else {
+						item.data.nowvalue = item.data.unvalue
+					}
+				})
+
+			},
+			//当前选中的值
+			getcheckvaluelist() {
+				let fl = this.oldvalueList.filter((el : XCHECKBOX_LISTITEM_TYPE) : boolean => el.data.nowvalue == el.data.value)
+				let allfill = this.oldvalueList.map((el : XCHECKBOX_LISTITEM_TYPE) : string => el.data.value)
+				let realValue = fl.map((el : XCHECKBOX_LISTITEM_TYPE) : string => el.data.value);
+				// 删除已有的，保留差异的。
+				let psdiff = this.checkvaluelist.filter((el : string) : boolean => !allfill.includes(el))
+
+				this.checkvaluelist = realValue.concat(psdiff)
+
+			},
+			pushAllChildren() {
+				if (this.isDestroy) return;
+				try {
+					this.oldvalueList.forEach((el : XCHECKBOX_LISTITEM_TYPE) => {
+						el.ele.setSelected(this.checkvaluelist)
+					})
+				} catch (e) {
+					//TODO handle the exception
+				}
+			}
+		},
+	}
+</script>
+<template>
+	<view class="xCheckboxGroup" :style="{'flex-direction':direction}">
+		<!-- 
+		 @slot 从1.1.2开始允许是非直接x-checkbox子节点布局,但考虑到性能建议是直接子节点.
+		 -->
+		<slot></slot>
+	</view>
+</template>
+<style>
+	.xCheckboxGroup {
+		display: flex;
+		flex-wrap: wrap;
+	}
+</style>

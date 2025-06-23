@@ -1,0 +1,309 @@
+<script lang="ts">
+	import { type PropType } from "vue"
+	import { getUid, rpx2px } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import {drawQrcode} from "./drawQrcoder.uts"
+	import {XQrcoderProps} from "./interface.uts"
+	import { toPngFile } from "@/uni_modules/x-base642file-s"
+	
+	type DATATYP = {
+		action : string
+	}
+	/**
+	 * @name 二维码 xQrcoder
+	 * @description 本组件使用UTS原生代码绘制，性能非常高，如果你是在1.1.9之前版本请使用x-qrcoder-s原生插件获得高性能。从1.1.9版本后请
+	 * 使用组件绘制QR码来获得更高性能和更多样式配置。
+	 * @page /pages/index/qrcoder
+	 * @category 其它组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				id: ("xQrcode-" + getUid()) as string,
+				id2: ("xQrcode1" + getUid()) as string,
+				isLoaded: false,
+				tid2: 0
+			}
+		},
+		props: {
+			/**
+			 * 窗口宽
+			 */
+			width: {
+				type: String,
+				default: '250px'
+			},
+			/**
+			 * 宽器高，这将影响条码的高度
+			 */
+			height: {
+				type: String,
+				default: '250px'
+			},
+			/**
+			 * 码颜色
+			 */
+			color: {
+				type: String,
+				default: "primary"
+			},
+			/**
+			 * 码背景颜色
+			 */
+			bgColor: {
+				type: String,
+				default: "white"
+			},
+			/**
+			 * 码的定位点颜色,不填写和原前景一致
+			 */
+			posColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 条码内容
+			 */
+			text: {
+				type: String,
+				default: "https://xui.tmui.design"
+			},
+			/**
+			 * 是否绘制Logo到qr上。
+			 */
+			logo: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * logo大小。
+			 */
+			logoSize: {
+				type: String,
+				default: "50px"
+			},
+			/**
+			 * 边距
+			 */
+			padding:{
+				type: Number,
+				default: 2
+			},
+			/**
+			 * 绘制的样式目前提供
+			 * rect ：普通码矩形
+			 * circular ：小圆点
+			 * line ：线条
+			 * rectSmall ：小方格
+			 */
+			mode:{
+				type: String,
+				default: "rect"
+			}
+		},
+		computed: {
+
+			_width() : number {
+				let p = parseInt(this.width);
+				if (this.width.lastIndexOf('rpx') > -1 || this.width.lastIndexOf('px') == -1) {
+					p = rpx2px(p);
+				}
+				return Math.floor(p)
+			},
+			_height() : number {
+				let p = parseInt(this.height);
+				if (this.height.lastIndexOf('rpx') > -1 || this.height.lastIndexOf('px') == -1) {
+					p = rpx2px(p);
+				}
+				return Math.floor(p)
+			},
+
+			_color() : string {
+				return getDefaultColor(this.color);
+			},
+			_bgColor() : string {
+				return getDefaultColor(this.bgColor);
+			},
+			_posColor() : string {
+				if(this.posColor=='') return this._color
+				return getDefaultColor(this.posColor);
+			},
+			_text() : string {
+				return this.text;
+			},
+			_logo() : string {
+				return this.logo;
+			},
+			_padding() : number {
+				return this.padding;
+			},
+			
+			_logoSize() : number {
+				let p = parseInt(this.logoSize);
+				if (this.logoSize.lastIndexOf('rpx') > -1 || this.logoSize.lastIndexOf('px') == -1) {
+					p = rpx2px(p);
+				}
+				return Math.floor(p)
+			},
+
+		},
+		watch: {
+			text(newValue : string) {
+				if (newValue == "") return;
+				this.drawer();
+			},
+			logo() {
+				this.drawer();
+			},
+			color(newValue : string) {
+				if (newValue == "") return;
+				this.drawer();
+			},
+			bgColor(newValue : string) {
+				if (newValue == "") return;
+				this.drawer();
+			},
+			logoSize(newValue : string) {
+				if (newValue == "") return;
+				this.drawer();
+			},
+			padding(newValue : string) {
+				if (newValue == "") return;
+				this.drawer();
+			},
+			width(newValue : string) {
+				if (newValue == "") return;
+				this.drawer();
+			},
+			height(newValue : string) {
+				if (newValue == "") return;
+				this.drawer();
+			}
+		},
+		mounted() {
+			this.drawer()
+		},
+		beforeUnmount() {
+			clearTimeout(this.tid2)
+		},
+		methods: {
+			drawer(){
+				let _this = this;
+				// #ifdef APP || MP-WEIXIN
+				uni.createCanvasContextAsync({
+					id:this.id2,
+					component:this,
+					success(context){
+						let ctx = context.getContext('2d')!;
+						let canvas = ctx.canvas
+						if (ctx == null) return;
+						let ratio = uni.getWindowInfo()?.pixelRatio??1
+						ctx!.clearRect(0,0, canvas.offsetWidth,canvas.offsetHeight)
+						canvas.width = canvas.offsetWidth * ratio
+						canvas.height = canvas.offsetHeight * ratio
+						// #ifdef APP
+						ctx.reset();
+						// #endif
+						ctx.scale(ratio, ratio);
+						let img =null as null|any
+						// #ifdef MP-WEIXIN
+						img = context.createImage()
+						// #endif
+						drawQrcode({
+							ctx:ctx,
+							text:_this._text,
+							size:_this._width,
+							foreground:_this._color,
+							background:_this._bgColor,
+							padding:_this._padding,
+							logo:_this._logo,
+							logoSize:_this._logoSize,
+							ecc:"H",
+							mode:_this.mode,
+							pdColor:_this._posColor
+						} as XQrcoderProps,img)
+					},
+					fail(){
+						uni.showToast({title:'错误',icon:'none'})
+					}
+				})
+				// #endif
+				
+				// #ifdef WEB
+				let canvas = this.$refs['canvas'] as UniCanvasElement
+				let ratio = window.devicePixelRatio;
+				canvas.width = canvas.offsetWidth * ratio
+				canvas.height = canvas.offsetHeight * ratio
+				let ctx = canvas.getContext('2d')!
+				ctx.scale(ratio, ratio);
+				drawQrcode({
+					ctx:ctx,
+					text:this._text,
+					size:this._width,
+					foreground:this._color,
+					background:this._bgColor,
+					padding:this._padding,
+					logo:this._logo,
+					logoSize:this._logoSize,
+					ecc:"H",
+					mode:this.mode,
+					pdColor:_this._posColor
+				} as XQrcoderProps)
+				// #endif
+				
+			},
+			/**
+			 * 返回一个上传图片的临时文件地址
+			 * @param call(string) 返回图片路径,失败返回的是空字符串
+			 */
+			getQrImg(call:(imgstr:string)=>void) {
+				// #ifdef APP
+				let ele = this.$refs['xQrcodeEle'] as UniElement;
+				ele.takeSnapshot({
+					success(res) {
+						call(res.tempFilePath)
+					},
+					fail() {
+						call('')
+					}
+				})
+				// #endif
+				
+				// #ifdef WEB
+				let ele2= this.$refs['canvas'] as HTMLCanvasElement;
+				toPngFile(ele2.toDataURL('image/png',1)).then(furl=>call(furl)).catch(call(''))
+				// #endif
+				// #ifdef MP-WEIXIN
+				uni.createCanvasContextAsync({
+					id:this.id2,
+					component:this,
+					success(context){
+						let ctx = context.getContext('2d')!;
+						let canvas = ctx.canvas
+						var imageData = canvas.toDataURL('image/png',1);
+						toPngFile(imageData).then(furl=>call(furl)).catch(call(''))
+					},
+					fail(err){
+						console.error(err)
+						call('')
+					}
+				},this)
+				// #endif
+				
+			},
+		}
+	}
+</script>
+<template>
+	<view ref="xQrcodeEle" :style="{width:_width+'px',height:_height+'px'}">
+		<canvas ref="canvas" :canvas-id="id2" type="2d" :id="id2" :style="{width:_width+'px',height:_height+'px'}"></canvas>
+	</view>
+</template>
+<style scoped>
+</style>

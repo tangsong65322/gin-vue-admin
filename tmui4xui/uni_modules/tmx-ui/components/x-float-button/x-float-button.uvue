@@ -1,0 +1,509 @@
+<script lang="ts">
+	import { type PropType } from "vue"
+	import { getUid, rpx2px } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	type POSITION_TYPE_XY = {
+		x : number,
+		y : number
+	}
+	/**
+	 * @name 浮球 xFloatButton
+	 * @description 可以左右四个角定位放置，自动靠边吸咐，也可自由拖动放置。
+	 * @page /pages/index/float-button
+	 * @category 反馈组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				id: ("xFloatButtonId-" + getUid()) as string,
+				_x: 0,
+				_y: 0,
+				winHeight: 0,
+				winWidth: 0,
+				nowXy: [0, 0] as number[],
+				windtop: 0,
+				isMoveing: false,
+				dateTime: 0,
+				diffX: 0,
+				_real_X: 0,
+				_real_Y: 0,
+				lastX: 0,
+				lastY: 0,
+				first: true,
+				longtimeid:22,
+				isReady:false
+			}
+		},
+		emits: [
+
+			/**
+			 * 点击组件时触发
+			 */
+			'click',
+			/**
+			 * 长按组件时触发大于500ms
+			 */
+			'longpress',
+			/**
+			 * 坐标改变时触发
+			 * @param {number[]} x,y坐标信息  
+			 */
+			'change',
+			/**
+			 * 动态修改当前的位置
+			 * 等同v-model:offset具体见offset属性那。
+			 */
+			'update:offset'
+		],
+		props: {
+			duration: {
+				type: Number,
+				default: 650
+			},
+			/**
+			 * 松开后，如果是吸附adsorption为true的话，吸附在两边的位置时的距离边界的距离。
+			 * 单位为px,左右的安全距离.
+			 */
+			threshold: {
+				type: Number,
+				default: 12
+			},
+			/**
+			 * 单位为px,顶部的安全距离
+			 */
+			thresholdTop: {
+				type: Number,
+				default: 0
+			},
+			/**
+			 * 单位为px,底部的安全距离
+			 */
+			thresholdBottom: {
+				type: Number,
+				default: 12
+			},
+			/**
+			 * 圆角,空值时取全局的drawr圆角。
+			 */
+			round: {
+				type: String,
+				default: "64"
+			},
+			/**
+			 * 自己定义位置:以可视范围内的左上角算起。如何自己定义位置时
+			 * 需要计算屏幕坐标时请使用uni.getWindowInfo()
+			 * 来获取可视屏幕的宽和高定位你自己需要的自由位置
+			 * 可以v-model:offset="[x,y]"来动态更改其位置。
+			 * 我预置了以下几种常见模式：
+			 * [-1,-1]会在右下角。会让出threshold边界距离
+			 * [-2,-2]会在左下角。会让出threshold边界距离
+			 * [-3,-3]会在左上角。会让出threshold边界距离
+			 * [-4,-4]会在右上角。会让出threshold边界距离
+			 * [-5,-5]会在底部居中。会让出threshold边界距离
+			 */
+			offset: {
+				type: Array as PropType<number[]>,
+				default: () : number[] => [-1, -1] as number[]
+			},
+			
+			/**
+			 * 背景,支持渐变值如:linear-gradient(to left, #FFED46, #FF7EC7)
+			 * 默认空值，取全局主题值。
+			 */
+			bgColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 宽
+			 */
+			width: {
+				type: String,
+				default: '50px'
+			},
+			/**
+			 * 高
+			 */
+			height: {
+				type: String,
+				default: '50px'
+			},
+			/**
+			 * 是否开启吸附在两边。
+			 * 如果设置为false,可以自由拖动在屏幕上。
+			 */
+			adsorption: {
+				type: Boolean,
+				default: true
+			},
+			/**
+			 * 是否禁止拖动。
+			 */
+			disabled: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 层级
+			 */
+			zIndex: {
+				type: Number,
+				default: 87
+			}
+		},
+		watch: {
+			offset(newValue : Array<number>) {
+			
+				if (newValue.length == 2 && this.nowXy.join("") != newValue.join("")) {
+					this.setProperty(newValue[0], newValue[1])
+				}
+			}
+		},
+		computed: {
+			_diffLen():number{
+				let p = parseInt(this.width);
+				if (this.width.lastIndexOf('rpx') > -1) {
+					p = rpx2px(p);
+				}
+				return Math.floor(p)
+			},
+			_round() : string {
+				return checkIsCssUnit(this.round, xConfig.unit)
+			},
+			_width() : number {
+				let p = parseInt(this.width);
+				if (this.width.lastIndexOf('rpx') > -1) {
+					p = rpx2px(p);
+				}
+				return Math.floor(p)
+			},
+			_height() : number {
+				let p = parseInt(this.height);
+				if (this.height.lastIndexOf('rpx') > -1) {
+					p = rpx2px(p);
+				}
+				return Math.floor(p)
+			},
+			_bgColor() : object {
+				if (this.bgColor.indexOf('linear-gradient') > -1) {
+					return {
+						backgroundImage: this.bgColor
+					}
+				}
+				let color = this.bgColor == "" ? getDefaultColor(xConfig.color) : getDefaultColor(this.bgColor)
+				return {
+					backgroundColor: color
+				};
+			},
+			_disabled() : boolean {
+				return this.disabled
+			}
+		},
+		mounted() {
+			this.isReady = false;
+			let sys = uni.getWindowInfo()
+			// #ifndef APP
+			this.winWidth = sys.windowWidth
+			this.winHeight = sys.windowHeight;
+			this.windtop = sys.windowTop;
+			// #endif
+			// #ifdef APP
+			this.winWidth = sys.windowWidth
+			this.winHeight = sys.windowHeight + 44;
+			// #endif
+
+			// 兼容电脑端
+			// #ifdef WEB
+			window.addEventListener('mouseup', this.mmEnd);
+			window.addEventListener('mousemove', this.mmMove);
+			// #endif
+			let t = this;
+			this.getNodes().then(() => {
+				t.setProperty(t.offset[0], t.offset[1])
+				t.isReady = true;
+			})
+
+			uni.$on("onResize", this.onresizeOffsetXy)
+		},
+		beforeUnmount() {
+			// 兼容电脑端
+			// #ifdef WEB
+			window.removeEventListener('mouseup', this.mmEnd);
+			window.removeEventListener('mousemove', this.mmMove);
+			// #endif
+			uni.$off("onResize", this.onresizeOffsetXy)
+		},
+		methods: {
+			onresizeOffsetXy() {
+				let t = this;
+				this.getNodes().then(() => {
+					t.setProperty(t.offset[0], t.offset[1])
+				})
+			},
+			getNodes() : Promise<boolean> {
+				let t = this;
+				return new Promise((res, rej) => {
+					uni.createSelectorQuery()
+						.in(t)
+						.select(".xFloatButtonBox")
+						.boundingClientRect()
+						.exec((nodes) => {
+							let node = nodes[0] as NodeInfo;
+							t.winWidth = node.width!;
+							t.winHeight = node.height! - t.windtop;
+							res(true)
+						})
+				})
+			},
+			onClick() {
+				this.$emit('click')
+			},
+			setProperty(x : number, y : number) {
+				let node = this.$refs['xFloatButton'] as UniElement
+				node.style.setProperty("transition-duration", this.first ? '0' : this.duration.toString() + 'ms')
+				if (x == -1 || x == -4) {
+					x = this.winWidth - this._width - this.threshold;
+				} else if (x == -2 || x == -3) {
+					x = this.threshold;
+				} else if (x == -5) {
+					x = (this.winWidth - this._width) / 2;
+				}
+				if (y == -1 || y == -2 || y == -5) {
+					y = this.winHeight - this._height - this.thresholdBottom;
+				} else if (y == -3 || y == -4) {
+					y = this.thresholdTop;
+				}
+
+				x = Math.max(this.threshold, Math.min(this.winWidth - this._width - this.threshold, x))
+				
+				
+				if(y>this.winHeight/2){
+					y = Math.max(this.thresholdBottom, Math.min(this.winHeight - this._height - this.thresholdBottom, y))
+				}else{
+					y = Math.max(this.thresholdTop, Math.min(this.winHeight - this._height - this.thresholdTop, y))
+				}
+				
+				node.style.setProperty("left", `${x}px`)
+				node.style.setProperty("top", `${y + this.windtop}px`)
+				this.nowXy = [x, y];
+				this.lastX = x;
+				this.lastY = y;
+				/**
+				 * 当前的位置，等同v-model:offset
+				 * @param postion {number[]} [x,y]位置
+				 */
+				this.$emit('change', this.nowXy)
+				
+				this.first = false
+			},
+			eventTrasform_start(evt : POSITION_TYPE_XY) {
+				this.isMoveing = true;
+				this.diffX = 0
+				this.dateTime = new Date().getTime()
+				let node = this.$refs['xFloatButton'] as Element
+				let leftpos = parseInt(node.style.getPropertyValue("left")! as string)
+				let toppos = parseInt(node.style.getPropertyValue("top")! as string)
+
+				this._x = evt.x - leftpos
+				this._y = evt.y - toppos
+				this._real_X = evt.x
+				this._real_Y = evt.y
+				node.style.setProperty("transition-duration", '0ms')
+				
+				let realx = Math.floor(evt.x - this._real_X)
+				let realy = Math.floor(evt.y - this._real_Y)
+				clearTimeout(this.longtimeid)
+				let _this = this;
+				this.longtimeid = setTimeout(function() {
+					_this.$emit('longpress')
+				}, 500);
+			},
+			eventTrasform_move(evt : POSITION_TYPE_XY) {
+				clearTimeout(this.longtimeid)
+				let x = evt.x - this._x
+				let y = evt.y - this._y
+				let diff_x = evt.x - this._real_X
+				let diff_y = evt.y - this._real_Y
+				this.diffX = Math.max(Math.abs(diff_x), Math.abs(diff_y))
+				let node = this.$refs['xFloatButton'] as Element
+				let maxX = this.winWidth - this._width;
+				let maxY = this.winHeight - this._height + this.windtop;
+
+				x = Math.max(Math.min(maxX, x), 0)
+				y = Math.max(Math.min(maxY, y), 0)
+				
+				node.style.setProperty("left", `${x}px`)
+				node.style.setProperty("top", `${y}px`)
+				this.nowXy = [x, y];
+				/**
+				 * 当前的位置，等同v-model:offset
+				 * @param postion {number[]} [x,y]位置
+				 */
+				this.$emit('change', [x, y])
+			},
+			eventTrasform_end(evt : POSITION_TYPE_XY) {
+				this.isMoveing = false;
+				let node = this.$refs['xFloatButton'] as Element
+				let x = evt.x - this._x
+				let y = evt.y - this._y - this.windtop
+				let maxX = this.winWidth - this._width;
+				let maxY = this.winHeight - this._height;
+				x = Math.max(Math.min(maxX, x), 0)
+				y = Math.max(Math.min(maxY, y), 0)
+
+				if (this.adsorption) {
+					y = Math.max(Math.min(maxY - this.threshold, y), this.threshold)
+					if (x >= (this.winWidth - this._width) / 2) {
+						x = this.winWidth - this._width - this.threshold;
+					} else {
+						x = this.threshold;
+					}
+					this.nowXy = [x, y];
+
+					this.setProperty(x, y)
+				}
+				let diffTiff = new Date().getTime() - this.dateTime
+				// sdk的click和touch会同时触发，呃。目前只能以触发时间自行判断是单击还是滑动。
+				let realx = Math.floor(evt.x - this._real_X)
+				let realy = Math.floor(evt.y - this._real_Y)
+	
+				if(realx==0&&realy==0&&realx==realy){
+					if (diffTiff > 50 && diffTiff<250){
+						this.onClick()
+					}
+					
+				}
+			},
+			mStart(evt : TouchEvent) {
+				// evt.preventDefault()
+				if (this._disabled) return
+				// #ifdef WEB||MP
+				evt.preventDefault();
+				evt.stopPropagation();
+				// #endif
+				let x = evt.changedTouches[0].clientX;
+				let y = evt.changedTouches[0].clientY;
+				this._real_X = x;
+				this._real_Y = x;
+				this.eventTrasform_start({ x, y } as POSITION_TYPE_XY)
+			},
+			mMove(evt : TouchEvent) {
+				
+				// #ifdef WEB||MP
+				evt.preventDefault();
+				evt.stopPropagation();
+				// #endif
+				if (this._disabled) return
+				let x = evt.changedTouches[0].clientX;
+				let y = evt.changedTouches[0].clientY;
+				this.eventTrasform_move({ x, y } as POSITION_TYPE_XY)
+
+			},
+			mEnd(evt : TouchEvent) {
+				if (this._disabled) return
+				let x = evt.changedTouches[0].clientX;
+				let y = evt.changedTouches[0].clientY;
+
+				this.eventTrasform_end({ x, y } as POSITION_TYPE_XY)
+			},
+			// #ifdef WEB
+			mmStart(evt : UniMouseEvent) {
+				window.xFloatButtonId = this.id;
+				if (this._disabled) return
+				evt.preventDefault();
+				let x = evt.clientX;
+				let y = evt.clientY;
+				this._real_X = x;
+				this._real_Y = x;
+				this.eventTrasform_start({ x, y } as POSITION_TYPE_XY)
+			},
+			mmMove(evt : UniMouseEvent) {
+				evt.preventDefault();
+				// evt.stopPropagation();
+				if (this._disabled || !this.isMoveing || window.xFloatButtonId != this.id) return
+				let x = evt.clientX;
+				let y = evt.clientY;
+				this.eventTrasform_move({ x, y } as POSITION_TYPE_XY)
+
+			},
+			mmEnd(evt : UniMouseEvent) {
+				if (this._disabled || !this.isMoveing || window.xFloatButtonId != this.id) return
+				let x = evt.clientX;
+				let y = evt.clientY;
+
+				this.eventTrasform_end({ x, y } as POSITION_TYPE_XY)
+			},
+
+			// #endif
+		},
+	}
+</script>
+<template>
+	<view>
+		<view 
+			:id="id" 
+			@touchstart="mStart" 
+			@touchmove.stop="mMove" 
+			@touchend="mEnd" 
+			ref="xFloatButton"
+			 <!--#ifdef WEB -->
+			@mousedown="mmStart"
+			<!-- #endif -->
+
+			:style="[{
+			width:_width+'px',
+			height:_height+'px',
+			borderRadius:_round,
+			zIndex:(zIndex+1),
+			opacity:isReady?'1':'0'
+			},_bgColor]" class="xFloatButton"
+		>
+			<!-- 
+			@slot 请在插槽内自由布局你的样式及功能块。
+			 -->
+			<slot></slot>
+		</view>
+		<view class="xFloatButtonBox" :style="{zIndex:zIndex}"></view>
+	</view>
+</template>
+<style scoped>
+	.xFloatButtonBox {
+		pointer-events: none;
+	/* 	z-index: 87; */
+		width: 100%;
+		height: 100%;
+		background-color: transparent;
+		opacity: 0;
+		position: fixed;
+		left: 0px;
+		top: 0px;
+		transform: translate(-100%, -100%);
+	}
+
+	.xFloatButton {
+		/* z-index: 88; */
+		transition-duration: 0ms;
+		transition-property: left, right, top, bottom;
+		transition-timing-function: cubic-bezier(0, 0.55, 0.45, 1);
+		top: 0px;
+		left: 0px;
+		position: fixed;
+		box-shadow: 0 5px 24px rgba(0, 0, 0, 0.06);
+		/* #ifdef WEB */
+		cursor: grab;
+		/* #endif */
+	}
+
+	/* #ifdef WEB */
+	.xFloatButton:active {
+		cursor: grabbing;
+	}
+
+	/* #endif */
+</style>

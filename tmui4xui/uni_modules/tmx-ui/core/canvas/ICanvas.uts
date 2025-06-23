@@ -1,0 +1,833 @@
+import { ShapeType, ICanvasEvent, ICanvasDomEvent, IEventListener, CanvasEventType, ICanvasOptional, IcanvasDomEventDetail } from './interface.uts';
+// import { Shape } from './lib/shape.uts';
+import { Shape } from '@/uni_modules/tmx-ui/core/canvas/lib/shape.uts';
+export class ICanvas {
+	canvas : CanvasContext | null = null;
+	ctx : CanvasRenderingContext2D | null = null;
+	canvasNode : NodeInfo | null = null
+
+	width : number = 0;
+	height : number = 0;
+	boxWidth : number = 0;
+	boxHeight : number = 0;
+	dpr : number = 1;
+	/**
+	 * 命中检测事件范围，默认只对clik点击进行命中测试，如果全放开会有性能风险
+	 * 相当于是事件过滤。比如['click']那么元素只会触发click事件，其它事件不会响应
+	 * 空数组响应所有事件
+	 */
+	checkPointInHitEvents = ['click'] as CanvasEventType[]
+
+	//点击时的位置
+	private touch_x = 0
+	private touch_y = 0
+	//移动时的位置
+	private touch_move_x = 0
+	private touch_move_y = 0
+	//结束时的位置
+	private touch_end_x = 0
+	private touch_end_y = 0
+	//结束时相对起始时之间的位置距离
+	private touch_end_len_x = 0
+	private touch_end_len_y = 0
+	//移动时相对上一次移动的距离
+	private touch_move_len_x = 0
+	private touch_move_len_y = 0
+	//点击时的时间
+	private touchStartTime = 0
+	//点击抬起时的结束时间.
+	private touchEndTime = 0
+
+	private touchTimeTid = 0
+
+
+	id = Math.random().toString(16).substring(4)
+	
+	gaptimeId = 23 
+
+	private shapes : ShapeType[] = [];
+	private eventListeners : Map<CanvasEventType, IEventListener[]> = new Map();
+
+	component : any | null = null;
+	canvasId : string;
+
+
+	constructor(config : ICanvasOptional) {
+		this.canvasId = config.canvasId;
+		this.component = config.component
+	}
+	init() : Promise<any | null> {
+		const _this = this;
+		return new Promise((res) => {
+			uni.createSelectorQuery()
+				.in(_this.component)
+				.select("#" + _this.canvasId)
+				.boundingClientRect()
+				.exec(result => {
+					if (result.length == 0) return;
+					let node = result[0]! as NodeInfo
+					uni.createCanvasContextAsync({
+						id: _this.canvasId,
+						component: _this.component as ComponentPublicInstance | null,
+						success: (context : CanvasContext) => {
+							_this.canvasNode = node
+							_this.canvas = context;
+
+							const dpr = uni.getWindowInfo().pixelRatio ?? 1;
+							const canvasContext = context.getContext('2d')!;
+							// #ifdef APP
+							canvasContext.resetTransform()
+							// #endif
+							const canvas = canvasContext.canvas;
+							canvas.width = canvas.offsetWidth * dpr;
+							canvas.height = canvas.offsetHeight * dpr;
+							canvasContext.scale(dpr, dpr);
+							_this.ctx = canvasContext as CanvasRenderingContext2D;
+
+							_this.dpr = dpr;
+
+							_this.ctx!.globalAlpha = 1;
+							_this.width = node.width!;
+							_this.height = node.height!;
+							_this.boxWidth = canvas.offsetWidth;
+							_this.boxHeight = canvas.offsetHeight;
+							res(_this)
+						}
+					})
+				})
+		})
+
+	}
+
+	private _resizePos() {
+		const _this = this;
+		uni.createSelectorQuery()
+			.in(_this.component)
+			.select("#" + _this.canvasId)
+			.boundingClientRect()
+			.exec(result => {
+				if (result.length == 0) return;
+				let node = result[0]! as NodeInfo
+				_this.canvasNode = node
+			})
+	}
+
+	clear() : ICanvas {
+		this.ctx!.clearRect(0, 0, this.width, this.height)
+		return this;
+	}
+
+	addShape(shape : ShapeType) : ICanvas {
+		this.shapes.push(shape);
+		this.shapes.sort((a, b ) : number => {
+			let ela = a as Shape
+			let elb = b as Shape
+			return ela.zIndex - elb.zIndex
+		})
+		return this;
+	}
+
+	removeShape(shape : ShapeType) : ICanvas {
+		for (let i = 0; i < this.shapes.length; i++) {
+			let itemshape = this.shapes[i]
+			if (itemshape instanceof Shape && shape instanceof Shape) {
+				if (itemshape.id == shape.id) {
+					this.shapes.splice(i, 1);
+					break;
+				}
+			}
+		}
+		return this;
+	}
+
+	render() : ICanvas {
+		this.clear();
+		for (let i = 0; i < this.shapes.length; i++) {
+			const shape = this.shapes[i];
+			if (shape instanceof Shape) {
+				shape.draw(this.ctx!);
+			}
+		}
+		return this;
+	}
+
+	update() : ICanvas {
+
+		let needsRender = false;
+		for (let i = 0; i < this.shapes.length; i++) {
+			const shape = this.shapes[i];
+			if (shape instanceof Shape) {
+				if (shape.needsUpdate) {
+					needsRender = true;
+					shape.update()
+				}
+			}
+		}
+		if (needsRender) {
+			this.render();
+		}
+		return this;
+	}
+	
+	getImage():Promise<string>{
+		return new Promise((res,_rej)=>{
+			// #ifdef WEB||H5
+			try {
+				this.ctx.canvas.toBlob((blob)=>{
+					res(URL.createObjectURL(blob))
+				},'images/png',1)
+			} catch (error) {
+				console.error(error,'注意画布中的图片要同域')
+				res('')
+			}
+			// #endif
+			
+			// #ifdef APP
+			let ele = uni.getElementById(this.canvasId) as UniElement
+			ele!.takeSnapshot({
+				success(result){
+					res(result.tempFilePath)
+				},
+				fail(){
+					res('')
+				}
+			})
+			// #endif
+			
+			// #ifdef MP
+			uni.canvasToTempFilePath({
+				canvasId:this.canvasId,
+				success(result){
+					res(result.tempFilePath)
+				},
+				fail(){
+					res('')
+				}
+			},this.component)
+			// #endif
+		})
+	}
+	/** 将外部事件绑定到对象上,实现事件分发. **/
+	bindEvent(eventType : any | null) {
+		
+		let _this = this;
+		clearTimeout(this.touchTimeTid)
+		if (eventType == null || this.canvasNode == null) return;
+		const winTop = uni.getWindowInfo().windowTop
+		const offsetTop = this.canvasNode!.top! + 0
+		const offsetLeft = this.canvasNode!.left!
+		//防止触摸和鼠标事件同时触发。
+		let isTouch = false;
+
+		// 移动端
+		// #ifdef APP-ANDROID||H5
+		if (eventType instanceof TouchEvent) {
+		// #endif
+		// #ifdef APP-IOS
+		if (eventType instanceof UniTouchEvent) {
+		// #endif
+		// #ifdef MP
+		if (true) {
+		// #endif
+			
+			eventType.stopPropagation()
+			eventType.preventDefault()
+			
+			isTouch = true;
+			let changedTouches = eventType.changedTouches
+			// #ifndef APP
+			changedTouches = Array.from(changedTouches)
+			// #endif
+			const clientX = changedTouches[0].clientX - offsetLeft
+			const clientY = changedTouches[0].clientY - offsetTop
+
+			if (eventType.type == 'touchstart') {
+				this.touch_x = clientX
+				this.touch_y = clientY
+				this.touch_move_x = clientX
+				this.touch_move_y = clientY
+				this.touch_end_x = clientX
+				this.touch_end_y = clientY
+
+
+				this.touch_end_len_x = 0
+				this.touch_end_len_y = 0
+				this.touch_move_len_x = 0
+				this.touch_move_len_y = 0
+
+
+				this.touchStartTime = Date.now()
+				this.buildEvents('down', {
+					type: 'down',
+					x: changedTouches[0].clientX - offsetLeft,
+					y: changedTouches[0].clientY - offsetTop,
+					detail: [{
+						startX: this.touch_x,
+						startY: this.touch_y,
+						endX: this.touch_end_x,
+						endY: this.touch_end_y,
+						moveX: this.touch_move_x,
+						moveY: this.touch_move_y,
+						moveLenX: this.touch_move_len_x,
+						moveLenY: this.touch_move_len_y,
+						endLenX: this.touch_end_len_x,
+						endLenY: this.touch_end_len_y
+					}],
+					touches: changedTouches.map((el) : ICanvasDomEvent => {
+						return {
+							type: 'down',
+							x: el.clientX - offsetLeft,
+							y: el.clientY - offsetTop,
+							touches: [],
+							detail: [{
+								startX: this.touch_x,
+								startY: this.touch_y,
+								endX: this.touch_end_x,
+								endY: this.touch_end_y,
+								moveX: this.touch_move_x,
+								moveY: this.touch_move_y,
+								moveLenX: this.touch_move_len_x,
+								moveLenY: this.touch_move_len_y,
+								endLenX: this.touch_end_len_x,
+								endLenY: this.touch_end_len_y
+							}],
+						} as ICanvasDomEvent
+					})
+				} as ICanvasDomEvent)
+				this.touchTimeTid = setTimeout(() => {
+					_this.buildEvents('longpress', {
+						type: 'longpress',
+						x: changedTouches[0].clientX - offsetLeft,
+						y: changedTouches[0].clientY - offsetTop,
+						detail: [{
+							startX: this.touch_x,
+							startY: this.touch_y,
+							endX: this.touch_end_x,
+							endY: this.touch_end_y,
+							moveX: this.touch_move_x,
+							moveY: this.touch_move_y,
+							moveLenX: this.touch_move_len_x,
+							moveLenY: this.touch_move_len_y,
+							endLenX: this.touch_end_len_x,
+							endLenY: this.touch_end_len_y
+						}],
+						touches: changedTouches.map((el) : ICanvasDomEvent => {
+							return {
+								type: 'longpress',
+								x: el.clientX - offsetLeft,
+								y: el.clientY - offsetTop,
+								touches: [],
+								detail: [{
+									startX: this.touch_x,
+									startY: this.touch_y,
+									endX: this.touch_end_x,
+									endY: this.touch_end_y,
+									moveX: this.touch_move_x,
+									moveY: this.touch_move_y,
+									moveLenX: this.touch_move_len_x,
+									moveLenY: this.touch_move_len_y,
+									endLenX: this.touch_end_len_x,
+									endLenY: this.touch_end_len_y
+								}],
+							} as ICanvasDomEvent
+						})
+					} as ICanvasDomEvent)
+				}, 500)
+			} else if (eventType.type == 'touchmove') {
+				
+				this.touch_move_len_x = this.touch_move_x - clientX
+				this.touch_move_len_y = this.touch_move_y - clientY
+
+				this.touch_end_len_x = clientX - this.touch_x
+				this.touch_end_len_y = clientY - this.touch_y
+
+				this.touch_move_x = clientX
+				this.touch_move_y = clientY
+
+				this.buildEvents('move', {
+					type: 'move',
+					x: changedTouches[0].clientX - offsetLeft,
+					y: changedTouches[0].clientY - offsetTop,
+					detail: [{
+						startX: this.touch_x,
+						startY: this.touch_y,
+						endX: this.touch_end_x,
+						endY: this.touch_end_y,
+						moveX: this.touch_move_x,
+						moveY: this.touch_move_y,
+						moveLenX: this.touch_move_len_x,
+						moveLenY: this.touch_move_len_y,
+						endLenX: this.touch_end_len_x,
+						endLenY: this.touch_end_len_y
+					}],
+					touches: changedTouches.map((el) : ICanvasDomEvent => {
+						return {
+							type: 'move',
+							x: el.clientX - offsetLeft,
+							y: el.clientY - offsetTop,
+							touches: [],
+							detail: [{
+								startX: this.touch_x,
+								startY: this.touch_y,
+								endX: this.touch_end_x,
+								endY: this.touch_end_y,
+								moveX: this.touch_move_x,
+								moveY: this.touch_move_y,
+								moveLenX: this.touch_move_len_x,
+								moveLenY: this.touch_move_len_y,
+								endLenX: this.touch_end_len_x,
+								endLenY: this.touch_end_len_y
+							}],
+						} as ICanvasDomEvent
+					})
+				} as ICanvasDomEvent)
+				
+			} else if (eventType.type == 'touchend') {
+				this.touch_end_x = clientX
+				this.touch_end_y = clientY
+				this.touch_end_len_x = this.touch_end_x - this.touch_x
+				this.touch_end_len_y = this.touch_end_y - this.touch_y
+
+				let nowTIme = Date.now()
+				this.buildEvents('up', {
+					type: 'up',
+					x: changedTouches[0].clientX - offsetLeft,
+					y: changedTouches[0].clientY - offsetTop,
+					detail: [{
+						startX: this.touch_x,
+						startY: this.touch_y,
+						endX: this.touch_end_x,
+						endY: this.touch_end_y,
+						moveX: this.touch_move_x,
+						moveY: this.touch_move_y,
+						moveLenX: this.touch_move_len_x,
+						moveLenY: this.touch_move_len_y,
+						endLenX: this.touch_end_len_x,
+						endLenY: this.touch_end_len_y
+					}],
+					touches: changedTouches.map((el) : ICanvasDomEvent => {
+						return {
+							type: 'up',
+							x: el.clientX - offsetLeft,
+							y: el.clientY - offsetTop,
+							touches: [],
+							detail: [{
+								startX: this.touch_x,
+								startY: this.touch_y,
+								endX: this.touch_end_x,
+								endY: this.touch_end_y,
+								moveX: this.touch_move_x,
+								moveY: this.touch_move_y,
+								moveLenX: this.touch_move_len_x,
+								moveLenY: this.touch_move_len_y,
+								endLenX: this.touch_end_len_x,
+								endLenY: this.touch_end_len_y
+							}],
+						} as ICanvasDomEvent
+					})
+				} as ICanvasDomEvent)
+				// 判断是不是单击
+				const difftime = nowTIme - this.touchStartTime
+				if (difftime > 50 && difftime < 250) {
+					this.buildEvents('click', {
+						type: 'click',
+						x: changedTouches[0].clientX - offsetLeft,
+						y: changedTouches[0].clientY - offsetTop,
+						detail: [{
+							startX: this.touch_x,
+							startY: this.touch_y,
+							endX: this.touch_end_x,
+							endY: this.touch_end_y,
+							moveX: this.touch_move_x,
+							moveY: this.touch_move_y,
+							moveLenX: this.touch_move_len_x,
+							moveLenY: this.touch_move_len_y,
+							endLenX: this.touch_end_len_x,
+							endLenY: this.touch_end_len_y
+						}],
+						touches: changedTouches.map((el) : ICanvasDomEvent => {
+							return {
+								type: 'click',
+								x: el.clientX - offsetLeft,
+								y: el.clientY - offsetTop,
+								touches: [],
+								detail: [{
+									startX: this.touch_x,
+									startY: this.touch_y,
+									endX: this.touch_end_x,
+									endY: this.touch_end_y,
+									moveX: this.touch_move_x,
+									moveY: this.touch_move_y,
+									moveLenX: this.touch_move_len_x,
+									moveLenY: this.touch_move_len_y,
+									endLenX: this.touch_end_len_x,
+									endLenY: this.touch_end_len_y
+								}],
+							} as ICanvasDomEvent
+						})
+					} as ICanvasDomEvent)
+				}
+				// 判断是不是双击
+				const diffEndtime = nowTIme - this.touchEndTime
+				if (diffEndtime > 100 && diffEndtime < 280) {
+					this.buildEvents('dbclick', {
+						type: 'dbclick',
+						x: changedTouches[0].clientX - offsetLeft,
+						y: changedTouches[0].clientY - offsetTop,
+						detail: [{
+							startX: this.touch_x,
+							startY: this.touch_y,
+							endX: this.touch_end_x,
+							endY: this.touch_end_y,
+							moveX: this.touch_move_x,
+							moveY: this.touch_move_y,
+							moveLenX: this.touch_move_len_x,
+							moveLenY: this.touch_move_len_y,
+							endLenX: this.touch_end_len_x,
+							endLenY: this.touch_end_len_y
+						}],
+						touches: [] as ICanvasDomEvent[]
+					})
+				}
+				this.touchEndTime = nowTIme
+			} else if (eventType.type == 'touchcancel') {
+				this.touch_end_x = clientX
+				this.touch_end_y = clientY
+				this.touch_end_len_x = this.touch_end_x - this.touch_x
+				this.touch_end_len_y = this.touch_end_y - this.touch_y
+				const touchesList = changedTouches.map((el) : ICanvasDomEvent => {
+						return {
+							type: 'cancel',
+							x: el.clientX - offsetLeft,
+							y: el.clientY - offsetTop,
+							touches: [],
+							detail: [{
+								startX: this.touch_x,
+								startY: this.touch_y,
+								endX: this.touch_end_x,
+								endY: this.touch_end_y,
+								moveX: this.touch_move_x,
+								moveY: this.touch_move_y,
+								moveLenX: this.touch_move_len_x,
+								moveLenY: this.touch_move_len_y,
+								endLenX: this.touch_end_len_x,
+								endLenY: this.touch_end_len_y
+							} as IcanvasDomEventDetail ] as IcanvasDomEventDetail[],
+						} as ICanvasDomEvent
+					})
+				this.buildEvents('cancel', {
+					type: 'cancel',
+					x: changedTouches[0].clientX - offsetLeft,
+					y: changedTouches[0].clientY - offsetTop,
+					detail: [{
+						startX: this.touch_x,
+						startY: this.touch_y,
+						endX: this.touch_end_x,
+						endY: this.touch_end_y,
+						moveX: this.touch_move_x,
+						moveY: this.touch_move_y,
+						moveLenX: this.touch_move_len_x,
+						moveLenY: this.touch_move_len_y,
+						endLenX: this.touch_end_len_x,
+						endLenY: this.touch_end_len_y
+					} as IcanvasDomEventDetail ] as IcanvasDomEventDetail[],
+					touches: touchesList as ICanvasDomEvent[]
+				} as ICanvasDomEvent)
+			}
+		}
+		// 兼容PC
+		// #ifdef WEB
+
+		if (eventType instanceof MouseEvent && !(eventType instanceof PointerEvent) && !isTouch) {
+			eventType.stopPropagation()
+			const clientX = eventType.layerX
+			const clientY = eventType.layerY
+
+			if (eventType.type == 'mousedown') {
+				this.touch_x = clientX
+				this.touch_y = clientY
+				this.touch_move_x = clientX
+				this.touch_move_y = clientY
+				this.touch_end_x = clientX
+				this.touch_end_y = clientY
+
+
+				this.touch_end_len_x = 0
+				this.touch_end_len_y = 0
+				this.touch_move_len_x = 0
+				this.touch_move_len_y = 0
+
+				this.touchStartTime = Date.now()
+				window.ICnavansId = this.id
+				this.buildEvents('down', {
+					type: 'down',
+					x: clientX,
+					y: clientY,
+					detail: [{
+						startX: this.touch_x,
+						startY: this.touch_y,
+						endX: this.touch_end_x,
+						endY: this.touch_end_y,
+						moveX: this.touch_move_x,
+						moveY: this.touch_move_y,
+						moveLenX: this.touch_move_len_x,
+						moveLenY: this.touch_move_len_y,
+						endLenX: this.touch_end_len_x,
+						endLenY: this.touch_end_len_y
+					}],
+					touches: [] as ICanvasDomEvent[]
+				})
+
+				this.touchTimeTid = setTimeout(() => {
+					_this.buildEvents('longpress', {
+						type: 'longpress',
+						x: clientX,
+						y: clientY,
+						detail: [{
+							startX: this.touch_x,
+							startY: this.touch_y,
+							endX: this.touch_end_x,
+							endY: this.touch_end_y,
+							moveX: this.touch_move_x,
+							moveY: this.touch_move_y,
+							moveLenX: this.touch_move_len_x,
+							moveLenY: this.touch_move_len_y,
+							endLenX: this.touch_end_len_x,
+							endLenY: this.touch_end_len_y
+						}],
+						touches: [] as ICanvasDomEvent[]
+					} as ICanvasDomEvent)
+				}, 500)
+			}
+			if (eventType.type == 'mousemove' && window.ICnavansId === this.id) {
+				this.touch_move_len_x = this.touch_move_x - clientX
+				this.touch_move_len_y = this.touch_move_y - clientY
+
+				this.touch_end_len_x = clientX - this.touch_x
+				this.touch_end_len_y = clientY - this.touch_y
+
+				this.touch_move_x = clientX
+				this.touch_move_y = clientY
+
+				this.buildEvents('move', {
+					type: 'move',
+					x: clientX,
+					y: clientY,
+					detail: [{
+						startX: this.touch_x,
+						startY: this.touch_y,
+						endX: this.touch_end_x,
+						endY: this.touch_end_y,
+						moveX: this.touch_move_x,
+						moveY: this.touch_move_y,
+						moveLenX: this.touch_move_len_x,
+						moveLenY: this.touch_move_len_y,
+						endLenX: this.touch_end_len_x,
+						endLenY: this.touch_end_len_y
+					}],
+					touches: [] as ICanvasDomEvent[]
+				})
+			}
+			if ((eventType.type == 'mouseup') && window.ICnavansId === this.id) {
+				this.touch_end_x = clientX
+				this.touch_end_y = clientY
+				this.touch_end_len_x = this.touch_end_x - this.touch_x
+				this.touch_end_len_y = this.touch_end_y - this.touch_y
+
+				let nowTIme = Date.now()
+				window.ICnavansId = ""
+
+				this.buildEvents('up', {
+					type: 'up',
+					x: clientX,
+					y: clientY,
+					detail: [{
+						startX: this.touch_x,
+						startY: this.touch_y,
+						endX: this.touch_end_x,
+						endY: this.touch_end_y,
+						moveX: this.touch_move_x,
+						moveY: this.touch_move_y,
+						moveLenX: this.touch_move_len_x,
+						moveLenY: this.touch_move_len_y,
+						endLenX: this.touch_end_len_x,
+						endLenY: this.touch_end_len_y
+					}],
+					touches: [] as ICanvasDomEvent[]
+				})
+
+				// 判断是不是单击
+				const difftime = nowTIme - this.touchStartTime
+				if (difftime > 50 && difftime < 250) {
+					this.buildEvents('click', {
+						type: 'click',
+						x: clientX,
+						y: clientY,
+						detail: [{
+							startX: this.touch_x,
+							startY: this.touch_y,
+							endX: this.touch_end_x,
+							endY: this.touch_end_y,
+							moveX: this.touch_move_x,
+							moveY: this.touch_move_y,
+							moveLenX: this.touch_move_len_x,
+							moveLenY: this.touch_move_len_y,
+							endLenX: this.touch_end_len_x,
+							endLenY: this.touch_end_len_y
+						}],
+						touches: [] as ICanvasDomEvent[]
+					} as ICanvasDomEvent)
+				}
+
+				// 判断是不是双击
+				const diffEndtime = nowTIme - this.touchEndTime
+				if (diffEndtime > 100 && diffEndtime < 280) {
+					this.buildEvents('dbclick', {
+						type: 'dbclick',
+						x: clientX,
+						y: clientY,
+						detail: [],
+						touches: [] as ICanvasDomEvent[]
+					})
+				}
+				this.touchEndTime = nowTIme
+			}
+			if ((eventType.type == 'mouseleave') && window.ICnavansId === this.id) {
+				this.touch_end_x = clientX
+				this.touch_end_y = clientY
+				this.touch_end_len_x = this.touch_end_x - this.touch_x
+				this.touch_end_len_y = this.touch_end_y - this.touch_y
+
+				window.ICnavansId = ""
+				this.buildEvents('cancel', {
+					type: 'cancel',
+					x: clientX,
+					y: clientY,
+					detail: [{
+						startX: this.touch_x,
+						startY: this.touch_y,
+						endX: this.touch_end_x,
+						endY: this.touch_end_y,
+						moveX: this.touch_move_x,
+						moveY: this.touch_move_y,
+						moveLenX: this.touch_move_len_x,
+						moveLenY: this.touch_move_len_y,
+						endLenX: this.touch_end_len_x,
+						endLenY: this.touch_end_len_y
+					}],
+					touches: [] as ICanvasDomEvent[]
+				})
+			}
+
+		}
+		// #endif
+		
+		
+	}
+
+	addEventListener(eventName : CanvasEventType, listener : IEventListener) : ICanvas  {
+		if (!this.eventListeners.has(eventName)) {
+			this.eventListeners.set(eventName, []);
+		}
+		this.eventListeners.get(eventName)!.push(listener);
+		return this;
+	}
+
+	removeEventListener(eventName : CanvasEventType, listener : IEventListener) : ICanvas  {
+		const listeners = this.eventListeners.get(eventName);
+		if (listeners == null) return this;
+		const index = listeners.indexOf(listener);
+		if (index != -1) {
+			listeners.splice(index, 1);
+		}
+		return this;
+	}
+
+	private getTargetShape(eventName : CanvasEventType, x : number, y : number) : ShapeType[] {
+		let shapes = [] as ShapeType[]
+		// 只针对开命中事件进行检测
+		if (!this.checkPointInHitEvents.includes(eventName) && this.checkPointInHitEvents.length > 0) return shapes;
+		for (let i = this.shapes.length - 1; i >= 0; i--) {
+			const shape = this.shapes[i];
+			if (shape instanceof Shape) {
+				if (shape.isPointInPath(x, y, shape.id)) {
+					shapes.push(shape)
+					if (!shape.bubbleEvent) {
+						return shapes;
+					}
+
+				}
+			}
+		}
+		return shapes;
+	}
+
+	private buildEvents(eventName : CanvasEventType, eventDetail : ICanvasDomEvent) {
+		this._resizePos()
+		const listeners = this.eventListeners.get(eventName);
+		const target = this.getTargetShape(eventName, eventDetail.x, eventDetail.y);
+		
+
+		const event : ICanvasEvent = {
+			type: eventName,
+			x: eventDetail.x,
+			y: eventDetail.y,
+			target: target,
+			detail: eventDetail.detail,
+			touches: eventDetail.touches.map((el : ICanvasDomEvent) : ICanvasEvent => {
+				return {
+					type: eventName,
+					x: el.x,
+					y: el.y,
+					target: target,
+					detail: el.detail,
+					touches: [] as ICanvasEvent[]
+				} as ICanvasEvent
+			})
+		};
+		if (listeners != null) {
+			for (let i = 0; i < listeners.length; i++) {
+				let children = listeners[i]
+				//执行画布的监听事件
+				children(event);
+			}
+		}
+
+		for (let i = 0; i < this.shapes.length; i++) {
+			const shape = this.shapes[i];
+			if (shape instanceof Shape) {
+				if (event.detail.length == 0) continue;
+				let startX = event.detail[0].startX
+				let startY = event.detail[0].startY
+				if (shape.isPointInPath(startX, startY, shape.id) && shape.draggable && eventName == 'down') {
+					shape.draggableing = true;
+				}
+				if (shape.draggable && (eventName == 'up' || eventName == 'cancel') && shape.draggableing) {
+					shape.draggableing = false;
+				}
+				if (shape.draggableing && eventName == 'move') {
+					shape.drag(eventName, event)
+				}
+			}
+		}
+
+		if (target.length > 0) {
+			let isUpdate = false;
+			for (let i = 0; i < target.length; i++) {
+				const shape = target[i];
+				if (shape instanceof Shape) {
+					shape.buildEvents(eventName, event)
+					if(shape.draggable&&!isUpdate){
+						isUpdate = true;
+					}
+				}
+			}
+			if(isUpdate){
+				this.render()
+			}
+		}
+
+	}
+
+	
+}

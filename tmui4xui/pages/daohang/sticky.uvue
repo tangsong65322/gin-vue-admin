@@ -1,0 +1,60 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">粘性布局 Sticky</x-text>
+			<x-text  color="#999999" >当滚动到元素时自动吸附在顶部</x-text>
+			<x-text  color="#999999" >您应该避免被嵌套的内容不能含有fixed,absolute布局的元素，会影响对齐和裁剪。</x-text>
+		</x-sheet>
+		<x-sticky>
+			<template v-slot="status">
+				<x-sheet color="primary" height="40px" :padding="['12','0']" :margin="['16','0']"
+					class="flex flex-row flex-row-center-start">
+					<text class="text-white">滚动页面我会被自动吸顶</text>
+				</x-sheet>
+			</template>
+		</x-sticky>
+		<x-sheet v-for="item in 3" :key="item" height="100px"></x-sheet>
+		
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">存在多个吸附时</x-text>
+			<x-text  color="#999999" >可以利用diff-top设置差值，来吸附到上一个 吸附元素的后面，避免钻到上个元素的下方。</x-text>
+		</x-sheet>
+		<x-sticky top="40px" diff-top="40px">
+			
+			<template v-slot="status">
+				<x-sheet color="success" :padding="['12','12']" :margin="['16','0']">
+					<text class="text-white">我会被吸附在上面元素的后面，这对布局非常有用</text>
+				</x-sheet>
+			</template>
+		</x-sticky>
+		<x-sheet v-for="item in 10" :key="item" height="100px"></x-sheet>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+			};
+		},
+		onLoad() {
+		},
+		methods:{
+			
+			
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

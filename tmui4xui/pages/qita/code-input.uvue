@@ -1,0 +1,55 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">验证码输入 xCodeInput</x-text>
+			<x-text  color="#999999" >提供了两种方式，自带输入框输入，以及配合我的keyborad键盘。</x-text>
+		</x-sheet>
+		
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">自动拉起系统键盘</x-text>
+			<x-code-input @confirm="ok" gutter="4" :maxlength="6" width="45" :autoFocus="true"></x-code-input>
+		</x-sheet>
+		
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-12">关闭系统键盘使用组件键盘</x-text>
+			<x-code-input place-shape="line" @click="showkey=true" @confirm="showkey = false" v-model="value" :useSysKeyborad="false" skin="fill"></x-code-input>
+		</x-sheet>
+		
+		
+		
+		<x-keyboard-number :max-len="4" v-model:modelShow="showkey" v-model="value"></x-keyboard-number>
+		<view style="height: 400px;"></view>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+				value:"",
+				showkey:false
+			}
+		},
+		methods: {
+			ok(){
+				uni.showToast({
+					title:"验证成功",
+					mask:true
+				})
+			}
+		}
+	}
+</script>
+
+<style>
+
+</style>

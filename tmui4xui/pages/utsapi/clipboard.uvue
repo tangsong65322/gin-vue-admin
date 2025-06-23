@@ -1,0 +1,46 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">剪切板 xClipboardS</x-text>
+			<x-text color="#999999">这是全局方法,可以在任意位置调用</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-input v-model="(textValue as string)" dark-bg-color=""></x-input>
+			<x-button class="mt-16" :block="true" @click="setData">设置剪切板数据</x-button>
+		</x-sheet>
+		<x-sheet>
+			<x-button :block="true" @click="getData">获取剪切板数据</x-button>
+		</x-sheet>
+
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script setup>
+	import { ref } from "vue"
+	import { setClipboardData, getClipboardData } from "@/uni_modules/x-clipboard-s"
+	const textValue = ref('我是数据')
+	const setData = () => {
+		setClipboardData(textValue.value)
+	}
+	const getData = () => {
+		getClipboardData().then((str:string) => {
+			uni.showToast({
+				title: str,
+				icon: 'none'
+			})
+		})
+	}
+</script>
+
+<style lang="scss">
+
+</style>

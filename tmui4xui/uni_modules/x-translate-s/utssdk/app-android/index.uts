@@ -1,0 +1,105 @@
+import RemoteModelManager from "com.google.mlkit.common.model.RemoteModelManager"
+import DownloadConditions from "com.google.mlkit.common.model.DownloadConditions"
+import LocalModel from "com.google.mlkit.common.model.LocalModel"
+import TranslateRemoteModel from "com.google.mlkit.nl.translate.TranslateRemoteModel"
+import TranslateLanguage from "com.google.mlkit.nl.translate.TranslateLanguage"
+import TranslatorOptions from "com.google.mlkit.nl.translate.TranslatorOptions"
+import Translation from "com.google.mlkit.nl.translate.Translation"
+import NativeCode from "uts.sdk.modules.utsXTranslateUtil.NativeCode"
+import Kotlin from 'kotlin.jvm.internal.Intrinsics.Kotlin';
+import Context from 'android.content.Context';
+function getTranslatorOpts(lang : string, target : string) : TranslatorOptions {
+	let langopts = new Map<string, string>([
+		['zh', TranslateLanguage.CHINESE],//中文
+		['en', TranslateLanguage.ENGLISH],//英语
+		['ja', TranslateLanguage.JAPANESE],//日本
+		['de', TranslateLanguage.GERMAN],//德国
+		['fr', TranslateLanguage.FRENCH],//法国
+		['ko', TranslateLanguage.KOREAN],//韩国
+		['ru', TranslateLanguage.RUSSIAN],//俄罗斯
+		['it', TranslateLanguage.ITALIAN],//意大利
+		['th', TranslateLanguage.THAI],//泰国
+		['vi', TranslateLanguage.VIETNAMESE],//越南语
+		['id', TranslateLanguage.INDONESIAN],//印度尼西亚
+	])
+	let sou = langopts.get(lang)!
+	let targ = langopts.get(target)!
+	let options = TranslatorOptions.Builder()
+		.setSourceLanguage(sou)
+		.setTargetLanguage(targ)
+		.build()
+
+	return options;
+
+}
+export function checkTranslateModeDonload(lang : string[], callback : (inlang : boolean) => void) {
+	NativeCode.getDownloadedModels((str : ArrayList<String>) => {
+		console.log(str)
+		let len = str.size
+		if (len == 0) {
+			callback(false)
+			return
+		}
+		let isin = lang.some((el : string) : boolean => str.contains(el));
+		callback(isin)
+	})
+
+	let context = UTSAndroid.getAppContext() as Context;
+	let libdir = context.getCacheDir().getAbsolutePath() + '/no_backup'
+	console.log(libdir)
+}
+export function downloadTranslateMode(lang : string, target : string,  call : (ok : boolean) => void) {
+	let options = getTranslatorOpts(lang, target)
+	let englishGermanTranslator = Translation.getClient(options)
+	// let modelManager = RemoteModelManager.getInstance()
+	// let germanModel = TranslateRemoteModel.Builder(TranslateLanguage.CHINESE).build()
+	// let conditions = DownloadConditions.Builder()
+	//     .requireWifi()
+	//     .build()
+	// modelManager.download(germanModel, conditions)
+	//     .addOnSuccessListener((error) => {
+	//     	console.log('true', error)
+	//     	call(true)
+	//     	englishGermanTranslator.translate("我是谁")
+	//     	    .addOnSuccessListener(translatedText=>{
+	//     			console.log(translatedText)
+	//     		})
+	//     	    .addOnFailureListener(exception=>{
+
+	//     		})
+
+	//     })
+	//     .addOnFailureListener((exception) => {
+	//     	console.log('false')
+	//     	call(false)
+	//     })
+
+	// /data/user/0/uni.UNIA478431/cache
+	var conditions = DownloadConditions.Builder()
+		// .requireWifi()
+		.build()
+	// LocalModel.Builder().setAssetManifestFilePath(UTSAndroid.convert2AbsFullPath(modelpath))
+	englishGermanTranslator.downloadModelIfNeeded(conditions)
+		.addOnSuccessListener((error) => {
+			console.log('true', error)
+			call(true)
+		})
+		.addOnFailureListener((exception) => {
+			console.log('false')
+			call(false)
+		})
+
+}
+
+export function translate(text : string, lang : string, target : string, callback : (str : string) => void) {
+	let options = getTranslatorOpts(lang, target)
+	let englishGermanTranslator = Translation.getClient(options)
+	englishGermanTranslator.translate(text)
+		.addOnSuccessListener((translatedText) => {
+			callback(translatedText)
+		})
+		.addOnFailureListener((exception) => {
+			console.log('error', exception)
+			callback('')
+		})
+}

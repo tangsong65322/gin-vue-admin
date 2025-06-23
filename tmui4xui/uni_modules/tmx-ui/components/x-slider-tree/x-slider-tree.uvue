@@ -1,0 +1,404 @@
+<script lang="ts">
+	import { type PropType } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit,getUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { SLIDER_TREE_ITEM_INFO } from "../../interface.uts"
+	import { SLIDER_TREE_ITEM } from "./interface.uts"
+	// import sliderChildren from "./slider-children.uvue"
+	import {getTreeSelectedNum,filterParentNode} from "./util.uts"
+
+	/**
+	 * @name 侧边分类 xSliderTree
+	 * @description 侧边分类选择，可多选，单选模式。
+	 * @page /pages/index/slider-tree
+	 * @category 导航组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		// components:{
+		// 	'slider-children':sliderChildren
+		// },
+		data() {
+			return {
+				activeIndex:-1,
+				selectedsIds:[] as string[],
+				nrHeight:'100%',
+				boxHeight:0,
+				tid:0
+			}
+		},
+		emits:[
+			/**
+			 * 选中变换时触发
+			 * @param {string[]} ids - 当前选中的项
+			 */
+			'change','update:modelValue',
+		],
+		props: {
+			/**
+			 * 宽
+			 */
+			width: {
+				type: String,
+				default: "auto"
+			},
+			/**
+			 * 高是必填，不可为auto。
+			 */
+			height: {
+				type: String,
+				default: "100%"
+			},
+			/**
+			 * 侧边选中的文字颜色，空值取全局主题
+			 */
+			activeTextColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 侧边未选中时的文字颜色
+			 */
+			textColor: {
+				type: String,
+				default: "#888888"
+			},
+			/**
+			 * 选项项目未选中的文字颜色
+			 */
+			itemTextColor: {
+				type: String,
+				default: "#333333"
+			},
+			/**
+			 * 选项项目选中的文字颜色，空值取全局主题
+			 */
+			itemActiveColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 左侧边栏背景颜色
+			 */
+			sliderBgColor: {
+				type: String,
+				default: "#f5f5f5"
+			},
+			/**
+			 * 左侧边栏暗黑背景颜色
+			 * 如果不提供，自动读取全局的backgroundColorContentDark背景色
+			 */
+			darkSliderBgColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 右内容区域背景颜色
+			 */
+			sliderContentBgColor: {
+				type: String,
+				default: "white"
+			},
+			/**
+			 * 右内容区域暗黑背景颜色
+			 * 如果不提供读取sheet窗口的暗黑背景
+			 */
+			darkSliderContentBgColor: {
+				type: String,
+				default: ""
+			},
+			/**
+			 * 侧边栏宽
+			 */
+			sliderWidth: {
+				type: String,
+				default: "100"
+			},
+			list: {
+				type: Array as PropType<SLIDER_TREE_ITEM_INFO[]>,
+				default: () : SLIDER_TREE_ITEM_INFO[] => [] as SLIDER_TREE_ITEM_INFO[]
+			},
+			/**
+			 * 当前选中项的id数组
+			 */
+			modelValue: {
+				type: Array as PropType<string[]>,
+				default: () : string[] => [] as string[]
+			},
+			/**
+			 * 每级是否允许多选
+			 */
+			multiple: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 文字大小
+			 */
+			fontSize: {
+				type: String,
+				default: "16"
+			},
+		},
+		computed: {
+			_fontSize() : string {
+				let fontSize = checkIsCssUnit(this.fontSize, xConfig.unit);
+				if(xConfig.fontScale==1) return fontSize;
+				let sizeNumber = parseInt(fontSize)
+				if(isNaN(sizeNumber)){
+					sizeNumber = 16
+				}
+				return (sizeNumber*xConfig.fontScale).toString() + getUnit(fontSize)
+			},
+			_sliderWidth() : string {
+				return checkIsCssUnit(this.sliderWidth, xConfig.unit);
+			},
+			_width() : string {
+				return checkIsCssUnit(this.width, xConfig.unit);
+			},
+			_height() : string {
+				return checkIsCssUnit(this.height, xConfig.unit);
+			},
+			_activeTextColor() : string {
+				return this.activeTextColor != "" ? getDefaultColor(this.activeTextColor) : getDefaultColor(xConfig.color);
+			},
+			_textColor() : string {
+				return getDefaultColor(this.textColor);
+			},
+			_itemTextColor() : string {
+				return getDefaultColor(this.itemTextColor);
+			},
+			_itemActiveColor() : string {
+				return this.itemActiveColor != "" ? getDefaultColor(this.itemActiveColor) : getDefaultColor(xConfig.color);
+			},
+			_sliderBgColor() : string {
+				if(xConfig.dark=='dark'){
+					if(this.darkSliderBgColor!=''){
+						return getDefaultColor(this.darkSliderBgColor)
+					}else{
+						return getDefaultColor(xConfig.backgroundColorContentDark)
+					}
+				}
+				return getDefaultColor(this.sliderBgColor);
+			},
+			_sliderContentBgColor() : string {
+				if(xConfig.dark=='dark'){
+					if(this.darkSliderContentBgColor!=''){
+						return getDefaultColor(this.darkSliderContentBgColor)
+					}else{
+						return getDefaultColor(xConfig.sheetDarkColor)
+					}
+				}
+				return getDefaultColor(this.sliderContentBgColor);
+			},
+			_multiple() : boolean {
+				return this.multiple
+			},
+			_list() : SLIDER_TREE_ITEM[] {
+
+				let list = this.list as SLIDER_TREE_ITEM_INFO[];
+
+				function addOptionalFieldsToTree(tree : SLIDER_TREE_ITEM_INFO[]) : void {
+					for (let i = 0; i < tree.length; i++) {
+						const node = tree[i];
+						node.disabled = node.disabled == null ? false : node.disabled! as boolean;
+						node.selected = node.selected == null ? [] : node.selected! as string[];
+						node.children = node.children == null ? ([] as SLIDER_TREE_ITEM_INFO[]) : node.children! as SLIDER_TREE_ITEM_INFO[];
+						if ((node.children!).length > 0) {
+							addOptionalFieldsToTree(node.children! as SLIDER_TREE_ITEM_INFO[]);
+						}
+					}
+				}
+				function addOptionalFieldsToTreeClolone(tree : SLIDER_TREE_ITEM_INFO[]) : SLIDER_TREE_ITEM[] {
+					let nowlist = [] as SLIDER_TREE_ITEM[]
+					for (let i = 0; i < tree.length; i++) {
+						const node = tree[i];
+						node.disabled = node.disabled == null ? false : node.disabled! as boolean;
+						node.selected = node.selected == null ? [] : node.selected! as string[];
+						node.children = node.children == null ? ([] as SLIDER_TREE_ITEM_INFO[]) : node.children! as SLIDER_TREE_ITEM_INFO[];
+						let item = {
+							id:node.id,
+							title:node.title,
+							disabled:node.disabled!,
+							selected:node.selected!,
+							children:[] as SLIDER_TREE_ITEM[],
+							icon:node?.icon??""
+						} as SLIDER_TREE_ITEM
+						if ((node.children!).length > 0) {
+							item.children = addOptionalFieldsToTreeClolone(node.children! as SLIDER_TREE_ITEM_INFO[]);
+						}
+						nowlist.push(item)
+					}
+					
+					return nowlist
+				}
+
+				addOptionalFieldsToTree(list as SLIDER_TREE_ITEM_INFO[]);
+				
+				return addOptionalFieldsToTreeClolone(list)
+			},
+			_isNodata():boolean{
+				if(this.activeIndex==-1||this._list.length==0||this.activeIndex>this._list.length-1) return false;
+				if(this._list[this.activeIndex].children.length==0) return false;
+				return true;
+			},
+			
+		},
+		mounted() {
+			this.selectedsIds = this.modelValue;
+			this.oninit();
+			this.getBoxHeight();
+		},
+		beforeUnmount(){
+			clearTimeout(this.tid)
+		},
+		watch: {
+			modelValue(newValue:string[]) {
+				this.selectedsIds = newValue;
+				this.oninit();
+			},
+			height(){
+				this.getBoxHeight();
+			}
+		},
+		methods: {
+			//初始默认选中一个id值。如果为空的话。
+			oninit(){
+				if(this.selectedsIds.length==0&&this._list.length>0&&this.activeIndex==-1){
+					this.activeIndex = 0
+					this.selectedsIds = [this._list[this.activeIndex].id]
+				}else{
+					
+					if(this.activeIndex == -1){
+						let idx = -1;
+						for(let i=0;i<this._list.length;i++){
+							let item = this._list[i]
+							if(this.selectedsIds.includes(item.id)){
+								idx = i;
+								break;
+							}
+						}
+						this.activeIndex = idx == -1 ? 0 :idx
+						this.selectedsIds = this.selectedsIds.concat([this._list[this.activeIndex].id]) 
+					}else{
+						this.selectedsIds = this.selectedsIds.concat([this._list[this.activeIndex].id])
+					}
+				}
+				
+				
+			},
+			getBoxHeight(){
+				let t = this;
+				clearTimeout(this.tid)
+				this.tid = setTimeout(function() {
+					uni.createSelectorQuery()
+					.in(t)
+					.select('.xSliderTree')
+					.boundingClientRect()
+					.exec(ret=>{
+						let node = ret[0] as NodeInfo
+						t.nrHeight = node.height!+'px';
+						t.boxHeight = node.height!
+					})
+				}, 200);
+				
+			},
+			/**
+			 * 本下级选了几个
+			 */
+			isSelectedNum(item:SLIDER_TREE_ITEM):number{
+				let ps = new Set(this.selectedsIds)
+				return getTreeSelectedNum(item.children,ps);
+			},
+			/**
+			 * 当前是否选中
+			 */
+			isSelected(id:string):boolean{
+				return this.selectedsIds.includes(id)
+			},
+			sliderItemClick(item:SLIDER_TREE_ITEM,index:number) {
+				if(item.disabled) return;
+				// 首栏不允许多选
+				this.activeIndex = index;
+				let ids = this._list.map((el:SLIDER_TREE_ITEM):string=>el.id)
+				let oks = this.selectedsIds.filter((el:string):boolean=>!ids.includes(el))
+				oks.push(item.id as string)
+				this.selectedsIds =  oks
+			},
+			childrenClick(id:string[],type:string){
+				// 给当前级加上选中的子组级id
+				if(this._multiple){
+					this.selectedsIds = id
+				}else{
+					this.selectedsIds = id.concat([this._list[this.activeIndex ].id]) 
+				}
+				let idis = filterParentNode(this._list,new Set(this.selectedsIds));
+				/**
+				 * 更新当前的值，等同v-model
+				 */
+				this.$emit('update:modelValue',idis)
+				if(type=='click'){
+					this.$emit('change',idis)
+				}
+			}
+		},
+	}
+</script>
+<template>
+	<view class="xSliderTree" :style="{width:_width,height:_height}">
+		<list-view 
+		v-if="_list.length>0" 
+		
+		:style="{width:_sliderWidth,height:_height,backgroundColor:_sliderBgColor}"
+		>
+			<list-item
+			@click="sliderItemClick(item,index)"
+			 v-for="(item,index) in _list"
+			 :key="index"
+			 class="xSliderTreeItemLeft" 
+			 :style="{
+				backgroundColor:isSelected(item.id)?_sliderContentBgColor:'transparent',
+				opacity:item.disabled?'0.5':1,
+				'border-left': `2px solid ${isSelected(item.id)?_activeTextColor:'transparent'}`
+			 }"
+			 >
+				<x-badge :dot="false" :count="isSelectedNum(item)">
+					<view><text class="xSliderTreeItemLeftText" :style="{fontSize:_fontSize,color:isSelected(item.id)? _activeTextColor : _textColor}">{{item.title}}</text></view>
+				</x-badge>
+			</list-item>
+		</list-view>
+		<view :style="{backgroundColor:_sliderContentBgColor,flex:1,height:'100%'}">
+			<x-slider-children
+			:font-size="_fontSize"
+			 :height="nrHeight"
+			 :boxHeight="boxHeight"
+			 v-if="_isNodata"  :nowSelecteds="selectedsIds" @itemClick="childrenClick" :multiple="_multiple" :sliderContentBgColor="_sliderContentBgColor" :itemActiveColor="_itemActiveColor" :itemTextColor="_itemTextColor" :index="0" :list="_list[activeIndex].children"></x-slider-children>
+		</view>
+	</view>
+</template>
+<style scoped>
+	.xSliderTree {
+		display: flex;
+		flex-direction: row;
+		align-items: flex-start;
+		justify-content: space-between;
+
+	}
+	.xSliderTreeItemLeft{
+		width:100%;
+		/* padding:0 24rpx; */
+		height: 50px;
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+	}
+	.xSliderTreeItemLeftText{
+		text-align: center;
+	}
+</style>

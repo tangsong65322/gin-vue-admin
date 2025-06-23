@@ -1,0 +1,45 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">滑动验证 xSlideVerify</x-text>
+			<x-text color="#999999">
+				可以防止机器人刷新页面，防止恶意注册，防止恶意评论等
+			</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-slide-verify></x-slide-verify>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">显示指示框并设定目标值</x-text>
+			<x-slide-verify ref='verify' :verifyPos="50" :showVerifyBox="true"></x-slide-verify>
+			<x-button @click="reset" class="mt-20" :block="true">重置</x-button>
+		</x-sheet>
+		
+		<x-sheet color="primary">
+			<x-text color="white" font-size="18" class=" text-weight-b mb-8">改变样式</x-text>
+			<x-slide-verify activeColor="warn" :verifyPos="80" :showVerifyBox="true" round="0"></x-slide-verify>
+		</x-sheet>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script setup lang="uts">
+	
+	const verify = ref<XSlideVerifyComponentPublicInstance|null>(null)
+const reset = () => {
+	if(verify.value==null) return;
+	verify.value?.reset?.()
+}
+</script>
+
+<style>
+
+</style>

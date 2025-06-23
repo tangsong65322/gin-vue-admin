@@ -1,0 +1,40 @@
+import { SLIDER_TREE_ITEM } from "./interface.uts"
+/**
+ * 当前树有多少个被选中了。
+ */
+export function getTreeSelectedNum(item: SLIDER_TREE_ITEM[],target:Set<string>):number{
+	let inx = 0;
+	function jshz(tree : SLIDER_TREE_ITEM[]) {
+		for (let i = 0; i < tree.length; i++) {
+			let item = tree[i]
+			if (item.children.length > 0) {
+				jshz(item.children)
+			} else if (target.has(item.id)) {
+				inx += 1
+			}
+		}
+	}
+	jshz(item)
+	return inx;
+}
+
+/**
+ * 根据目标节点，过滤掉父节点。
+ * @param item 
+ * @param target 
+ */
+export function filterParentNode(item: SLIDER_TREE_ITEM[],target:Set<string>):string[]{
+	function jshz(tree : SLIDER_TREE_ITEM[]):string[] {
+		let arr = [] as string[]
+		for (let i = 0; i < tree.length; i++) {
+			let items = tree[i]
+			if (items.children.length > 0) {
+				arr = arr.concat(jshz(items.children))
+			}else if (target.has(items.id)) {
+				arr.push(items.id)
+			}
+		}
+		return arr;
+	}
+	return jshz(item)
+}

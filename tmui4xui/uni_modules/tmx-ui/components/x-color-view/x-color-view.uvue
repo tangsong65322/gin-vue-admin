@@ -1,0 +1,308 @@
+<template>
+	<view>
+		<x-radio-button @change="panelChange" height="32" fontSize="14" v-model="menubarId" :list="menubar"></x-radio-button>
+
+		<color-rgb-uvue :hexValue="colorStr" @change="colorChange" v-if="menubarId=='rgb'"></color-rgb-uvue>
+		<color-grid-uvue @change="colorChange" v-if="menubarId=='grid'&&isReadyShow"></color-grid-uvue>
+		<color-hue-uvue :hexValue="colorStr" @change="colorChange" v-if="menubarId=='hue'&&isReadyShow"></color-hue-uvue>
+		<color-alpha-uvue v-if="_showAlpha" :hexValue="aplpha" @change="colorChangeAlpha"></color-alpha-uvue>
+		<view v-if="menubarId=='rgb'||menubarId=='grid'" style="height:16px"></view>
+		<view class="xColorViewFooter">
+			<!-- 
+			 @slot 默认插槽,用于自行布局底部,比如当你需要改造尾部时用.你也可以通过插槽来隐藏底部
+			 @prop {string} rgba - 当前的rgbacss颜色值
+			 -->
+			<slot name="default" :rgba="realColorRgbaCss">
+				<view class="xColorViewLeftSHapers">
+					<view class="xColorViewLeftSHapersLeft" :style="{backgroundColor:realColorHex}"></view>
+					<view class="xColorViewLeftSHapersRight" :style="{backgroundColor:realColorHex,opacity:aplpha}">
+					</view>
+				</view>
+				<view class="xColorViewFooterRight">
+					<view @click="clickItemColor(item)" class="xColorViewFooterRightItem"
+						v-for="(item,index) in _colorList" :key="index" :style="{backgroundColor:item}"></view>
+				</view>
+			</slot>
+		</view>
+	</view>
+</template>
+
+<script lang="ts" setup>
+
+	
+	import colorRgbUvue from './color-rgb.uvue';
+	import colorGridUvue from './color-grid.uvue';
+	import colorHueUvue from './color-hue.uvue';
+	import { RADIO_BUTTON } from '../../interface';
+	import colorAlphaUvue from './color-alpha.uvue';
+	import { hexToRgb, hslToRgb, hslaToRgbCss, rgbToHex, rgbToHsl, rgbToHexNoAlpha, isValidColor, getDefaultColor } from "../../core/util/xCoreColorUtil.uts";
+	
+	/**
+	 * @name 颜色选择 xColorView
+	 * @description 精致且方便用户操作移动颜色选择容器,为你的APP增彩,兼容PC端操作，如果要把组件嵌套在弹层内时，那么在展示的时候需要延迟显示本组件。
+	 * @page /pages/index/color-view
+	 * @category 其它组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	defineOptions({ name: "xColorView" })
+	
+	const props = defineProps({
+		/**
+		 * 当前显示的颜色值,可以是合法的值,可以v-model双向绑定
+		 * 如:颜色名称,hex,rgb,rgba,hsl,hsla等值
+		 */
+		modelValue: {
+			type: String,
+			default: ""
+		},
+		/**
+		 * 输出格式:hex,rgba,hsla
+		 * 如果输出hex,那么透明度将丢失
+		 */
+		format: {
+			type: String,
+			default: 'rgba'
+		},
+		/**
+		 * 默认显示的面板
+		 * hue:光谱,rgb:rgb拖动条,grid:网格面板
+		 */
+		panel: {
+			type: String,
+			default: 'hue'
+		},
+		/**
+		 * 是否展示透明度设置
+		 */
+		showAlpha:{
+			type:Boolean,
+			default:true
+		},
+		/**
+		 * 默认的底部颜色快速选择.
+		 */
+		colorList: {
+			type: Array as PropType<string[]>,
+			default: () : string[] => [] as string[]
+		}
+	})
+	const emits = defineEmits<{
+		/**
+		 * 值变化时触发。
+		 * @param {string} hexstr - 当前的颜色值
+		 */
+		(e : 'change', hexstr : string) : void,
+		/**
+		 * 当用户切换面板时触发
+		 * @param {string} type - 当前面板类型
+		 */
+		(e : 'panelChange', type : string) : void,
+		/**
+		 * 值变化时触发。可以v-model绑定.
+		 * @param {string} hexstr - 当前的颜色值
+		 */
+		(e : 'update:modelValue', hexstr : string) : void,
+	}>()
+	const slots = defineSlots<{
+		default : {
+			rgba : string
+		}
+	}>()
+	const menubarId = ref(props.panel as string)
+	const menubar = ref<RADIO_BUTTON[]>([
+		{ id: 'rgb', title: 'RGB滑块' } as RADIO_BUTTON,
+		{ id: 'hue', title: '光谱' } as RADIO_BUTTON,
+		{ id: 'grid', title: '网格' } as RADIO_BUTTON
+	] as RADIO_BUTTON[])
+	const colorStr = ref('')
+	const realColorArrayRgb = ref<string[]>(['0', '0', '0'])
+	const realColorHex = ref<string>('#000000')
+	const aplpha = ref<number>(1)
+	const isReadyShow =  ref(false)
+	let tid = 56
+	const _colorList = computed(() : string[] => {
+		let defaults = ['#0579FF', '#002FA7', '#FF0000', '#FF4F00', '#1034A6', '#6C3082', '#1256A7', '#009B3A', '#004225', '#E3A857', '#FFDF00'] as string[]
+		if (props.colorList.length == 0) return defaults;
+		return props.colorList
+	})
+	// @ts-ignore
+	const _showAlpha = computed(():boolean=>props.showAlpha)
+	const changeFormat = (val : string) : string => {
+		if (val == '') {
+			// @ts-ignore
+			if (props.format == 'hex') return '#ffffff'
+			// @ts-ignore
+			if (props.format == 'rgba') return 'rgba(255,255,255,1)'
+			return 'hsla(0,0%,100%,1)'
+		}
+		let rgba = hexToRgb(val);
+		let r = rgba.getNumber('r')!
+		let g = rgba.getNumber('g')!
+		let b = rgba.getNumber('b')!
+		let a = rgba.getNumber('a')!
+		// @ts-ignore
+		if (props.format == 'hex') return rgbToHexNoAlpha(rgba)
+		// @ts-ignore
+		if (props.format == 'rgba') return `rgba(${r},${g},${b},${a})`
+		let hsl = rgbToHsl(rgba)
+		let h = hsl.getNumber('h')!
+		let s = hsl.getNumber('s')!
+		let l = hsl.getNumber('l')!
+
+		return `hsla(${h},${s}%,${l}%)`
+	}
+	const realColorRgbaCss = computed(() : string => {
+		return `rgba(${realColorArrayRgb.value[0]},${realColorArrayRgb.value[1]},${realColorArrayRgb.value[2]},${aplpha.value})`
+	})
+	const changeFormatToArr = (val : string) => {
+		if (val == '' || !isValidColor(val)) {
+			return
+		}
+
+		let color = hexToRgb(val);
+		let r = color.getNumber('r')!
+		let g = color.getNumber('g')!
+		let b = color.getNumber('b')!
+		let a = color.getNumber('a')!
+		aplpha.value = a
+		realColorArrayRgb.value = [r.toString(), g.toString(), b.toString()] as string[]
+		realColorHex.value = rgbToHexNoAlpha(color)
+		colorStr.value = realColorHex.value
+	}
+	const toChanges = (hexstr : string, alphas : number) => {
+		let rgba = hexToRgb(hexstr)
+		let r = rgba.getNumber('r')!
+		let g = rgba.getNumber('g')!
+		let b = rgba.getNumber('b')!
+		let a = alphas
+
+		colorStr.value = hexstr;
+		let rgbastr = `rgba(${r},${g},${b},${a})`
+		let tostring = changeFormat(rgbastr)
+		emits('change', tostring)
+		emits('update:modelValue', tostring)
+	}
+	const colorChange = (hexstr : string) => {
+		if (colorStr.value == hexstr) return;
+
+		toChanges(hexstr, aplpha.value)
+	}
+	const panelChange = (panelId:string,panelIndex:number)=>{
+		emits("panelChange",panelId)
+	}
+	const colorChangeAlpha = (hexAlpha : number) => {
+		if (hexAlpha == aplpha.value) return;
+		aplpha.value = hexAlpha;
+
+		toChanges(colorStr.value, hexAlpha)
+	}
+
+	const clickItemColor = (selectedColor : string) => {
+		let hexstr = getDefaultColor(selectedColor)
+		changeFormatToArr(hexstr)
+		toChanges(realColorHex.value, aplpha.value)
+	}
+	onBeforeMount(() => {
+		// @ts-ignore
+		colorStr.value = getDefaultColor(props.modelValue)
+		changeFormatToArr(colorStr.value)
+	})
+	// @ts-ignore
+	watch(() : string => props.modelValue, (newval : string) => {
+		if (colorStr.value == newval) return;
+		changeFormatToArr(getDefaultColor(newval))
+	})
+	// @ts-ignore
+	watch(() : string => props.panel, (newval : string) => {
+		if (menubarId.value == newval) return;
+		menubarId.value = newval;
+	})
+	onMounted(()=>{
+		// #ifdef APP
+		clearTimeout(tid)
+		tid = setTimeout(function() {
+			isReadyShow.value = true;
+		}, 150);
+		// #endif
+		// #ifndef APP
+		isReadyShow.value = true;
+		// #endif
+	})
+	onBeforeUnmount(()=>{
+		// #ifdef APP
+		clearTimeout(tid)
+		// #endif
+	})
+	defineExpose({
+		/**
+		 * 获取当前颜色的透明度
+		 */
+		getAlpha():number{
+			return aplpha.value
+		},
+		/**
+		 * 获取当前颜色,含alpha通道
+		 */
+		getColor():string{
+			return colorStr.value
+		},
+		/**
+		 * 获取当前颜色,不含alpha通道
+		 */
+		getColorNoAlpha():string{
+			return rgbToHexNoAlpha(hexToRgb(colorStr.value))
+		}
+	})
+	
+</script>
+
+<style scoped>
+	.xColorViewFooterRight {
+		flex: 1;
+		display: flex;
+		flex-direction: row;
+		flex-wrap: wrap;
+		transform: translateY(-8px);
+	}
+
+	.xColorViewFooter {
+		margin-top: 8px;
+		display: flex;
+		flex-direction: row;
+	}
+
+	.xColorViewLeftSHapers {
+		width: 64px;
+		height: 64px;
+		display: flex;
+		flex-direction: row;
+		/* margin-right: 20px; */
+		border-radius: 32px;
+		overflow: hidden;
+		border: 1px solid #E1E4EE;
+	}
+
+	.xColorViewLeftSHapersLeft {
+		width: 31px;
+		height: 62px;
+		border-radius:32px 0  0 32px;
+	}
+
+	.xColorViewLeftSHapersRight {
+		width: 31px;
+		height: 62px;
+		border-radius:0 32px 32px 0;
+	}
+
+	.xColorViewFooterRightItem {
+		border-radius: 32px;
+		margin-left: 16px;
+		margin-top: 8px;
+		width: 25px;
+		height: 25px;
+		border: 1px solid #E1E4EE;
+	}
+</style>

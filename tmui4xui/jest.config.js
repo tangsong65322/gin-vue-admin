@@ -1,0 +1,25 @@
+module.exports = {
+    "is-custom-runtime": false,
+    "compile": true,
+    watchPathIgnorePatterns: ['/node_modules/', '/dist/', '/.git/'],
+    moduleFileExtensions: ['js'],
+    rootDir: __dirname,
+    testMatch: ["<rootDir>/pages/**/*test.[jt]s?(x)","<rootDir>/pages/*test.[jt]s?(x)"],
+    testPathIgnorePatterns: [
+		'/node_modules/',
+		'/testbao/',
+		'/tmicon/',
+		'/tmicon/',
+		'/myUtools/',
+		'/myUtools/',
+		'/uni_modules/',
+		'/unpackage/',
+		'/static/',
+		'/hybrid/',
+		'/jtest/',
+		'/docsBuildCli/',
+		'/docweb/',
+		'/logo资源/',
+		'/tmy-ui/',
+		]
+}

@@ -1,0 +1,87 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view class="flex-1" >
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor"
+			:front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+		<!-- #endif -->
+
+		<x-sheet :follow-theme="true">
+			<text class="text-weight-b text-white text-align-center mb-12" style="font-size: 46px;">X-UI</text>
+			<text class="text-size-m  text-white text-align-center">这里只举例部分，还有更多全局统一设置的属性见文档。[{{currentColor}}]</text>
+		</x-sheet>
+
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">切换主题</x-text>
+			<view class="flex-row flex-row-center-between">
+				<x-button width="24%" @click="changePrimary('#0579FF')" size="small">默认</x-button>
+				<x-button width="24%" @click="changePrimary('#6C3082')" size="small">巴黎紫</x-button>
+				<x-button width="24%" @click="changePrimary('#C80815')" size="small">威尼斯红</x-button>
+				<x-button width="24%" @click="changePrimary('#009B3A')" size="small">巴西绿</x-button>
+			</view>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">按钮圆角</x-text>
+			<x-text color="#999999">
+				圆角动态切换因要重新触发渲染才可立即生效，因此在实际实用时，建议预设全局圆角，如果要动态切换可热重载下程序或者刷新下页面。本页面切换会返上一页来达到生效。
+			</x-text>
+			<view class="flex-row flex-row-center-between mt-24">
+				<x-button width="24%" @click="changeRaius('4rpx')" size="small">4rpx</x-button>
+				<x-button width="24%" @click="changeRaius('8rpx')" size="small">8rpx</x-button>
+				<x-button width="24%" @click="changeRaius('18rpx')" size="small">18rpx</x-button>
+				<x-button width="24%" @click="changeRaius('64rpx')" size="small">64rpx</x-button>
+			</view>
+		</x-sheet>
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">列表Cell为card模式时的圆角</x-text>
+			<view class="flex-row ">
+				<x-button @click="changeCellRaius('20rpx')" size="small" class="mr-24">16rpx</x-button>
+				<x-button @click="changeCellRaius('64rpx')" size="small">64rpx</x-button>
+
+			</view>
+		</x-sheet>
+
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	import { xStore, xDate } from "@/uni_modules/tmx-ui/index.uts"
+	export default {
+		data() {
+			return {
+				
+			};
+		},
+		computed:{
+			currentColor():string{
+			
+				return xStore.xConfig.color
+			}
+		},
+		methods:{
+			changePrimary(val:string){
+				xStore.setThemePrimary(val)
+				xStore.setConfig({
+					theme:new Map<string,string>([['primary',val]])
+				} as UTSJSONObject)
+			},
+			changeRaius(val:string){
+				xStore.xConfig.buttonRadius = val
+				uni.navigateBack()
+			},
+			changeCellRaius(val:string){
+				xStore.xConfig.cellRadius = val
+				uni.navigateBack()
+			}
+		}
+	}
+</script>
+
+<style>
+
+</style>

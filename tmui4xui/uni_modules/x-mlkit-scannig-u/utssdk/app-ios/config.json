@@ -1,0 +1,9 @@
+{
+	"deploymentTarget": "12",
+	"dependencies-pods": [
+		{
+			"name": "GoogleMLKit/BarcodeScanning",
+			"version": "5.0.0"
+		}
+	]
+}

@@ -1,0 +1,87 @@
+{
+  "id": "x-ocr-s",
+  "displayName": "Ocr文本识别ai模型离线本机识别无需服务端 支持ios，andriod安卓",
+  "version": "1.0.6",
+  "description": "支持中文，日语，韩语，英语识别，支持本地，远程图片，相机相机选取识别文本",
+  "keywords": [
+    "ocr,文本识别,tmui4.0,uts"
+],
+  "repository": "",
+  "engines": {
+    "HBuilderX": "^3.99"
+  },
+  "dcloudext": {
+    "type": "uts",
+    "sale": {
+      "regular": {
+        "price": "99.00"
+      },
+      "sourcecode": {
+        "price": "0.00"
+      }
+    },
+    "contact": {
+      "qq": "369986563"
+    },
+    "declaration": {
+      "ads": "无",
+      "data": "无",
+      "permissions": "本地相机/相册选取权限，需要征得同意。"
+    },
+    "npmurl": ""
+  },
+  "uni_modules": {
+    "dependencies": [],
+    "encrypt": [],
+    "platforms": {
+      "cloud": {
+        "tcb": "y",
+        "aliyun": "y",
+        "alipay": "y"
+      },
+      "client": {
+        "Vue": {
+          "vue2": "n",
+          "vue3": "y"
+        },
+        "App": {
+            "app-android": {
+                "minVersion": "20"
+            },
+            "app-ios": {
+                "minVersion": "12"
+            },
+            "app-harmony": "u"
+        },
+        "H5-mobile": {
+          "Safari": "n",
+          "Android Browser": "n",
+          "微信浏览器(Android)": "n",
+          "QQ浏览器(Android)": "n"
+        },
+        "H5-pc": {
+          "Chrome": "n",
+          "IE": "n",
+          "Edge": "n",
+          "Firefox": "n",
+          "Safari": "n"
+        },
+        "小程序": {
+          "微信": "n",
+          "阿里": "n",
+          "百度": "n",
+          "字节跳动": "n",
+          "QQ": "n",
+          "钉钉": "n",
+          "快手": "n",
+          "飞书": "n",
+          "京东": "n"
+        },
+        "快应用": {
+          "华为": "n",
+          "联盟": "n"
+        }
+      }
+    }
+  }
+}

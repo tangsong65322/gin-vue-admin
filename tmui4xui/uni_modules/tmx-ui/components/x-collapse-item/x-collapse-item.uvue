@@ -1,0 +1,422 @@
+<script lang="ts">
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit,getUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	import { CHIDREN_ITEM } from "../x-collapse/interface.uts"
+
+	/**
+	 * @name 折叠面板子组件 xCollapseItem
+	 * @description 可单，可多开,只可放置在x-collapse直接子节点组件,为了避免重复计算和性能x-collapse-item不能通过响应式修改内容。如果确实需要请通过刷新key解决
+	 * @page /pages/index/collapse-item
+	 * @category 展示组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.9 |
+	 */
+	export default {
+		data() {
+			return {
+				itemHeight: 0,
+				opened: false,
+				id: 'xCollapseItem-' + getUid(),
+				list: [] as string[],
+				resizeObserver: null as UniResizeObserver | null,
+			}
+		},
+		emits:[
+			/**
+			 * 点击组件标题时触发
+			 * @param {string} name 当前标识 
+			 * @param {boolean} opened 当前项目打开状态 
+			 */
+			'click'
+		],
+		inject: {
+			xCollapseDefaultName: { type: Array, default: [] as string[] },
+		},
+		props: {
+			/**
+			 * 唯一标识
+			 */
+			name: {
+				type: String,
+				default: "",
+				required: true
+			},
+			/**
+			 * 是否显示底部边线
+			 */
+			showBottomLine: {
+				type: Boolean,
+				default: true
+			},
+			/**
+			 * 是否禁用
+			 */
+			disabled: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 标题大小
+			 */
+			titleFontSize: {
+				type: String,
+				default: '16px'
+			},
+			/**
+			 * 标题颜色
+			 */
+			titleColor: {
+				type: String,
+				default: '#333333'
+			},
+			/**
+			 * 拒绝礼佛标题颜色，如果不填写取白
+			 */
+			darkTitleColor: {
+				type: String,
+				default: ''
+			},
+			/**
+			 * 激活时的颜色，空值读取全局值。
+			 */
+			activeColor: {
+				type: String,
+				default: ''
+			},
+			/**
+			 * 背景
+			 */
+			color: {
+				type: String,
+				default: 'white'
+			},
+			/**
+			 * 暗黑时的背景，如果不填写默认取sheetDarkColor
+			 */
+			darkColor: {
+				type: String,
+				default: ''
+			},
+			/**
+			 * 左边图标
+			 */
+			leftIcon: {
+				type: String,
+				default: ''
+			},
+			/**
+			 * 标题
+			 */
+			title: {
+				type: String,
+				default: ''
+			},
+			/**
+			 * 标题高度
+			 */
+			titleHeight: {
+				type: String,
+				default: '55'
+			},
+			/**
+			 * 标题最多显示几行出现省略号
+			 */
+			titleLines: {
+				type: Number,
+				default: 1
+			}
+		},
+		computed: {
+			_disabled() : boolean {
+				return this.disabled;
+			},
+			_titleFontSize() : string {
+				let fontSize = checkIsCssUnit(this.titleFontSize, xConfig.unit);
+				if(xConfig.fontScale==1) return fontSize;
+				let sizeNumber = parseInt(fontSize)
+				if(isNaN(sizeNumber)){
+					sizeNumber = 16
+				}
+				return (sizeNumber*xConfig.fontScale).toString() + getUnit(fontSize)
+			},
+			_titleHeight() : string {
+				return checkIsCssUnit(this.titleHeight, xConfig.unit);
+			},
+			_titleColor() : string {
+				if(xConfig.dark=='dark'){
+					if(this.darkTitleColor!='') return getDefaultColor(this.darkTitleColor)
+					return '#ffffff'
+				}
+				return getDefaultColor(this.titleColor);
+			},
+			_activeColor() : string {
+				if (this.activeColor == "") return getDefaultColor(xConfig.color)
+				return getDefaultColor(this.activeColor);
+			},
+			_color() : string {
+				if(xConfig.dark=='dark'){
+					if(this.darkColor!='') return getDefaultColor(this.darkColor)
+					return xConfig.sheetDarkColor
+				}
+				return getDefaultColor(this.color);
+			},
+			_leftIcon() : string {
+				return this.leftIcon;
+			},
+			_title() : string {
+				return this.title;
+			},
+
+			_isActive() : boolean {
+				return this.list.includes(this.name);
+			},
+			_textMap() : Map<string, string> {
+				let styleMap = new Map<string, string>()
+				styleMap.set("fontSize", this._titleFontSize)
+				styleMap.set("color", this._isActive ? this._activeColor : this._titleColor)
+				// #ifdef APP
+				styleMap.set("lines", this.titleLines.toString())
+				// #endif
+				// #ifndef APP
+				styleMap.set("-webkit-line-clamp", this.titleLines.toString())
+				// #endif
+
+				return styleMap;
+			}
+		},
+		mounted() {
+			// @ts-ignore
+			this.list = this.xCollapseDefaultName as string[];
+			// @ts-ignore
+			const parent = this.getParent() as XCollapseComponentPublicInstance|null
+			if(parent!=null){
+				parent!.addItem({ id: this.name, ele: this } as CHIDREN_ITEM)
+			}
+			
+			if (this._isActive) {
+				this.getNodes()
+			}
+			let t = this;
+			// #ifdef APP || WEB
+			let ele = this.$refs['xCollapseItemContent'] as UniElement
+			if(ele==null) return;
+			if (this.resizeObserver == null) {
+				this.resizeObserver = new UniResizeObserver((entries : Array<UniResizeObserverEntry>) => {
+				  entries.forEach(entry => {
+					if (entry.target == ele) {
+						if (t._isActive) {
+							t.getNodes()
+						}
+					}
+				  })
+				})
+			}
+			this.resizeObserver!.observe(ele!)
+			// #endif
+			// #ifdef MP
+			setTimeout(function() {
+				t.getNodes()
+			}, 300);
+			// #endif
+			
+		},
+		updated() {
+			// #ifdef MP-WEIXIN
+			this.getNodes()
+			// #endif
+		},
+		beforeUnmount() {
+			// @ts-ignore
+			const parent = this.getParent() as XCollapseComponentPublicInstance|null
+			if(parent!=null){
+				parent!.delItem(this.name)
+			}
+			this.resizeObserver?.disconnect()
+		},
+		methods: {
+			// @ts-ignore
+			getParent():any|null{
+					// @ts-ignore
+				let parent : XCollapseComponentPublicInstance | null = null;
+				try {
+						// @ts-ignore
+					parent = this.$parent as XCollapseComponentPublicInstance
+				} catch (e) {}
+				return parent
+			},
+			setList(items : string[]) {
+				this.list = items
+				this.getNodes()
+			},
+			itemClick() {
+				/**
+				 * 项目被点击时触发。
+				 * @param name {string} 当前name值
+				 */
+				this.$emit('click', this.name,!this.opened);
+
+				if (!this._disabled) {
+					// @ts-ignore
+					let parent : XCollapseComponentPublicInstance | null = null;
+					try {
+						// @ts-ignore
+						parent = this.$parent as XCollapseComponentPublicInstance
+					} catch (e) {
+
+					}
+					if (parent != null) {
+						parent.addChange(this.name)
+					}
+				}
+
+			},
+			getNodes() {
+				// #ifndef MP
+				let _this = this;
+				let ele = this.$refs['xCollapseItemContent'] as UniElement|null;
+				if(ele==null) return;
+				ele.getBoundingClientRectAsync()
+				?.then((rect:DOMRect)=>{
+					_this.itemHeight = rect.height;
+					if (_this._isActive) {
+						_this.open()
+					} else {
+						_this.close()
+					}
+				})
+				// #endif
+				// #ifdef MP
+				uni.createSelectorQuery().in(this)
+					.select(".xCollapseItemContent")
+					.boundingClientRect().exec((ret) => {
+						let nodeinfo = ret[0] as NodeInfo;
+						this.itemHeight = nodeinfo.height!;
+						if (this._isActive) {
+							this.open()
+						} else {
+							this.close()
+						}
+					})
+				// #endif
+			},
+			open() {
+				this.opened = true;
+			},
+			close() {
+				this.opened = false;
+			}
+		},
+	}
+</script>
+<template>
+	<view class="xCollapseItemBox" :style="{background:_color}">
+		<view @click="itemClick" class="xCollapseItem" :style="{opacity:_disabled?0.5:1}">
+			<view class="xCollapseItemBoxLeft">
+				<x-icon :font-size="_titleFontSize" v-if="_leftIcon" :name="_leftIcon"
+					:color="_isActive?_activeColor:_titleColor" style="margin-right: 12px;"></x-icon>
+				<!--
+				 @slot 左边插槽
+				 @prop {boolean} status - 当前展开状态
+				 -->
+				<slot name="left" :status="opened"></slot>
+
+				<view class="xCollapseItemBoxTextBox" :style="{height:_titleHeight}">
+					<view style="flex:1">
+						<!--
+						 @slot 标题插槽，如果你要完全自定标题样式请在此插槽内布局
+						 @prop {boolean} status - 当前展开状态
+						 -->
+						<slot name="title" :status="opened">
+							<text class="xCollapseItemBoxText" :style="_textMap">
+								{{_title}}
+							</text>
+						</slot>
+					</view>
+				</view>
+
+			</view>
+			<view class="xCollapseItemBoxRight">
+				<!--
+				 @slot 右边插槽
+				 @prop {boolean} status - 当前展开状态
+				 -->
+				<slot name="right" :status="opened"></slot>
+				<x-icon :color="_isActive?_activeColor:'#bfbfbf'" style="margin-left: 12px;"
+					:name="opened?'arrow-down-s-line':'arrow-right-s-line'"></x-icon>
+			</view>
+		</view>
+		<view class="xCollapseItemWrap" :style="{height:opened?(itemHeight+'px'):'0rpx'}">
+			<view class="xCollapseItemContent" ref="xCollapseItemContent">
+				<!-- 
+				@slot 默认内容插槽。 
+				 -->
+				<slot></slot>
+			</view>
+		</view>
+		<x-divider v-if="showBottomLine"></x-divider>
+	</view>
+</template>
+<style scoped>
+	.xCollapseItemBoxTextBox {
+		flex: 1;
+		display: flex;
+		flex-direction: row;
+		justify-content: flex-start;
+		align-items: center;
+	}
+
+	.xCollapseItemBoxText {
+		text-overflow: ellipsis;
+		/* #ifndef APP */
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+		word-break: break-all;
+		/* #endif */
+	}
+
+	.xCollapseItemContent {
+		padding: 12px 0rpx;
+	}
+
+	.xCollapseItemBoxLeft {
+		display: flex;
+		flex-direction: row;
+		justify-content: flex-start;
+		align-items: center;
+		flex: 1;
+	}
+
+	.xCollapseItemBoxRight {
+		display: flex;
+		flex-direction: row;
+		justify-content: flex-end;
+		align-items: center;
+	}
+
+	.xCollapseItemBox {
+		/* background-color: white; */
+		padding: 0px 12px;
+	}
+
+	.xCollapseItem {
+		display: flex;
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+
+	}
+
+	.xCollapseItemWrap {
+		display: flex;
+		flex-direction: column;
+		transition-property: height;
+		transition-duration: 350ms;
+		transition-timing-function: cubic-bezier(.18, .89, .32, 1);
+		overflow: hidden;
+	}
+</style>

@@ -1,0 +1,9 @@
+<template>
+	<view>
+		<x-text>欢迎使用TMUI4X标准组件库</x-text>
+	</view>
+</template>
+<script>
+</script>
+<style>
+</style>

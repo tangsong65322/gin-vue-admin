@@ -1,0 +1,66 @@
+import { xProvitae, xConfig ,setConfig} from "./xConfig.uts"
+import { getDarkMode, isCustomTheme, WebObserveTheme, setThemeDarkModel } from "./observeAppTheme.uts"
+const xui = definePlugin({
+	install(app:VueApp,config:any|null) {
+		setConfig(config)
+		let darkModel = getDarkMode();
+		if (isCustomTheme()) {
+			xConfig.dark = darkModel
+		} else {
+			if (xConfig.dark == 'auto') {
+				uni.setStorageSync('tmuiXuiOsThemeSet', darkModel)
+				xConfig.dark = darkModel
+			} else {
+				uni.setStorageSync('tmuiXuiOsThemeSet', xConfig.dark)
+			}
+		}
+		WebObserveTheme()
+		setThemeDarkModel()
+		app.mixin({
+			computed:{
+				// #ifdef MP
+				xThemeConfigBgColor():string{
+					return xConfig.dark=='dark'?xConfig.backgroundColorContentDark:xConfig.backgroundColorContentLight
+				},
+				xThemeConfigNavBgColor():string{
+					return xConfig.dark=='dark'?xConfig.navigationBarBackgroundColorDark:xConfig.navigationBarBackgroundColorLight
+				},
+				xThemeConfigNavFontColor():string{
+					return xConfig.dark=='dark'?xConfig.navigationBarTextStyleDark:xConfig.navigationBarTextStyleLight
+				},
+				xThemeConfigIsDark():boolean{
+					return xConfig.dark=='dark'
+				}
+				// #endif
+			},
+			onPageScroll(e) {
+				xProvitae.scrollTop = e.scrollTop
+			},
+			onResize() {
+				uni.$emit('onResize', function () { })
+			},
+			onLoad() {
+
+			},
+			onHide() {
+				uni.$emit('onHide', function () { })
+			},
+			onReady(){
+				uni.$emit('onReady', function () { })
+				xProvitae.pageReady = true;
+			},
+			onShow() {
+				// #ifdef WEB
+				this.$nextTick(()=>{
+					setThemeDarkModel()
+				})
+				// #endif
+				uni.$emit('onShow', function () { })
+			}
+		})
+	}
+})
+
+
+
+export default xui

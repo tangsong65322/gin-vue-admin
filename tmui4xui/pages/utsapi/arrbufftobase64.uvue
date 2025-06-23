@@ -1,0 +1,48 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">ArrayBuffer</x-text>
+			<x-text color="#999999">可以将base64转换为ArrayBuffer或者ArrayBuffer转换为base64</x-text>
+			<x-text color="#999999">如果想解码base64为字符串,可以使用我的加密插件来解码</x-text>
+		</x-sheet>
+		<x-sheet>
+			<x-button class="mt-16" :block="true" @click="atb">arrayBufferToBase64</x-button>
+		</x-sheet>
+		<x-sheet>
+			<x-button :block="true" @click="bta">base64ToArrayBuffer</x-button>
+		</x-sheet>
+
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script setup>
+	import { ref } from "vue"
+	import {arrayBufferToBase64,base64ToArrayBuffer} from "@/uni_modules/x-base64toarraybuff-s"
+	const atb = () => {
+		let buf = Int8Array.from([72, 101, 108, 108, 111])
+		let str = arrayBufferToBase64(buf.buffer!)
+		uni.showToast({
+			title:str
+		})
+	}
+	const bta = () => {
+		let ar = base64ToArrayBuffer('SGVsbG8=')
+		uni.showToast({
+			title:ar.byteLength.toString()
+		})
+		console.log(ar)
+	}
+</script>
+
+<style lang="scss">
+
+</style>

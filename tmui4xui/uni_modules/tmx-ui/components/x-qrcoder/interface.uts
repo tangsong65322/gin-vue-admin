@@ -1,0 +1,48 @@
+export type GenerateFrameResult = {
+	frameBuffer: number[], 
+	width: number
+}
+export type XQrcoderProps = {
+	ctx: CanvasRenderingContext2D,
+	/**
+	 * 容错等级
+	 */
+	ecc:string,
+	/**
+	 * 二维码内容
+	 */
+	text: string,
+	/**
+	 * 二维码大小
+	 */
+	size: number,
+	/**
+	 * 二维码前景色
+	 */
+	foreground: string,
+	/**
+	 * 二维码背景色
+	 */
+	background: string,
+	padding: number,
+	/**
+	 * 二维码logo
+	 */
+	logo: string,
+	/**
+	 * 二维码logo大小
+	 */
+	logoSize: number,
+	/**
+	 * 绘制的样式目前提供
+	 * rect ：普通码矩形
+	 * circular ：小圆点
+	 * line ：线条
+	 * rectSmall ：小方格
+	 */
+	mode:String,
+	/**
+	 * 定位点的颜色
+	 */
+	pdColor?: string
+}

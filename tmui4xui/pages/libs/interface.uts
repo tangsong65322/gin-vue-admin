@@ -1,0 +1,36 @@
+//统一的请求响应结构体
+export type resultDataType = {
+	msg:string,
+	code:number,
+	data:any
+}
+export type UseInfo = {
+	naicename:string,
+	avatar:string,
+	id:string,
+	tags:string[],
+	level:number
+}
+
+// 统一的列表结构体
+export type resultListType<T>= {
+	pagetCount:number,
+	count:number,
+	page:number,
+	listCount:number,
+	datalist:T[]
+}
+export type LISTPAGEART_TYPE = {
+	tmzdy_actID:number,
+	see:number,
+	jifen:number,
+	isTop:number,
+	time:string,
+	title:string,
+	titlePro:string,
+	tagTitle:string,
+	tagSpan:string,
+	bgColor:string,
+	fenlei:string,
+	updataTime:string
+}

@@ -1,0 +1,243 @@
+import { XTOAST_TYPE, XTOAST_TYPE_PRIVATE } from "../interface.uts"
+import { defaultConfig, configCover } from "../libs/config.uts"
+import { UIView, UIViewController, NSLayoutConstraint,UILayoutPriority, UITextView, UIFont, UILabel, NSTextAlignment, NSLineBreakMode , Distribution } from 'UIKit';
+import { CGRect, CGPoint, CGFloat, CGSize, CFDictionary } from 'CoreFoundation';
+import { CGSizeMake } from 'CoreGraphics';
+import { Alignment } from 'SwiftUI';
+import { UInt32, KeyPath } from 'Swift';
+import { NSString } from 'Foundation';
+import { CABasicAnimation, CAMediaTimingFunction, CAMediaTimingFunctionName } from 'QuartzCore';
+import { LessThanOrEqualToComparator } from 'AppIntents';
+
+let maskerDom : null | UIView = null;
+let tid : number | null = 0
+let globalOpts: XTOAST_TYPE | null = null;
+export function hideToast() {
+	DispatchQueue.main.async(execute = () : void => {
+		if (maskerDom != null) {
+			maskerDom!.removeFromSuperview()
+		}
+		if (tid != null) {
+			clearTimeout(tid!)
+		}
+		if(globalOpts!=null){
+			let closeEvent = globalOpts?.close??null;
+			if(closeEvent!=null){
+				closeEvent!()
+			}
+		}
+	})
+}
+
+export function showToast(opts : XTOAST_TYPE | null) {
+	globalOpts = opts;
+	DispatchQueue.main.async(execute = () : void => {
+
+		if (tid != null) {
+			clearTimeout(tid!)
+			tid = null;
+		}
+		if (maskerDom != null) {
+			maskerDom!.removeFromSuperview()
+		}
+		let parent = UTSiOS.getCurrentViewController() as UIViewController;
+		let parentView = parent.view as UIView
+
+		let realopts = opts == null ? ({} as XTOAST_TYPE) : (opts!)
+		let config = configCover(realopts)
+
+		maskerDom = new UIView()
+		
+		// 允许遮罩穿透.
+		maskerDom!.isUserInteractionEnabled = !config.maskDisableClik;
+		
+		
+		if (maskerDom == null) return;
+		let cg = parentView.frame as CGRect
+		maskerDom!.frame = cg
+		maskerDom!.backgroundColor = UTSiOS.colorWithString(config.maskBgColor)
+		
+		let contetDiv = new UIView();
+		contetDiv.layer.cornerRadius = 16
+		contetDiv.layer.masksToBounds = true;
+		contetDiv.backgroundColor = UTSiOS.colorWithString(config.contentBgColor)
+		
+		
+
+		let textView = new UILabel()
+		textView.frame = new CGRect(x = 0, y = 0, width = config.iconSize.toInt(), height = config.iconSize.toInt())
+		textView.font = new UIFont(name = "remixicon", size = new CGFloat(config.iconSize))
+		textView.textColor = UTSiOS.colorWithString(config.iconColor)
+		textView.textAlignment = NSTextAlignment.center
+
+		if (config.iconCode != "") {
+			let codePoint = new UInt32(config.iconCode, radix = 16)
+			let stricon = new NSString(format = "%C", codePoint!)
+			textView.text = new String(stricon);
+			// 添加动画图标旋转
+			let spinAni = new CABasicAnimation(keyPath = "transform.scale")
+			spinAni.fromValue = 0.4
+			spinAni.toValue = 1
+			spinAni.duration = 0.5
+			textView.layer.add(spinAni, forKey = "scaleAnimation")
+
+			// setTimeout(function () {
+			// 	spinAni.fromValue = 1.2
+			// 	spinAni.toValue = 1
+			// 	spinAni.duration = 0.5
+
+			// 	textView.layer.add(spinAni, forKey = "scaleAnimation")
+			// }, 200);
+
+		}
+
+
+
+
+
+
+		// 添加内容缩放动画
+		let scaleAni = new CABasicAnimation(keyPath = "transform.scale")
+		scaleAni.fromValue = 0
+		scaleAni.toValue = 1
+		scaleAni.duration = 0.3
+		scaleAni.timingFunction = new CAMediaTimingFunction(name = CAMediaTimingFunctionName.easeInEaseOut)
+		contetDiv.layer.add(scaleAni, forKey = "scaleAnimation")
+		
+		let opacityAni = new CABasicAnimation(keyPath = "opacity")
+		opacityAni.fromValue = 0
+		opacityAni.toValue = 1
+		opacityAni.duration = 0.3
+		opacityAni.timingFunction = new CAMediaTimingFunction(name = CAMediaTimingFunctionName.easeInEaseOut)
+		maskerDom!.layer.add(opacityAni, forKey = "opacityAnimation")
+		
+		
+		
+		
+		//  两个都不空
+		if (config.title != "" && config.iconCode != "") {
+			
+			textView.translatesAutoresizingMaskIntoConstraints = false
+			
+			let titleView = new UILabel()
+			titleView.text = new String(config.title);
+			titleView.textAlignment = NSTextAlignment.center
+			titleView.lineBreakMode = NSLineBreakMode.byWordWrapping
+			titleView.numberOfLines = 0
+			titleView.font = UIFont.systemFont(ofSize = new CGFloat(config.titleSize))
+			titleView.textColor = UTSiOS.colorWithString(config.titleColor)
+			titleView.translatesAutoresizingMaskIntoConstraints = false
+			
+			
+			let contetDivWrap = new UIStackView(arrangedSubviews = [textView,titleView])
+			contetDivWrap.axis = NSLayoutConstraint.Axis.vertical
+			contetDivWrap.distribution = UIStackView.Distribution.fill
+			contetDivWrap.alignment = UIStackView.Alignment.center
+			contetDivWrap.spacing = 5
+			
+			contetDivWrap.translatesAutoresizingMaskIntoConstraints = false
+			contetDiv.addSubview(contetDivWrap)
+			
+			
+			NSLayoutConstraint.activate([
+				// 中心约束
+				// contetDivWrap.centerXAnchor.constraint(equalTo = contetDiv.centerXAnchor),
+				contetDivWrap.centerYAnchor.constraint(equalTo = contetDiv.centerYAnchor),
+				// 左侧约束
+				contetDivWrap.leadingAnchor.constraint(equalTo = contetDiv.safeAreaLayoutGuide.leadingAnchor, constant = 16),
+				// 右侧约束
+				contetDivWrap.trailingAnchor.constraint(equalTo = contetDiv.safeAreaLayoutGuide.trailingAnchor, constant = -16),
+				contetDivWrap.topAnchor.constraint(equalTo = contetDiv.safeAreaLayoutGuide.topAnchor, constant = 16),
+				// contetDivWrap.bottomAnchor.constraint(equalTo = contetDiv.safeAreaLayoutGuide.bottomAnchor, constant = -16),
+			])
+			
+			
+			// 图标空，标题不空
+		} else if (config.iconCode == "" && config.title != "") {
+			let titleView = new UILabel()
+			titleView.text = new String(config.title);
+			titleView.textAlignment = NSTextAlignment.center
+			titleView.lineBreakMode = NSLineBreakMode.byWordWrapping
+			titleView.numberOfLines = 0
+			titleView.font = UIFont.systemFont(ofSize = new CGFloat(config.titleSize))
+			titleView.textColor = UTSiOS.colorWithString(config.titleColor)
+			titleView.translatesAutoresizingMaskIntoConstraints = false
+			contetDiv.addSubview(titleView)
+			NSLayoutConstraint.activate([
+				// 顶部约束
+				titleView.topAnchor.constraint(equalTo = contetDiv.safeAreaLayoutGuide.topAnchor, constant = 16),
+				titleView.bottomAnchor.constraint(equalTo = contetDiv.safeAreaLayoutGuide.bottomAnchor, constant = -16),
+				// 左侧约束
+				titleView.leadingAnchor.constraint(equalTo = contetDiv.safeAreaLayoutGuide.leadingAnchor, constant = 16),
+				// 右侧约束
+				titleView.trailingAnchor.constraint(equalTo = contetDiv.safeAreaLayoutGuide.trailingAnchor, constant = -16)
+			])
+			// 图标不空，文字空。
+		} else {
+			textView.translatesAutoresizingMaskIntoConstraints = false
+			contetDiv.addSubview(textView)
+			NSLayoutConstraint.activate([
+				// 中心约束
+				textView.centerXAnchor.constraint(equalTo = contetDiv.centerXAnchor),
+				textView.centerYAnchor.constraint(equalTo = contetDiv.centerYAnchor),
+
+			])
+		}
+
+
+
+
+
+		contetDiv.translatesAutoresizingMaskIntoConstraints = false
+		maskerDom!.addSubview(contetDiv)
+		if ((config.title != '' && config.iconCode != '')) {
+			
+			NSLayoutConstraint.activate([
+				// 中心约束
+				contetDiv.centerXAnchor.constraint(equalTo = maskerDom!.centerXAnchor),
+				contetDiv.centerYAnchor.constraint(equalTo = maskerDom!.centerYAnchor),
+				// 宽大100
+				contetDiv.widthAnchor.constraint(lessThanOrEqualToConstant = new CGFloat(Math.min(Number(cg.size.width)-80,320))),
+				// 最小100
+				contetDiv.widthAnchor.constraint(greaterThanOrEqualToConstant = new CGFloat(config.size!)),
+				// 高为至少100
+				contetDiv.heightAnchor.constraint(greaterThanOrEqualToConstant = new CGFloat(config.size!))
+			])
+		}else if ((config.title == '' && config.iconCode != '')) {
+			NSLayoutConstraint.activate([
+				// 中心约束
+				contetDiv.centerXAnchor.constraint(equalTo = maskerDom!.centerXAnchor),
+				contetDiv.centerYAnchor.constraint(equalTo = maskerDom!.centerYAnchor),
+				// 宽大100
+				contetDiv.widthAnchor.constraint(lessThanOrEqualToConstant = new CGFloat(Math.min(Number(cg.size.width)-80,320))),
+				// 最小100
+				contetDiv.widthAnchor.constraint(greaterThanOrEqualToConstant = new CGFloat(config.size!)),
+				// 高为至少100
+				contetDiv.heightAnchor.constraint(greaterThanOrEqualToConstant = new CGFloat(config.size!))
+			])
+		} else {
+			NSLayoutConstraint.activate([
+				// 中心约束
+				contetDiv.centerXAnchor.constraint(equalTo = maskerDom!.centerXAnchor),
+				contetDiv.centerYAnchor.constraint(equalTo = maskerDom!.centerYAnchor),
+				// 宽大100
+				contetDiv.widthAnchor.constraint(lessThanOrEqualToConstant = new CGFloat(Math.min(Number(cg.size.width)-80,320))),
+				// 最小100
+				contetDiv.widthAnchor.constraint(greaterThanOrEqualToConstant = new CGFloat(config.size!)),
+				// 高为至少100
+				contetDiv.heightAnchor.constraint(greaterThanOrEqualToConstant = new CGFloat(32 + config.titleSize))
+			])
+		}
+		
+		
+		
+		parentView.addSubview(maskerDom!)
+
+		if (config.duration == 0) return;
+		tid = setTimeout(function () {
+			tid = null;
+			hideToast()
+		}, (config.duration + 200).toInt());
+
+	})
+}

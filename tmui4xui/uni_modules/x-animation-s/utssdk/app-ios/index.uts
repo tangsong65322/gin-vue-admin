@@ -1,0 +1,110 @@
+// import UniversalBlurHelper from 'uts.sdk.modules.utsXdBlur.UniversalBlurHelper';
+
+import { hexToRgb } from '../libs/color.uts'
+import {XDANIMATION_FLIP3D_OPTIONS,XDANIMATION_TRANSLATE_OPTIONS,XDANIMATION_ROTATE_OPTIONS,XDANIMATION_SCALE_OPTIONS} from "../interface.uts"
+import { UIView } from 'UIKit';
+import { CGFloat } from 'CoreFoundation';
+import { CABasicAnimation } from "QuartzCore";
+
+export class xAnimationS {
+	public static translate(opts:XDANIMATION_TRANSLATE_OPTIONS){
+		if(opts.ele == null) return
+		let view = (opts.ele as UniElement).getIOSView()! as UIView
+		let duration_s = ((opts.duration==null?1000:(opts.duration!))/1000).toDouble()
+		let delay_s = ((opts.delay==null?0:(opts.delay!))/1000).toDouble()
+		let translation_s = (opts.translation==null?0:(opts.translation!)).toInt()
+		let from_s = new CGFloat((opts.from==null?0:(opts.from!)))
+		let len_s = new CGFloat(opts.len==null?0:(opts.len!))
+		let loop_s = (opts.loop==null?0:(opts.loop!)).toInt()
+		
+		
+		xdAnimation.translate(
+		view=view,
+		duration=duration_s,
+		delay=delay_s,
+		translation=translation_s,
+		fromLen=from_s,
+		len=len_s,
+		loop=loop_s,
+		start=opts.start,
+		end=opts.end
+		)
+	}
+	public static rotate(opts:XDANIMATION_ROTATE_OPTIONS){
+		if(opts.ele == null) return
+		let view = (opts.ele as UniElement).getIOSView()! as UIView
+		let duration_s = ((opts.duration==null?1000:(opts.duration!))/1000).toDouble()
+		let delay_s = ((opts.delay==null?0:(opts.delay!))/1000).toDouble()
+		let from_s = new CGFloat((opts.from==null?0:(opts.from!)))
+		let deg_s = new CGFloat(opts.deg==null?360:(opts.deg!))
+		let loop_s = (opts.loop==null?0:(opts.loop!)).toInt()
+	
+		xdAnimation.rotate(
+		view=view,
+		duration=duration_s,
+		delay=delay_s,
+		fromDeg=from_s,
+		deg=deg_s,
+		loop=loop_s,
+		start=opts.start,
+		end=opts.end
+		)
+	}
+	public static scale(opts:XDANIMATION_SCALE_OPTIONS){
+		if(opts.ele == null) return
+		let view = (opts.ele as UniElement).getIOSView()! as UIView
+		let duration_s = ((opts.duration==null?1000:(opts.duration!))/1000).toDouble()
+		let delay_s = ((opts.delay==null?0:(opts.delay!))/1000).toDouble()
+		let direction_s = (opts.direction==null?2:(opts.direction!)).toInt()
+		let from_s = new CGFloat((opts.from==null?0:(opts.from!)))
+		let scale_s = new CGFloat(opts.scale==null?1:(opts.scale!))
+		let loop_s = (opts.loop==null?0:(opts.loop!)).toInt()
+			
+		xdAnimation.scale(
+		view=view,
+		duration=duration_s,
+		delay=delay_s,
+		direction = direction_s,
+		fromScale=from_s,
+		scale=scale_s,
+		loop=loop_s,
+		start=opts.start,
+		end=opts.end
+		)
+	
+	}
+	public static flip3D(opts:XDANIMATION_FLIP3D_OPTIONS){
+		if(opts.ele == null) return
+		let view = (opts.ele as UniElement).getIOSView()! as UIView
+		let duration_s = ((opts.duration==null?1000:(opts.duration!))/1000).toDouble()
+		let delay_s = ((opts.delay==null?0:(opts.delay!))/1000).toDouble()
+		let axis_s = (opts.axis==null?1:(opts.axis!)).toInt()
+		let from_s = new CGFloat((opts.from==null?0:(opts.from!)))
+		let deg_s = new CGFloat(opts.deg==null?360:(opts.deg!))
+		let cameraDistance_s = new CGFloat((opts.cameraDistance==null?12:(opts.cameraDistance!)))
+		let scaleZ_s = new CGFloat(opts.scaleZ==null?0.5:(opts.scaleZ!))
+		let loop_s = (opts.loop==null?0:(opts.loop!)).toInt()
+	
+		
+		xdAnimation.flip3D(
+		view=view,
+		duration=duration_s,
+		delay=delay_s,
+		axis = axis_s,
+		fromDeg=from_s,
+		deg=deg_s,
+		loop=loop_s,
+		cameraDistance=cameraDistance_s,
+		scaleZ=scaleZ_s,
+		start=opts.start,
+		end=opts.end
+		)
+	
+	}
+	public static clearAnimations(ele:UniElement|null,reset:boolean = true){
+		if(ele == null) return
+		let view = (ele as UniElement).getIOSView()! as UIView
+		// xdAnimation.clearAnimations(view,reset)
+	}
+	
+}

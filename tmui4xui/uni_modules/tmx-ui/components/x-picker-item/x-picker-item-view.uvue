@@ -1,0 +1,654 @@
+<template>
+	<view class="xVirtualList" ref="xVirtualList">
+		<scroll-view
+			:show-scrollbar="false"
+			:refresher-enabled="_refresherEnabled"
+			@scroll="onScroll" 
+			class="xVirtualListScrollBody" 
+			direction="vertical"
+			refresher-default-style="none"
+			:scroll-y="true"
+			:refresher-triggered="refresherTriggered"
+			:scroll-top="scrollTopTop"
+			:style="{ height: containerHeight + 'px' }"
+			@refresherpulling="refresherpulling"
+			@refresherrefresh="refresherrefresh"
+			@refresherrestore="refresherrestore"
+			@refresherabort="refresherabort"
+			@scrolltoupper="scrolltoupper"
+			@scrolltolower="scrolltolower"
+		>
+			<!-- 自定义下拉刷新元素 -->
+			<view @click="refreshOnload" slot="refresher" class="refresh-box" :style="{height:refreshHeight+'px'}">
+				<x-icon :color="refresState==2?'primary':''" v-if="refresState==0||refresState==1||refresState==2||refresState==3" :spin="refresState==2" name="loader-line" font-size="26"></x-icon>
+				<x-icon v-if="refresState==5" color="success" name="checkbox-circle-line" font-size="26"></x-icon>
+				<x-icon v-if="refresState==4" color="error" name="error-warning-fill" font-size="26"></x-icon>
+				<view class="tip-text"  >
+					<x-text font-size="16">{{refresStateMap.get(refresState)}}</x-text>
+				</view>
+			</view>
+			<!-- 虚拟占位容器，用于撑开滚动高度 -->
+			<view class="xVirtualListContainer" :style="{ height: totalHeight + 'px', paddingTop: offsetY + 'px' }">
+				<!--
+				 @slot 内容插槽你在这里渲染内容
+				 @prop {any[]} data - list数据
+				 @prop {number} startIndex - 数据切割的起始位置
+				 @prop {number} endIndex - 数据切割的结束位置
+				 -->
+				<slot name="default" :data="renderList" :startIndex="startIndex" :endIndex="endIndex"></slot>
+			</view>
+			<!-- 自定义下拉刷新元素 -->
+			<view @click="refreshBottomOnload" v-if="_refresherBottomEnabled&&refresBottomState!=0" class="refresh-box" :style="{height:refreshHeight+'px'}">
+				<x-icon color="primary" v-if="refresBottomState==1" :spin="true" name="loader-line" font-size="26"></x-icon>
+				<x-icon v-if="refresBottomState==2" color="error" name="error-warning-fill" font-size="26"></x-icon>
+				<view class="tip-text"  >
+					<x-text font-size="16">{{bottomRefresStateMap.get(refresBottomState)}}</x-text>
+				</view>
+			</view>
+			<!--
+			 @slot 底部插槽
+			 -->
+			<slot name="bottom"></slot>
+		</scroll-view>
+	</view>
+</template>
+
+<script setup lang="ts">
+	import { getCurrentInstance, ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from "vue"
+	import { getUid } from "../../core/util/xCoreUtil.uts"
+	import { getDefaultColor } from "../../core/util/xCoreColorUtil.uts"
+	import { checkIsCssUnit, getUnit } from "../../core/util/xCoreUtil.uts"
+	import { xConfig } from "../../config/xConfig.uts"
+	
+	/**
+	 * 虚拟列表组件属性类型定义
+	 */
+	type xVirtualListType = {
+		/** 项目高度，不可用auto,只能是数字（默认为px),带单位的rpx,px */
+		itemHeight: string,
+		/** 渲染显示多少个,它不是最终的渲染数量，是最少数量，因为内部还有个缓存数量 */
+		viewCount: number,
+		/** 数据列表 */
+		list: any[],
+		/** 缓冲区大小，在可视区域前后额外渲染的项目数量 */
+		bufferSize: number,
+		/** 是否启用虚拟滚动 */
+		enableVirtual: boolean,
+		/** 启用下拉刷新 */
+		refresherEnabled: boolean,
+		/** 需要自行管理下拉状态，默认为false,通过事件pull触发设置为true,结束设置为False */
+		pullState:boolean,
+		/** 启用触底刷新 */
+		refresherBottomEnabled: boolean,
+		/** 需要自行管理下拉状态，默认为false,通过事件bottom触发设置为true,结束设置为False */
+		bottomState:boolean,
+		
+	}
+	
+	/**
+	 * 容器尺寸类型定义
+	 */
+	type Bounds = {
+		width: number,
+		height: number
+	}
+	
+	/**
+	 * 虚拟列表渲染范围类型定义
+	 */
+	type RenderRange = {
+		startIndex: number,
+		endIndex: number,
+		offsetY: number
+	}
+	
+	/**
+	 * 刷新状态
+	 * 0,'继续下拉刷新'
+	 * 1,'松开刷新'
+	 * 2,'数据刷新中'
+	 * 3,'取消刷新'
+	 * 4,'刷新超时,点击重试'
+	 */
+	type refresStateType = 0|1|2|3|4|5
+	/**
+	 * 0初始值
+	 * 1刷新中
+	 * 2超时出错了
+	 */
+	type bottomStateType = 0|1|2
+	
+	/**
+	 * @name 虚拟列表 xVirtualList
+	 * @description 这是一个超高虚拟列表，无论几万数据都能轻松应对是你列表处理数据的不二之选，集成下拉刷新，触底更新，指定索引位置等。
+	 * 未来将应于表格，picker等系列组件，作为其它组件的底层存在，极大提高性能。使用时请注意demo示例使用方法。
+	 * @page /pages/zhanshi/virtual-list
+	 * @category 展示组件
+	 * @constant 平台兼容
+	 *	| H5 | andriod | IOS | 小程序 | UTS | UNIAPP-X SDK | version |
+		| --- | --- | --- | --- | --- | --- | --- |
+		| ☑ | ☑️ | ☑️ | ☑️ | ☑️ | 4.44+ | 1.1.14 |
+	 */
+	defineOptions({name:"xVirtualList"})
+	
+	const proxy = getCurrentInstance()?.proxy;
+	const xVirtualList = ref<UniElement|null>(null)
+	/**
+	 * 组件事件定义
+	 */
+	const emits = defineEmits<{
+		/** 滚动事件 */
+		scroll: [detail: UniScrollEventDetail],
+		/** 滚动到顶时触发 */
+		pull: [],
+		/** 触底时触发 */
+		bottom: [],
+		/** 渲染范围变化时触发 */
+		rangeChange: [range: RenderRange]
+	}>()
+	
+	/**
+	 * 组件属性定义
+	 */
+	const props = withDefaults(defineProps<xVirtualListType>(), {
+		itemHeight: "50",
+		viewCount: 5,
+		bufferSize: 2,
+		enableVirtual: true,
+		list: () => [] as any[],
+		refresherEnabled: false,
+		refresherBottomEnabled: false,
+		pullState:false,
+		bottomState:false
+	})
+	
+	/** 当前滚动位置 */
+	const scrollTop = ref(0)
+	const scrollTopTop = ref(0)
+	
+	/** 滚动容器总高度 */
+	const scrollHeight = ref(0)
+	/** 容器的尺寸 */
+	const containerBounds = ref<Bounds>({ width: 0, height: 0 })
+	/** 是否已初始化 */
+	const isInitialized = ref(false)
+	/** 防抖定时器 */
+	let scrollTimer: number | null = null
+	const disabledScroll = ref(false)
+	const _refresherEnabled = computed((): boolean => props.refresherEnabled)
+	const _refresherBottomEnabled = computed((): boolean => props.refresherBottomEnabled)
+	const _isDark= computed((): boolean => xConfig.dark == 'dark')
+	const refreshHeight = ref(45)
+	const refresStateMap = ref<Map<number,string>>(new Map([
+		[0,'继续下拉'],
+		[1,'松开刷新'],
+		[2,'刷新中'],
+		[3,'取消刷新'],
+		[4,'刷新超时,点击重试'],
+		[5,'刷新完成'],
+	]))
+	const bottomRefresStateMap = ref<Map<number,string>>(new Map([
+		[0,'开始刷新'],
+		[1,'刷新中'],
+		[2,'刷新超时,点击重试']
+	]))
+	const refresState = ref<refresStateType>(0)
+	const refresBottomState = ref<refresStateType>(0)
+	
+	const refresherTriggered = ref(props.pullState)
+	const bottomTriggered = ref(props.bottomState)
+	let timeoutid = null as null|number
+	let timeoutid2 = null as null|number
+	
+	/**
+	 * 用户定义的项目高度（转换为px）
+	 */
+	const itemHeight = computed((): number => {
+		const heightval = checkIsCssUnit(props.itemHeight, xConfig.unit);
+		const unit = getUnit(heightval);
+		let realHeight = parseInt(heightval);
+		if (unit === 'rpx') {
+			realHeight = uni.rpx2px(realHeight)
+		}
+		return realHeight;
+	})
+	
+	/**
+	 * 容器高度（转换为px）
+	 */
+	const containerHeight = computed((): number => {
+		return containerBounds.value.height;
+	})
+	
+	/**
+	 * 数据列表
+	 */
+	const _list = computed((): any[] => props.list)
+	
+	/**
+	 * 列表总高度
+	 */
+	const totalHeight = computed((): number => {
+		return _list.value.length * itemHeight.value;
+	})
+	
+	/**
+	 * 可视区域能显示的项目数量
+	 */
+	const visibleCount = computed((): number => {
+		if (containerHeight.value <= 0) return props.viewCount;
+		return Math.ceil(containerHeight.value / itemHeight.value);
+	})
+	
+	/**
+	 * 渲染范围计算
+	 */
+	const renderRange = computed((): RenderRange => {
+		if (!props.enableVirtual || _list.value.length == 0) {
+			return {
+				startIndex: 0,
+				endIndex: _list.value.length - 1,
+				offsetY: 0
+			};
+		}
+		
+		// 计算开始索引
+		const startIndex = Math.floor(scrollTop.value / itemHeight.value);
+		// 添加缓冲区
+		const bufferedStartIndex = Math.max(0, startIndex - props.bufferSize);
+		// 计算结束索引
+		const endIndex = Math.min(
+			_list.value.length - 1,
+			startIndex + visibleCount.value + props.bufferSize * 2
+		);
+		
+		// 计算偏移量
+		const offsetY = bufferedStartIndex * itemHeight.value;
+		
+		return {
+			startIndex: bufferedStartIndex,
+			endIndex,
+			offsetY
+		};
+	})
+	
+	/**
+	 * 开始索引
+	 */
+	const startIndex = computed((): number => renderRange.value.startIndex)
+	
+	/**
+	 * 结束索引
+	 */
+	const endIndex = computed((): number => renderRange.value.endIndex)
+	
+	/**
+	 * Y轴偏移量
+	 */
+	const offsetY = computed((): number => renderRange.value.offsetY)
+	
+	/**
+	 * 当前渲染的数据列表（通过可视计算切割得到的数据列表）
+	 */
+	const renderList = computed((): any[] => {
+		if (!props.enableVirtual) {
+			return _list.value;
+		}
+		return _list.value.slice(startIndex.value, endIndex.value + 1);
+	})
+	
+	/**
+	 * 读取容器宽和高
+	 */
+	function getContainerBounds(): Promise<void> {
+		return new Promise((resolve, reject) => {
+			
+			const ele = xVirtualList.value
+			if (ele == null) {
+				reject('容器元素不存在');
+				console.error('容器元素不存在')
+				return;
+			}
+			
+			ele.getBoundingClientRectAsync()?.then((rect: DOMRect) => {
+				containerBounds.value.width = rect.width;
+				containerBounds.value.height = rect.height;
+				isInitialized.value = true;
+				resolve();
+			}).catch((error) => {
+				console.error("容器读取宽高失败：", error);
+				reject(error);
+			});
+		});
+	}
+	
+	
+	/**
+	 * 检查滚动边界
+	 */
+	function checkScrollBoundary(detail: UniScrollEventDetail): void {
+		// 检查是否滚动到顶部
+		// if (detail.scrollTop <= 0) {
+		// 	emits('pull');
+		// }
+		
+		// // 检查是否滚动到底部（允许5px的误差）
+		// const isAtBottom = detail.scrollTop + containerHeight.value >= detail.scrollHeight - 5;
+		// if (isAtBottom) {
+		// 	emits('bottom');
+		// }
+	}
+	
+	
+	/**
+	 * 滚动事件处理（带防抖优化）
+	 */
+	function onScroll(evt: UniScrollEvent): void {
+		const detail = evt.detail
+		// 触发滚动事件
+		emits('scroll', detail);
+		
+		// 优化scrollTop赋值，避免边界情况下的重复计算
+		const newScrollTop = evt.detail.scrollTop;
+		const maxScrollTop = totalHeight.value - containerHeight.value;
+		
+		// 只有在有效范围内且值发生变化时才更新scrollTop
+		if (newScrollTop >= 0 && newScrollTop <= maxScrollTop && newScrollTop != scrollTop.value) {
+			scrollTop.value = newScrollTop;
+		} else if (newScrollTop < 0 && scrollTop.value != 0) {
+			// 到达顶部时，确保scrollTop为0
+			scrollTop.value = 0;
+		} else if (newScrollTop > maxScrollTop && scrollTop.value != maxScrollTop) {
+			// 到达底部时，确保scrollTop为最大值
+			scrollTop.value = Math.max(0, maxScrollTop);
+		}
+		
+		scrollHeight.value = evt.detail.scrollHeight;
+		
+		// // 防抖处理边界检测
+		// if (scrollTimer !=null) {
+		// 	clearTimeout(scrollTimer!);
+		// }
+		// scrollTimer = setTimeout(() => {
+		// 	checkScrollBoundary(detail);
+		// }, 30);
+	}
+	
+	/**
+	 * 滚动到指定位置
+	 */
+	function scrollToIndex(index: number): void {
+		if (index < 0 || index >= _list.value.length) {
+			console.warn('滚动索引超出范围');
+			return;
+		}
+		const targetScrollTop = index * itemHeight.value;
+		scrollTop.value = targetScrollTop;
+		scrollTopTop.value = targetScrollTop-1
+		nextTick(()=>{
+			scrollTopTop.value = targetScrollTop
+		})
+	}
+	
+	/**
+	 * 刷新容器尺寸
+	 */
+	function refreshSize(): void {
+		nextTick(() => {
+			getContainerBounds()
+		});
+	}
+	
+	/**
+	 * 重置滚动位置
+	 */
+	function resetScroll(): void {
+		scrollTop.value = 0;
+		scrollTopTop.value = 0
+	}
+	/**
+	 * 刷新加载数据
+	 */
+	function onpull(){
+		emits('pull');
+		if(timeoutid!=null){
+			clearTimeout(timeoutid! as number)
+			timeoutid = null;
+		}
+		/**
+		 * 是否超时
+		 */
+		timeoutid = setTimeout(function() {
+			refresState.value = 4
+		}, 6000);
+	}
+	/**
+	 * 刷新加载数据
+	 */
+	function onbottom(){
+		emits('bottom');
+		if(timeoutid2!=null){
+			clearTimeout(timeoutid2! as number)
+			timeoutid2 = null;
+		}
+		/**
+		 * 是否超时
+		 */
+		timeoutid2 = setTimeout(function() {
+			refresBottomState.value = 2
+		}, 6000);
+	}
+	function refreshOnload(){
+		refresState.value = 2
+		refresherTriggered.value = true;
+		onpull()
+	}
+	/**
+	 * 被下拉。
+	 */
+	function refresherpulling(evt:UniRefresherEvent): void {
+		let pullHeight = evt.detail.dy;
+		if(pullHeight>=refreshHeight.value){
+			refresState.value = 1
+		}else{
+			refresState.value = 0
+		}
+	}
+	/**
+	 * 触发刷新
+	 */
+	function refresherrefresh(evt:UniRefresherEvent): void {
+		refresState.value = 2
+		refresherTriggered.value = true;
+		onpull()
+	}
+	/**
+	 * 被复位
+	 */
+	function refresherrestore(evt:UniRefresherEvent): void {
+		refresherTriggered.value = false;
+		refresState.value = 3
+	}
+	/**
+	 * 刷新被中断
+	 */
+	function refresherabort(evt:UniRefresherEvent): void {
+		refresState.value = 3
+		refresherTriggered.value = false;
+	}
+	function scrolltoupper(evt:UniScrollToUpperEvent){
+		if(refresState.value==3||refresState.value ==4){
+			refresState.value =0
+			refresherTriggered.value = false;
+		}
+	}
+	function scrolltolower(evt:UniScrollToLowerEvent){
+		if(refresBottomState.value==2||refresBottomState.value==1||!_refresherBottomEnabled.value) return;
+		refresBottomState.value = 1;
+		bottomTriggered.value = true
+		onbottom()
+	}
+	function refreshBottomOnload(){
+		refresBottomState.value = 1
+		bottomTriggered.value = true;
+		onbottom()
+	}
+	
+	/**
+	 * 监听刷新外部设置的状态。
+	 */
+	watch(():boolean => props.pullState, (newPullState:boolean) => {
+		if(!newPullState&&refresherTriggered.value&&refresState.value!=4){
+			refresState.value = 5
+			// nextTick(()=>{
+			// 	refresherTriggered.value = newPullState;
+			// })
+			setTimeout(()=>{
+				refresherTriggered.value = newPullState;
+			},1000)
+		}else if(refresState.value!=4){
+			refresherTriggered.value = newPullState;
+		}
+		
+	}, { deep: true });
+	
+	/**
+	 * 监听刷新外部设置的状态。
+	 */
+	watch(():boolean => props.bottomState, (newPullState:boolean) => {
+		if(!newPullState&&bottomTriggered.value&&refresBottomState.value!=2){
+			refresBottomState.value = 0
+			bottomTriggered.value = false
+			if(timeoutid2!=null){
+				clearTimeout(timeoutid2! as number)
+				timeoutid2 = null;
+			}
+		}else if(refresBottomState.value==2){
+			bottomTriggered.value = false
+			refresBottomState.value = 0
+		}
+		
+	}, { deep: true });
+	
+	/**
+	 * 监听渲染范围变化
+	 */
+	watch(renderRange, (newRange:RenderRange) => {
+		emits('rangeChange', newRange);
+	}, { deep: true });
+	
+
+	/**
+	 * 监听列表数据变化
+	 */
+	watch(():any => props.list, (newList: any[], oldList: any[]) => {
+		// 如果新列表为空，重置滚动位置
+		// 如果是首次加载数据（从空到有数据）
+		if ((oldList.length == 0 && newList.length > 0 )|| newList.length == 0) {
+			resetScroll();
+			refreshSize();
+			return;
+		}
+		
+		// 数据长度变化的处理
+		if (oldList.length != newList.length) {
+			const currentIndex = Math.floor(scrollTop.value / itemHeight.value);
+			
+			// 如果数据减少
+			if (newList.length < oldList.length) {
+				// 如果当前位置超出了新数据范围，调整到最后一项
+				if (currentIndex >= newList.length) {
+					const maxIndex = Math.max(0, newList.length - 1);
+					scrollToIndex(maxIndex);
+				}
+				// 否则保持当前位置
+			} else {
+				// 数据增加时，保持当前滚动位置不变
+				// 只需要刷新容器尺寸以适应新的总高度
+			}
+		}
+		
+		// 刷新容器尺寸以适应数据变化
+		refreshSize();
+	}, { deep: true });
+	
+	/**
+	 * 组件挂载时初始化
+	 */
+	onMounted(() => {
+		nextTick(() => {
+			// #ifdef APP-IOS
+			resetScroll();
+			refreshSize();
+			// #endif
+			// #ifndef APP-IOS
+			getContainerBounds()
+			// #endif
+		});
+	});
+	
+	/**
+	 * 组件卸载时清理
+	 */
+	onBeforeUnmount(() => {
+		if (scrollTimer!=null) {
+			clearTimeout(scrollTimer! as number);
+			scrollTimer = null;
+		}
+		if(timeoutid!=null){
+			clearTimeout(timeoutid! as number)
+			timeoutid = null;
+		}
+		if(timeoutid2!=null){
+			clearTimeout(timeoutid2! as number)
+			timeoutid2 = null;
+		}
+		
+	});
+	
+
+	defineExpose({
+		/** 滚动到指定索引 */
+		scrollToIndex,
+		/** 刷新容器尺寸 */
+		refreshSize,
+		/** 重置滚动位置 */
+		resetScroll,
+		/** 获取当前渲染范围 */
+		getRenderRange: ():RenderRange => renderRange.value,
+		/** 获取容器尺寸 */
+		getContainerBounds: ():Bounds => containerBounds.value
+	});
+	
+	
+	
+</script>
+
+<style lang="scss" scoped>
+	.refresh-box{
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+		height: 100%;
+		// #ifdef MP
+		width:100%;
+		// #endif
+	}
+	.tip-text{
+		margin-left: 5px;
+	}
+	.xVirtualListWrap{
+		display: flex;
+		flex-direction: column;
+	}
+	.xVirtualList {
+		position: relative;
+		flex: 1;
+	}
+
+	.xVirtualListContainer {
+		position: relative;
+		width: 100%;
+	}
+</style>

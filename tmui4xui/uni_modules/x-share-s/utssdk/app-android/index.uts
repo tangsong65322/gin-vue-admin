@@ -1,0 +1,50 @@
+import Context from "android.content.Context";
+import Build from 'android.os.Build'
+import Uri from 'android.net.Uri';
+import Intent from 'android.content.Intent';
+import ContentResolver from 'android.content.ContentResolver'
+import FileProvider from 'androidx.core.content.FileProvider'
+import File from 'java.io.File';
+import Files from 'android.provider.MediaStore.Files';
+import InputStream from 'java.io.InputStream'
+import FileOutputStream from 'java.io.FileOutputStream'
+import MimeTypeMap from 'android.webkit.MimeTypeMap'
+import OpenableColumns from 'android.provider.OpenableColumns'
+import R from 'io.dcloud.uni_modules.xShareS.R'
+
+const context = UTSAndroid.getAppContext()!
+/**
+ * title:分享的标题
+ * minType:分享的内容格式
+ * 文本：text/plain
+ * 图片：image/*
+ * 音频: audio/*
+ * 视频: video/*
+ * 任意文件: *//* ,注意不要//,只要单个/就行。编译器无法注释单个/
+* 
+*/
+export function xShare(title : string, minType : string, content ?: string, path ?: string) {
+	if (minType == 'text/plain') {
+		let action = new Intent()
+		action.setAction(Intent.ACTION_SEND)
+		action.setType('text/plain')
+		if(content!=null){
+			action.putExtra(Intent.EXTRA_TEXT, content!)
+		}
+		UTSAndroid.getUniActivity()!.startActivity(Intent.createChooser(action, title))
+	} else {
+		if (path == null || minType == '') {
+			console.error("类型或者路径为空")
+			return;
+		}
+		let realfilepath = UTSAndroid.convert2AbsFullPath(path)
+		
+		let file = new File(realfilepath)
+		let action = new Intent()
+		action.setAction(Intent.ACTION_SEND)
+		action.setType(minType)
+		let contentUri = FileProvider.getUriForFile(context, "xShareS.FileProvider", file);
+		action.putExtra(Intent.EXTRA_STREAM, contentUri);
+		UTSAndroid.getUniActivity()!.startActivity(Intent.createChooser(action, title))
+	}
+}

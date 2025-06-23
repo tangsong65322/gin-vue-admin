@@ -1,0 +1,1 @@
+export type xNetworkType = "WiFi"|"Mobile"|"WiredNetwork"|"Other"|null

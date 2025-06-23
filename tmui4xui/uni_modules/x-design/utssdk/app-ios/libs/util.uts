@@ -1,0 +1,10 @@
+import { UIViewController, UIView } from 'UIKit';
+export function getRootView() : UIView {
+	let parent = UTSiOS.getCurrentViewController() as UIViewController;
+	let windUiview = parent.view as UIView
+	return windUiview;
+}
+export function getRoot() : UIViewController {
+	let parent = UTSiOS.getCurrentViewController() as UIViewController;
+	return parent;
+}

@@ -1,0 +1,59 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+		
+		<x-sheet>
+			<x-text font-size="18"  class=" text-weight-b mb-8">屏幕截图 xScreenshotS</x-text>
+			<x-text color="#999999" >
+				它可对窗口页面进行静默截图,也可以对指定元素进行截图,并保存到缓存目录中,主要应用场景:
+				窗口图片分享,测试屏幕截图,上报屏幕截图(bug,体验,反馈等),也可指定节点截图对某View排版截图成海报.
+				[WEB不支持]
+			</x-text>
+		</x-sheet>
+		
+		<x-sheet id="screentIds">
+			
+			<x-button class="mb-16" :block="true" @click="getScreenimg">保存屏幕图片</x-button>
+			<x-button :block="true" @click="getSEleimg">保存节点截图</x-button>
+			
+		</x-sheet>
+		
+		
+		
+		
+		<view style="height:50px"></view>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script setup lang="uts">
+	import {getRootShotImage,getElementShotImage} from "@/uni_modules/x-screenshot-s"
+	
+	const getScreenimg = ()=>{
+		getRootShotImage((str:string)=>{
+			if(str==null) return;
+			console.log(str)
+			uni.previewImage({
+				current:str,
+				urls:[str] as string[]
+			})
+		})
+	}
+	const getSEleimg = ()=>{
+		let ele = uni.getElementById("screentIds") as UniElement|null
+		getElementShotImage(ele,(str:string)=>{
+			if(str==null) return;
+			console.log(str)
+			uni.previewImage({
+				current:str,
+				urls:[str] as string[]
+			})
+		})
+	}
+</script>
+
+<style lang="scss">
+
+</style>

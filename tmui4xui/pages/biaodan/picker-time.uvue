@@ -1,0 +1,52 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet>
+			<x-text font-size="18" class=" text-weight-b mb-8">时间选择器 PickerTime</x-text>
+			<x-text color="#999999" >这是单独显示和控制选择时分秒选择器。如果你需要年月日到秒的全部选择请参考x-picker-date。</x-text>
+		</x-sheet>
+
+		<x-sheet>
+			<x-picker-time start="08:00:00" end="20:30:30" v-model="nowVal" v-model:model-str="date" format="hh时mm分ss秒">
+				<x-button :block="true">打开时间</x-button>
+			</x-picker-time>
+
+			<x-sheet :margin="['0','12']" dark-color="#333">
+				<x-text color="#999999">选中的值：{{nowVal}}</x-text>
+				<x-text color="#999999">经format的值：{{date}}</x-text>
+			</x-sheet>
+		</x-sheet>
+		<x-sheet>
+			<x-button skin='thin' :block="true"  @click="nowVal = '12:14:30'">赋值12:14:30</x-button>
+		</x-sheet>
+	
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script lang="ts">
+	export default {
+		data() {
+
+			return {
+				date: "",
+				nowVal: "10:00:01"
+
+			};
+		},
+		methods: {
+
+		},
+	}
+</script>
+
+<style lang="scss">
+
+</style>

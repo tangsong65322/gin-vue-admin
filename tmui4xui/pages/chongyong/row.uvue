@@ -1,0 +1,90 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view style="flex:1">
+	<!-- #endif -->
+	<!-- #ifdef MP-WEIXIN -->
+	<page-meta :page-style="`background-color:${xThemeConfigBgColor}`">
+		<navigation-bar :background-color="xThemeConfigNavBgColor" :front-color="xThemeConfigNavFontColor"></navigation-bar>
+	</page-meta>
+	<!-- #endif -->
+		<x-sheet >
+			<x-text font-size="18" class="text-weight-b mb-8">布局 xRowCol</x-text>
+			<x-text color="#999999" >响应式布局，快速生成排版布局,默认12列布局，可以自行更改列的总数。</x-text>
+		</x-sheet>
+
+		<x-row class="mx-12 mb-12">
+			<x-col style="background-color: #1587eb;" _class="py-15"><x-text class="text-align-center " color="white">3</x-text></x-col>
+			<x-col style="background-color: #55b2eb;" _class="py-15"><x-text class="text-align-center " color="white">3</x-text></x-col>
+			<x-col style="background-color: #7de6a4;" _class="py-15"><x-text class="text-align-center " color="white">3</x-text></x-col>
+			<x-col style="background-color: #d2b29c;" _class="py-15"><x-text class="text-align-center " color="white">3</x-text></x-col>
+		</x-row>
+		<x-row class="mx-12 mb-12">
+			<x-col :span="6" style="background-color: #1587eb;" _class="py-15"><x-text class="text-align-center " color="white">6</x-text></x-col>
+			<x-col :span="4" style="background-color: #55b2eb;" _class="py-15"><x-text class="text-align-center " color="white">4</x-text></x-col>
+			<x-col :span="2" style="background-color: #1587eb;" _class="py-15"><x-text class="text-align-center " color="white">2</x-text></x-col>
+		</x-row>
+		<x-row class="mx-12 mb-12">
+			<x-col :span="2" style="background-color: #1587eb;" _class="py-15"><x-text class="text-align-center " color="white">2</x-text></x-col>
+			<x-col :span="4" style="background-color: #55b2eb;" _class="py-15"><x-text class="text-align-center " color="white">4</x-text></x-col>
+			<x-col :span="6" style="background-color: #60cdff;" _class="py-15"><x-text class="text-align-center " color="white">6</x-text></x-col>
+		</x-row>
+		<x-sheet>
+			<x-text font-size="18" class="text-weight-b">嵌套使用</x-text>
+		</x-sheet>
+		<x-row class="mx-12 mb-12">
+			<x-col :span="6" style="background-color: #ffffff;" _class="py-15">
+				<x-row>
+					<x-col :span="6" style="background-color: #e7c4ac;" _class="py-15"><x-text class="text-align-center " color="white">6</x-text></x-col>
+					<x-col :span="6" style="background-color: #dea496;" _class="py-15"><x-text class="text-align-center " color="white">6</x-text></x-col>
+				</x-row>
+			</x-col>
+			<x-col :span="6" style="background-color: #ececec;" _class="py-15">
+				<x-row>
+					<x-col :span="4" style="background-color: #f8d2b9;" _class="py-15"><x-text class="text-align-center " color="white">4</x-text></x-col>
+					<x-col :span="4" style="background-color: #e7c4ac;" _class="py-15"><x-text class="text-align-center " color="white">4</x-text></x-col>
+					<x-col :span="4" style="background-color: #d2b29c;" _class="py-15"><x-text class="text-align-center " color="white">4</x-text></x-col>
+				</x-row>
+			</x-col>
+		</x-row>
+		<x-sheet>
+			<x-text font-size="18" class="text-weight-b">自动断行形成列</x-text>
+		</x-sheet>
+		<x-row class="mx-12 mb-12">
+			<x-col :span="12" style="background-color: #1692ff;" _class="py-15"><x-text class="text-align-center " color="white">12</x-text></x-col>
+			<x-col :span="12" style="background-color: #1384e6;" _class="py-15"><x-text class="text-align-center " color="white">12</x-text></x-col>
+			<x-col :span="12" style="background-color: #1171c5;" _class="py-15"><x-text class="text-align-center " color="white">12</x-text></x-col>
+		</x-row>
+		<x-sheet>
+			<x-text font-size="18" class="text-weight-b">对齐,设置24列</x-text>
+		</x-sheet>
+		<x-row :col="24" class="mx-12 mb-12" justify="space-between">
+			<x-col :span="11" style="background-color: #1587eb;" _class="py-15"><x-text class="text-align-center " color="white">11</x-text></x-col>
+			<x-col :span="11" style="background-color: #1587eb;" _class="py-15"><x-text class="text-align-center " color="white">11</x-text></x-col>
+		</x-row>
+		<x-row :col="24" class="mx-12 mb-12" justify="space-between">
+			<x-col :span="7" style="background-color: #1587eb;" _class="py-15"><x-text class="text-align-center " color="white">7</x-text></x-col>
+			<x-col :span="7" style="background-color: #1587eb;" _class="py-15"><x-text class="text-align-center " color="white">7</x-text></x-col>
+			<x-col :span="7" style="background-color: #1587eb;" _class="py-15"><x-text class="text-align-center " color="white">7</x-text></x-col>
+		</x-row>
+		<view style="height:40px"></view>
+	<!-- #ifdef APP -->
+	</scroll-view>
+	<!-- #endif -->
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+				
+			};
+		},
+		computed:{
+			
+		}
+	}
+</script>
+
+<style lang="scss">
+
+</style>

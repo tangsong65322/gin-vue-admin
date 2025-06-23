@@ -1,0 +1,99 @@
+<template>
+		
+		<view :id="uid" style="min-height: 5px;min-width: 5px;">
+			<slot v-if="props.into == 'self'" ></slot>
+			<view v-if="props.into == 'self'"  class="xdBlurSelf" :id="uidself" ></view>
+			<!-- #ifdef APP -->
+			<native-view @init="onviewinit" v-else style="width:100%;height:100%;min-height: 5px;min-width: 5px;"></native-view>
+			<!-- #endif -->
+		</view>
+		
+</template>
+
+<script setup lang="uts">
+	import { xdBlur } from '@/uni_modules/x-design';
+	let xdblur : xdBlur | null = null
+
+	let uid = 'xdblur' + Math.random().toString(16).substring(4, 20)
+	let uidself = 'xdblurself' + Math.random().toString(16).substring(4, 20)
+	const props = defineProps({
+		/**
+		 * 模糊程度0-100
+		 */
+		blur: {
+			type: Number,
+			default: 100
+		},
+		/**
+		 * 背景颜色建议rgba,让a有透明度,这样
+		 * 更适合磨砂效果,推荐blur=90,a=0.9,具体请自行设置
+		 * 如果要适应暗黑,请自行在外部判断isDark来切换暗黑背景.
+		 */
+		bgColor: {
+			type: String,
+			default: 'rgba(255,255,255,0.8)'
+		},
+		/**
+		 * 模糊对象
+		 * parent,模糊它的父级(即背景),self:模糊自己本身内容
+		 */
+		into: {
+			type: String,
+			default: "parent"
+		}
+	})
+	let tid = 12
+	const setBgBlur = ():Promise<boolean> => {
+		return new Promise((res)=>{
+			let ele = uni.getElementById(uid) as UniElement | null;
+			let ele2 = uni.getElementById(uidself) as UniElement | null;
+			if (ele != null) {
+				let blur = props.blur;
+				if (props.into == 'parent') {
+					xdblur?.setFilterBg(blur as number, props.bgColor,ele)
+				} else if (ele2 != null&&props.into != 'parent') {
+					xdBlur.setFilterSelfBg(ele, ele2, blur as number, props.bgColor)
+				}
+			}
+			res(true)
+		})
+	}
+
+	watch(() : any[] => [props.blur, props.bgColor], () => {
+		setBgBlur()
+	})
+	function onviewinit(e : UniNativeViewInitEvent) {
+		xdblur = new xdBlur(e.detail.element);
+		tid = setTimeout(function () {
+			setBgBlur()
+		}, 50);
+	}
+
+	onMounted(() => {
+		
+		// #ifndef APP
+		xdblur = new xdBlur(null);
+		setBgBlur()
+		// #endif
+
+	})
+	// #ifdef APP
+	onPageScroll((ops : OnPageScrollOptions) => {
+		clearTimeout(tid)
+		tid = setTimeout(function () {
+			setBgBlur()
+		}, 5);
+	})
+	// #endif
+</script>
+
+<style>
+	.xdBlurSelf {
+		pointer-events: none;
+		position: absolute;
+		left: 0px;
+		top: 0px;
+		width: 100%;
+		height: 100%;
+	}
+</style>
