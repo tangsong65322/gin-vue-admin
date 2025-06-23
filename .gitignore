@@ -1,6 +1,7 @@
 /web/node_modules
 /web/dist
-/uniapp/node_modules
+/tmui4xui/node_modules
+
 
 .DS_Store
 
